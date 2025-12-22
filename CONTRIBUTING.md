@@ -901,4 +901,4 @@ emulator.start({ port: 5503 })
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+By contributing, you agree that your contributions will be licensed under the GPL-3.0-or-later License.

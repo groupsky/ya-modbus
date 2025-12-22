@@ -23,7 +23,7 @@
     "type": "git",
     "url": "https://github.com/yourusername/ya-modbus-mqtt-bridge.git"
   },
-  "license": "MIT",
+  "license": "GPL-3.0-or-later",
   "author": "Your Name <your.email@example.com>",
   "workspaces": [
     "packages/*"
