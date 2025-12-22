@@ -17,7 +17,7 @@
 - **RTU & TCP support** - Serial (RS-485/RS-232) and network Modbus devices
 - **Converter ecosystem** - Optional data normalization for InfluxDB, Prometheus, PostgreSQL
 - **Software emulator** - Test device drivers without physical hardware
-- **Agent-friendly** - TDD workflow, comprehensive documentation, per-directory guides
+- **Agent-friendly** - Comprehensive documentation, per-directory guides for AI assistants
 
 ## Quick Start
 
@@ -168,7 +168,7 @@ Want to add a device? See [docs/devices/adding-new-device.md](./docs/devices/add
 
 - **[Getting Started](./docs/getting-started.md)** - Installation, configuration, first steps
 - **[Architecture](./ARCHITECTURE.md)** - System design, key decisions, data flow
-- **[Contributing](./CONTRIBUTING.md)** - Development workflow, TDD, code style
+- **[Contributing](./CONTRIBUTING.md)** - Development workflow, testing, code style
 - **[AGENTS.md](./AGENTS.md)** - Quick guide for AI assistants and developers
 - **[API Reference](./docs/api/)** - Package APIs and interfaces
 - **[Device Drivers](./docs/devices/)** - Adding and converting device drivers
@@ -213,17 +213,6 @@ packages/
 ├── emulator/     # Software Modbus device emulator for testing
 └── mqtt-config/  # Runtime configuration management
 ```
-
-### Test-Driven Development
-
-This project requires TDD for all features and bug fixes:
-
-1. Write test first (should fail)
-2. Write minimal code to pass
-3. Refactor while keeping tests green
-4. Commit with tests included
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed TDD workflow.
 
 ## Runtime Configuration via MQTT
 
@@ -389,10 +378,10 @@ MIT License - see [LICENSE](./LICENSE) for details
 ## Contributing
 
 Contributions welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
-- TDD workflow (required)
+- Development workflow
+- Testing guidelines
 - Code style guidelines
 - Pull request process
-- Development setup
 
 ## Support
 
