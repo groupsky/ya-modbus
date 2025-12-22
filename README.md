@@ -403,7 +403,7 @@ Contributions welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
 ## Acknowledgments
 
 - Inspired by [zigbee2mqtt](https://www.zigbee2mqtt.io/) architecture
-- Uses [node-modbus](https://github.com/cloud-automation/node-modbus) for protocol implementation
+- Uses [modbus-serial](https://github.com/yaacov/node-modbus-serial) for Modbus protocol implementation
 - Uses [async-mutex](https://github.com/DirtyHairy/async-mutex) for RTU bus locking
 
 ## Roadmap

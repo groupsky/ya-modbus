@@ -23,6 +23,15 @@ ya-modbus-mqtt-bridge is a TypeScript monorepo that bridges Modbus devices (RTU/
 @ya-modbus/mqtt-config  - Runtime configuration management
 ```
 
+### Core Dependencies
+
+**Modbus Protocol**: Uses `modbus-serial` package for Modbus RTU and TCP communication.
+- Supports serial ports (RS-485/RS-232) and TCP connections
+- Handles low-level protocol framing and CRC
+- Provides async/await interface for operations
+
+**Why modbus-serial**: Mature, well-tested library with active maintenance and broad device compatibility.
+
 ### Layered Architecture
 
 ```
@@ -65,11 +74,17 @@ ya-modbus-mqtt-bridge is a TypeScript monorepo that bridges Modbus devices (RTU/
                           │
 ┌─────────────────────────────────────────────────────────┐
 │                  Transport Layer                        │
-│  - RTU (serial) transport                               │
-│  - TCP transport                                        │
+│  - RTU (serial) transport via modbus-serial             │
+│  - TCP transport via modbus-serial                      │
 │  - RTU-over-TCP bridges                                 │
 └─────────────────────────────────────────────────────────┘
 ```
+
+**Transport Implementation**: Wraps `modbus-serial` to provide:
+- Unified interface for RTU and TCP transports
+- Connection management and recovery
+- Error normalization and retry logic
+- Integration with mutex layer for RTU operations
 
 ## Key Architectural Decisions
 
