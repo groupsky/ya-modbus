@@ -2,7 +2,7 @@
 
 > Production-ready Modbus to MQTT bridge with automatic bus collision prevention, adaptive polling, and runtime reconfiguration
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![Node](https://img.shields.io/badge/Node-24+-green.svg)](https://nodejs.org/)
 
@@ -373,7 +373,7 @@ See [@ya-modbus/converters](./packages/converters/README.md) for details.
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE) for details
+GPL-3.0-or-later - see [LICENSE](./LICENSE) for details
 
 ## Contributing
 
