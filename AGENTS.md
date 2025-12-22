@@ -31,12 +31,16 @@ npm run build --workspace=packages/devices
 
 ## Development Approach
 
-**TDD (Test-Driven Development)** is required for:
+**TDD (Test-Driven Development)** is required for AI agents:
 - New features
 - Bug fixes
 - Device drivers
 
-See `CONTRIBUTING.md` for TDD workflow details.
+**Workflow**:
+1. Write test first (should fail)
+2. Write minimal code to pass
+3. Refactor while keeping tests green
+4. Commit with tests included
 
 ## Key Architectural Decisions
 

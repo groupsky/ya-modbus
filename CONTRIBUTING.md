@@ -1,24 +1,25 @@
 # Contributing to ya-modbus-mqtt-bridge
 
-Thank you for your interest in contributing! This document outlines the development workflow, with emphasis on Test-Driven Development (TDD).
+Thank you for your interest in contributing! This document outlines the development workflow and testing practices.
 
 ## Development Workflow
 
-### Required: Test-Driven Development (TDD)
+### Writing Tests
 
-**All new features and bug fixes MUST follow TDD:**
+**Tests are essential for all new features and bug fixes:**
 
-1. **Write the test first** (it should fail)
-2. **Write minimal code** to make the test pass
-3. **Refactor** while keeping tests green
-4. **Commit** with tests included
+1. Write tests to verify the expected behavior
+2. Implement the feature or fix
+3. Ensure all tests pass
+4. Refactor as needed while keeping tests green
+5. Commit with tests included
 
-### TDD Workflow Example
+### Workflow Examples
 
 #### Example 1: Adding a New Device Driver
 
 ```bash
-# 1. Create test file FIRST (next to the source file)
+# 1. Create test file (next to the source file)
 cat > packages/devices/energy-meters/my-meter.test.ts << 'EOF'
 import { MyMeter } from '../my-meter';
 import { ModbusEmulator } from '@ya-modbus/emulator';
@@ -61,10 +62,7 @@ describe('MyMeter', () => {
 });
 EOF
 
-# 2. Run test (should FAIL)
-npm test --workspace=packages/devices
-
-# 3. Implement device (minimal code to pass)
+# 2. Implement device
 cat > packages/devices/energy-meters/my-meter.ts << 'EOF'
 import { ModbusDevice, RegisterDefinition } from '@ya-modbus/core';
 
@@ -94,12 +92,11 @@ export class MyMeter extends ModbusDevice {
 }
 EOF
 
-# 4. Run test (should PASS)
+# 3. Run tests
 npm test --workspace=packages/devices
 
-# 5. Refactor if needed (keep tests passing)
-# 6. Commit with tests
-git add packages/devices/energy-meters/{my-meter.ts,__tests__/my-meter.test.ts}
+# 4. Commit with tests
+git add packages/devices/energy-meters/{my-meter.ts,my-meter.test.ts}
 git commit -m "feat(devices): add MyMeter energy meter driver
 
 - Reads voltage and current from holding registers
@@ -110,8 +107,8 @@ git commit -m "feat(devices): add MyMeter energy meter driver
 #### Example 2: Fixing a Bug
 
 ```bash
-# 1. Write failing test that reproduces the bug
-cat > packages/core/__tests__/polling-bug.test.ts << 'EOF'
+# 1. Write test that reproduces the bug
+cat > packages/core/polling-bug.test.ts << 'EOF'
 import { PollingEngine } from '../polling';
 
 describe('PollingEngine - Bug #123', () => {
@@ -130,16 +127,13 @@ describe('PollingEngine - Bug #123', () => {
 });
 EOF
 
-# 2. Run test (should FAIL)
-npm test --workspace=packages/core
-
-# 3. Fix the bug (minimal change)
+# 2. Fix the bug
 # Edit packages/core/src/polling.ts to handle disconnection
 
-# 4. Run test (should PASS)
+# 3. Run tests
 npm test --workspace=packages/core
 
-# 5. Commit with test
+# 4. Commit with test
 git commit -m "fix(core): handle device disconnection during poll
 
 Fixes #123
@@ -151,8 +145,8 @@ Fixes #123
 #### Example 3: Adding Core Feature
 
 ```bash
-# 1. Write comprehensive tests for the feature
-cat > packages/core/__tests__/multi-register-optimization.test.ts << 'EOF'
+# 1. Write tests for the feature
+cat > packages/core/multi-register-optimization.test.ts << 'EOF'
 import { ReadOptimizer } from '../read-optimizer';
 
 describe('ReadOptimizer', () => {
@@ -205,19 +199,15 @@ describe('ReadOptimizer', () => {
 });
 EOF
 
-# 2. Run tests (should FAIL)
-npm test --workspace=packages/core
-
-# 3. Implement feature incrementally
-# - Start with simplest case (batching adjacent)
+# 2. Implement feature
+# - Implement batching adjacent registers
 # - Add gap detection
 # - Add max size handling
 
-# 4. Run tests after each step
+# 3. Run tests
 npm test --workspace=packages/core
 
-# 5. Refactor when all tests pass
-# 6. Commit
+# 4. Commit
 git commit -m "feat(core): add multi-register read optimization
 
 - Batches adjacent registers into single reads
@@ -481,7 +471,7 @@ Updated flowchart.
 
 ### PR Checklist
 
-- [ ] Tests written FIRST (TDD workflow followed)
+- [ ] Tests included for new code
 - [ ] All tests pass
 - [ ] Coverage ≥ 80% for new code
 - [ ] Linting passes
@@ -509,7 +499,7 @@ Brief description of changes
 - [ ] Tested with real hardware (specify device)
 
 ## Checklist
-- [ ] TDD workflow followed (tests written first)
+- [ ] Tests included with changes
 - [ ] Code follows style guidelines
 - [ ] Self-review completed
 - [ ] Documentation updated
