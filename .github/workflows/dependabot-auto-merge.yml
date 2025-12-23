@@ -1,0 +1,147 @@
+name: Dependabot Auto-Merge
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # Fetch metadata about the Dependabot PR
+  metadata:
+    name: Fetch Metadata
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    outputs:
+      dependency-names: ${{ steps.metadata.outputs.dependency-names }}
+      dependency-type: ${{ steps.metadata.outputs.dependency-type }}
+      update-type: ${{ steps.metadata.outputs.update-type }}
+      package-ecosystem: ${{ steps.metadata.outputs.package-ecosystem }}
+
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Display metadata
+        run: |
+          echo "Dependency names: ${{ steps.metadata.outputs.dependency-names }}"
+          echo "Dependency type: ${{ steps.metadata.outputs.dependency-type }}"
+          echo "Update type: ${{ steps.metadata.outputs.update-type }}"
+          echo "Package ecosystem: ${{ steps.metadata.outputs.package-ecosystem }}"
+
+  # Auto-approve Dependabot PRs based on criteria
+  auto-approve:
+    name: Auto-Approve PR
+    runs-on: ubuntu-latest
+    needs: metadata
+    if: |
+      github.actor == 'dependabot[bot]' && (
+        needs.metadata.outputs.update-type == 'version-update:semver-patch' ||
+        needs.metadata.outputs.update-type == 'version-update:semver-minor'
+      )
+
+    steps:
+      - name: Approve PR
+        run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add approved label
+        run: gh pr edit "$PR_URL" --add-label "dependabot-approved"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Auto-merge Dependabot PRs after CI passes
+  auto-merge:
+    name: Auto-Merge PR
+    runs-on: ubuntu-latest
+    needs: [metadata, auto-approve]
+    if: |
+      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.draft == false && (
+        (
+          needs.metadata.outputs.package-ecosystem == 'github_actions' &&
+          needs.metadata.outputs.update-type != 'version-update:semver-major'
+        ) || (
+          needs.metadata.outputs.package-ecosystem == 'npm' &&
+          needs.metadata.outputs.dependency-type == 'direct:development' &&
+          needs.metadata.outputs.update-type == 'version-update:semver-patch'
+        ) || (
+          needs.metadata.outputs.package-ecosystem == 'npm' &&
+          needs.metadata.outputs.dependency-type == 'direct:development' &&
+          needs.metadata.outputs.update-type == 'version-update:semver-minor'
+        )
+      )
+
+    steps:
+      - name: Enable auto-merge
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add auto-merge label
+        run: gh pr edit "$PR_URL" --add-label "dependabot-auto-merge"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Comment on PRs that require manual review
+  manual-review:
+    name: Request Manual Review
+    runs-on: ubuntu-latest
+    needs: metadata
+    if: |
+      github.actor == 'dependabot[bot]' && (
+        needs.metadata.outputs.update-type == 'version-update:semver-major' ||
+        needs.metadata.outputs.dependency-type == 'direct:production'
+      )
+
+    steps:
+      - name: Comment on PR
+        run: |
+          gh pr comment "$PR_URL" --body "🔍 **Manual review required**
+
+          This PR updates:
+          - **Dependencies**: ${{ needs.metadata.outputs.dependency-names }}
+          - **Type**: ${{ needs.metadata.outputs.dependency-type }}
+          - **Update**: ${{ needs.metadata.outputs.update-type }}
+
+          **Reason**: ${{ needs.metadata.outputs.update-type == 'version-update:semver-major' && 'Major version update' || 'Production dependency' }}
+
+          Please review the changes carefully before merging.
+
+          **Checklist**:
+          - [ ] Check breaking changes in changelog
+          - [ ] Review migration guide (if applicable)
+          - [ ] Verify tests pass
+          - [ ] Consider impact on production code"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add manual-review label
+        run: gh pr edit "$PR_URL" --add-label "dependabot-manual-review"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Request review from code owners
+        run: |
+          # Request review from repository owner or configured reviewers
+          # This will fail silently if CODEOWNERS is not configured
+          gh pr edit "$PR_URL" --add-reviewer "${{ github.repository_owner }}" || true
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
