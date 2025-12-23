@@ -136,6 +136,60 @@ jobs:
             echo "📊 Found $group_count group(s) configured"
           fi
 
+      - name: Validate @types/node ignore matches Node.js engines
+        run: |
+          echo "🔍 Validating @types/node ignore configuration..."
+
+          # Extract minimum Node.js version from package.json
+          node_version=$(jq -r '.engines.node // empty' package.json | grep -oP '>=\K[0-9]+' || echo "")
+
+          if [ -z "$node_version" ]; then
+            echo "⚠️  No Node.js version constraint found in package.json engines"
+            exit 0
+          fi
+
+          echo "📦 Minimum Node.js version: $node_version"
+
+          # Calculate expected @types/node ignore version (node_version + 1)
+          expected_ignore_version=$((node_version + 1))
+          echo "🎯 Expected @types/node ignore: >=$expected_ignore_version"
+
+          # Check if @types/node ignore rule exists and matches
+          config_file=".github/dependabot.yml"
+
+          if ! grep -q "dependency-name: \"@types/node\"" "$config_file"; then
+            echo "⚠️  No @types/node ignore rule found in Dependabot config"
+            echo "💡 Consider pinning @types/node to v$node_version to prevent using APIs unavailable in Node.js $node_version"
+            exit 0
+          fi
+
+          # Extract the version from the ignore rule
+          # Looking for pattern like: versions: [">=21"]
+          actual_ignore=$(grep -A 3 "dependency-name: \"@types/node\"" "$config_file" | grep "versions:" | grep -oP '>=\K[0-9]+' || echo "")
+
+          if [ -z "$actual_ignore" ]; then
+            echo "❌ Could not parse @types/node ignore version from Dependabot config"
+            exit 1
+          fi
+
+          echo "📋 Actual @types/node ignore: >=$actual_ignore"
+
+          if [ "$actual_ignore" -eq "$expected_ignore_version" ]; then
+            echo "✅ @types/node ignore configuration matches Node.js engines (pinned to v$node_version types)"
+          else
+            echo "❌ @types/node ignore mismatch!"
+            echo ""
+            echo "Expected: >=$expected_ignore_version (to pin to @types/node v$node_version)"
+            echo "Actual:   >=$actual_ignore"
+            echo ""
+            echo "Please update .github/dependabot.yml ignore rule to:"
+            echo "  ignore:"
+            echo "    - dependency-name: \"@types/node\""
+            echo "      update-types: [\"version-update:semver-major\"]"
+            echo "      versions: [\">=$expected_ignore_version\"]"
+            exit 1
+          fi
+
       - name: Summary
         if: success()
         run: |
@@ -146,3 +200,4 @@ jobs:
           echo "- Configuration conforms to Dependabot schema"
           echo "- No duplicate entries"
           echo "- Groups are properly configured"
+          echo "- @types/node pinned to minimum Node.js version"
