@@ -2,7 +2,11 @@
   "name": "@ya-modbus/driver-types",
   "version": "0.0.0",
   "description": "TypeScript type definitions for ya-modbus device drivers",
-  "keywords": ["modbus", "types", "typescript"],
+  "keywords": [
+    "modbus",
+    "types",
+    "typescript"
+  ],
   "author": "Geno Roupsky <geno@roupsky.name>",
   "license": "GPL-3.0-or-later",
   "type": "module",

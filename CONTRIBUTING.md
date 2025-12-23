@@ -223,6 +223,7 @@ git commit -m "feat(core): add multi-register read optimization
 - **Required coverage**: 100% for critical paths (mutex, polling, errors)
 
 Run coverage report:
+
 ```bash
 npm test -- --coverage
 ```
@@ -230,41 +231,44 @@ npm test -- --coverage
 ### Test Categories
 
 #### 1. Unit Tests
+
 **Location**: Next to the code being tested (e.g., `foo.ts` → `foo.test.ts`)
 **Purpose**: Test individual functions/classes in isolation
 **Tools**: Jest with mocks
 
 ```typescript
 // Example: Testing a pure function
-import { parseModbusFloat32 } from '../parsers';
+import { parseModbusFloat32 } from '../parsers'
 
 describe('parseModbusFloat32', () => {
   it('should parse IEEE 754 float correctly', () => {
-    const buffer = Buffer.from([0x43, 0x66, 0x40, 0x00]);
-    expect(parseModbusFloat32(buffer)).toBeCloseTo(230.5, 1);
-  });
-});
+    const buffer = Buffer.from([0x43, 0x66, 0x40, 0x00])
+    expect(parseModbusFloat32(buffer)).toBeCloseTo(230.5, 1)
+  })
+})
 ```
 
 #### 2. Integration Tests
+
 **Location**: Next to the modules being tested with `.integration.test.ts` suffix
 **Purpose**: Test interaction between components
 **Tools**: Jest with Emulator
 
 ```typescript
 // Example: Testing device + transport
-import { MyDevice } from '../my-device';
-import { ModbusEmulator } from '@ya-modbus/emulator';
+import { MyDevice } from '../my-device'
+import { ModbusEmulator } from '@ya-modbus/emulator'
 
 describe('MyDevice Integration', () => {
   it('should read data via RTU transport', async () => {
-    const emulator = new ModbusEmulator({ transport: 'rtu' });
+    const emulator = new ModbusEmulator({ transport: 'rtu' })
     // ... test device communication
-  });
-});
+  })
+})
 ```
 
 #### 3. End-to-End Tests
+
 **Location**: Next to entry points with `.e2e.test.ts` suffix
 **Purpose**: Test complete workflows
 **Tools**: Jest + Emulator + MQTT
@@ -275,8 +279,8 @@ describe('Bridge E2E', () => {
   it('should poll device and publish to MQTT', async () => {
     // Setup emulator, bridge, MQTT client
     // Verify data flows end-to-end
-  });
-});
+  })
+})
 ```
 
 ### Using the Emulator
@@ -284,11 +288,11 @@ describe('Bridge E2E', () => {
 **Always use the emulator for device driver tests:**
 
 ```typescript
-import { ModbusEmulator } from '@ya-modbus/emulator';
+import { ModbusEmulator } from '@ya-modbus/emulator'
 
 const emulator = new ModbusEmulator({
   transport: 'rtu',
-  port: '/dev/pts/10',  // Virtual serial port
+  port: '/dev/pts/10', // Virtual serial port
   devices: [
     {
       slaveId: 1,
@@ -296,20 +300,21 @@ const emulator = new ModbusEmulator({
       registers: {
         // Define register values
         0x0000: 230.5,
-        0x0006: 5.2
-      }
-    }
-  ]
-});
+        0x0006: 5.2,
+      },
+    },
+  ],
+})
 
-await emulator.start();
+await emulator.start()
 
 // Run your tests
 
-await emulator.stop();
+await emulator.stop()
 ```
 
 **Emulator capabilities:**
+
 - Simulate RTU and TCP devices
 - Configure register values
 - Simulate errors (timeout, CRC, exceptions)
@@ -332,33 +337,34 @@ await emulator.stop();
 // Good: Describes what the code does
 // Acquire mutex for RTU devices to prevent bus collisions
 if (device.transport === 'rtu') {
-  await this.rtuMutex.acquire();
+  await this.rtuMutex.acquire()
 }
 
 // Bad: References previous state or changes
 // Changed to use mutex instead of delays
 // Previously we used sleep(), now we use proper locking
 if (device.transport === 'rtu') {
-  await this.rtuMutex.acquire();
+  await this.rtuMutex.acquire()
 }
 
 // Good: Explains non-obvious logic
 // Batch registers within 10 addresses to minimize read operations
-const gap = current.address - previous.address;
+const gap = current.address - previous.address
 if (gap <= 10) {
-  currentBatch.push(current);
+  currentBatch.push(current)
 }
 
 // Bad: Unnecessary temporal commentary
 // Updated gap threshold from 5 to 10
 // Changed batching logic to be more efficient
-const gap = current.address - previous.address;
+const gap = current.address - previous.address
 if (gap <= 10) {
-  currentBatch.push(current);
+  currentBatch.push(current)
 }
 ```
 
 **Guidelines:**
+
 - Describe **why** code exists, not **what changed**
 - Explain non-obvious logic or business rules
 - Document **current** behavior and constraints
@@ -390,6 +396,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 ```
 
 **Types:**
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation only
@@ -398,6 +405,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 - `chore`: Maintenance tasks
 
 **Important Guidelines:**
+
 - **Write for current state**: Describe what the code does NOW, not what it did before or will do later
 - **Squash-ready**: Assume commits will be squashed, so focus on the end result
 - **Avoid temporal references**: No "change", "update", "modify" - describe the current behavior
@@ -406,6 +414,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 **Examples:**
 
 Good (describes current state):
+
 ```
 feat(devices): add SDM630 energy meter driver
 
@@ -414,6 +423,7 @@ Includes test suite using emulator.
 ```
 
 Bad (references previous state):
+
 ```
 feat(devices): change energy meter to use new format
 
@@ -423,6 +433,7 @@ Changed test structure.
 ```
 
 Good (describes current behavior):
+
 ```
 fix(core): release mutex on device timeout
 
@@ -433,6 +444,7 @@ Fixes #42
 ```
 
 Bad (references what was wrong):
+
 ```
 fix(core): fix bug where mutex wasn't released
 
@@ -442,6 +454,7 @@ Updated the tests.
 ```
 
 Good (describes current state):
+
 ```
 docs(architecture): document RTU mutex scope
 
@@ -451,6 +464,7 @@ Includes flowchart showing transport selection logic.
 ```
 
 Bad (references changes):
+
 ```
 docs(architecture): clarify RTU mutex behavior
 
@@ -483,15 +497,18 @@ Updated flowchart.
 
 ```markdown
 ## Description
+
 Brief description of changes
 
 ## Type of Change
+
 - [ ] Bug fix (non-breaking change)
 - [ ] New feature (non-breaking change)
 - [ ] Breaking change
 - [ ] Documentation update
 
 ## Testing
+
 - [ ] Unit tests added/updated
 - [ ] Integration tests added/updated
 - [ ] E2E tests added/updated (if applicable)
@@ -499,6 +516,7 @@ Brief description of changes
 - [ ] Tested with real hardware (specify device)
 
 ## Checklist
+
 - [ ] Tests included with changes
 - [ ] Code follows style guidelines
 - [ ] Self-review completed
@@ -539,12 +557,14 @@ npm run dev
 **Recommended: VS Code**
 
 Install extensions:
+
 - ESLint
 - Prettier
 - Jest Runner
 - TypeScript Vue Plugin
 
 **Settings** (`.vscode/settings.json`):
+
 ```json
 {
   "editor.formatOnSave": true,
@@ -598,6 +618,7 @@ EOF
 ### Package Dependencies
 
 **Inter-package dependencies:**
+
 ```json
 {
   "dependencies": {
@@ -607,6 +628,7 @@ EOF
 ```
 
 **External dependencies:**
+
 - Minimize dependencies
 - Justify each dependency in PR
 - Check bundle size impact
@@ -618,6 +640,7 @@ EOF
 Device drivers can be contributed as independent npm packages without modifying this repository.
 
 **Benefits**:
+
 - Independent release cycle
 - Own your driver's versioning and maintenance
 - Private/proprietary drivers possible
@@ -636,11 +659,13 @@ To contribute a driver to the built-in collection (`@ya-modbus/devices`):
 5. Submit PR with driver + tests
 
 **When to contribute as built-in**:
+
 - Widely-used commercial device
 - Open hardware standard
 - Reference implementation for similar devices
 
 **When to publish independently**:
+
 - Proprietary devices
 - Niche/custom devices
 - Company-specific drivers
@@ -720,6 +745,7 @@ it('should call retry function 3 times', async () => {
 ```
 
 **Why this matters:**
+
 - Refactoring internal code shouldn't break tests
 - Tests document what the code does, not how
 - More resilient test suite
@@ -732,15 +758,15 @@ it('should call retry function 3 times', async () => {
 ```typescript
 it('should calculate power from voltage and current', () => {
   // Arrange
-  const device = new MyDevice({ slaveId: 1 });
-  device.setData({ voltage: 230, current: 5 });
+  const device = new MyDevice({ slaveId: 1 })
+  device.setData({ voltage: 230, current: 5 })
 
   // Act
-  const power = device.calculatePower();
+  const power = device.calculatePower()
 
   // Assert
-  expect(power).toBe(1150);
-});
+  expect(power).toBe(1150)
+})
 ```
 
 ### Mocking
@@ -753,21 +779,21 @@ Internal code should be tested through public APIs. Mocking internal dependencie
 // Good: Mock external dependencies (MQTT client, serial port, network)
 const mockMqtt = {
   publish: jest.fn(),
-  subscribe: jest.fn()
+  subscribe: jest.fn(),
 }
 
 const mockSerialPort = {
   open: jest.fn(),
   write: jest.fn(),
-  read: jest.fn()
+  read: jest.fn(),
 }
 
 // Bad: Mock internal business logic or modules
 const mockPollingEngine = {
-  poll: jest.fn().mockResolvedValue(data)
+  poll: jest.fn().mockResolvedValue(data),
 }
 const mockDeviceRegistry = {
-  getDevice: jest.fn().mockReturnValue(device)
+  getDevice: jest.fn().mockReturnValue(device),
 }
 // Instead, use real instances and test through public API
 
@@ -778,10 +804,7 @@ it('should publish device data to MQTT', async () => {
 
   await bridge.poll()
 
-  expect(mockMqtt.publish).toHaveBeenCalledWith(
-    'modbus/test/data',
-    expect.any(String)
-  )
+  expect(mockMqtt.publish).toHaveBeenCalledWith('modbus/test/data', expect.any(String))
 })
 
 // Bad: Test implementation details
@@ -797,6 +820,7 @@ it('should call internal polling engine', async () => {
 **What counts as external vs internal:**
 
 External (mock these):
+
 - MQTT client libraries
 - Serial port communication
 - TCP sockets
@@ -805,6 +829,7 @@ External (mock these):
 - Database connections
 
 Internal (use real instances):
+
 - Your own modules and classes
 - Business logic
 - Data transformations
@@ -819,23 +844,23 @@ Internal (use real instances):
 ```typescript
 describe('RegisterParser', () => {
   it('should handle empty buffer', () => {
-    expect(() => parse(Buffer.alloc(0))).toThrow();
-  });
+    expect(() => parse(Buffer.alloc(0))).toThrow()
+  })
 
   it('should handle buffer too small', () => {
-    expect(() => parse(Buffer.alloc(2))).toThrow();
-  });
+    expect(() => parse(Buffer.alloc(2))).toThrow()
+  })
 
   it('should handle NaN values', () => {
-    const nanBuffer = Buffer.from([0x7F, 0xC0, 0x00, 0x00]);
-    expect(parse(nanBuffer)).toBeNaN();
-  });
+    const nanBuffer = Buffer.from([0x7f, 0xc0, 0x00, 0x00])
+    expect(parse(nanBuffer)).toBeNaN()
+  })
 
   it('should handle infinity', () => {
-    const infBuffer = Buffer.from([0x7F, 0x80, 0x00, 0x00]);
-    expect(parse(infBuffer)).toBe(Infinity);
-  });
-});
+    const infBuffer = Buffer.from([0x7f, 0x80, 0x00, 0x00])
+    expect(parse(infBuffer)).toBe(Infinity)
+  })
+})
 ```
 
 ## Documentation

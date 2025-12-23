@@ -37,10 +37,5 @@
     /* Completeness */
     "skipLibCheck": true
   },
-  "exclude": [
-    "node_modules",
-    "dist",
-    "coverage",
-    "**/*.test.ts"
-  ]
+  "exclude": ["node_modules", "dist", "coverage", "**/*.test.ts"]
 }

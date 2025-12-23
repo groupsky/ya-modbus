@@ -2,7 +2,12 @@
   "name": "@ya-modbus/driver-sdk",
   "version": "0.0.0",
   "description": "Runtime SDK for ya-modbus device drivers with transformation utilities and helpers",
-  "keywords": ["modbus", "driver", "sdk", "runtime"],
+  "keywords": [
+    "modbus",
+    "driver",
+    "sdk",
+    "runtime"
+  ],
   "author": "Geno Roupsky <geno@roupsky.name>",
   "license": "GPL-3.0-or-later",
   "type": "module",

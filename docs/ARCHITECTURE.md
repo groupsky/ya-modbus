@@ -26,6 +26,7 @@ ya-modbus-mqtt-bridge is a TypeScript monorepo that bridges Modbus devices (RTU/
 ### Core Dependencies
 
 **Modbus Protocol**: Uses `modbus-serial` package for Modbus RTU and TCP communication.
+
 - Supports serial ports (RS-485/RS-232) and TCP connections
 - Handles low-level protocol framing and CRC
 - Provides async/await interface for operations
@@ -81,6 +82,7 @@ ya-modbus-mqtt-bridge is a TypeScript monorepo that bridges Modbus devices (RTU/
 ```
 
 **Transport Implementation**: Wraps `modbus-serial` to provide:
+
 - Unified interface for RTU and TCP transports
 - Connection management and recovery
 - Error normalization and retry logic
@@ -104,11 +106,11 @@ ya-modbus-mqtt-bridge is a TypeScript monorepo that bridges Modbus devices (RTU/
 
 **Solution**: Three polling strategies with different rates.
 
-| Poll Type    | Use Case                  | Default Interval | Behavior                    |
-|--------------|---------------------------|------------------|-----------------------------|
-| `dynamic`    | Real-time measurements    | 1-10 seconds     | Continuous polling          |
-| `static`     | Device metadata           | Once at startup  | Read once, cache forever    |
-| `on-demand`  | Configuration registers   | Never            | Only when explicitly requested |
+| Poll Type   | Use Case                | Default Interval | Behavior                       |
+| ----------- | ----------------------- | ---------------- | ------------------------------ |
+| `dynamic`   | Real-time measurements  | 1-10 seconds     | Continuous polling             |
+| `static`    | Device metadata         | Once at startup  | Read once, cache forever       |
+| `on-demand` | Configuration registers | Never            | Only when explicitly requested |
 
 **Register configuration**: Each register specifies address, type, format, poll type, and optional custom interval.
 
@@ -123,10 +125,12 @@ ya-modbus-mqtt-bridge is a TypeScript monorepo that bridges Modbus devices (RTU/
 **Solution**: Batch adjacent registers into single read operations.
 
 **Example**: Reading registers [0, 1, 2, 5, 6, 7]
+
 - Without optimization: 6 read operations
 - With optimization: 2 read operations ([0-2], [5-7])
 
 **Algorithm**:
+
 1. Sort registers by address
 2. Group consecutive registers with gaps ≤ threshold
 3. Ensure groups respect device batch size limits
@@ -145,6 +149,7 @@ ya-modbus-mqtt-bridge is a TypeScript monorepo that bridges Modbus devices (RTU/
 **Solution**: MQTT-based configuration with state persistence.
 
 **MQTT Topic Structure**:
+
 ```
 modbus/
 ├── config/
@@ -169,6 +174,7 @@ modbus/
 ```
 
 **State Persistence**:
+
 - File: `./data/bridge-state.json` (configurable)
 - Format: JSON with semver schema versioning
 - Auto-save: On changes + periodic (5 min) + graceful shutdown
@@ -181,6 +187,7 @@ modbus/
 **Solution**: Multi-stage discovery process.
 
 **Discovery Stages**:
+
 1. **Serial parameter detection** - Test combinations of baud rates (9600, 19200, 38400, 115200), parities (none, even, odd), and stop bits (1, 2)
 2. **Device address scan** - Probe slave IDs 1-247 for responses
 3. **Device type identification** - Match response patterns against known device signatures
@@ -194,13 +201,13 @@ modbus/
 **Strategy**: Publish all errors to MQTT for monitoring.
 
 **Error Categories**:
-| Category           | Action         | MQTT Topic                        |
+| Category | Action | MQTT Topic |
 |--------------------|----------------|-----------------------------------|
-| Timeout            | Retry 3x       | `modbus/{deviceId}/errors/timeout` |
-| CRC error          | Retry 3x       | `modbus/{deviceId}/errors/crc`     |
-| Invalid response   | Retry 3x       | `modbus/{deviceId}/errors/invalid` |
-| Modbus exception   | Log & continue | `modbus/{deviceId}/errors/exception` |
-| Connection lost    | Reconnect      | `modbus/{deviceId}/events/disconnected` |
+| Timeout | Retry 3x | `modbus/{deviceId}/errors/timeout` |
+| CRC error | Retry 3x | `modbus/{deviceId}/errors/crc` |
+| Invalid response | Retry 3x | `modbus/{deviceId}/errors/invalid` |
+| Modbus exception | Log & continue | `modbus/{deviceId}/errors/exception` |
+| Connection lost | Reconnect | `modbus/{deviceId}/events/disconnected` |
 
 **Error Message Format**: Published errors include timestamp, error type, operation details (read/write, address, count), retry attempt number, and human-readable message.
 
@@ -211,6 +218,7 @@ modbus/
 **Solution**: Per-device constraint configuration.
 
 **Constraints include**:
+
 - Max read/write sizes (Modbus standard: 125 read registers, 123 write registers, 2000 coils)
 - Device-specific forbidden register ranges (both read and write)
 - Range specifications include type, start/end addresses, and optional reason
@@ -226,6 +234,7 @@ modbus/
 **Solution**: Automatic reconnection with exponential backoff.
 
 **Algorithm**:
+
 1. Start with 1 second delay
 2. Publish disconnection status to MQTT
 3. Attempt reconnection
@@ -233,6 +242,7 @@ modbus/
 5. Repeat until successful or manually stopped
 
 **Reconnection Triggers**:
+
 - Serial adapter disconnection (USB removal)
 - TCP connection timeout
 - Repeated communication failures (>10 errors)
@@ -240,6 +250,7 @@ modbus/
 ### 9. Diagnostics & Issue Detection
 
 **Proactive Issue Detection**:
+
 - High error rate (>5% of operations failing)
 - Slow responses (>500ms average latency)
 - Connection flapping (>10 reconnects per hour)
@@ -268,12 +279,12 @@ modbus/
 
 **Transformation Examples**:
 
-| Device Encoding         | Raw Value | External Value       |
-|-------------------------|-----------|----------------------|
-| uint16 × 0.1 (voltage)  | 2305      | 230.5 (float)        |
-| Decimal date (YYMMDD)   | 251220    | "2025-12-20"         |
-| Decimal time (HHMMSS)   | 103045    | "10:30:45"           |
-| BCD-encoded             | 0x1234    | 1234 (integer)       |
+| Device Encoding        | Raw Value | External Value |
+| ---------------------- | --------- | -------------- |
+| uint16 × 0.1 (voltage) | 2305      | 230.5 (float)  |
+| Decimal date (YYMMDD)  | 251220    | "2025-12-20"   |
+| Decimal time (HHMMSS)  | 103045    | "10:30:45"     |
+| BCD-encoded            | 0x1234    | 1234 (integer) |
 
 **Responsibilities**:
 
@@ -282,11 +293,13 @@ modbus/
 - **Bridge Core**: Provide transformation helpers, define canonical types/units, coordinate polling
 
 **Extensibility**:
+
 - Data types: `packages/core/src/types/data-types.ts`
 - Units: `packages/core/src/types/units.ts`
 - Standard transforms: `packages/core/src/transforms/`
 
 **Rationale**:
+
 - Consumers configure "what" (voltage, energy) not "how" (register addresses and formats)
 - Device complexity is encapsulated and transparent to users
 - New data types/units extend the system without modifying existing devices
@@ -354,18 +367,19 @@ Modbus operation fails
 
 ### Performance Targets
 
-| Metric                    | Target         | Notes                              |
-|---------------------------|----------------|------------------------------------|
-| Devices per bridge        | 50+            | RTU limited by bus speed           |
-| Poll rate (RTU)           | 10-50 Hz       | Depends on baud rate & registers   |
-| Poll rate (TCP)           | 100+ Hz        | Per device, concurrent             |
-| Mutex wait time           | <10ms          | Average wait for RTU devices       |
-| Memory per device         | <1MB           | Including polling state            |
-| State file size           | <100KB         | For 50 devices                     |
+| Metric             | Target   | Notes                            |
+| ------------------ | -------- | -------------------------------- |
+| Devices per bridge | 50+      | RTU limited by bus speed         |
+| Poll rate (RTU)    | 10-50 Hz | Depends on baud rate & registers |
+| Poll rate (TCP)    | 100+ Hz  | Per device, concurrent           |
+| Mutex wait time    | <10ms    | Average wait for RTU devices     |
+| Memory per device  | <1MB     | Including polling state          |
+| State file size    | <100KB   | For 50 devices                   |
 
 ### RTU Bus Limitations
 
 **Serial Bus Math**:
+
 ```
 Baud rate: 9600 bps
 Frame size: ~12 bytes (typical Modbus RTU frame)
@@ -377,6 +391,7 @@ For 10 devices @ 9600 baud:
 ```
 
 **Optimization Strategies**:
+
 1. Use higher baud rates (38400, 115200) if supported
 2. Batch register reads to reduce frame count
 3. Prioritize dynamic registers (static polled once)
@@ -384,11 +399,13 @@ For 10 devices @ 9600 baud:
 ### TCP Scalability
 
 **Concurrent TCP Devices**:
+
 - No mutex required
 - Limited only by network bandwidth and CPU
 - Recommended: Max 100 devices per bridge instance
 
 **Horizontal Scaling**:
+
 - Run multiple bridge instances for >100 devices
 - Partition by device groups or buildings
 - Use MQTT prefix to avoid topic collisions
@@ -412,6 +429,7 @@ For 10 devices @ 9600 baud:
 **Purpose**: Test device drivers without physical hardware.
 
 **Capabilities**:
+
 - Emulate any Modbus device (RTU/TCP)
 - Configurable register values
 - Simulate errors (timeouts, CRC failures, exceptions)
@@ -444,6 +462,7 @@ For 10 devices @ 9600 baud:
 ### Docker Deployment
 
 **Container approach**:
+
 - Node.js Alpine base image
 - Production dependencies only
 - Volume mount for state persistence
@@ -472,11 +491,13 @@ modbus/{deviceId}/errors/*      # Per-device errors
 **Telegraf**: MQTT consumer input plugin subscribes to data and status topics, parses JSON format.
 
 **Prometheus** (via converter):
+
 - Export metrics in Prometheus format
 - Scrape via HTTP endpoint
 - Standard Modbus metrics (voltage, current, power)
 
 **Grafana Dashboards**:
+
 - Device overview (status, poll rates, errors)
 - Performance metrics (latency, throughput)
 - Error trends and diagnostics
@@ -486,6 +507,7 @@ modbus/{deviceId}/errors/*      # Per-device errors
 ### Overview
 
 Device drivers can be distributed as independent npm packages, enabling:
+
 - Community-contributed drivers without modifying core codebase
 - Private/proprietary device drivers
 - Rapid driver development with standardized tooling
@@ -502,6 +524,7 @@ Device drivers can be distributed as independent npm packages, enabling:
 ```
 
 **Dependency flow**:
+
 - `driver-types`: No dependencies (pure types)
 - `driver-sdk`: Depends on `driver-types`
 - `driver-dev-tools`: Depends on `driver-sdk`, `driver-types` (dev-only)
@@ -523,6 +546,7 @@ No cyclic dependencies: SDK is contract, core is runtime, drivers are plugins.
 3. **Optional metadata**: `ya-modbus-driver.json` for tooling/discovery
 
 **Example third-party driver** (`ya-modbus-driver-solar`):
+
 ```json
 {
   "name": "ya-modbus-driver-solar",
@@ -545,6 +569,7 @@ No cyclic dependencies: SDK is contract, core is runtime, drivers are plugins.
 ### Driver Interface Contract
 
 **Stable public API** (`@ya-modbus/driver-sdk`):
+
 - Driver factory function pattern (functional approach preferred)
 - Data point definitions (semantic IDs, types, units)
 - Standard transformation helpers (multipliers, BCD, decimal dates, etc.)
@@ -559,6 +584,7 @@ No cyclic dependencies: SDK is contract, core is runtime, drivers are plugins.
 **CLI commands for driver developers**:
 
 **Production use** (global install):
+
 ```bash
 npm install -g @ya-modbus/cli ya-modbus-driver-solar
 ya-modbus read --driver ya-modbus-driver-solar --port /dev/ttyUSB0 \
@@ -566,6 +592,7 @@ ya-modbus read --driver ya-modbus-driver-solar --port /dev/ttyUSB0 \
 ```
 
 **Development use** (local devDependencies):
+
 ```bash
 # In driver package directory
 npx ya-modbus read --port /dev/ttyUSB0 --slave-id 1 --data-point voltage_l1
@@ -574,12 +601,14 @@ npx ya-modbus characterize --port /dev/ttyUSB0 --slave-id 1 --output profile.jso
 ```
 
 **Development commands** (require `@ya-modbus/driver-dev-tools`):
+
 - `discover` - Auto-detect connection parameters (baud, parity, slave ID)
 - `scan-registers` - Find readable/writable register ranges
 - `test-limits` - Determine max batch size, min timing delays
 - `characterize` - Complete device profiling (all discovery + limits)
 
 **Production commands** (always available):
+
 - `read` - Read data points
 - `write` - Write data points
 - `provision` - Initial device configuration
@@ -589,6 +618,7 @@ npx ya-modbus characterize --port /dev/ttyUSB0 --slave-id 1 --output profile.jso
 **Emulator-based testing** for driver development.
 
 **Test harness provides**:
+
 - Mock transport (stubs Modbus communication)
 - Emulator integration (software Modbus devices)
 - Assertion helpers (data point validation)
@@ -632,6 +662,7 @@ npx ya-modbus characterize --port /dev/ttyUSB0 --slave-id 1 --output profile.jso
 **No special casing**: Built-in drivers (`@ya-modbus/devices`) use same interface as third-party drivers.
 
 Benefits:
+
 - Consistent architecture (no dual implementation paths)
 - Built-in drivers serve as reference implementations
 - `@ya-modbus/devices` becomes optional (users install needed drivers only)
@@ -650,6 +681,7 @@ npm install ya-modbus-mqtt-bridge ya-modbus-driver-solar
 ```
 
 **Rationale**:
+
 - Security (no arbitrary code execution via config)
 - Explicit dependencies (package-lock.json tracks versions)
 - Standard npm workflow (familiar to users)
@@ -657,19 +689,22 @@ npm install ya-modbus-mqtt-bridge ya-modbus-driver-solar
 ### Configuration
 
 **Device config references driver by package name**:
+
 ```json
 {
   "driver": "ya-modbus-driver-solar",
-  "deviceType": "X1000"  // Optional - auto-detect if omitted
+  "deviceType": "X1000" // Optional - auto-detect if omitted
 }
 ```
 
 **Configuration pattern**:
+
 - `driver`: Package name (e.g., `ya-modbus-driver-solar`)
 - `deviceType`: Optional device variant within package
 - Auto-detection: Omit `deviceType` and driver reads identification registers
 
 **Benefits**:
+
 - Simple configuration (package name only, no class names)
 - Auto-detection reduces configuration burden
 - Single package handles entire device family
@@ -681,6 +716,7 @@ npm install ya-modbus-mqtt-bridge ya-modbus-driver-solar
 ### Ecosystem Benefits
 
 **For driver developers**:
+
 - Standardized SDK reduces learning curve
 - Test harness accelerates development
 - Characterization tools automate discovery
@@ -688,12 +724,14 @@ npm install ya-modbus-mqtt-bridge ya-modbus-driver-solar
 - Reusable across projects
 
 **For users**:
+
 - Large driver ecosystem (community + commercial)
 - Install only needed drivers (smaller footprint)
 - Mix built-in and third-party drivers
 - Private drivers possible (no public disclosure)
 
 **For core project**:
+
 - Focus on bridge functionality, not device coverage
 - Community contributions without core PRs
 - Faster iteration (drivers evolve independently)
@@ -702,6 +740,7 @@ npm install ya-modbus-mqtt-bridge ya-modbus-driver-solar
 ### Migration Path
 
 **Existing built-in drivers** refactor to use plugin architecture:
+
 1. Extract types to `@ya-modbus/driver-types`
 2. Move runtime SDK to `@ya-modbus/driver-sdk`
 3. Extract dev tools to `@ya-modbus/driver-dev-tools`

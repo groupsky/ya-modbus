@@ -17,11 +17,13 @@ packages/
 ## Development Approach
 
 **TDD (Test-Driven Development)** is required for AI agents:
+
 - New features
 - Bug fixes
 - Device drivers
 
 **Workflow**:
+
 1. Write test first (should fail)
 2. Write minimal code to pass
 3. Refactor while keeping tests green
@@ -32,6 +34,7 @@ packages/
 ## Package-Specific Guides
 
 For detailed information about specific packages:
+
 - **Core bridge logic**: `packages/core/AGENTS.md`
 - **Device drivers**: `packages/devices/AGENTS.md`
 - **CLI tools**: `packages/cli/AGENTS.md`

@@ -84,22 +84,25 @@ Result: Timeouts, CRC errors, data corruption
 ```
 
 **Common workaround** (manual delays):
+
 ```javascript
-await device1.read();
-await sleep(100);  // Manual delay - error-prone!
-await device2.read();
+await device1.read()
+await sleep(100) // Manual delay - error-prone!
+await device2.read()
 ```
 
 **Our solution** (automatic mutex):
+
 ```javascript
-await device1.read();  // Mutex acquired automatically
-await device2.read();  // Waits for mutex, then executes
+await device1.read() // Mutex acquired automatically
+await device2.read() // Waits for mutex, then executes
 // No manual delays, no collisions, no configuration needed
 ```
 
 ### Competitive Analysis
 
 We analyzed 48+ competing solutions. **None** provide all of:
+
 - ✅ Automatic mutex for RTU bus protection
 - ✅ Adaptive polling (dynamic vs static registers)
 - ✅ Runtime reconfiguration via MQTT
@@ -150,18 +153,22 @@ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for details.
 ### Built-in Drivers
 
 #### Energy Meters
+
 - **SDM630** - Eastron 3-phase energy meter
 - **DDS519MR** - Single-phase energy meter
 - **EX9EM** - ABB energy meter
 
 #### Solar Inverters
+
 - **SUN2000** - Huawei solar inverter
 - **MICROSYST-SR04** - Microsyst solar inverter
 
 #### HVAC
+
 - **BAC002** - Climate controller
 
 #### Generic Modbus
+
 - Configurable generic driver for any Modbus device
 
 ### Third-Party Driver Ecosystem
@@ -190,6 +197,7 @@ npm install -g ya-modbus-mqtt-bridge ya-modbus-driver-solar
 **Want to create a driver?** See [docs/DRIVER-DEVELOPMENT.md](./docs/DRIVER-DEVELOPMENT.md)
 
 **Driver developers get**:
+
 - Standardized SDK with TypeScript types
 - Test harness with emulator integration
 - Device characterization tools (auto-discover capabilities)
@@ -278,11 +286,13 @@ mosquitto_pub -t "modbus/config/devices/meter_1/polling" -m '{
 ### Device Status
 
 Subscribe to device status:
+
 ```bash
 mosquitto_sub -t "modbus/+/status/#"
 ```
 
 Example output:
+
 ```json
 {
   "timestamp": "2025-12-22T10:30:45.123Z",
@@ -301,6 +311,7 @@ Example output:
 ### Error Monitoring
 
 Subscribe to errors:
+
 ```bash
 mosquitto_sub -t "modbus/+/errors/#"
 ```
@@ -362,27 +373,27 @@ services:
 Optional data normalization layer inspired by zigbee-herdsman-converters:
 
 ```typescript
-import { convert } from '@ya-modbus/converters';
+import { convert } from '@ya-modbus/converters'
 
 // Raw device data
 const rawData = {
   voltage: 230.5,
   current: 5.2,
-  power: 1198.6
-};
+  power: 1198.6,
+}
 
 // Convert to InfluxDB format
 const influx = convert(rawData, {
   adapter: 'influxdb',
   measurement: 'modbus_device',
-  tags: { device_id: 'meter_1', location: 'building_a' }
-});
+  tags: { device_id: 'meter_1', location: 'building_a' },
+})
 
 // Convert to Prometheus format
 const prometheus = convert(rawData, {
   adapter: 'prometheus',
-  prefix: 'modbus'
-});
+  prefix: 'modbus',
+})
 ```
 
 See [@ya-modbus/converters](./packages/converters/README.md) for details.
@@ -392,7 +403,7 @@ See [@ya-modbus/converters](./packages/converters/README.md) for details.
 ### RTU Performance (9600 baud)
 
 | Scenario                        | Operations/cycle | Time/cycle | Improvement |
-|---------------------------------|------------------|------------|-------------|
+| ------------------------------- | ---------------- | ---------- | ----------- |
 | Individual reads (10 registers) | 10 reads         | ~100ms     | Baseline    |
 | Batched reads (10 registers)    | 1 read           | ~10ms      | **90%**     |
 | Uniform polling (all registers) | Continuous       | -          | Baseline    |
@@ -411,6 +422,7 @@ GPL-3.0-or-later - see [LICENSE](./LICENSE) for details
 ## Contributing
 
 Contributions welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
+
 - Development workflow
 - Testing guidelines
 - Code style guidelines
@@ -433,6 +445,7 @@ Contributions welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
 See [GitHub Projects](https://github.com/yourusername/ya-modbus-mqtt-bridge/projects) for planned features.
 
 Key upcoming features:
+
 - Web UI for configuration and monitoring
 - Advanced device fingerprinting
 - High-availability mode with failover
