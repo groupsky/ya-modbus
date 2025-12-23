@@ -35,7 +35,7 @@ updates:
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
-    versioning-strategy: increase-if-necessary
+    versioning-strategy: widen
     groups:
       # Production dependencies (grouped by type)
       npm-production:
@@ -103,7 +103,7 @@ updates:
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
-    versioning-strategy: increase-if-necessary
+    versioning-strategy: widen
     groups:
       npm-driver-sdk:
         patterns:
@@ -127,7 +127,7 @@ updates:
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
-    versioning-strategy: increase-if-necessary
+    versioning-strategy: widen
     groups:
       npm-driver-types:
         patterns:
@@ -151,7 +151,7 @@ updates:
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
-    versioning-strategy: increase-if-necessary
+    versioning-strategy: widen
     groups:
       npm-xymd1-driver:
         patterns:

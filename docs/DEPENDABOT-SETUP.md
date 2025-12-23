@@ -10,6 +10,7 @@ This repository is configured with GitHub Dependabot for automated dependency ma
 
 Main Dependabot configuration with:
 
+- **Versioning strategy**: `widen` (library-friendly, broadens version ranges)
 - **GitHub Actions updates**: Weekly grouped updates for all action versions
 - **npm dependencies**: Organized into semantic groups:
   - `npm-production`: Production dependencies (grouped patch/minor updates)
@@ -22,6 +23,17 @@ Main Dependabot configuration with:
 All workspace packages (`driver-sdk`, `driver-types`, `ya-modbus-driver-xymd1`) are monitored separately.
 
 **Schedule**: Weekly on Mondays at 03:00 UTC
+
+**Why `widen` strategy?**
+
+This repository contains library packages that will be published and consumed by other projects. The `widen` versioning strategy:
+
+- Broadens version ranges when possible (e.g., `^1.0.0` → `^1.0.0 || ^2.0.0`)
+- Gives consumers more flexibility in dependency resolution
+- Reduces "dependency hell" for library users
+- Follows npm best practices for libraries
+
+For comparison, `increase-if-necessary` is better for applications, while `widen` is recommended for libraries.
 
 ### Workflows
 
