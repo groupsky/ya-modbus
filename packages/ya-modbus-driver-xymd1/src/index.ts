@@ -83,7 +83,7 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
 export const createDriver: CreateDriverFunction = async (config: DriverConfig): Promise<DeviceDriver> => {
   const { transport } = config;
 
-  return {
+  const driver: DeviceDriver = {
     name: 'XY-MD1',
     manufacturer: 'Unknown',
     model: 'XY-MD1',
@@ -166,4 +166,6 @@ export const createDriver: CreateDriverFunction = async (config: DriverConfig): 
       return result;
     },
   };
+
+  return driver;
 };
