@@ -41,6 +41,35 @@ jobs:
           echo "Testing on Node.js versions: ${VERSIONS[*]}"
           echo "Latest version for build: $LATEST"
 
+      - name: Verify .nvmrc matches latest Node.js version
+        run: |
+          # Read .nvmrc
+          if [ ! -f .nvmrc ]; then
+            echo "❌ .nvmrc file not found!"
+            exit 1
+          fi
+
+          NVMRC_VERSION=$(cat .nvmrc | tr -d '[:space:]')
+          echo "📋 .nvmrc version: $NVMRC_VERSION"
+
+          # Get latest version from package.json (already extracted above)
+          LATEST_VERSION=$(node -p "
+            const engines = require('./package.json').engines.node;
+            const versions = engines.match(/\d+/g);
+            versions[versions.length - 1];
+          ")
+          echo "📦 Latest package.json version: $LATEST_VERSION"
+
+          # Compare versions
+          if [ "$NVMRC_VERSION" != "$LATEST_VERSION" ]; then
+            echo "❌ .nvmrc version ($NVMRC_VERSION) does not match latest package.json version ($LATEST_VERSION)!"
+            echo ""
+            echo "Please update .nvmrc to: $LATEST_VERSION"
+            exit 1
+          fi
+
+          echo "✅ .nvmrc matches latest package.json version ($LATEST_VERSION)"
+
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -100,10 +129,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Setup Node.js ${{ needs.setup.outputs.latest-version }}
+      - name: Setup Node.js from .nvmrc
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ needs.setup.outputs.latest-version }}
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install dependencies
