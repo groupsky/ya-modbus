@@ -6,7 +6,7 @@
  */
 
 // Re-export all types
-export * from './device-driver.js';
-export * from './data-types.js';
-export * from './units.js';
-export * from './transport.js';
+export * from './device-driver.js'
+export * from './data-types.js'
+export * from './units.js'
+export * from './transport.js'

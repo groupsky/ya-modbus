@@ -16,7 +16,7 @@ export interface Transport {
    * @param count - Number of registers to read
    * @returns Register values as Buffer
    */
-  readHoldingRegisters(address: number, count: number): Promise<Buffer>;
+  readHoldingRegisters(address: number, count: number): Promise<Buffer>
 
   /**
    * Read input registers
@@ -25,7 +25,7 @@ export interface Transport {
    * @param count - Number of registers to read
    * @returns Register values as Buffer
    */
-  readInputRegisters(address: number, count: number): Promise<Buffer>;
+  readInputRegisters(address: number, count: number): Promise<Buffer>
 
   /**
    * Read coils
@@ -34,7 +34,7 @@ export interface Transport {
    * @param count - Number of coils to read
    * @returns Coil values as Buffer
    */
-  readCoils(address: number, count: number): Promise<Buffer>;
+  readCoils(address: number, count: number): Promise<Buffer>
 
   /**
    * Read discrete inputs
@@ -43,7 +43,7 @@ export interface Transport {
    * @param count - Number of inputs to read
    * @returns Input values as Buffer
    */
-  readDiscreteInputs(address: number, count: number): Promise<Buffer>;
+  readDiscreteInputs(address: number, count: number): Promise<Buffer>
 
   /**
    * Write single holding register
@@ -51,7 +51,7 @@ export interface Transport {
    * @param address - Register address
    * @param value - Value to write (16-bit)
    */
-  writeSingleRegister(address: number, value: number): Promise<void>;
+  writeSingleRegister(address: number, value: number): Promise<void>
 
   /**
    * Write multiple holding registers
@@ -59,7 +59,7 @@ export interface Transport {
    * @param address - Starting register address
    * @param values - Register values as Buffer
    */
-  writeMultipleRegisters(address: number, values: Buffer): Promise<void>;
+  writeMultipleRegisters(address: number, values: Buffer): Promise<void>
 
   /**
    * Write single coil
@@ -67,7 +67,7 @@ export interface Transport {
    * @param address - Coil address
    * @param value - Value to write (boolean)
    */
-  writeSingleCoil(address: number, value: boolean): Promise<void>;
+  writeSingleCoil(address: number, value: boolean): Promise<void>
 
   /**
    * Write multiple coils
@@ -75,5 +75,5 @@ export interface Transport {
    * @param address - Starting coil address
    * @param values - Coil values as Buffer
    */
-  writeMultipleCoils(address: number, values: Buffer): Promise<void>;
+  writeMultipleCoils(address: number, values: Buffer): Promise<void>
 }

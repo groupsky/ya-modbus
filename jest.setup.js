@@ -3,7 +3,7 @@
 
 // Extend Jest timeout for integration tests
 if (process.env.CI) {
-  jest.setTimeout(30000);
+  jest.setTimeout(30000)
 }
 
 // Mock console methods to reduce noise in tests
@@ -13,4 +13,4 @@ global.console = {
   log: jest.fn(),
   debug: jest.fn(),
   info: jest.fn(),
-};
+}

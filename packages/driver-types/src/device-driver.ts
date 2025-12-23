@@ -2,24 +2,24 @@
  * Core device driver interface
  */
 
-import type { DataPoint } from './data-types.js';
-import type { Transport } from './transport.js';
+import type { DataPoint } from './data-types.js'
+import type { Transport } from './transport.js'
 
 /**
  * Device driver factory function configuration
  */
 export interface DriverConfig {
   /** Optional device type within driver package */
-  deviceType?: string;
+  deviceType?: string
 
   /** Modbus transport layer */
-  transport: Transport;
+  transport: Transport
 
   /** Modbus slave ID (1-247) */
-  slaveId: number;
+  slaveId: number
 
   /** Optional custom poll interval in milliseconds */
-  pollInterval?: number;
+  pollInterval?: number
 }
 
 /**
@@ -30,16 +30,16 @@ export interface DriverConfig {
  */
 export interface DeviceDriver {
   /** Unique device name/identifier */
-  readonly name: string;
+  readonly name: string
 
   /** Device manufacturer */
-  readonly manufacturer: string;
+  readonly manufacturer: string
 
   /** Device model identifier */
-  readonly model: string;
+  readonly model: string
 
   /** Available data points (semantic interface) */
-  readonly dataPoints: ReadonlyArray<DataPoint>;
+  readonly dataPoints: ReadonlyArray<DataPoint>
 
   /**
    * Read data point value from device
@@ -47,7 +47,7 @@ export interface DeviceDriver {
    * @param id - Data point identifier
    * @returns Current value
    */
-  readDataPoint(id: string): Promise<unknown>;
+  readDataPoint(id: string): Promise<unknown>
 
   /**
    * Write data point value to device
@@ -55,7 +55,7 @@ export interface DeviceDriver {
    * @param id - Data point identifier
    * @param value - Value to write
    */
-  writeDataPoint(id: string, value: unknown): Promise<void>;
+  writeDataPoint(id: string, value: unknown): Promise<void>
 
   /**
    * Read multiple data points atomically
@@ -63,22 +63,22 @@ export interface DeviceDriver {
    * @param ids - Data point identifiers
    * @returns Map of data point values
    */
-  readDataPoints(ids: string[]): Promise<Record<string, unknown>>;
+  readDataPoints(ids: string[]): Promise<Record<string, unknown>>
 
   /**
    * Optional device initialization
    * Called once after driver creation
    */
-  initialize?(): Promise<void>;
+  initialize?(): Promise<void>
 
   /**
    * Optional cleanup
    * Called when driver is being destroyed
    */
-  destroy?(): Promise<void>;
+  destroy?(): Promise<void>
 }
 
 /**
  * Factory function signature for creating device drivers
  */
-export type CreateDriverFunction = (config: DriverConfig) => Promise<DeviceDriver>;
+export type CreateDriverFunction = (config: DriverConfig) => Promise<DeviceDriver>
