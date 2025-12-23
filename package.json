@@ -67,5 +67,14 @@
   "engines": {
     "node": "20 || 22 || 24",
     "npm": ">=11.0.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
   }
 }
