@@ -89,7 +89,7 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig): Promis
     model: 'XY-MD1',
     dataPoints: DATA_POINTS,
 
-    decodeDataPoint(id: string, rawValue: Buffer): unknown {
+    decodeDataPoint(this: DeviceDriver, id: string, rawValue: Buffer): unknown {
       if (id === 'temperature') {
         const temp = rawValue.readUInt16BE(0);
         return temp / 10;
@@ -107,7 +107,7 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig): Promis
       throw new Error(`Unknown data point: ${id}`);
     },
 
-    encodeDataPoint(id: string, value: unknown): Buffer {
+    encodeDataPoint(this: DeviceDriver, id: string, value: unknown): Buffer {
       if (id === 'device_address') {
         if (typeof value !== 'number' || value < 1 || value > 247) {
           throw new Error('Invalid device address: must be between 1 and 247');
@@ -127,7 +127,7 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig): Promis
       throw new Error(`Data point ${id} is read-only`);
     },
 
-    async readDataPoint(id: string): Promise<unknown> {
+    async readDataPoint(this: DeviceDriver, id: string): Promise<unknown> {
       if (id === 'device_address') {
         const buffer = await transport.readHoldingRegisters(0x101, 1);
         return this.decodeDataPoint(id, buffer);
@@ -141,7 +141,7 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig): Promis
       return this.decodeDataPoint(id, buffer);
     },
 
-    async writeDataPoint(id: string, value: unknown): Promise<void> {
+    async writeDataPoint(this: DeviceDriver, id: string, value: unknown): Promise<void> {
       if (id === 'device_address') {
         const buffer = this.encodeDataPoint(id, value);
         await transport.writeMultipleRegisters(0x101, buffer);
@@ -155,7 +155,7 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig): Promis
       throw new Error(`Data point ${id} is read-only`);
     },
 
-    async readDataPoints(ids: string[]): Promise<Record<string, unknown>> {
+    async readDataPoints(this: DeviceDriver, ids: string[]): Promise<Record<string, unknown>> {
       // Read both registers once
       const buffer = await transport.readInputRegisters(1, 2);
 
