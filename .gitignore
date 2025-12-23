@@ -52,5 +52,8 @@ temp/
 Thumbs.db
 Desktop.ini
 
+# Husky
+.husky/_
+
 # Claude
 .claude/*.local.*
