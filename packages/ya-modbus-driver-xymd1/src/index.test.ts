@@ -7,7 +7,7 @@ import type { Transport } from '@ya-modbus/driver-types';
 import { createDriver } from './index';
 
 describe('XYMD1 Driver', () => {
-  let mockTransport: Transport;
+  let mockTransport: jest.Mocked<Transport>;
 
   beforeEach(() => {
     mockTransport = {
@@ -77,7 +77,7 @@ describe('XYMD1 Driver', () => {
       });
 
       // Mock response: temperature = 245 (24.5°C)
-      (mockTransport.readInputRegisters as jest.Mock).mockResolvedValue(
+      mockTransport.readInputRegisters.mockResolvedValue(
         Buffer.from([0x00, 0xf5, 0x00, 0x00]) // 245 in first register
       );
 
@@ -93,7 +93,7 @@ describe('XYMD1 Driver', () => {
       });
 
       // Mock response: humidity = 652 (65.2%)
-      (mockTransport.readInputRegisters as jest.Mock).mockResolvedValue(
+      mockTransport.readInputRegisters.mockResolvedValue(
         Buffer.from([0x00, 0x00, 0x02, 0x8c]) // 652 in second register
       );
 
@@ -108,7 +108,7 @@ describe('XYMD1 Driver', () => {
         slaveId: 1,
       });
 
-      (mockTransport.readInputRegisters as jest.Mock).mockResolvedValue(
+      mockTransport.readInputRegisters.mockResolvedValue(
         Buffer.from([0x00, 0x00, 0x00, 0x00])
       );
 
@@ -134,7 +134,7 @@ describe('XYMD1 Driver', () => {
       });
 
       // Mock response: address = 5
-      (mockTransport.readHoldingRegisters as jest.Mock).mockResolvedValue(
+      mockTransport.readHoldingRegisters.mockResolvedValue(
         Buffer.from([0x00, 0x05]) // Address 5 as 16-bit value
       );
 
@@ -150,7 +150,7 @@ describe('XYMD1 Driver', () => {
       });
 
       // Mock response: baud rate = 9600
-      (mockTransport.readHoldingRegisters as jest.Mock).mockResolvedValue(
+      mockTransport.readHoldingRegisters.mockResolvedValue(
         Buffer.from([0x25, 0x80]) // 9600 as 16-bit value
       );
 
@@ -168,7 +168,7 @@ describe('XYMD1 Driver', () => {
       });
 
       // Mock response: temp=245 (24.5°C), humidity=652 (65.2%)
-      (mockTransport.readInputRegisters as jest.Mock).mockResolvedValue(
+      mockTransport.readInputRegisters.mockResolvedValue(
         Buffer.from([0x00, 0xf5, 0x02, 0x8c])
       );
 
@@ -186,7 +186,7 @@ describe('XYMD1 Driver', () => {
         slaveId: 1,
       });
 
-      (mockTransport.readInputRegisters as jest.Mock).mockResolvedValue(
+      mockTransport.readInputRegisters.mockResolvedValue(
         Buffer.from([0x00, 0xf5, 0x02, 0x8c])
       );
 
