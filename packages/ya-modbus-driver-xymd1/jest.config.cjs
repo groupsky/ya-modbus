@@ -20,4 +20,4 @@ module.exports = {
     '!<rootDir>/src/**/*.test.ts',
     '!<rootDir>/src/**/*.d.ts',
   ],
-};
+}
