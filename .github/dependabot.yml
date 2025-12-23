@@ -36,6 +36,11 @@ updates:
       prefix: "chore(deps)"
       include: "scope"
     versioning-strategy: widen
+    # Ignore @types/node versions beyond our tested Node.js versions (20, 22, 24)
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+        versions: [">=25"]
     groups:
       # Production dependencies (grouped by type)
       npm-production:
