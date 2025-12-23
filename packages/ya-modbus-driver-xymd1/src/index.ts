@@ -80,7 +80,7 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
 /**
  * Create XYMD1 device driver
  */
-export const createDriver: CreateDriverFunction = async (config: DriverConfig): Promise<DeviceDriver> => {
+export const createDriver: CreateDriverFunction = (config: DriverConfig): Promise<DeviceDriver> => {
   const { transport } = config;
 
   const driver: DeviceDriver = {
@@ -117,7 +117,7 @@ export const createDriver: CreateDriverFunction = async (config: DriverConfig): 
         return buffer;
       }
       if (id === 'baud_rate') {
-        if (typeof value !== 'number' || !VALID_BAUD_RATES.includes(value as any)) {
+        if (typeof value !== 'number' || !(VALID_BAUD_RATES as readonly number[]).includes(value)) {
           throw new Error(`Invalid baud rate: must be one of ${VALID_BAUD_RATES.join(', ')}`);
         }
         const buffer = Buffer.allocUnsafe(2);
@@ -167,5 +167,5 @@ export const createDriver: CreateDriverFunction = async (config: DriverConfig): 
     },
   };
 
-  return driver;
+  return Promise.resolve(driver);
 };

@@ -2,8 +2,8 @@
  * Core device driver interface
  */
 
-import type { DataPoint } from './data-types.js';
 import type { DeviceConstraints } from './constraints.js';
+import type { DataPoint } from './data-types.js';
 import type { Transport } from './transport.js';
 
 /**
