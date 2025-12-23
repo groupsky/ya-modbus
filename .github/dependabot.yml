@@ -42,6 +42,10 @@ updates:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
         versions: [">=21"]
+      # semantic-release v25+ requires Node.js 22.14+, incompatible with our Node.js 20 support
+      - dependency-name: "semantic-release"
+        update-types: ["version-update:semver-major"]
+        versions: [">=25"]
     groups:
       # Production dependencies (grouped by type)
       npm-production:
