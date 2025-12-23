@@ -147,27 +147,60 @@ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for details.
 
 ## Supported Devices
 
-### Energy Meters
+### Built-in Drivers
+
+#### Energy Meters
 - **SDM630** - Eastron 3-phase energy meter
 - **DDS519MR** - Single-phase energy meter
 - **EX9EM** - ABB energy meter
 
-### Solar Inverters
+#### Solar Inverters
 - **SUN2000** - Huawei solar inverter
 - **MICROSYST-SR04** - Microsyst solar inverter
 
-### HVAC
+#### HVAC
 - **BAC002** - Climate controller
 
-### Generic Modbus
+#### Generic Modbus
 - Configurable generic driver for any Modbus device
 
-Want to add a device? See [docs/devices/adding-new-device.md](./docs/devices/adding-new-device.md)
+### Third-Party Driver Ecosystem
+
+Device drivers can be distributed as independent npm packages:
+
+```bash
+# Install bridge + third-party driver
+npm install -g ya-modbus-mqtt-bridge ya-modbus-driver-solar
+
+# Use in configuration
+{
+  "devices": [{
+    "driver": "ya-modbus-driver-solar",
+    "deviceType": "X1000",  // Optional - auto-detect if omitted
+    "transport": "tcp",
+    "host": "192.168.1.100"
+  }]
+}
+```
+
+**Recommended naming**: `ya-modbus-driver-<name>` for easy discovery
+
+**Auto-detection**: Drivers can auto-detect device model when `deviceType` is omitted
+
+**Want to create a driver?** See [docs/DRIVER-DEVELOPMENT.md](./docs/DRIVER-DEVELOPMENT.md)
+
+**Driver developers get**:
+- Standardized SDK with TypeScript types
+- Test harness with emulator integration
+- Device characterization tools (auto-discover capabilities)
+- CLI for testing with real devices
+- Independent release cycle
 
 ## Documentation
 
 - **[Getting Started](./docs/getting-started.md)** - Installation, configuration, first steps
 - **[Architecture](./docs/ARCHITECTURE.md)** - System design, key decisions, data flow
+- **[Driver Development](./docs/DRIVER-DEVELOPMENT.md)** - Creating third-party device drivers
 - **[Contributing](./CONTRIBUTING.md)** - Development workflow, testing, code style
 - **[AGENTS.md](./AGENTS.md)** - Quick guide for AI assistants and developers
 - **[API Reference](./docs/api/)** - Package APIs and interfaces
