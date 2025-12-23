@@ -2,7 +2,14 @@
   "name": "ya-modbus-driver-xymd1",
   "version": "0.0.0",
   "description": "XYMD1 Temperature and Humidity Sensor driver for ya-modbus",
-  "keywords": ["modbus", "driver", "temperature", "humidity", "sensor", "xymd1"],
+  "keywords": [
+    "modbus",
+    "driver",
+    "temperature",
+    "humidity",
+    "sensor",
+    "xymd1"
+  ],
   "author": "Geno Roupsky <185580+groupsky@users.noreply.github.com>",
   "license": "GPL-3.0-or-later",
   "type": "module",
