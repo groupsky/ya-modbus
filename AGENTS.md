@@ -2,6 +2,8 @@
 
 ## Quick Navigation
 
+- **Package development**: `packages/AGENTS.md` - TDD workflow, testing, package structure
+
 Working on specific components? See specialized guides:
 - **Core bridge logic**: `packages/core/AGENTS.md`
 - **Device drivers**: `packages/devices/AGENTS.md`
@@ -71,19 +73,6 @@ npm test --workspace=packages/core
 npm run build --workspace=packages/devices
 ```
 
-## Development Approach
-
-**TDD (Test-Driven Development)** is required for AI agents:
-- New features
-- Bug fixes
-- Device drivers
-
-**Workflow**:
-1. Write test first (should fail)
-2. Write minimal code to pass
-3. Refactor while keeping tests green
-4. Commit with tests included
-
 ## Git Commit Hygiene
 
 **CRITICAL**: Never commit unrelated changes. One commit = one logical change.
@@ -99,18 +88,6 @@ When implementing features, consult `docs/ARCHITECTURE.md` for:
 - **Polling types**: Dynamic vs static vs on-demand
 - **Register batching**: When to optimize multi-register reads
 - **Error handling**: Which errors to publish vs retry vs log
-
-## Directory Structure
-
-```
-packages/
-├── core/         # Bridge orchestration, transport, polling, discovery
-├── cli/          # Command-line tool (test, provision, monitor)
-├── devices/      # Device-specific implementations
-├── converters/   # Data normalization layer (optional companion)
-├── emulator/     # Software Modbus device emulator for testing
-└── mqtt-config/  # Runtime configuration management
-```
 
 ## Common Clarifications
 
