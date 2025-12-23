@@ -83,9 +83,7 @@ updates:
         update-types:
           - "minor"
           - "patch"
-      # Security updates (not grouped - immediate individual PRs)
-      npm-security:
-        applies-to: security-updates
+      # Note: Security updates are not grouped - they create immediate individual PRs
     open-pull-requests-limit: 10
     rebase-strategy: "auto"
 
