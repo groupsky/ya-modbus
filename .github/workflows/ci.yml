@@ -24,7 +24,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          # Disable cache for matrix builds to avoid conflicts between Node versions
+          # Cache is still used in the build job
+          # cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
