@@ -25,11 +25,13 @@ See: `ci.yml` setup job for matrix generation implementation
 ## When to Use Matrix
 
 Use matrix testing when:
+
 - Testing package compatibility across Node.js versions
 - Verifying runtime behavior on supported engines
 - Running integration tests on multiple platforms
 
 Use `.nvmrc` when:
+
 - Building artifacts for deployment
 - Running linting, formatting, type checking
 - Publishing packages
