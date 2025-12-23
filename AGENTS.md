@@ -127,7 +127,7 @@ packages/
 
 ## File Organization Conventions
 
-- Tests: `__tests__/` directory alongside source
+- Tests: Co-located with source files (e.g., `foo.ts` → `foo.test.ts`)
 - Config schemas: Use Zod for validation
 - Device metadata: Export as const objects
 - MQTT topics: Define in `mqtt-config` package

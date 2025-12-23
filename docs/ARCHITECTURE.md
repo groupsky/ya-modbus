@@ -417,7 +417,7 @@ For 10 devices @ 9600 baud:
 - Simulate errors (timeouts, CRC failures, exceptions)
 - Test scenarios (disconnection, slow responses)
 
-**Usage**: See `packages/emulator/__tests__/examples/` for usage examples.
+**Usage**: See `packages/emulator/src/` for usage examples and tests.
 
 ## Security Considerations
 
