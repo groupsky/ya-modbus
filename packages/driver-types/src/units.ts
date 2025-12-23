@@ -56,5 +56,6 @@ export type Unit =
 
   // Other
   | 'ppm'    // Parts per million
-  | 'dB'     // Decibels
-  | string;  // Custom unit (use sparingly)
+  | 'dB';    // Decibels
+  // Note: For custom units not in this list, use the closest standard unit
+  // or request addition to this type definition

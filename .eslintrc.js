@@ -2,9 +2,9 @@ module.exports = {
   root: true,
   parser: '@typescript-eslint/parser',
   parserOptions: {
-    ecmaVersion: 2024,
+    ecmaVersion: 2023,
     sourceType: 'module',
-    project: './tsconfig.json',
+    project: './tsconfig.eslint.json',
   },
   plugins: ['@typescript-eslint', 'import', 'jest'],
   extends: [
@@ -69,6 +69,7 @@ module.exports = {
       rules: {
         '@typescript-eslint/no-explicit-any': 'off',
         '@typescript-eslint/no-non-null-assertion': 'off',
+        '@typescript-eslint/unbound-method': 'off',
       },
     },
   ],

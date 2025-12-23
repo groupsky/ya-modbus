@@ -2,8 +2,9 @@
  * Tests for XYMD1 Temperature and Humidity Sensor Driver
  */
 
-import { createDriver } from './index';
 import type { Transport } from '@ya-modbus/driver-types';
+
+import { createDriver } from './index';
 
 describe('XYMD1 Driver', () => {
   let mockTransport: Transport;
