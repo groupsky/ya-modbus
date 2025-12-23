@@ -44,24 +44,25 @@ updates:
         update-types:
           - "minor"
           - "patch"
-      # Development tooling
-      npm-dev-tooling:
+      # ESLint ecosystem - MUST be upgraded together due to peer dependencies
+      # eslint v9 requires @typescript-eslint v8, which requires matching parser v8
+      npm-eslint-ecosystem:
         applies-to: version-updates
         patterns:
-          - "eslint*"
-          - "prettier"
-          - "husky"
-          - "lint-staged"
+          - "eslint"
+          - "eslint-*"
+          - "@typescript-eslint/eslint-plugin"
+          - "@typescript-eslint/parser"
         update-types:
           - "minor"
           - "patch"
-      # TypeScript ecosystem
+      # TypeScript tooling (compiler and execution, NOT eslint plugins)
       npm-typescript:
         applies-to: version-updates
         patterns:
           - "typescript"
-          - "@typescript-eslint/*"
-          - "ts-*"
+          - "ts-node"
+          - "ts-jest"
         update-types:
           - "minor"
           - "patch"
@@ -71,15 +72,41 @@ updates:
         patterns:
           - "jest"
           - "@types/jest"
-          - "ts-jest"
         update-types:
           - "minor"
           - "patch"
-      # Type definitions
+      # Git hooks tooling
+      npm-git-hooks:
+        applies-to: version-updates
+        patterns:
+          - "husky"
+          - "lint-staged"
+        update-types:
+          - "minor"
+          - "patch"
+      # Code formatting
+      npm-formatting:
+        applies-to: version-updates
+        patterns:
+          - "prettier"
+        update-types:
+          - "minor"
+          - "patch"
+      # Type definitions (except those in other groups)
       npm-types:
         applies-to: version-updates
         patterns:
           - "@types/*"
+        exclude-patterns:
+          - "@types/jest"
+        update-types:
+          - "minor"
+          - "patch"
+      # Release tooling
+      npm-release:
+        applies-to: version-updates
+        patterns:
+          - "semantic-release"
         update-types:
           - "minor"
           - "patch"
