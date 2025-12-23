@@ -7,14 +7,49 @@ on:
     branches: [main]
 
 jobs:
+  setup:
+    name: Setup Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      node-versions: ${{ steps.generate-matrix.outputs.node-versions }}
+      latest-version: ${{ steps.generate-matrix.outputs.latest-version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Generate Node.js version matrix
+        id: generate-matrix
+        run: |
+          # Extract all Node.js major versions from package.json engines field
+          # Supports format like "20 || 22 || 24"
+          NODE_VERSIONS=$(node -p "
+            const engines = require('./package.json').engines.node;
+            engines.match(/\d+/g).map(v => v + '.x').join(' ');
+          ")
+
+          # Convert to array
+          VERSIONS=($NODE_VERSIONS)
+
+          # Convert to JSON array for matrix
+          MATRIX_JSON=$(printf '%s\n' "${VERSIONS[@]}" | jq -R . | jq -s .)
+          echo "node-versions=$MATRIX_JSON" >> $GITHUB_OUTPUT
+
+          # Set latest version for build job
+          LATEST="${VERSIONS[-1]}"
+          echo "latest-version=$LATEST" >> $GITHUB_OUTPUT
+
+          echo "Testing on Node.js versions: ${VERSIONS[*]}"
+          echo "Latest version for build: $LATEST"
+
   test:
     name: Test
     runs-on: ubuntu-latest
+    needs: setup
 
     strategy:
       fail-fast: false
       matrix:
-        node-version: [20.x, 22.x, 24.x]
+        node-version: ${{ fromJson(needs.setup.outputs.node-versions) }}
 
     steps:
       - name: Checkout code
@@ -59,16 +94,16 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: test
+    needs: [setup, test]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Setup Node.js 24.x
+      - name: Setup Node.js ${{ needs.setup.outputs.latest-version }}
         uses: actions/setup-node@v6
         with:
-          node-version: 24.x
+          node-version: ${{ needs.setup.outputs.latest-version }}
           cache: 'npm'
 
       - name: Install dependencies
