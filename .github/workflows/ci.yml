@@ -30,8 +30,8 @@ jobs:
           # Convert to array
           VERSIONS=($NODE_VERSIONS)
 
-          # Convert to JSON array for matrix
-          MATRIX_JSON=$(printf '%s\n' "${VERSIONS[@]}" | jq -R . | jq -s .)
+          # Convert to compact JSON array for matrix
+          MATRIX_JSON=$(printf '%s\n' "${VERSIONS[@]}" | jq -R . | jq -sc .)
           echo "node-versions=$MATRIX_JSON" >> $GITHUB_OUTPUT
 
           # Set latest version for build job
