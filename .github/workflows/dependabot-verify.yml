@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - '.github/dependabot.yml'
+      - '.github/workflows/dependabot-verify.yml'
       - 'package.json'
       - 'packages/*/package.json'
   push:
     branches: [main]
     paths:
       - '.github/dependabot.yml'
+      - '.github/workflows/dependabot-verify.yml'
       - 'package.json'
       - 'packages/*/package.json'
   schedule:
@@ -94,7 +96,7 @@ jobs:
       - name: Validate dependabot.yml against schema
         uses: marocchino/validate-dependabot@v3
         with:
-          file: .github/dependabot.yml
+          path: .github/dependabot.yml
 
       - name: Check for duplicate directories
         run: |
