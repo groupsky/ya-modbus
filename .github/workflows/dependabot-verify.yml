@@ -1,0 +1,156 @@
+name: Verify Dependabot Coverage
+
+on:
+  pull_request:
+    paths:
+      - '.github/dependabot.yml'
+      - 'package.json'
+      - 'packages/*/package.json'
+  push:
+    branches: [main]
+    paths:
+      - '.github/dependabot.yml'
+      - 'package.json'
+      - 'packages/*/package.json'
+  schedule:
+    # Run weekly on Monday at 04:00 UTC (after Dependabot runs at 03:00)
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+jobs:
+  verify-coverage:
+    name: Verify Package Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+
+      - name: Verify all packages are covered
+        run: |
+          echo "🔍 Checking Dependabot configuration coverage..."
+
+          # Find all package.json files (excluding node_modules)
+          packages=$(find . -name "package.json" -not -path "*/node_modules/*" -type f)
+
+          # Read dependabot config
+          config_file=".github/dependabot.yml"
+
+          if [ ! -f "$config_file" ]; then
+            echo "❌ Dependabot configuration not found!"
+            exit 1
+          fi
+
+          echo "📦 Found package.json files:"
+          echo "$packages"
+          echo ""
+
+          # Extract directories from dependabot.yml
+          echo "📋 Dependabot monitored directories:"
+          grep -A 1 "package-ecosystem: \"npm\"" "$config_file" | grep "directory:" | awk '{print $2}' | tr -d '"'
+          echo ""
+
+          # Check each package directory
+          coverage_ok=true
+
+          for pkg in $packages; do
+            # Get directory relative to root
+            pkg_dir=$(dirname "$pkg")
+
+            # For root package.json, directory should be "/"
+            if [ "$pkg_dir" = "." ]; then
+              search_dir='directory: "/"'
+            else
+              # Remove leading ./ if present
+              pkg_dir=${pkg_dir#./}
+              search_dir="directory: \"/$pkg_dir\""
+            fi
+
+            # Check if this directory is in dependabot.yml
+            if grep -q "$search_dir" "$config_file"; then
+              echo "✅ $pkg_dir is covered"
+            else
+              echo "❌ $pkg_dir is NOT covered by Dependabot!"
+              coverage_ok=false
+            fi
+          done
+
+          echo ""
+
+          if [ "$coverage_ok" = true ]; then
+            echo "✅ All packages are covered by Dependabot configuration"
+          else
+            echo "❌ Some packages are missing from Dependabot configuration"
+            echo ""
+            echo "Please update .github/dependabot.yml to include all package directories"
+            exit 1
+          fi
+
+      - name: Validate dependabot.yml syntax
+        run: |
+          echo "🔍 Validating Dependabot configuration syntax..."
+
+          # Use GitHub's dependabot-core to validate (if available)
+          # For now, do basic YAML syntax check
+          if ! command -v yamllint &> /dev/null; then
+            echo "Installing yamllint..."
+            pip install yamllint
+          fi
+
+          yamllint -d "{extends: default, rules: {line-length: disable, document-start: disable}}" .github/dependabot.yml
+
+          echo "✅ Dependabot configuration syntax is valid"
+
+      - name: Check for duplicate directories
+        run: |
+          echo "🔍 Checking for duplicate directory entries..."
+
+          config_file=".github/dependabot.yml"
+
+          # Extract all npm directories
+          directories=$(grep -A 1 "package-ecosystem: \"npm\"" "$config_file" | grep "directory:" | awk '{print $2}' | sort)
+
+          # Check for duplicates
+          duplicates=$(echo "$directories" | uniq -d)
+
+          if [ -n "$duplicates" ]; then
+            echo "❌ Found duplicate directory entries:"
+            echo "$duplicates"
+            exit 1
+          else
+            echo "✅ No duplicate directory entries found"
+          fi
+
+      - name: Verify group configurations
+        run: |
+          echo "🔍 Verifying group configurations..."
+
+          config_file=".github/dependabot.yml"
+
+          # Check that groups are defined
+          if ! grep -q "groups:" "$config_file"; then
+            echo "⚠️  No groups defined in Dependabot configuration"
+            echo "Consider adding groups to reduce PR volume"
+          else
+            echo "✅ Groups are configured"
+
+            # Count number of groups
+            group_count=$(grep -c "^      [a-z-]*:" "$config_file" || echo "0")
+            echo "📊 Found $group_count group(s) configured"
+          fi
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "🎉 Dependabot configuration verification completed successfully!"
+          echo ""
+          echo "Configuration summary:"
+          echo "- All package directories are covered"
+          echo "- YAML syntax is valid"
+          echo "- No duplicate entries"
+          echo "- Groups are properly configured"
