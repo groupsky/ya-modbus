@@ -3,19 +3,23 @@
 ## Current State
 
 ### Root package.json
+
 - 15 devDependencies
 - TypeScript: ^5.3.3
 
 ### Workspace Packages
 
 **driver-sdk:**
+
 - 5 devDependencies: @types/jest, @types/node, jest, ts-jest, typescript (^5.7.2)
 - 1 dependency: @ya-modbus/driver-types
 
 **driver-types:**
+
 - 1 devDependency: typescript (^5.7.2)
 
 **ya-modbus-driver-xymd1:**
+
 - 5 devDependencies: @types/jest, @types/node, jest, ts-jest, typescript (^5.7.2)
 - 1 dependency: @ya-modbus/driver-types
 - 1 peerDependency: @ya-modbus/driver-types (duplicates dependency)
@@ -34,6 +38,7 @@
 With npm workspaces, devDependencies defined in the root are available to all workspace packages. We can remove duplicates from workspace packages:
 
 **Remove from workspace packages:**
+
 - @types/jest
 - @types/node
 - jest
@@ -56,20 +61,24 @@ ts-node is only in root devDependencies. Verify if it's needed for build/test sc
 ## Optimized Structure
 
 ### Root package.json
+
 - Keep all current devDependencies
 - Update TypeScript to ^5.7.2
 - Total: 15 devDependencies (no change in count, but standardized versions)
 
 ### driver-sdk
+
 - Remove: @types/jest, @types/node, jest, ts-jest, typescript
 - Keep: @ya-modbus/driver-types (dependency)
 - New total: 0 devDependencies, 1 dependency
 
 ### driver-types
+
 - Remove: typescript
 - New total: 0 devDependencies
 
 ### ya-modbus-driver-xymd1
+
 - Remove: @types/jest, @types/node, jest, ts-jest, typescript
 - Remove: @ya-modbus/driver-types from peerDependencies
 - Keep: @ya-modbus/driver-types (dependency)
@@ -87,6 +96,7 @@ ts-node is only in root devDependencies. Verify if it's needed for build/test sc
 ## Migration Notes
 
 After optimization:
+
 1. Run `npm install` to regenerate lockfile
 2. Verify all tests still pass
 3. Check that TypeScript compilation works for all packages
