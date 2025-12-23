@@ -2,7 +2,6 @@
  * Core device driver interface
  */
 
-import type { DeviceConstraints } from './constraints.js';
 import type { DataPoint } from './data-types.js';
 import type { Transport } from './transport.js';
 
@@ -41,27 +40,6 @@ export interface DeviceDriver {
 
   /** Available data points (semantic interface) */
   readonly dataPoints: ReadonlyArray<DataPoint>;
-
-  /** Device constraints and limits */
-  readonly constraints?: DeviceConstraints;
-
-  /**
-   * Decode raw Modbus value to data point value
-   *
-   * @param id - Data point identifier
-   * @param rawValue - Raw Modbus register value(s)
-   * @returns Decoded value in standard type
-   */
-  decodeDataPoint(id: string, rawValue: Buffer): unknown;
-
-  /**
-   * Encode data point value to Modbus register value(s)
-   *
-   * @param id - Data point identifier
-   * @param value - Value to encode
-   * @returns Encoded Modbus register value(s)
-   */
-  encodeDataPoint(id: string, value: unknown): Buffer;
 
   /**
    * Read data point value from device
