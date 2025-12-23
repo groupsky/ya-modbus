@@ -611,6 +611,41 @@ EOF
 - Justify each dependency in PR
 - Check bundle size impact
 
+## Contributing Device Drivers
+
+### Third-Party Drivers
+
+Device drivers can be contributed as independent npm packages without modifying this repository.
+
+**Benefits**:
+- Independent release cycle
+- Own your driver's versioning and maintenance
+- Private/proprietary drivers possible
+- Faster iteration
+
+**See**: `docs/DRIVER-DEVELOPMENT.md` for complete guide.
+
+### Built-in Drivers
+
+To contribute a driver to the built-in collection (`@ya-modbus/devices`):
+
+1. Implement using `@ya-modbus/driver-sdk` (same as third-party)
+2. Add tests using `@ya-modbus/driver-dev-tools`
+3. Test with real hardware
+4. Document device quirks and constraints
+5. Submit PR with driver + tests
+
+**When to contribute as built-in**:
+- Widely-used commercial device
+- Open hardware standard
+- Reference implementation for similar devices
+
+**When to publish independently**:
+- Proprietary devices
+- Niche/custom devices
+- Company-specific drivers
+- Rapid iteration needed
+
 ## Testing Best Practices
 
 ### Test Naming

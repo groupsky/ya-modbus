@@ -481,6 +481,236 @@ modbus/{deviceId}/errors/*      # Per-device errors
 - Performance metrics (latency, throughput)
 - Error trends and diagnostics
 
+## Plugin Architecture for Third-Party Drivers
+
+### Overview
+
+Device drivers can be distributed as independent npm packages, enabling:
+- Community-contributed drivers without modifying core codebase
+- Private/proprietary device drivers
+- Rapid driver development with standardized tooling
+- Ecosystem growth independent of core releases
+
+### Package Structure
+
+```
+@ya-modbus/driver-types      # TypeScript type definitions (types-only)
+@ya-modbus/driver-sdk        # Runtime SDK (base classes, helpers, transforms)
+@ya-modbus/driver-dev-tools  # Development tools (test harness, mocks, emulator)
+@ya-modbus/cli               # CLI tool (production + optional dev features)
+@ya-modbus/core              # Core bridge (loads drivers dynamically)
+```
+
+**Dependency flow**:
+- `driver-types`: No dependencies (pure types)
+- `driver-sdk`: Depends on `driver-types`
+- `driver-dev-tools`: Depends on `driver-sdk`, `driver-types` (dev-only)
+- `cli`: Depends on `driver-sdk`, optionally `driver-dev-tools`
+- `core`: Depends on `driver-sdk` (loads drivers at runtime)
+- Third-party drivers: Depend on `driver-sdk`, dev-depend on `driver-dev-tools`
+
+No cyclic dependencies: SDK is contract, core is runtime, drivers are plugins.
+
+### Driver Discovery
+
+**Convention-based loading** with optional metadata:
+
+1. **Package naming**:
+   - Recommended: `ya-modbus-driver-<name>` (e.g., `ya-modbus-driver-solar`)
+   - Scoped packages: `@org/ya-modbus-driver-<name>`
+   - Required: keyword `"ya-modbus-driver"` in package.json
+2. **Standard export**: Driver classes exported from package main entry
+3. **Optional metadata**: `ya-modbus-driver.json` for tooling/discovery
+
+**Example third-party driver** (`ya-modbus-driver-solar`):
+```json
+{
+  "name": "ya-modbus-driver-solar",
+  "description": "Drivers for Acme Solar inverters (X1000, X2000, X5000 series)",
+  "keywords": ["ya-modbus-driver", "modbus", "solar"],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "peerDependencies": {
+    "@ya-modbus/driver-sdk": "^1.0.0"
+  }
+}
+```
+
+**Single package, multiple device types**: Package exports single `createDriver` factory function that handles all device variants.
+
+**Auto-detection**: Driver can auto-detect device type from identification registers when `deviceType` config omitted.
+
+**Runtime loading**: Core bridge imports package and calls `createDriver(config)` with optional `deviceType` parameter.
+
+### Driver Interface Contract
+
+**Stable public API** (`@ya-modbus/driver-sdk`):
+- Driver factory function pattern (functional approach preferred)
+- Data point definitions (semantic IDs, types, units)
+- Standard transformation helpers (multipliers, BCD, decimal dates, etc.)
+- Constraint types (forbidden ranges, batch limits, timing)
+
+**Implementation**: See `packages/devices/src/` for reference driver implementations.
+
+**Key principle**: Drivers transform device-specific encodings to standard data types transparently.
+
+### Development Tooling
+
+**CLI commands for driver developers**:
+
+**Production use** (global install):
+```bash
+npm install -g @ya-modbus/cli ya-modbus-driver-solar
+ya-modbus read --driver ya-modbus-driver-solar --port /dev/ttyUSB0 \
+  --slave-id 1 --data-point voltage_l1
+```
+
+**Development use** (local devDependencies):
+```bash
+# In driver package directory
+npx ya-modbus read --port /dev/ttyUSB0 --slave-id 1 --data-point voltage_l1
+npx ya-modbus scan-registers --port /dev/ttyUSB0 --slave-id 1
+npx ya-modbus characterize --port /dev/ttyUSB0 --slave-id 1 --output profile.json
+```
+
+**Development commands** (require `@ya-modbus/driver-dev-tools`):
+- `discover` - Auto-detect connection parameters (baud, parity, slave ID)
+- `scan-registers` - Find readable/writable register ranges
+- `test-limits` - Determine max batch size, min timing delays
+- `characterize` - Complete device profiling (all discovery + limits)
+
+**Production commands** (always available):
+- `read` - Read data points
+- `write` - Write data points
+- `provision` - Initial device configuration
+
+### Test Harness
+
+**Emulator-based testing** for driver development.
+
+**Test harness provides**:
+- Mock transport (stubs Modbus communication)
+- Emulator integration (software Modbus devices)
+- Assertion helpers (data point validation)
+- Fast test cycles (no hardware required)
+
+**Usage examples**: See `packages/devices/src/**/*.test.ts` for test patterns.
+
+### Versioning & Compatibility
+
+**Semantic versioning** for SDK and drivers independently:
+
+**SDK versioning**: Follows semantic versioning (major.minor.patch).
+
+**Driver compatibility**: Declared via `peerDependencies` in driver's package.json.
+
+**Runtime validation**: Core bridge validates driver SDK compatibility at load time.
+
+**Deprecation policy**: 6-12 month warning before removing SDK features.
+
+**Reference**: See `docs/DRIVER-DEVELOPMENT.md` for version management details.
+
+### Device Characterization
+
+**Automated device discovery** helps driver developers:
+
+1. **Connection parameters**: Auto-detect baud rate, parity, stop bits, slave ID
+2. **Register ranges**: Scan for readable/writable registers, find forbidden areas
+3. **Operation limits**: Test max batch size, minimum inter-command delays
+4. **Access restrictions**: Identify read-protected, write-protected registers
+5. **Authentication**: Detect unlock sequences (password registers)
+6. **Quirks**: Find timing requirements, order dependencies
+
+**Output**: JSON profile with connection parameters, operation limits, forbidden ranges, access restrictions, and device quirks.
+
+**Purpose**: Bootstraps driver development and validates device documentation.
+
+**Schema**: See `packages/driver-dev-tools/src/types/device-profile.ts` for complete structure.
+
+### Built-in Drivers as Plugins
+
+**No special casing**: Built-in drivers (`@ya-modbus/devices`) use same interface as third-party drivers.
+
+Benefits:
+- Consistent architecture (no dual implementation paths)
+- Built-in drivers serve as reference implementations
+- `@ya-modbus/devices` becomes optional (users install needed drivers only)
+- Clear separation between core bridge and device-specific code
+
+### Package Installation
+
+**Manual installation via package manager** (not automated):
+
+```bash
+# User installs bridge + needed drivers
+npm install -g ya-modbus-mqtt-bridge ya-modbus-driver-solar
+
+# Or via package.json for project
+npm install ya-modbus-mqtt-bridge ya-modbus-driver-solar
+```
+
+**Rationale**:
+- Security (no arbitrary code execution via config)
+- Explicit dependencies (package-lock.json tracks versions)
+- Standard npm workflow (familiar to users)
+
+### Configuration
+
+**Device config references driver by package name**:
+```json
+{
+  "driver": "ya-modbus-driver-solar",
+  "deviceType": "X1000"  // Optional - auto-detect if omitted
+}
+```
+
+**Configuration pattern**:
+- `driver`: Package name (e.g., `ya-modbus-driver-solar`)
+- `deviceType`: Optional device variant within package
+- Auto-detection: Omit `deviceType` and driver reads identification registers
+
+**Benefits**:
+- Simple configuration (package name only, no class names)
+- Auto-detection reduces configuration burden
+- Single package handles entire device family
+
+**Version management**: Handled by package manager (package.json, not device config).
+
+**Examples**: See `examples/config/` for configuration patterns.
+
+### Ecosystem Benefits
+
+**For driver developers**:
+- Standardized SDK reduces learning curve
+- Test harness accelerates development
+- Characterization tools automate discovery
+- Independent release cycle
+- Reusable across projects
+
+**For users**:
+- Large driver ecosystem (community + commercial)
+- Install only needed drivers (smaller footprint)
+- Mix built-in and third-party drivers
+- Private drivers possible (no public disclosure)
+
+**For core project**:
+- Focus on bridge functionality, not device coverage
+- Community contributions without core PRs
+- Faster iteration (drivers evolve independently)
+- Clear interface boundaries
+
+### Migration Path
+
+**Existing built-in drivers** refactor to use plugin architecture:
+1. Extract types to `@ya-modbus/driver-types`
+2. Move runtime SDK to `@ya-modbus/driver-sdk`
+3. Extract dev tools to `@ya-modbus/driver-dev-tools`
+4. Refactor `@ya-modbus/devices` drivers to use SDK
+5. Update `@ya-modbus/core` to load drivers via SDK contract
+6. Keep `@ya-modbus/devices` as official driver collection
+
+No breaking changes for users (same device IDs, behavior).
+
 ## Future Enhancements
 
 ### Phase 2 Considerations
@@ -495,5 +725,5 @@ modbus/{deviceId}/errors/*      # Per-device errors
 
 - **Custom Transports**: BACnet, KNX, other protocols
 - **Custom Converters**: User-defined data transformations
-- **Plugin System**: Third-party device drivers
+- **Plugin System**: Third-party device drivers (see Plugin Architecture above)
 - **Scripting**: Lua/JavaScript for custom logic
