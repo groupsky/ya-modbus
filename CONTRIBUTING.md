@@ -562,7 +562,7 @@ Install extensions:
 
 ```bash
 # 1. Create package directory
-mkdir -p packages/my-package/src/__tests__
+mkdir -p packages/my-package/src
 
 # 2. Initialize package.json
 cat > packages/my-package/package.json << 'EOF'

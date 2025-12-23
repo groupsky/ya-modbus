@@ -90,7 +90,7 @@ await emulator.start();
 ```markdown
 ## Using the Emulator
 
-See: `packages/emulator/__tests__/examples/basic-usage.test.ts`
+See: `packages/emulator/src/emulator.test.ts`
 ```
 
 **Exception**: Minimal syntax snippets for disambiguation (≤3 lines) are acceptable if they clarify usage, not demonstrate features.
@@ -307,7 +307,7 @@ To add SDM630 support:
 1. Create a new file in packages/devices/src/energy-meters/
 2. Define the register map according to the datasheet
 3. Implement the DeviceDriver interface
-4. Add tests in __tests__/
+4. Add co-located test file (e.g., sdm630.test.ts)
 5. Export from index.ts
 6. Update the device registry
 ```
