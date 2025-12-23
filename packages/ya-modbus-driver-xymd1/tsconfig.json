@@ -9,7 +9,5 @@
   },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts"],
-  "references": [
-    { "path": "../driver-types" }
-  ]
+  "references": [{ "path": "../driver-types" }]
 }

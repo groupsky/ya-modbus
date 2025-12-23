@@ -9,6 +9,7 @@
 AGENTS.md files are for **project-specific** information only.
 
 **Don't include**:
+
 - How TypeScript works
 - What npm is
 - General testing concepts
@@ -16,6 +17,7 @@ AGENTS.md files are for **project-specific** information only.
 - Standard Git workflows
 
 **Do include**:
+
 - Project-specific conventions ("use Zod for all config schemas")
 - Disambiguation ("polling" means device polling, not political polling)
 - Non-obvious choices ("we use modbus-serial despite its name supporting TCP")
@@ -25,8 +27,10 @@ AGENTS.md files are for **project-specific** information only.
 Add just enough context to prevent misunderstanding, nothing more.
 
 **Bad** (over-explaining):
+
 ```markdown
 ## Polling System
+
 Polling is the process of repeatedly checking a device for new data.
 In our system, we have three types of polling: dynamic, static, and on-demand.
 Dynamic polling checks frequently changing values like voltage.
@@ -35,8 +39,10 @@ On-demand polling only reads when explicitly requested.
 ```
 
 **Good** (minimal context):
+
 ```markdown
 ## Polling Types
+
 - **dynamic**: Frequent reads (measurements) - see docs/ARCHITECTURE.md "Adaptive Polling"
 - **static**: Read once at startup (metadata)
 - **on-demand**: Explicit requests only
@@ -47,12 +53,14 @@ On-demand polling only reads when explicitly requested.
 When making changes, always check and update related documentation:
 
 **Checklist when modifying code**:
+
 - [ ] Does this change affect AGENTS.md guidelines?
 - [ ] Is there documentation elsewhere pointing to this source of truth?
 - [ ] Do code comments reference documentation that needs updating?
 - [ ] Does documentation need corresponding updates?
 
 **Checklist when updating AGENTS.md**:
+
 - [ ] Remove outdated information
 - [ ] Update references if file paths changed
 - [ ] Check for redundancy with other AGENTS.md files
@@ -63,35 +71,40 @@ When making changes, always check and update related documentation:
 **Never include code examples directly in AGENTS.md files.**
 
 Examples belong in executable code, not documentation. This ensures:
+
 - Examples are always valid and tested
 - No duplication between docs and code
 - Examples stay in sync with implementation
 
 **Instead**:
+
 - Reference executable code files
 - Link to test files demonstrating usage
 - Point to example implementations
 
 **Bad**:
-```markdown
+
+````markdown
 ## Using the Emulator
 
 ```typescript
 const emulator = new ModbusEmulator({
   transport: 'rtu',
   port: '/dev/ttyUSB0',
-  devices: [{ slaveId: 1, type: 'SDM630' }]
-});
-await emulator.start();
+  devices: [{ slaveId: 1, type: 'SDM630' }],
+})
+await emulator.start()
 ```
-```
+````
+
+````
 
 **Good**:
 ```markdown
 ## Using the Emulator
 
 See: `packages/emulator/src/emulator.test.ts`
-```
+````
 
 **Exception**: Minimal syntax snippets for disambiguation (≤3 lines) are acceptable if they clarify usage, not demonstrate features.
 
@@ -129,6 +142,7 @@ See: `packages/emulator/src/emulator.test.ts`
 **Canonical filename**: Always use `AGENTS.md` as the actual file.
 
 **Required symlinks**: Create these symlinks for every AGENTS.md file:
+
 - `CLAUDE.md` → `AGENTS.md` (Claude AI)
 - `.aider.md` → `AGENTS.md` (Aider AI)
 - `.cursorrules` → `AGENTS.md` (Cursor IDE)
@@ -136,6 +150,7 @@ See: `packages/emulator/src/emulator.test.ts`
 **Applies to**: All AGENTS.md files (root and every package)
 
 **If you created the wrong filename**:
+
 ```bash
 # If you created CLAUDE.md instead of AGENTS.md:
 mv CLAUDE.md AGENTS.md
@@ -148,6 +163,7 @@ ls -la AGENTS.md CLAUDE.md .aider.md .cursorrules
 ```
 
 **When creating new AGENTS.md files** (root or package):
+
 ```bash
 # 1. Create AGENTS.md (the canonical file)
 touch AGENTS.md
@@ -179,6 +195,7 @@ packages/cli/AGENTS.md     → CLI tool usage, command patterns
 Read the existing file structure. Add to existing sections if possible, create new sections only when necessary.
 
 **Before adding a new section**, ask:
+
 - Does this fit in an existing section?
 - Is this substantial enough to warrant a section?
 - Will this section have multiple items?
@@ -186,12 +203,14 @@ Read the existing file structure. Add to existing sections if possible, create n
 ### Step 3: Write Concisely
 
 **Template for new entries**:
+
 ```markdown
 ## [Topic]
 
 [One sentence explaining what this is]
 
 **Key points**:
+
 - Point 1 (with example if needed)
 - Point 2 (with reference to detailed docs)
 
@@ -201,6 +220,7 @@ See: [reference to full documentation]
 **Examples**:
 
 Good:
+
 ```markdown
 ## Device Discovery
 
@@ -213,6 +233,7 @@ See: docs/ARCHITECTURE.md "Device Discovery & Auto-Detection"
 ```
 
 Bad (too verbose):
+
 ```markdown
 ## Device Discovery
 
@@ -234,15 +255,19 @@ appropriate port parameter. For serial devices, use the device path like
 When adding information that summarizes a source of truth:
 
 1. **In AGENTS.md**: Reference the source
+
    ```markdown
    See: packages/core/src/types/data-types.ts for full list
    ```
 
 2. **In source code**: Note the summary location
+
    ```typescript
    // Data type definitions
    // Summarized in: CLAUDE.md "Data Types", docs/ARCHITECTURE.md "Data Transformation"
-   export const DATA_TYPES = { /* ... */ };
+   export const DATA_TYPES = {
+     /* ... */
+   }
    ```
 
 3. **Update both when either changes**
@@ -273,7 +298,7 @@ When terms could be misunderstood:
 
 ### Pattern: Quick Reference with Details Elsewhere
 
-```markdown
+````markdown
 ## Test Commands
 
 ```bash
@@ -281,9 +306,11 @@ npm test                      # All tests with coverage
 npm test -- --watch           # Watch mode
 npm test --workspace=core     # Single package
 ```
+````
 
 See: CONTRIBUTING.md for CI/CD integration
-```
+
+````
 
 ### Pattern: Decision Record (Why)
 
@@ -293,7 +320,7 @@ See: CONTRIBUTING.md for CI/CD integration
 Mature, well-tested, broad device compatibility.
 
 Alternative considered: modbus-tcp (TCP-only, insufficient)
-```
+````
 
 ### Pattern: Non-Obvious Convention
 
@@ -335,6 +362,7 @@ Don't document current bugs, TODOs, or temporary hacks. Use code comments.
 ### Example 1: Adding New Device Support
 
 **Bad**:
+
 ```markdown
 ## SDM630 Energy Meter
 
@@ -343,6 +371,7 @@ current, power, frequency, and energy. It uses Modbus RTU protocol and
 supports baud rates from 2400 to 38400. The default slave ID is 1.
 
 To add SDM630 support:
+
 1. Create a new file in packages/devices/src/energy-meters/
 2. Define the register map according to the datasheet
 3. Implement the DeviceDriver interface
@@ -352,6 +381,7 @@ To add SDM630 support:
 ```
 
 **Good**:
+
 ```markdown
 ## Adding Device Drivers
 
@@ -366,26 +396,31 @@ See: packages/devices/AGENTS.md for device-specific patterns
 ### Example 2: Explaining Data Types
 
 **Bad**:
+
 ```markdown
 ## Data Types
 
 Our system supports multiple data types for representing device data:
 
 ### Float
+
 Floating-point numbers are used for precise measurements like voltage (230.5V)
 or current (5.25A). They are stored as IEEE 754 floating-point values.
 
 ### Integer
+
 Integer values are whole numbers without decimal points. Used for counts,
 states, and other discrete values.
 
 ### Boolean
+
 True/false values represented as 1 or 0 in Modbus.
 
 [... 10 more types with explanations ...]
 ```
 
 **Good**:
+
 ```markdown
 ## Data Types
 
@@ -401,19 +436,22 @@ Full list: `packages/core/src/types/data-types.ts`
 **Scenario**: During development, you discover that RTU devices need a 50ms delay between requests to prevent errors.
 
 **Bad** (implementation detail):
-```markdown
+
+````markdown
 ## RTU Communication Delays
 
 When communicating with RTU devices, add a 50ms delay between requests:
 
 ```typescript
-await readRegister(device, 0);
-await sleep(50);
-await readRegister(device, 1);
+await readRegister(device, 0)
+await sleep(50)
+await readRegister(device, 1)
 ```
+````
 
 This prevents communication errors due to device processing time.
-```
+
+````
 
 **Good** (architectural note):
 ```markdown
@@ -422,7 +460,7 @@ This prevents communication errors due to device processing time.
 RTU devices require inter-request delays (device-specific, typically 50ms).
 
 Handled automatically by transport layer - see `packages/core/src/transport/rtu.ts`
-```
+````
 
 ## Maintenance Workflow
 
@@ -436,6 +474,7 @@ Handled automatically by transport layer - see `packages/core/src/transport/rtu.
 ### After Major Changes
 
 When merging significant features:
+
 1. Review related AGENTS.md files
 2. Add new patterns/conventions discovered
 3. Update references if structure changed
@@ -444,6 +483,7 @@ When merging significant features:
 ### During Code Review
 
 Check if PR introduces patterns worth documenting:
+
 - Non-obvious design decision?
 - Repeated pattern across multiple files?
 - Potential source of confusion?
