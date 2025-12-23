@@ -20,8 +20,7 @@ module.exports = {
     '!packages/*/src/**/*.test.ts',
     '!packages/*/src/**/*.integration.test.ts',
     '!packages/*/src/**/*.e2e.test.ts',
-    '!packages/*/src/**/*.d.ts',
-    '!packages/*/src/**/index.ts',
+    '!packages/*/src/**/*.d.ts'
   ],
   coverageThreshold: {
     global: {

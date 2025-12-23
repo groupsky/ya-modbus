@@ -5,8 +5,6 @@
  * Drivers use this interface to communicate with devices.
  */
 
-import type { RegisterType } from './constraints.js';
-
 /**
  * Modbus transport interface
  */
