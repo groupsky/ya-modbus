@@ -107,7 +107,7 @@ We analyzed 48+ competing solutions. **None** provide all of:
 - ✅ Device discovery & auto-detection
 - ✅ TypeScript with comprehensive tooling
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed comparison.
+See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for detailed comparison.
 
 ## Architecture
 
@@ -143,7 +143,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed comparison.
 └─────────────────────────────────────────────────────────┘
 ```
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for details.
+See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for details.
 
 ## Supported Devices
 
@@ -167,7 +167,7 @@ Want to add a device? See [docs/devices/adding-new-device.md](./docs/devices/add
 ## Documentation
 
 - **[Getting Started](./docs/getting-started.md)** - Installation, configuration, first steps
-- **[Architecture](./ARCHITECTURE.md)** - System design, key decisions, data flow
+- **[Architecture](./docs/ARCHITECTURE.md)** - System design, key decisions, data flow
 - **[Contributing](./CONTRIBUTING.md)** - Development workflow, testing, code style
 - **[AGENTS.md](./AGENTS.md)** - Quick guide for AI assistants and developers
 - **[API Reference](./docs/api/)** - Package APIs and interfaces

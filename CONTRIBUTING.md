@@ -815,8 +815,8 @@ describe('RegisterParser', () => {
 ### Documentation Locations
 
 - `README.md` - Project overview
-- `ARCHITECTURE.md` - System design
-- `docs/` - User guides
+- `docs/ARCHITECTURE.md` - System design
+- `docs/` - User guides and architectural documentation
 - `packages/*/README.md` - Package-specific docs
 - `packages/*/AGENTS.md` - Development guides
 
