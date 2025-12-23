@@ -91,20 +91,10 @@ jobs:
             exit 1
           fi
 
-      - name: Validate dependabot.yml syntax
-        run: |
-          echo "🔍 Validating Dependabot configuration syntax..."
-
-          # Use GitHub's dependabot-core to validate (if available)
-          # For now, do basic YAML syntax check
-          if ! command -v yamllint &> /dev/null; then
-            echo "Installing yamllint..."
-            pip install yamllint
-          fi
-
-          yamllint -d "{extends: default, rules: {line-length: disable, document-start: disable}}" .github/dependabot.yml
-
-          echo "✅ Dependabot configuration syntax is valid"
+      - name: Validate dependabot.yml against schema
+        uses: marocchino/validate-dependabot@v3
+        with:
+          file: .github/dependabot.yml
 
       - name: Check for duplicate directories
         run: |
@@ -151,6 +141,6 @@ jobs:
           echo ""
           echo "Configuration summary:"
           echo "- All package directories are covered"
-          echo "- YAML syntax is valid"
+          echo "- Configuration conforms to Dependabot schema"
           echo "- No duplicate entries"
           echo "- Groups are properly configured"
