@@ -14,7 +14,12 @@
  * - Holding register 0x102: Baud rate configuration
  */
 
-import type { DeviceDriver, DataPoint, CreateDriverFunction } from '@ya-modbus/driver-types'
+import type {
+  DeviceDriver,
+  DataPoint,
+  CreateDriverFunction,
+  DriverConfig,
+} from '@ya-modbus/driver-types'
 
 /**
  * Valid baud rates for XYMD1
@@ -119,7 +124,7 @@ function encodeDataPoint(id: string, value: unknown): Buffer {
 /**
  * Create XYMD1 device driver
  */
-export const createDriver: CreateDriverFunction = (config) => {
+export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
   const { transport } = config
 
   const driver: DeviceDriver = {
