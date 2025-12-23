@@ -92,23 +92,9 @@ ya-modbus-mqtt-bridge is a TypeScript monorepo that bridges Modbus devices (RTU/
 
 **Problem**: Modbus RTU requires sequential access (single bus), but Modbus TCP supports concurrent connections.
 
-**Solution**: Mutex only for RTU transport (and RTU-over-TCP bridges).
+**Solution**: Transport-aware locking - mutex only applied to RTU/RTU-over-TCP operations, TCP operations execute directly without locking.
 
-```typescript
-class TransportManager {
-  private rtuMutex = new Mutex();
-
-  async executeOperation(device: Device, operation: () => Promise<any>) {
-    if (device.transport === 'rtu' || device.transport === 'rtu-over-tcp') {
-      // Serial bus - requires mutex
-      return this.rtuMutex.runExclusive(() => operation());
-    } else {
-      // TCP - direct execution
-      return operation();
-    }
-  }
-}
-```
+**Implementation**: `packages/core/src/transport/manager.ts`
 
 **Rationale**: Maximizes throughput for TCP devices while ensuring RTU safety.
 
@@ -124,15 +110,9 @@ class TransportManager {
 | `static`     | Device metadata           | Once at startup  | Read once, cache forever    |
 | `on-demand`  | Configuration registers   | Never            | Only when explicitly requested |
 
-```typescript
-interface RegisterDefinition {
-  address: number;
-  type: 'coil' | 'discrete' | 'holding' | 'input';
-  format: 'int16' | 'uint16' | 'int32' | 'uint32' | 'float32';
-  pollType: 'dynamic' | 'static' | 'on-demand';
-  pollInterval?: number;  // Override device default
-}
-```
+**Register configuration**: Each register specifies address, type, format, poll type, and optional custom interval.
+
+**Implementation**: `packages/core/src/types/register.ts`
 
 **Rationale**: Reduces bus traffic by 60-80% compared to uniform polling.
 
@@ -142,44 +122,19 @@ interface RegisterDefinition {
 
 **Solution**: Batch adjacent registers into single read operations.
 
-```typescript
-// Example: Reading registers [0, 1, 2, 5, 6, 7]
-// Without optimization: 6 read operations
-// With optimization: 2 read operations ([0-2], [5-7])
+**Example**: Reading registers [0, 1, 2, 5, 6, 7]
+- Without optimization: 6 read operations
+- With optimization: 2 read operations ([0-2], [5-7])
 
-class ReadOptimizer {
-  optimizeReads(registers: RegisterDefinition[]): ReadOperation[] {
-    const sorted = registers.sort((a, b) => a.address - b.address);
-    const batches: ReadOperation[] = [];
+**Algorithm**:
+1. Sort registers by address
+2. Group consecutive registers with gaps ≤ threshold
+3. Ensure groups respect device batch size limits
+4. Only batch registers of same type (holding, input, etc.)
 
-    let currentBatch = [sorted[0]];
-    for (let i = 1; i < sorted.length; i++) {
-      const gap = sorted[i].address - sorted[i-1].address;
+**Configuration**: Per-device settings for gap threshold (default: 10 registers) and max batch size (default: 80 registers, per Modbus spec).
 
-      // Batch if gap ≤ 10 registers and same type
-      if (gap <= 10 && sorted[i].type === sorted[i-1].type) {
-        currentBatch.push(sorted[i]);
-      } else {
-        batches.push(this.createBatch(currentBatch));
-        currentBatch = [sorted[i]];
-      }
-    }
-
-    batches.push(this.createBatch(currentBatch));
-    return batches;
-  }
-}
-```
-
-**Configuration**:
-```typescript
-// Gap threshold configurable per device
-deviceConfig.readOptimization = {
-  enabled: true,
-  maxGap: 10,      // Max gap between registers to batch
-  maxBatchSize: 80 // Respect device limits
-};
-```
+**Implementation**: `packages/core/src/polling/read-optimizer.ts`
 
 **Rationale**: Reduces read operations by 70-90% for typical devices.
 
@@ -225,40 +180,14 @@ modbus/
 
 **Solution**: Multi-stage discovery process.
 
-```typescript
-interface DiscoveryProcess {
-  // Stage 1: Serial parameter detection
-  baudRates: [9600, 19200, 38400, 115200];
-  parities: ['none', 'even', 'odd'];
-  stopBits: [1, 2];
+**Discovery Stages**:
+1. **Serial parameter detection** - Test combinations of baud rates (9600, 19200, 38400, 115200), parities (none, even, odd), and stop bits (1, 2)
+2. **Device address scan** - Probe slave IDs 1-247 for responses
+3. **Device type identification** - Match response patterns against known device signatures
 
-  // Stage 2: Device address scan
-  slaveIds: range(1, 247);
+**Output**: Discovery results include slave ID, serial parameters, identified device type, confidence score, manufacturer, and model.
 
-  // Stage 3: Device type identification
-  probeRegisters: [0, 1, 40000, 40001];  // Common addresses
-  deviceSignatures: Map<string, RegisterPattern>;
-}
-```
-
-**Discovery Flow**:
-1. Try each serial configuration
-2. For each config, scan slave IDs
-3. Match responses against device signatures
-4. Report matches with confidence scores
-
-**Output**:
-```json
-{
-  "slaveId": 1,
-  "baudRate": 9600,
-  "parity": "none",
-  "deviceType": "SDM630",
-  "confidence": 95,
-  "manufacturer": "Eastron",
-  "model": "SDM630-Modbus"
-}
-```
+**Implementation**: `packages/core/src/discovery/`
 
 ### 6. Error Handling & Publishing
 
@@ -273,19 +202,7 @@ interface DiscoveryProcess {
 | Modbus exception   | Log & continue | `modbus/{deviceId}/errors/exception` |
 | Connection lost    | Reconnect      | `modbus/{deviceId}/events/disconnected` |
 
-**Error Message Format**:
-```json
-{
-  "timestamp": "2025-12-22T10:30:45.123Z",
-  "type": "timeout",
-  "operation": "read",
-  "address": 0x0000,
-  "count": 10,
-  "retryAttempt": 3,
-  "willRetry": true,
-  "message": "Timeout reading holding registers 0-9"
-}
-```
+**Error Message Format**: Published errors include timestamp, error type, operation details (read/write, address, count), retry attempt number, and human-readable message.
 
 ### 7. Device Constraints & Protection
 
@@ -293,27 +210,14 @@ interface DiscoveryProcess {
 
 **Solution**: Per-device constraint configuration.
 
-```typescript
-interface DeviceConstraints {
-  maxReadRegisters: number;      // Modbus standard: 125
-  maxReadCoils: number;           // Modbus standard: 2000
-  maxWriteRegisters: number;      // Modbus standard: 123
-  maxWriteCoils: number;          // Modbus standard: 1968
+**Constraints include**:
+- Max read/write sizes (Modbus standard: 125 read registers, 123 write registers, 2000 coils)
+- Device-specific forbidden register ranges (both read and write)
+- Range specifications include type, start/end addresses, and optional reason
 
-  // Forbidden ranges (device-specific)
-  forbiddenRead: RegisterRange[];
-  forbiddenWrite: RegisterRange[];
-}
+**Enforcement**: Validate all operations before execution, reject requests that violate constraints.
 
-interface RegisterRange {
-  type: 'coil' | 'discrete' | 'holding' | 'input';
-  start: number;
-  end: number;
-  reason?: string;
-}
-```
-
-**Enforcement**: Validate before operations, reject invalid requests.
+**Implementation**: `packages/core/src/device/constraints.ts`
 
 ### 8. Connection Management & Recovery
 
@@ -321,26 +225,12 @@ interface RegisterRange {
 
 **Solution**: Automatic reconnection with exponential backoff.
 
-```typescript
-class ConnectionRecovery {
-  async handleDisconnect(device: Device) {
-    let delay = 1000;  // Start with 1 second
-
-    while (!device.connected && delay < 60000) {
-      await this.publish(`modbus/${device.id}/status/connected`, 'false');
-      await sleep(delay);
-
-      try {
-        await device.reconnect();
-        await this.publish(`modbus/${device.id}/status/connected`, 'true');
-        return;
-      } catch (err) {
-        delay = Math.min(delay * 2, 60000);  // Cap at 60 seconds
-      }
-    }
-  }
-}
-```
+**Algorithm**:
+1. Start with 1 second delay
+2. Publish disconnection status to MQTT
+3. Attempt reconnection
+4. On failure, double delay (capped at 60 seconds)
+5. Repeat until successful or manually stopped
 
 **Reconnection Triggers**:
 - Serial adapter disconnection (USB removal)
@@ -350,33 +240,57 @@ class ConnectionRecovery {
 ### 9. Diagnostics & Issue Detection
 
 **Proactive Issue Detection**:
-```typescript
-interface DiagnosticChecks {
-  highErrorRate: boolean;      // >5% errors
-  slowResponses: boolean;       // >500ms average
-  connectionFlapping: boolean;  // >10 reconnects/hour
-  wrongConfiguration: boolean;  // Consistent CRC errors
-  busContention: boolean;       // Should never happen with mutex!
-}
-```
+- High error rate (>5% of operations failing)
+- Slow responses (>500ms average latency)
+- Connection flapping (>10 reconnects per hour)
+- Wrong configuration (consistent CRC errors indicating wrong baud rate/parity)
+- Bus contention (should never occur with proper mutex usage)
 
-**Status Publishing**:
-```json
-{
-  "timestamp": "2025-12-22T10:30:45.123Z",
-  "connected": true,
-  "pollRate": 9.8,
-  "avgLatency": 42,
-  "errorRate": 0.001,
-  "issues": [
-    {
-      "type": "slow_response",
-      "severity": "warning",
-      "message": "Average response time: 145ms (threshold: 100ms)"
-    }
-  ]
-}
-```
+**Status Publishing**: Device status includes timestamp, connection state, poll rate, average latency, error rate, and detected issues with severity levels (warning, error, critical).
+
+### 10. Data Transformation & External API
+
+**Problem**: Device-specific encodings (integers with multipliers, decimal date formats, BCD) should not leak to external consumers.
+
+**Solution**: Two-layer data representation with device drivers owning the transformation.
+
+**Architecture Layers**:
+
+1. **Internal Layer** (device-specific, opaque to consumers):
+   - Raw Modbus register definitions with wire formats (int16, uint16, float32, etc.)
+   - Device-specific transformations (multipliers, offsets, custom decoders)
+   - Register address mappings and batch optimization
+
+2. **External Layer** (standardized API):
+   - Semantic data points identified by meaningful IDs ("voltage_l1", "total_energy")
+   - Standard data types and units (canonical definitions in `packages/core/src/types/`)
+   - Polling configuration by data point, not by register
+
+**Transformation Examples**:
+
+| Device Encoding         | Raw Value | External Value       |
+|-------------------------|-----------|----------------------|
+| uint16 × 0.1 (voltage)  | 2305      | 230.5 (float)        |
+| Decimal date (YYMMDD)   | 251220    | "2025-12-20"         |
+| Decimal time (HHMMSS)   | 103045    | "10:30:45"           |
+| BCD-encoded             | 0x1234    | 1234 (integer)       |
+
+**Responsibilities**:
+
+- **Device Drivers**: Define data point catalog, implement transformations, optimize register reads
+- **Consumers**: Configure polling by semantic data point IDs, receive standardized values
+- **Bridge Core**: Provide transformation helpers, define canonical types/units, coordinate polling
+
+**Extensibility**:
+- Data types: `packages/core/src/types/data-types.ts`
+- Units: `packages/core/src/types/units.ts`
+- Standard transforms: `packages/core/src/transforms/`
+
+**Rationale**:
+- Consumers configure "what" (voltage, energy) not "how" (register addresses and formats)
+- Device complexity is encapsulated and transparent to users
+- New data types/units extend the system without modifying existing devices
+- Clear separation enables independent device driver development
 
 ## Data Flow
 
@@ -503,25 +417,7 @@ For 10 devices @ 9600 baud:
 - Simulate errors (timeouts, CRC failures, exceptions)
 - Test scenarios (disconnection, slow responses)
 
-**Example**:
-```typescript
-const emulator = new ModbusEmulator({
-  transport: 'rtu',
-  port: '/dev/ttyUSB0',
-  devices: [
-    {
-      slaveId: 1,
-      type: 'SDM630',
-      registers: {
-        0x0000: 230.5,  // Voltage
-        0x0006: 5.2     // Current
-      }
-    }
-  ]
-});
-
-await emulator.start();
-```
+**Usage**: See `packages/emulator/__tests__/examples/` for usage examples.
 
 ## Security Considerations
 
@@ -547,53 +443,19 @@ await emulator.start();
 
 ### Docker Deployment
 
-```dockerfile
-FROM node:24-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --production
-COPY . .
-RUN npm run build
+**Container approach**:
+- Node.js Alpine base image
+- Production dependencies only
+- Volume mount for state persistence
+- Device passthrough for serial ports
 
-# Volume for state persistence
-VOLUME /data
-
-CMD ["npm", "start"]
-```
-
-**Docker Compose**:
-```yaml
-version: '3.8'
-services:
-  modbus-bridge:
-    image: ya-modbus-mqtt-bridge
-    volumes:
-      - ./data:/data
-      - /dev/ttyUSB0:/dev/ttyUSB0
-    devices:
-      - /dev/ttyUSB0
-    environment:
-      MQTT_BROKER: mqtt://mosquitto:1883
-      STATE_FILE: /data/bridge-state.json
-```
+**Configuration**: See `docker/` directory for Dockerfile and Docker Compose examples.
 
 ### Systemd Service
 
-```ini
-[Unit]
-Description=ya-modbus-mqtt-bridge
-After=network.target
+**Service configuration**: Simple service type, automatic restart, runs as dedicated user, configurable state file location.
 
-[Service]
-Type=simple
-User=modbus
-ExecStart=/usr/bin/node /opt/ya-modbus-mqtt-bridge/dist/index.js
-Restart=always
-Environment="STATE_FILE=/var/lib/modbus-bridge/state.json"
-
-[Install]
-WantedBy=multi-user.target
-```
+**Configuration**: See `deployment/systemd/` directory for service unit file examples.
 
 ## Monitoring & Observability
 
@@ -607,13 +469,7 @@ modbus/{deviceId}/errors/*      # Per-device errors
 
 ### Integration with Monitoring Systems
 
-**Telegraf**:
-```toml
-[[inputs.mqtt_consumer]]
-  servers = ["tcp://localhost:1883"]
-  topics = ["modbus/+/data", "modbus/bridge/status/#"]
-  data_format = "json"
-```
+**Telegraf**: MQTT consumer input plugin subscribes to data and status topics, parses JSON format.
 
 **Prometheus** (via converter):
 - Export metrics in Prometheus format
