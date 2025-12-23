@@ -84,6 +84,14 @@ npm run build --workspace=packages/devices
 3. Refactor while keeping tests green
 4. Commit with tests included
 
+## Git Commit Hygiene
+
+**CRITICAL**: Never commit unrelated changes. One commit = one logical change.
+
+**Before committing**: `git diff --cached` to verify only related changes staged.
+
+**Fix mixed commit**: `git reset --soft HEAD~1`, unstage unrelated files, recommit separately.
+
 ## Key Architectural Decisions
 
 When implementing features, consult `docs/ARCHITECTURE.md` for:

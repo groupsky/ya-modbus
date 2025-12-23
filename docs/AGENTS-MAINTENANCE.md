@@ -124,10 +124,49 @@ See: `packages/emulator/src/emulator.test.ts`
 
 ## How to Update AGENTS.md
 
+### Step 0: File Naming and Symlinks
+
+**Canonical filename**: Always use `AGENTS.md` as the actual file.
+
+**Required symlinks**: Create these symlinks for every AGENTS.md file:
+- `CLAUDE.md` → `AGENTS.md` (Claude AI)
+- `.aider.md` → `AGENTS.md` (Aider AI)
+- `.cursorrules` → `AGENTS.md` (Cursor IDE)
+
+**Applies to**: All AGENTS.md files (root and every package)
+
+**If you created the wrong filename**:
+```bash
+# If you created CLAUDE.md instead of AGENTS.md:
+mv CLAUDE.md AGENTS.md
+ln -s AGENTS.md CLAUDE.md
+ln -s AGENTS.md .aider.md
+ln -s AGENTS.md .cursorrules
+
+# Verify
+ls -la AGENTS.md CLAUDE.md .aider.md .cursorrules
+```
+
+**When creating new AGENTS.md files** (root or package):
+```bash
+# 1. Create AGENTS.md (the canonical file)
+touch AGENTS.md
+
+# 2. Create ALL required symlinks
+ln -s AGENTS.md CLAUDE.md
+ln -s AGENTS.md .aider.md
+ln -s AGENTS.md .cursorrules
+
+# 3. Verify all symlinks exist
+ls -la AGENTS.md CLAUDE.md .aider.md .cursorrules
+```
+
+**Why**: Different AI assistants and IDEs look for different filenames. Symlinks ensure all tools find the same canonical documentation without duplication.
+
 ### Step 1: Choose the Right File
 
 ```
-CLAUDE.md (root)           → Project-wide conventions, setup, structure
+AGENTS.md (root)           → Project-wide conventions, setup, structure
 packages/core/AGENTS.md    → Core bridge logic, polling, transport
 packages/devices/AGENTS.md → Device driver patterns, register definitions
 packages/cli/AGENTS.md     → CLI tool usage, command patterns
