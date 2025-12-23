@@ -16,7 +16,6 @@
 
 import type {
   DeviceDriver,
-  DriverConfig,
   DataPoint,
   CreateDriverFunction,
 } from '@ya-modbus/driver-types';
@@ -80,7 +79,7 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
 /**
  * Create XYMD1 device driver
  */
-export const createDriver: CreateDriverFunction = (config: DriverConfig): Promise<DeviceDriver> => {
+export const createDriver: CreateDriverFunction = (config) => {
   const { transport } = config;
 
   const driver: DeviceDriver = {
