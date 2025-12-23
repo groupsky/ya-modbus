@@ -9,5 +9,4 @@
 export * from './device-driver.js';
 export * from './data-types.js';
 export * from './units.js';
-export * from './constraints.js';
 export * from './transport.js';

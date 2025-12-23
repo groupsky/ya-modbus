@@ -77,6 +77,50 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
 ];
 
 /**
+ * Decode raw Modbus value to data point value
+ */
+function decodeDataPoint(id: string, rawValue: Buffer): unknown {
+  if (id === 'temperature') {
+    const temp = rawValue.readUInt16BE(0);
+    return temp / 10;
+  }
+  if (id === 'humidity') {
+    const humidity = rawValue.readUInt16BE(2);
+    return humidity / 10;
+  }
+  if (id === 'device_address') {
+    return rawValue.readUInt16BE(0);
+  }
+  if (id === 'baud_rate') {
+    return rawValue.readUInt16BE(0);
+  }
+  throw new Error(`Unknown data point: ${id}`);
+}
+
+/**
+ * Encode data point value to Modbus register value(s)
+ */
+function encodeDataPoint(id: string, value: unknown): Buffer {
+  if (id === 'device_address') {
+    if (typeof value !== 'number' || value < 1 || value > 247) {
+      throw new Error('Invalid device address: must be between 1 and 247');
+    }
+    const buffer = Buffer.allocUnsafe(2);
+    buffer.writeUInt16BE(value, 0);
+    return buffer;
+  }
+  if (id === 'baud_rate') {
+    if (typeof value !== 'number' || !(VALID_BAUD_RATES as readonly number[]).includes(value)) {
+      throw new Error(`Invalid baud rate: must be one of ${VALID_BAUD_RATES.join(', ')}`);
+    }
+    const buffer = Buffer.allocUnsafe(2);
+    buffer.writeUInt16BE(value, 0);
+    return buffer;
+  }
+  throw new Error(`Data point ${id} is read-only`);
+}
+
+/**
  * Create XYMD1 device driver
  */
 export const createDriver: CreateDriverFunction = (config) => {
@@ -88,79 +132,41 @@ export const createDriver: CreateDriverFunction = (config) => {
     model: 'XY-MD1',
     dataPoints: DATA_POINTS,
 
-    decodeDataPoint(this: DeviceDriver, id: string, rawValue: Buffer): unknown {
-      if (id === 'temperature') {
-        const temp = rawValue.readUInt16BE(0);
-        return temp / 10;
-      }
-      if (id === 'humidity') {
-        const humidity = rawValue.readUInt16BE(2);
-        return humidity / 10;
-      }
-      if (id === 'device_address') {
-        return rawValue.readUInt16BE(0);
-      }
-      if (id === 'baud_rate') {
-        return rawValue.readUInt16BE(0);
-      }
-      throw new Error(`Unknown data point: ${id}`);
-    },
-
-    encodeDataPoint(this: DeviceDriver, id: string, value: unknown): Buffer {
-      if (id === 'device_address') {
-        if (typeof value !== 'number' || value < 1 || value > 247) {
-          throw new Error('Invalid device address: must be between 1 and 247');
-        }
-        const buffer = Buffer.allocUnsafe(2);
-        buffer.writeUInt16BE(value, 0);
-        return buffer;
-      }
-      if (id === 'baud_rate') {
-        if (typeof value !== 'number' || !(VALID_BAUD_RATES as readonly number[]).includes(value)) {
-          throw new Error(`Invalid baud rate: must be one of ${VALID_BAUD_RATES.join(', ')}`);
-        }
-        const buffer = Buffer.allocUnsafe(2);
-        buffer.writeUInt16BE(value, 0);
-        return buffer;
-      }
-      throw new Error(`Data point ${id} is read-only`);
-    },
-
-    async readDataPoint(this: DeviceDriver, id: string): Promise<unknown> {
+    async readDataPoint(id: string): Promise<unknown> {
       if (id === 'device_address') {
         const buffer = await transport.readHoldingRegisters(0x101, 1);
-        return this.decodeDataPoint(id, buffer);
+        return decodeDataPoint(id, buffer);
       }
       if (id === 'baud_rate') {
         const buffer = await transport.readHoldingRegisters(0x102, 1);
-        return this.decodeDataPoint(id, buffer);
+        return decodeDataPoint(id, buffer);
       }
       // Always read both input registers for temperature and humidity
       const buffer = await transport.readInputRegisters(1, 2);
-      return this.decodeDataPoint(id, buffer);
+      return decodeDataPoint(id, buffer);
     },
 
-    async writeDataPoint(this: DeviceDriver, id: string, value: unknown): Promise<void> {
+    async writeDataPoint(id: string, value: unknown): Promise<void> {
       if (id === 'device_address') {
-        const buffer = this.encodeDataPoint(id, value);
+        const buffer = encodeDataPoint(id, value);
         await transport.writeMultipleRegisters(0x101, buffer);
         return;
       }
       if (id === 'baud_rate') {
-        const buffer = this.encodeDataPoint(id, value);
+        const buffer = encodeDataPoint(id, value);
         await transport.writeMultipleRegisters(0x102, buffer);
         return;
       }
       throw new Error(`Data point ${id} is read-only`);
     },
 
-    async readDataPoints(this: DeviceDriver, ids: string[]): Promise<Record<string, unknown>> {
+    async readDataPoints(ids: string[]): Promise<Record<string, unknown>> {
       // Read both registers once
       const buffer = await transport.readInputRegisters(1, 2);
 
       const result: Record<string, unknown> = {};
       for (const id of ids) {
-        result[id] = this.decodeDataPoint(id, buffer);
+        result[id] = decodeDataPoint(id, buffer);
       }
       return result;
     },
