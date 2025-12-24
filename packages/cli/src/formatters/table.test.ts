@@ -22,7 +22,7 @@ describe('Table Formatter', () => {
     expect(result).toContain('Data Point')
     expect(result).toContain('Value')
     expect(result).toContain('Unit')
-    expect(result).toContain('temperature')
+    expect(result).toContain('Temperature') // Uses name, not id
     expect(result).toContain('24.5')
     expect(result).toContain('°C')
   })
@@ -54,8 +54,8 @@ describe('Table Formatter', () => {
 
     const result = formatTable(dataPoints, values)
 
-    expect(result).toContain('temperature')
-    expect(result).toContain('humidity')
+    expect(result).toContain('Temperature') // Uses name, not id
+    expect(result).toContain('Humidity') // Uses name, not id
     expect(result).toContain('24.5')
     expect(result).toContain('65.2')
   })

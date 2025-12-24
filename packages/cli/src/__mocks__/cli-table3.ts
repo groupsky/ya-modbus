@@ -1,12 +1,31 @@
 // Mock cli-table3 for Jest tests
+interface TableOptions {
+  head?: string[]
+  style?: { head?: string[] }
+}
+
 class MockTable extends Array {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  constructor(options?: unknown) {
+  private head: string[] | undefined
+
+  constructor(options?: TableOptions) {
     super()
+    this.head = options?.head
   }
 
   toString(): string {
-    return this.map((row) => (row as unknown[]).join(' | ')).join('\n')
+    const rows: string[] = []
+
+    // Add header row if present
+    if (this.head) {
+      rows.push(this.head.join(' | '))
+    }
+
+    // Add data rows
+    for (const row of this) {
+      rows.push((row as unknown[]).join(' | '))
+    }
+
+    return rows.join('\n')
   }
 }
 

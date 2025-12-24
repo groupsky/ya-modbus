@@ -69,5 +69,4 @@ program
     }
   })
 
-// Parse command line arguments
-program.parse()
+export { program }

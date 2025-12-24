@@ -231,7 +231,26 @@ describe('RTU Transport', () => {
     const values = Buffer.from([0xff, 0x00])
     await transport.writeMultipleCoils(20, values)
 
-    expect(mockModbus.writeCoils).toHaveBeenCalledWith(20, values)
+    // The implementation converts Buffer to boolean array
+    const expectedBools = [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true, // 0xFF
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false, // 0x00
+    ]
+    expect(mockModbus.writeCoils).toHaveBeenCalledWith(20, expectedBools)
   })
 
   test('should use default timeout if not specified', async () => {

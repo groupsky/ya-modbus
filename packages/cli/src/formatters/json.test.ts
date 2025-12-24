@@ -111,8 +111,9 @@ describe('JSON Formatter', () => {
     const values = { test: 100 }
     const result = formatJSON(dataPoints, values, {})
 
-    // Check for 2-space indentation
-    expect(result).toContain('\n  ')
-    expect(result).not.toContain('\n    ') // Not 4-space
+    // Check for 2-space indentation at first level
+    expect(result).toContain('\n  "timestamp"')
+    // Nested objects will have 4 spaces (2 per level)
+    expect(result).toContain('\n    ')
   })
 })

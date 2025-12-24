@@ -24,7 +24,7 @@ import type {
 /**
  * Valid baud rates for XYMD1
  */
-const VALID_BAUD_RATES = [2400, 4800, 9600, 19200, 38400] as const
+const VALID_BAUD_RATES = [9600, 14400, 19200] as const
 
 /**
  * Data point definitions for XYMD1
@@ -68,11 +68,9 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     pollType: 'on-demand',
     description: 'Serial communication baud rate. Changes applied after device restart.',
     enumValues: {
-      2400: '2400 bps',
-      4800: '4800 bps',
       9600: '9600 bps',
+      14400: '14400 bps',
       19200: '19200 bps',
-      38400: '38400 bps',
     },
   },
 ]

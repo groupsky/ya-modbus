@@ -3,8 +3,10 @@
 /**
  * CLI entry point
  *
- * This file is just a shebang wrapper that imports the main CLI module.
+ * This file is the executable entry point that parses command-line arguments.
  * The actual CLI implementation is in src/index.ts
  */
 
-import '../dist/index.js'
+import { program } from '../src/index.js'
+
+program.parse()

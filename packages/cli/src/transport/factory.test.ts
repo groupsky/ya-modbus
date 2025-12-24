@@ -54,7 +54,6 @@ describe('Transport Factory', () => {
 
     const config = {
       host: '192.168.1.100',
-      port: 502,
       slaveId: 1,
     }
 
@@ -88,7 +87,9 @@ describe('Transport Factory', () => {
       stopBits: 1 as const,
     } as any
 
-    await expect(createTransport(config)).rejects.toThrow('Either port (for RTU) or host (for TCP) must be specified')
+    await expect(createTransport(config)).rejects.toThrow(
+      'Either port (for RTU) or host (for TCP) must be specified'
+    )
   })
 
   test('should throw error if both port and host are provided', async () => {
@@ -102,6 +103,8 @@ describe('Transport Factory', () => {
       stopBits: 1 as const,
     } as any
 
-    await expect(createTransport(config)).rejects.toThrow('Cannot specify both port (RTU) and host (TCP)')
+    await expect(createTransport(config)).rejects.toThrow(
+      'Cannot specify both port (RTU) and host (TCP)'
+    )
   })
 })
