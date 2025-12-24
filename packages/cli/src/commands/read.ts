@@ -51,6 +51,7 @@ function isReadable(dataPoint: DataPoint): boolean {
 export async function readCommand(options: ReadOptions): Promise<void> {
   const startTime = performance.now()
   let errors = 0
+  let transport
 
   try {
     // Build transport configuration
@@ -74,7 +75,7 @@ export async function readCommand(options: ReadOptions): Promise<void> {
         }
 
     // Create transport
-    const transport = await createTransport(transportConfig)
+    transport = await createTransport(transportConfig)
 
     // Load driver
     const createDriver = await loadDriver(
@@ -164,5 +165,10 @@ export async function readCommand(options: ReadOptions): Promise<void> {
   } catch (error) {
     errors++
     throw error
+  } finally {
+    // Always close the transport to release resources and allow process to exit
+    if (transport) {
+      await transport.close()
+    }
   }
 }

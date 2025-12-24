@@ -131,6 +131,12 @@ export async function createTCPTransport(config: TCPConfig): Promise<Transport> 
         await client.writeCoils(address, bools)
       })
     },
+
+    async close(): Promise<void> {
+      return new Promise<void>((resolve) => {
+        client.close(resolve)
+      })
+    },
   }
 
   return transport

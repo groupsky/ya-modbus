@@ -36,6 +36,7 @@ describe('Read Command', () => {
       writeMultipleRegisters: jest.fn(),
       writeSingleCoil: jest.fn(),
       writeMultipleCoils: jest.fn(),
+      close: jest.fn().mockResolvedValue(undefined),
     }
 
     // Mock driver
@@ -390,5 +391,45 @@ describe('Read Command', () => {
         stopBits: 1,
       })
     )
+  })
+
+  test('should close transport connection after command completes', async () => {
+    const options = {
+      port: '/dev/ttyUSB0',
+      slaveId: 1,
+      baudRate: 9600,
+      parity: 'even',
+      dataBits: 8,
+      stopBits: 1,
+      dataPoint: ['temperature'],
+      format: 'table',
+    }
+
+    mockDriver.readDataPoint.mockResolvedValue(24.5)
+
+    await readCommand(options)
+
+    // Verify transport was closed to allow process to exit
+    expect(mockTransport.close).toHaveBeenCalled()
+  })
+
+  test('should close transport even if command fails', async () => {
+    const options = {
+      port: '/dev/ttyUSB0',
+      slaveId: 1,
+      baudRate: 9600,
+      parity: 'even',
+      dataBits: 8,
+      stopBits: 1,
+      dataPoint: ['temperature'],
+      format: 'table',
+    }
+
+    mockDriver.readDataPoint.mockRejectedValue(new Error('Communication error'))
+
+    await expect(readCommand(options)).rejects.toThrow('Communication error')
+
+    // Verify transport was closed even on error
+    expect(mockTransport.close).toHaveBeenCalled()
   })
 })

@@ -31,6 +31,7 @@ describe('Write Command', () => {
       writeMultipleRegisters: jest.fn(),
       writeSingleCoil: jest.fn(),
       writeMultipleCoils: jest.fn(),
+      close: jest.fn().mockResolvedValue(undefined),
     }
 
     mockDriver = {

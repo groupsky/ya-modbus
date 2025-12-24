@@ -123,115 +123,124 @@ async function confirm(message: string): Promise<boolean> {
  * @param options - Command options
  */
 export async function writeCommand(options: WriteOptions): Promise<void> {
-  // Build transport configuration
-  const transportConfig: TransportConfig = options.host
-    ? {
-        host: options.host,
-        port: typeof options.port === 'number' ? options.port : 502,
-        slaveId: options.slaveId,
-        timeout: options.timeout,
-      }
-    : {
-        port: options.port ?? '/dev/ttyUSB0',
-        baudRate: (options.baudRate ?? 9600) as 9600,
-        dataBits: (options.dataBits ?? 8) as 8,
-        parity: (options.parity ?? 'even') as 'even',
-        stopBits: (options.stopBits ?? 1) as 1,
-        slaveId: options.slaveId,
-        timeout: options.timeout,
-      }
+  let transport
 
-  // Create transport
-  const transport = await createTransport(transportConfig)
+  try {
+    // Build transport configuration
+    const transportConfig: TransportConfig = options.host
+      ? {
+          host: options.host,
+          port: typeof options.port === 'number' ? options.port : 502,
+          slaveId: options.slaveId,
+          timeout: options.timeout,
+        }
+      : {
+          port: options.port ?? '/dev/ttyUSB0',
+          baudRate: (options.baudRate ?? 9600) as 9600,
+          dataBits: (options.dataBits ?? 8) as 8,
+          parity: (options.parity ?? 'even') as 'even',
+          stopBits: (options.stopBits ?? 1) as 1,
+          slaveId: options.slaveId,
+          timeout: options.timeout,
+        }
 
-  // Load driver
-  const createDriver = await loadDriver(
-    options.driver ? { driverPackage: options.driver } : { localPackage: true }
-  )
+    // Create transport
+    transport = await createTransport(transportConfig)
 
-  // Create driver instance
-  const driver = await createDriver({
-    transport,
-    slaveId: options.slaveId,
-  })
-
-  // Find data point
-  const dataPoint = driver.dataPoints.find((dp) => dp.id === options.dataPoint)
-
-  if (!dataPoint) {
-    throw new Error(`Data point not found: ${options.dataPoint}`)
-  }
-
-  // Check if writable
-  if (!isWritable(dataPoint)) {
-    throw new Error(`Data point is read-only: ${options.dataPoint}`)
-  }
-
-  // Parse and validate value
-  const parsedValue = parseValue(options.value, dataPoint)
-  validateValue(parsedValue, dataPoint)
-
-  // Show current value if readable and request confirmation
-  if (!options.yes) {
-    const access = dataPoint.access ?? 'r'
-    const isReadable = access === 'r' || access === 'rw'
-
-    if (isReadable) {
-      try {
-        const currentValue = await driver.readDataPoint(options.dataPoint)
-        console.log(chalk.cyan(`Current value: ${String(currentValue)}`))
-      } catch {
-        console.log(chalk.yellow('Could not read current value'))
-      }
-    }
-
-    console.log(chalk.cyan(`New value: ${String(parsedValue)}`))
-
-    const confirmed = await confirm(
-      chalk.bold(`Write ${String(parsedValue)} to ${options.dataPoint}?`)
+    // Load driver
+    const createDriver = await loadDriver(
+      options.driver ? { driverPackage: options.driver } : { localPackage: true }
     )
 
-    if (!confirmed) {
-      console.log('Write aborted')
-      return
-    }
-  }
+    // Create driver instance
+    const driver = await createDriver({
+      transport,
+      slaveId: options.slaveId,
+    })
 
-  // Write value
-  await driver.writeDataPoint(options.dataPoint, parsedValue)
+    // Find data point
+    const dataPoint = driver.dataPoints.find((dp) => dp.id === options.dataPoint)
 
-  console.log(chalk.green(`Successfully wrote ${String(parsedValue)} to ${options.dataPoint}`))
-
-  // Verify if requested
-  if (options.verify) {
-    const access = dataPoint.access ?? 'r'
-    const isReadable = access === 'r' || access === 'rw'
-
-    if (!isReadable) {
-      console.log(chalk.yellow('Cannot verify write-only data point'))
-      return
+    if (!dataPoint) {
+      throw new Error(`Data point not found: ${options.dataPoint}`)
     }
 
-    try {
-      const readValue = await driver.readDataPoint(options.dataPoint)
+    // Check if writable
+    if (!isWritable(dataPoint)) {
+      throw new Error(`Data point is read-only: ${options.dataPoint}`)
+    }
 
-      // Compare values (handle floating point precision)
-      const match =
-        dataPoint.type === 'float'
-          ? Math.abs((readValue as number) - (parsedValue as number)) < 0.01
-          : readValue === parsedValue
+    // Parse and validate value
+    const parsedValue = parseValue(options.value, dataPoint)
+    validateValue(parsedValue, dataPoint)
 
-      if (match) {
-        console.log(chalk.green(`Verification: OK (read back ${String(readValue)})`))
-      } else {
-        console.log(
-          chalk.red(
-            `Verification: MISMATCH (expected ${String(parsedValue)}, got ${String(readValue)})`
-          )
-        )
+    // Show current value if readable and request confirmation
+    if (!options.yes) {
+      const access = dataPoint.access ?? 'r'
+      const isReadable = access === 'r' || access === 'rw'
+
+      if (isReadable) {
+        try {
+          const currentValue = await driver.readDataPoint(options.dataPoint)
+          console.log(chalk.cyan(`Current value: ${String(currentValue)}`))
+        } catch {
+          console.log(chalk.yellow('Could not read current value'))
+        }
       }
-    } catch (error) {
-      console.log(chalk.red(`Verification failed: ${(error as Error).message}`))
+
+      console.log(chalk.cyan(`New value: ${String(parsedValue)}`))
+
+      const confirmed = await confirm(
+        chalk.bold(`Write ${String(parsedValue)} to ${options.dataPoint}?`)
+      )
+
+      if (!confirmed) {
+        console.log('Write aborted')
+        return
+      }
+    }
+
+    // Write value
+    await driver.writeDataPoint(options.dataPoint, parsedValue)
+
+    console.log(chalk.green(`Successfully wrote ${String(parsedValue)} to ${options.dataPoint}`))
+
+    // Verify if requested
+    if (options.verify) {
+      const access = dataPoint.access ?? 'r'
+      const isReadable = access === 'r' || access === 'rw'
+
+      if (!isReadable) {
+        console.log(chalk.yellow('Cannot verify write-only data point'))
+        return
+      }
+
+      try {
+        const readValue = await driver.readDataPoint(options.dataPoint)
+
+        // Compare values (handle floating point precision)
+        const match =
+          dataPoint.type === 'float'
+            ? Math.abs((readValue as number) - (parsedValue as number)) < 0.01
+            : readValue === parsedValue
+
+        if (match) {
+          console.log(chalk.green(`Verification: OK (read back ${String(readValue)})`))
+        } else {
+          console.log(
+            chalk.red(
+              `Verification: MISMATCH (expected ${String(parsedValue)}, got ${String(readValue)})`
+            )
+          )
+        }
+      } catch (error) {
+        console.log(chalk.red(`Verification failed: ${(error as Error).message}`))
+      }
+    }
+  } finally {
+    // Always close the transport to release resources and allow process to exit
+    if (transport) {
+      await transport.close()
     }
   }
 }
