@@ -62,6 +62,14 @@ describe('Write Command', () => {
           unit: '°C',
           access: 'r', // Read-only
         },
+        {
+          id: 'device_address',
+          name: 'Device Address',
+          type: 'integer',
+          access: 'rw',
+          min: 1,
+          max: 247,
+        },
       ],
       readDataPoint: jest.fn(),
       writeDataPoint: jest.fn(),
@@ -759,5 +767,79 @@ describe('Write Command', () => {
     await writeCommand(options)
 
     expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Verification: OK'))
+  })
+
+  test('should handle write-only data point in confirmation flow (no current value)', async () => {
+    mockDriver.dataPoints = [
+      {
+        id: 'writeonly',
+        type: 'integer',
+        access: 'w',
+      },
+    ]
+
+    const options = {
+      port: '/dev/ttyUSB0',
+      slaveId: 1,
+      dataPoint: 'writeonly',
+      value: '100',
+      yes: false,
+    }
+
+    mockDriver.writeDataPoint.mockResolvedValue(undefined)
+
+    // Mock user confirmation
+    const mockQuestion = jest.fn().mockResolvedValue('y')
+    const mockClose = jest.fn()
+    const readlineModule = jest.requireMock('readline/promises')
+    readlineModule.createInterface.mockReturnValue({
+      question: mockQuestion,
+      close: mockClose,
+    })
+
+    await writeCommand(options)
+
+    expect(mockDriver.writeDataPoint).toHaveBeenCalledWith('writeonly', 100)
+    // Should not attempt to read current value for write-only data point
+    expect(mockDriver.readDataPoint).not.toHaveBeenCalled()
+  })
+
+  test('should verify integer values with strict equality', async () => {
+    const options = {
+      port: '/dev/ttyUSB0',
+      slaveId: 1,
+      dataPoint: 'device_address',
+      value: '10',
+      yes: true,
+      verify: true,
+    }
+
+    mockDriver.writeDataPoint.mockResolvedValue(undefined)
+    mockDriver.readDataPoint.mockResolvedValue(10)
+
+    await writeCommand(options)
+
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Verification: OK'))
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('read back 10'))
+  })
+
+  test('should detect integer verification mismatch', async () => {
+    const options = {
+      port: '/dev/ttyUSB0',
+      slaveId: 1,
+      dataPoint: 'device_address',
+      value: '10',
+      yes: true,
+      verify: true,
+    }
+
+    mockDriver.writeDataPoint.mockResolvedValue(undefined)
+    mockDriver.readDataPoint.mockResolvedValue(15) // Different value
+
+    await writeCommand(options)
+
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('MISMATCH'))
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('expected 10'))
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('got 15'))
   })
 })

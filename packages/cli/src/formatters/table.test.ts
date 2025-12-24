@@ -111,6 +111,22 @@ describe('Table Formatter', () => {
     expect(result).toContain('true')
   })
 
+  test('should format false boolean value', () => {
+    const dataPoints: DataPoint[] = [
+      {
+        id: 'disabled',
+        type: 'boolean',
+        access: 'rw',
+      },
+    ]
+
+    const values = { disabled: false }
+
+    const result = formatTable(dataPoints, values)
+
+    expect(result).toContain('false')
+  })
+
   test('should format enum values', () => {
     const dataPoints: DataPoint[] = [
       {

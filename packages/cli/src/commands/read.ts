@@ -67,10 +67,7 @@ export async function readCommand(options: ReadOptions): Promise<void> {
 
         if (dataPointIds.length === 1) {
           // Single data point - use readDataPoint
-          const dataPointId = dataPointIds[0] ?? ''
-          if (!dataPointId) {
-            throw new Error('No data point ID found')
-          }
+          const [dataPointId] = dataPointIds
           const value = await driver.readDataPoint(dataPointId)
           values = { [dataPointId]: value }
         } else {
