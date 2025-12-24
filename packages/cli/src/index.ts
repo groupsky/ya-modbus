@@ -1,0 +1,74 @@
+#!/usr/bin/env node
+
+import { Command } from 'commander'
+import { readCommand } from './commands/read.js'
+import { writeCommand } from './commands/write.js'
+
+const program = new Command()
+
+program
+  .name('ya-modbus')
+  .description('CLI tool for testing and developing Modbus device drivers')
+  .version('0.0.0')
+
+// Read command
+program
+  .command('read')
+  .description('Read data points from device')
+  .option('-d, --driver <package>', 'Driver package name (e.g., ya-modbus-driver-xymd1)')
+  .option('-p, --port <path>', 'Serial port for RTU (e.g., /dev/ttyUSB0, COM3)')
+  .option('-h, --host <host>', 'TCP host for Modbus TCP (e.g., 192.168.1.100)')
+  .option('--tcp-port <port>', 'TCP port (default: 502)', parseInt)
+  .requiredOption('-s, --slave-id <id>', 'Modbus slave ID (1-247)', parseInt)
+  .option('-b, --baud-rate <rate>', 'Baud rate (RTU only)', parseInt)
+  .option('--parity <type>', 'Parity: none, even, odd (RTU only, default: even)')
+  .option('--data-bits <bits>', 'Data bits: 7 or 8 (RTU only, default: 8)', parseInt)
+  .option('--stop-bits <bits>', 'Stop bits: 1 or 2 (RTU only, default: 1)', parseInt)
+  .option('--timeout <ms>', 'Response timeout in milliseconds (default: 1000)', parseInt)
+  .option('--data-point <id...>', 'Data point ID(s) to read')
+  .option('--all', 'Read all readable data points')
+  .option('-f, --format <type>', 'Output format: table or json (default: table)', 'table')
+  .action(async (options) => {
+    try {
+      await readCommand({
+        ...options,
+        port: options.tcpPort ? undefined : options.port,
+      })
+    } catch (error) {
+      console.error(`Error: ${(error as Error).message}`)
+      process.exit(1)
+    }
+  })
+
+// Write command
+program
+  .command('write')
+  .description('Write data point to device')
+  .option('-d, --driver <package>', 'Driver package name')
+  .option('-p, --port <path>', 'Serial port for RTU')
+  .option('-h, --host <host>', 'TCP host for Modbus TCP')
+  .option('--tcp-port <port>', 'TCP port (default: 502)', parseInt)
+  .requiredOption('-s, --slave-id <id>', 'Modbus slave ID (1-247)', parseInt)
+  .option('-b, --baud-rate <rate>', 'Baud rate (RTU only)', parseInt)
+  .option('--parity <type>', 'Parity: none, even, odd (RTU only, default: even)')
+  .option('--data-bits <bits>', 'Data bits: 7 or 8 (RTU only, default: 8)', parseInt)
+  .option('--stop-bits <bits>', 'Stop bits: 1 or 2 (RTU only, default: 1)', parseInt)
+  .option('--timeout <ms>', 'Response timeout in milliseconds (default: 1000)', parseInt)
+  .requiredOption('--data-point <id>', 'Data point ID to write')
+  .requiredOption('--value <value>', 'Value to write')
+  .option('-y, --yes', 'Skip confirmation prompt')
+  .option('--verify', 'Read back and verify written value')
+  .action(async (options) => {
+    try {
+      await writeCommand({
+        ...options,
+        port: options.tcpPort ? undefined : options.port,
+      })
+    } catch (error) {
+      console.error(`Error: ${(error as Error).message}`)
+      process.exit(1)
+    }
+  })
+
+// Parse command line arguments
+program.parse()

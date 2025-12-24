@@ -8,7 +8,8 @@
     "temperature",
     "humidity",
     "sensor",
-    "xymd1"
+    "xymd1",
+    "ya-modbus-driver"
   ],
   "author": "Geno Roupsky <geno@roupsky.name>",
   "license": "GPL-3.0-or-later",
