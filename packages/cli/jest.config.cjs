@@ -26,10 +26,10 @@ module.exports = {
   ],
   coverageThreshold: {
     global: {
-      branches: 90, // Lowered from 95% - remaining gaps are defensive code (null coalescing) and complex dynamic imports
+      branches: 95,
       functions: 95,
-      lines: 90, // Lowered from 95% - ESM dynamic import paths in loader.ts are hard to unit test
-      statements: 90, // Lowered from 95% - ESM dynamic import paths in loader.ts are hard to unit test
+      lines: 95,
+      statements: 95,
     },
   },
 }
