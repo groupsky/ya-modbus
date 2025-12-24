@@ -3,7 +3,7 @@ import readline from 'readline/promises'
 import type { DataPoint } from '@ya-modbus/driver-types'
 import chalk from 'chalk'
 
-import { withDriver, withTransport } from './utils.js'
+import { isWritable, withDriver, withTransport } from './utils.js'
 
 /**
  * Write command options
@@ -31,14 +31,6 @@ export interface WriteOptions {
   value: string
   yes?: boolean
   verify?: boolean
-}
-
-/**
- * Check if a data point is writable
- */
-function isWritable(dataPoint: DataPoint): boolean {
-  const access = dataPoint.access ?? 'r'
-  return access === 'w' || access === 'rw'
 }
 
 /**

@@ -1,7 +1,23 @@
-import type { DeviceDriver, Transport } from '@ya-modbus/driver-types'
+import type { DataPoint, DeviceDriver, Transport } from '@ya-modbus/driver-types'
 
 import { loadDriver } from '../driver-loader/loader.js'
 import { createTransport, type TransportConfig } from '../transport/factory.js'
+
+/**
+ * Check if a data point is readable
+ */
+export function isReadable(dataPoint: DataPoint): boolean {
+  const access = dataPoint.access ?? 'r'
+  return access === 'r' || access === 'rw'
+}
+
+/**
+ * Check if a data point is writable
+ */
+export function isWritable(dataPoint: DataPoint): boolean {
+  const access = dataPoint.access ?? 'r'
+  return access === 'w' || access === 'rw'
+}
 
 /**
  * Options for creating a transport

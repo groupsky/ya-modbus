@@ -1,10 +1,8 @@
-import type { DataPoint } from '@ya-modbus/driver-types'
-
 import { formatJSON } from '../formatters/json.js'
 import { formatPerformance, type PerformanceMetrics } from '../formatters/performance.js'
 import { formatTable } from '../formatters/table.js'
 
-import { withDriver, withTransport } from './utils.js'
+import { isReadable, withDriver, withTransport } from './utils.js'
 
 /**
  * Read command options
@@ -33,14 +31,6 @@ export interface ReadOptions {
 
   // Output options
   format: 'table' | 'json'
-}
-
-/**
- * Check if a data point is readable
- */
-function isReadable(dataPoint: DataPoint): boolean {
-  const access = dataPoint.access ?? 'r'
-  return access === 'r' || access === 'rw'
 }
 
 /**
