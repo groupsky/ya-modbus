@@ -144,6 +144,30 @@ updates:
           - 'patch'
     open-pull-requests-limit: 5
 
+  # cli workspace package
+  - package-ecosystem: 'npm'
+    directory: '/packages/cli'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '03:00'
+    labels:
+      - 'dependencies'
+      - 'npm'
+      - 'cli'
+    commit-message:
+      prefix: 'chore(deps)'
+      include: 'scope'
+    versioning-strategy: widen
+    groups:
+      npm-cli:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'
+    open-pull-requests-limit: 5
+
   # driver-types workspace package
   - package-ecosystem: 'npm'
     directory: '/packages/driver-types'
