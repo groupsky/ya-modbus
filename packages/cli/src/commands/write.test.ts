@@ -673,4 +673,91 @@ describe('Write Command', () => {
       slaveId: 1,
     })
   })
+
+  test('should verify float values with relative error tolerance for small values', async () => {
+    const options = {
+      port: '/dev/ttyUSB0',
+      slaveId: 1,
+      dataPoint: 'setpoint',
+      value: '0.001',
+      yes: true,
+      verify: true,
+    }
+
+    mockDriver.writeDataPoint.mockResolvedValue(undefined)
+    // Simulate small floating point error (0.0000001 difference)
+    mockDriver.readDataPoint.mockResolvedValue(0.0010000001)
+
+    await writeCommand(options)
+
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Verification: OK'))
+  })
+
+  test('should verify float values with relative error tolerance for large values', async () => {
+    // Add a data point without max constraint for testing large values
+    mockDriver.dataPoints = [
+      ...mockDriver.dataPoints,
+      {
+        id: 'large_value',
+        type: 'float',
+        access: 'rw',
+        decimals: 1,
+      },
+    ]
+
+    const options = {
+      port: '/dev/ttyUSB0',
+      slaveId: 1,
+      dataPoint: 'large_value',
+      value: '10000.0',
+      yes: true,
+      verify: true,
+    }
+
+    mockDriver.writeDataPoint.mockResolvedValue(undefined)
+    // Simulate small relative error (0.0001% difference, within 1e-6 tolerance)
+    mockDriver.readDataPoint.mockResolvedValue(10000.01)
+
+    await writeCommand(options)
+
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Verification: OK'))
+  })
+
+  test('should detect verification mismatch for float values with large relative error', async () => {
+    const options = {
+      port: '/dev/ttyUSB0',
+      slaveId: 1,
+      dataPoint: 'setpoint',
+      value: '25.0',
+      yes: true,
+      verify: true,
+    }
+
+    mockDriver.writeDataPoint.mockResolvedValue(undefined)
+    // Large difference (20% error)
+    mockDriver.readDataPoint.mockResolvedValue(30.0)
+
+    await writeCommand(options)
+
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('MISMATCH'))
+  })
+
+  test('should verify float values near zero with absolute error tolerance', async () => {
+    const options = {
+      port: '/dev/ttyUSB0',
+      slaveId: 1,
+      dataPoint: 'setpoint',
+      value: '0.0',
+      yes: true,
+      verify: true,
+    }
+
+    mockDriver.writeDataPoint.mockResolvedValue(undefined)
+    // Very small absolute value (within absolute epsilon)
+    mockDriver.readDataPoint.mockResolvedValue(1e-10)
+
+    await writeCommand(options)
+
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Verification: OK'))
+  })
 })

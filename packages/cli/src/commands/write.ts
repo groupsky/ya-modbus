@@ -34,6 +34,38 @@ export interface WriteOptions {
 }
 
 /**
+ * Compare two floating point numbers for approximate equality
+ *
+ * Uses relative error to handle both very small and very large values correctly.
+ * Also checks absolute error to handle values near zero.
+ *
+ * @param a - First value
+ * @param b - Second value
+ * @param relativeEpsilon - Relative error tolerance (default: 1e-6, or 0.0001%)
+ * @param absoluteEpsilon - Absolute error tolerance for values near zero (default: 1e-9)
+ * @returns True if values are approximately equal
+ */
+function floatsEqual(
+  a: number,
+  b: number,
+  relativeEpsilon = 1e-6,
+  absoluteEpsilon = 1e-9
+): boolean {
+  const absoluteError = Math.abs(a - b)
+
+  // Check absolute error first (handles values near zero)
+  if (absoluteError < absoluteEpsilon) {
+    return true
+  }
+
+  // Check relative error (handles large and small values)
+  const largestMagnitude = Math.max(Math.abs(a), Math.abs(b))
+  const relativeError = absoluteError / largestMagnitude
+
+  return relativeError < relativeEpsilon
+}
+
+/**
  * Parse value string based on data point type
  */
 function parseValue(valueStr: string, dataPoint: DataPoint): unknown {
@@ -179,7 +211,7 @@ export async function writeCommand(options: WriteOptions): Promise<void> {
           // Compare values (handle floating point precision)
           const match =
             dataPoint.type === 'float'
-              ? Math.abs((readValue as number) - (parsedValue as number)) < 0.01
+              ? floatsEqual(readValue as number, parsedValue as number)
               : readValue === parsedValue
 
           if (match) {
