@@ -2,192 +2,192 @@ version: 2
 
 updates:
   # GitHub Actions dependencies
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "03:00"
+      interval: 'weekly'
+      day: 'monday'
+      time: '03:00'
     labels:
-      - "dependencies"
-      - "github-actions"
+      - 'dependencies'
+      - 'github-actions'
     commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
+      prefix: 'chore(deps)'
+      include: 'scope'
     groups:
       github-actions:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
 
   # npm dependencies - root and all workspace packages
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "03:00"
+      interval: 'weekly'
+      day: 'monday'
+      time: '03:00'
     labels:
-      - "dependencies"
-      - "npm"
+      - 'dependencies'
+      - 'npm'
     commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
+      prefix: 'chore(deps)'
+      include: 'scope'
     versioning-strategy: widen
     # Pin @types/node to v20.x to match minimum supported Node.js version
     # This ensures we don't use APIs unavailable in Node.js 20
     ignore:
-      - dependency-name: "@types/node"
-        update-types: ["version-update:semver-major"]
-        versions: [">=21"]
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+        versions: ['>=21']
     groups:
       # Production dependencies (grouped by type)
       npm-production:
         applies-to: version-updates
-        dependency-type: "production"
+        dependency-type: 'production'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       # ESLint ecosystem - MUST be upgraded together due to peer dependencies
       # eslint v9 requires @typescript-eslint v8, which requires matching parser v8
       npm-eslint-ecosystem:
         applies-to: version-updates
         patterns:
-          - "eslint"
-          - "eslint-*"
-          - "@typescript-eslint/eslint-plugin"
-          - "@typescript-eslint/parser"
+          - 'eslint'
+          - 'eslint-*'
+          - '@typescript-eslint/eslint-plugin'
+          - '@typescript-eslint/parser'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       # TypeScript tooling (compiler and execution, NOT eslint plugins)
       npm-typescript:
         applies-to: version-updates
         patterns:
-          - "typescript"
-          - "ts-node"
-          - "ts-jest"
+          - 'typescript'
+          - 'ts-node'
+          - 'ts-jest'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       # Testing framework
       npm-testing:
         applies-to: version-updates
         patterns:
-          - "jest"
-          - "@types/jest"
+          - 'jest'
+          - '@types/jest'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       # Git hooks tooling
       npm-git-hooks:
         applies-to: version-updates
         patterns:
-          - "husky"
-          - "lint-staged"
+          - 'husky'
+          - 'lint-staged'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       # Code formatting
       npm-formatting:
         applies-to: version-updates
         patterns:
-          - "prettier"
+          - 'prettier'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       # Type definitions (except those in other groups)
       npm-types:
         applies-to: version-updates
         patterns:
-          - "@types/*"
+          - '@types/*'
         exclude-patterns:
-          - "@types/jest"
+          - '@types/jest'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       # Release tooling
       npm-release:
         applies-to: version-updates
         patterns:
-          - "semantic-release"
+          - 'semantic-release'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       # Note: Security updates are not grouped - they create immediate individual PRs
     open-pull-requests-limit: 10
-    rebase-strategy: "auto"
+    rebase-strategy: 'auto'
 
   # driver-sdk workspace package
-  - package-ecosystem: "npm"
-    directory: "/packages/driver-sdk"
+  - package-ecosystem: 'npm'
+    directory: '/packages/driver-sdk'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "03:00"
+      interval: 'weekly'
+      day: 'monday'
+      time: '03:00'
     labels:
-      - "dependencies"
-      - "npm"
-      - "driver-sdk"
+      - 'dependencies'
+      - 'npm'
+      - 'driver-sdk'
     commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
+      prefix: 'chore(deps)'
+      include: 'scope'
     versioning-strategy: widen
     groups:
       npm-driver-sdk:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
     open-pull-requests-limit: 5
 
   # driver-types workspace package
-  - package-ecosystem: "npm"
-    directory: "/packages/driver-types"
+  - package-ecosystem: 'npm'
+    directory: '/packages/driver-types'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "03:00"
+      interval: 'weekly'
+      day: 'monday'
+      time: '03:00'
     labels:
-      - "dependencies"
-      - "npm"
-      - "driver-types"
+      - 'dependencies'
+      - 'npm'
+      - 'driver-types'
     commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
+      prefix: 'chore(deps)'
+      include: 'scope'
     versioning-strategy: widen
     groups:
       npm-driver-types:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
     open-pull-requests-limit: 5
 
   # ya-modbus-driver-xymd1 workspace package
-  - package-ecosystem: "npm"
-    directory: "/packages/ya-modbus-driver-xymd1"
+  - package-ecosystem: 'npm'
+    directory: '/packages/ya-modbus-driver-xymd1'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "03:00"
+      interval: 'weekly'
+      day: 'monday'
+      time: '03:00'
     labels:
-      - "dependencies"
-      - "npm"
-      - "xymd1-driver"
+      - 'dependencies'
+      - 'npm'
+      - 'xymd1-driver'
     commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
+      prefix: 'chore(deps)'
+      include: 'scope'
     versioning-strategy: widen
     groups:
       npm-xymd1-driver:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
     open-pull-requests-limit: 5
