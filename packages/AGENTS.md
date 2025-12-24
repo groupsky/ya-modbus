@@ -31,6 +31,10 @@ packages/
 
 **REQUIRED**: Read `docs/TESTING.md` before writing tests for test organization rules and patterns.
 
+## Creating a New Package
+
+See `docs/NEW-PACKAGE.md` for complete requirements and guidelines when creating a new package.
+
 ## Package-Specific Guides
 
 For detailed information about specific packages:
