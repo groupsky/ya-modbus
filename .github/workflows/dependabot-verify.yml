@@ -54,7 +54,7 @@ jobs:
 
           # Extract directories from dependabot.yml
           echo "📋 Dependabot monitored directories:"
-          grep -A 1 "package-ecosystem: \"npm\"" "$config_file" | grep "directory:" | awk '{print $2}' | tr -d '"'
+          grep -A 1 "package-ecosystem: 'npm'" "$config_file" | grep "directory:" | awk '{print $2}' | tr -d "'"
           echo ""
 
           # Check each package directory
@@ -66,11 +66,11 @@ jobs:
 
             # For root package.json, directory should be "/"
             if [ "$pkg_dir" = "." ]; then
-              search_dir='directory: "/"'
+              search_dir="directory: '/'"
             else
               # Remove leading ./ if present
               pkg_dir=${pkg_dir#./}
-              search_dir="directory: \"/$pkg_dir\""
+              search_dir="directory: '/$pkg_dir'"
             fi
 
             # Check if this directory is in dependabot.yml
@@ -105,7 +105,7 @@ jobs:
           config_file=".github/dependabot.yml"
 
           # Extract all npm directories
-          directories=$(grep -A 1 "package-ecosystem: \"npm\"" "$config_file" | grep "directory:" | awk '{print $2}' | sort)
+          directories=$(grep -A 1 "package-ecosystem: 'npm'" "$config_file" | grep "directory:" | awk '{print $2}' | sort)
 
           # Check for duplicates
           duplicates=$(echo "$directories" | uniq -d)
@@ -157,15 +157,15 @@ jobs:
           # Check if @types/node ignore rule exists and matches
           config_file=".github/dependabot.yml"
 
-          if ! grep -q "dependency-name: \"@types/node\"" "$config_file"; then
+          if ! grep -q "dependency-name: '@types/node'" "$config_file"; then
             echo "⚠️  No @types/node ignore rule found in Dependabot config"
             echo "💡 Consider pinning @types/node to v$node_version to prevent using APIs unavailable in Node.js $node_version"
             exit 0
           fi
 
           # Extract the version from the ignore rule
-          # Looking for pattern like: versions: [">=21"]
-          actual_ignore=$(grep -A 3 "dependency-name: \"@types/node\"" "$config_file" | grep "versions:" | grep -oP '>=\K[0-9]+' || echo "")
+          # Looking for pattern like: versions: ['>=21']
+          actual_ignore=$(grep -A 3 "dependency-name: '@types/node'" "$config_file" | grep "versions:" | grep -oP '>=\K[0-9]+' || echo "")
 
           if [ -z "$actual_ignore" ]; then
             echo "❌ Could not parse @types/node ignore version from Dependabot config"
