@@ -308,8 +308,7 @@ describe('XYMD1 Driver', () => {
         slaveId: 1,
       })
 
-      // XY-MD1 specific valid baud rates
-      const validRates = [9600, 14400, 19200]
+      const validRates = [2400, 4800, 9600, 19200, 38400]
 
       for (const rate of validRates) {
         await driver.writeDataPoint('baud_rate', rate)
