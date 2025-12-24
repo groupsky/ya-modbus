@@ -187,6 +187,40 @@ describe('XYMD1 Driver', () => {
       const values = await driver.readDataPoints(['temperature'])
       expect(values).toEqual({ temperature: 24.5 })
     })
+
+    it('should read all data points including device configuration', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Mock input registers: temp=245 (24.5°C), humidity=652 (65.2%)
+      mockTransport.readInputRegisters.mockResolvedValue(Buffer.from([0x00, 0xf5, 0x02, 0x8c]))
+      // Mock holding register for device_address: 52 (0x34)
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x34]))
+      // Mock holding register for baud_rate: 9600 (0x2580)
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x25, 0x80]))
+
+      const values = await driver.readDataPoints([
+        'temperature',
+        'humidity',
+        'device_address',
+        'baud_rate',
+      ])
+
+      expect(values).toEqual({
+        temperature: 24.5,
+        humidity: 65.2,
+        device_address: 52,
+        baud_rate: 9600,
+      })
+
+      // Should read input registers once for temp/humidity
+      expect(mockTransport.readInputRegisters).toHaveBeenCalledWith(1, 2)
+      // Should read holding registers separately for device_address and baud_rate
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x101, 1)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x102, 1)
+    })
   })
 
   describe('writeDataPoint', () => {
@@ -274,7 +308,8 @@ describe('XYMD1 Driver', () => {
         slaveId: 1,
       })
 
-      const validRates = [2400, 4800, 9600, 19200, 38400]
+      // XY-MD1 specific valid baud rates
+      const validRates = [9600, 14400, 19200]
 
       for (const rate of validRates) {
         await driver.writeDataPoint('baud_rate', rate)

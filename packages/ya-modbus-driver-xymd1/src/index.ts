@@ -162,13 +162,33 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
     },
 
     async readDataPoints(ids: string[]): Promise<Record<string, unknown>> {
-      // Read both registers once
-      const buffer = await transport.readInputRegisters(1, 2)
-
       const result: Record<string, unknown> = {}
-      for (const id of ids) {
-        result[id] = decodeDataPoint(id, buffer)
+
+      // Separate data points by register type
+      const inputRegisterPoints = ids.filter((id) => id === 'temperature' || id === 'humidity')
+      const holdingRegisterPoints = ids.filter(
+        (id) => id === 'device_address' || id === 'baud_rate'
+      )
+
+      // Read input registers (temperature and humidity) if needed
+      if (inputRegisterPoints.length > 0) {
+        const buffer = await transport.readInputRegisters(1, 2)
+        for (const id of inputRegisterPoints) {
+          result[id] = decodeDataPoint(id, buffer)
+        }
       }
+
+      // Read holding registers individually (different addresses)
+      for (const id of holdingRegisterPoints) {
+        if (id === 'device_address') {
+          const buffer = await transport.readHoldingRegisters(0x101, 1)
+          result[id] = decodeDataPoint(id, buffer)
+        } else if (id === 'baud_rate') {
+          const buffer = await transport.readHoldingRegisters(0x102, 1)
+          result[id] = decodeDataPoint(id, buffer)
+        }
+      }
+
       return result
     },
   }
