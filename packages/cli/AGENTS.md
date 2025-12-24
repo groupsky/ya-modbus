@@ -28,15 +28,13 @@ src/
 
 ### Transport Layer
 
-**Pattern**: Wrap `modbus-serial` library to implement Transport interface
+**Pattern**: Wrap `modbus-serial` to implement Transport interface
 
-RTU and TCP transports share identical structure:
-
-- Implement all 8 Transport methods (readHoldingRegisters, etc.)
+- Implement all 8 Transport methods
 - Automatic retry on transient failures (3 attempts, 100ms backoff)
-- Return Buffers (not arrays) for consistency with driver interface
+- Return Buffers for consistency with driver interface
 
-**Retry logic rationale**: Modbus RTU on RS-485 is susceptible to transient bus collisions. Automatic retries improve reliability without user intervention.
+**Retry rationale**: RTU on RS-485 has transient bus collisions; auto-retry improves reliability.
 
 ### Driver Loading
 
@@ -73,58 +71,31 @@ Common option groups:
 
 **Pattern**: Validate early, fail with helpful messages
 
-Validation order:
+Validation: CLI args → data point existence → access mode → value range → transport
 
-1. CLI argument parsing (Commander handles basic types)
-2. Data point existence check
-3. Access mode validation (read-only vs write-only)
-4. Value range validation (min/max)
-5. Transport operation
-
-**Error messages include**:
-
-- What went wrong
-- Why it failed
-- How to fix it (install command, permission fix, etc.)
+Error messages include what/why/how-to-fix (install commands, permission fixes).
 
 ## Testing Patterns
 
 ### Transport Tests
 
-Mock `modbus-serial` library:
+Mock `modbus-serial` library. Test retry logic by failing N times then succeeding.
 
-```typescript
-jest.mock('modbus-serial')
-const mockModbus = {
-  connectRTUBuffered: jest.fn(),
-  readHoldingRegisters: jest.fn(),
-  // ... etc
-}
-```
-
-Test retry logic by failing N times then succeeding.
+See: `src/transport/rtu-transport.test.ts`, `src/transport/tcp-transport.test.ts`
 
 ### Command Tests
 
-Mock all dependencies:
+Mock all dependencies (transport/factory, driver-loader, formatters).
 
-- `transport/factory` - Return mock transport
-- `driver-loader/loader` - Return mock createDriver function
-- Formatters - Return test strings
+Verify flow: create transport → load driver → read/write → format output.
 
-**Key test**: Verify correct flow (create transport → load driver → read/write → format output).
+See: `src/commands/read.test.ts`, `src/commands/write.test.ts`
 
 ### Integration Tests
 
-Use real XYMD1 driver package with mock transport:
+Use real driver packages with mock transport.
 
-```typescript
-const mockTransport: Transport = {
-  /* ... */
-}
-const driver = await createDriver({ transport: mockTransport, slaveId: 1 })
-await driver.readDataPoint('temperature')
-```
+See: `src/commands/read.test.ts` integration test suites
 
 ## Common Tasks
 
@@ -136,22 +107,7 @@ await driver.readDataPoint('temperature')
 4. Add command to `src/index.ts` with Commander
 5. Update README with examples
 
-**Template**:
-
-```typescript
-export interface MyCommandOptions {
-  // Connection options...
-  slaveId: number
-  // Command-specific options...
-}
-
-export async function myCommand(options: MyCommandOptions): Promise<void> {
-  const transport = await createTransport(/* ... */)
-  const createDriver = await loadDriver(/* ... */)
-  const driver = await createDriver({ transport, slaveId })
-  // Command logic...
-}
-```
+See existing commands: `src/commands/read.ts`, `src/commands/write.ts`
 
 ### Adding a New Formatter
 
@@ -162,11 +118,7 @@ export async function myCommand(options: MyCommandOptions): Promise<void> {
 
 ### Debugging Transport Issues
 
-**Enable modbus-serial debug logging**:
-
-```bash
-DEBUG=modbus-serial ya-modbus read ...
-```
+**Enable modbus-serial debug logging**: `DEBUG=modbus-serial ya-modbus read ...`
 
 **Common issues**:
 
@@ -205,13 +157,7 @@ DEBUG=modbus-serial ya-modbus read ...
 - `scan-registers` - Find readable/writable register ranges
 - `test-limits` - Determine max batch size, timing requirements
 
-**Implementation approach**:
-
-- Create `src/discovery/` directory
-- Implement algorithms with tests
-- Add commands to `src/index.ts`
-
-See `/home/groupsky/.claude/plans/fluffy-enchanting-pudding.md` for detailed discovery algorithm design.
+**Implementation approach**: Create `src/discovery/` directory, implement algorithms with tests, add commands to `src/index.ts`.
 
 ## Troubleshooting Command Development
 
