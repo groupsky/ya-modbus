@@ -432,4 +432,83 @@ describe('Read Command', () => {
     // Verify transport was closed even on error
     expect(mockTransport.close).toHaveBeenCalled()
   })
+
+  test('should throw error if neither --all nor --data-point is specified', async () => {
+    const options = {
+      port: '/dev/ttyUSB0',
+      slaveId: 1,
+      baudRate: 9600,
+      parity: 'even',
+      dataBits: 8,
+      stopBits: 1,
+      format: 'table',
+    }
+
+    await expect(readCommand(options)).rejects.toThrow(
+      'Either --data-point or --all must be specified'
+    )
+  })
+
+  test('should throw error if dataPoint array is empty', async () => {
+    const options = {
+      port: '/dev/ttyUSB0',
+      slaveId: 1,
+      baudRate: 9600,
+      parity: 'even',
+      dataBits: 8,
+      stopBits: 1,
+      dataPoint: [],
+      format: 'table',
+    }
+
+    await expect(readCommand(options)).rejects.toThrow(
+      'Either --data-point or --all must be specified'
+    )
+  })
+
+  test('should use default TCP port 502 when not specified', async () => {
+    const options = {
+      host: '192.168.1.100',
+      slaveId: 1,
+      dataPoint: ['temperature'],
+      format: 'table',
+    }
+
+    mockDriver.readDataPoint.mockResolvedValue(24.5)
+
+    await readCommand(options)
+
+    // Verify TCP transport was created with default port 502
+    expect(transportFactory.createTransport).toHaveBeenCalledWith({
+      host: '192.168.1.100',
+      port: 502,
+      slaveId: 1,
+    })
+  })
+
+  test('should use default RTU port when not specified', async () => {
+    const options = {
+      slaveId: 1,
+      baudRate: 9600,
+      parity: 'even',
+      dataBits: 8,
+      stopBits: 1,
+      dataPoint: ['temperature'],
+      format: 'table',
+    }
+
+    mockDriver.readDataPoint.mockResolvedValue(24.5)
+
+    await readCommand(options)
+
+    // Verify RTU transport was created with default port
+    expect(transportFactory.createTransport).toHaveBeenCalledWith({
+      port: '/dev/ttyUSB0',
+      baudRate: 9600,
+      dataBits: 8,
+      parity: 'even',
+      stopBits: 1,
+      slaveId: 1,
+    })
+  })
 })

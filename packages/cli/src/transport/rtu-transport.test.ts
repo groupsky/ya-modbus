@@ -316,4 +316,34 @@ describe('RTU Transport', () => {
     await expect(transport.readHoldingRegisters(0, 1)).rejects.toThrow('Timeout')
     expect(mockModbus.readHoldingRegisters).toHaveBeenCalledTimes(3)
   })
+
+  test('should close transport', async () => {
+    const config = {
+      port: '/dev/ttyUSB0',
+      baudRate: 9600 as const,
+      dataBits: 8 as const,
+      parity: 'even' as const,
+      stopBits: 1 as const,
+      slaveId: 1,
+    }
+
+    mockModbus.connectRTUBuffered.mockResolvedValue(undefined)
+
+    let closeCallback: (() => void) | undefined
+    mockModbus.close.mockImplementation((callback?: () => void) => {
+      closeCallback = callback
+    })
+
+    const transport = await createRTUTransport(config)
+    const closePromise = transport.close()
+
+    // Simulate async close completion
+    if (closeCallback) {
+      closeCallback()
+    }
+
+    await closePromise
+
+    expect(mockModbus.close).toHaveBeenCalled()
+  })
 })

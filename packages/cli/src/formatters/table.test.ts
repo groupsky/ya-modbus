@@ -201,4 +201,187 @@ describe('Table Formatter', () => {
 
     expect(result).toContain('2025-12-23')
   })
+
+  test('should format null values as N/A', () => {
+    const dataPoints: DataPoint[] = [
+      {
+        id: 'temperature',
+        type: 'float',
+        access: 'r',
+      },
+    ]
+
+    const values = { temperature: null }
+
+    const result = formatTable(dataPoints, values)
+
+    expect(result).toContain('N/A')
+  })
+
+  test('should format undefined values as N/A', () => {
+    const dataPoints: DataPoint[] = [
+      {
+        id: 'humidity',
+        type: 'float',
+        access: 'r',
+      },
+    ]
+
+    const values = { humidity: undefined }
+
+    const result = formatTable(dataPoints, values)
+
+    expect(result).toContain('N/A')
+  })
+
+  test('should format enum without enumValues', () => {
+    const dataPoints: DataPoint[] = [
+      {
+        id: 'status',
+        type: 'enum',
+        access: 'r',
+      },
+    ]
+
+    const values = { status: 2 }
+
+    const result = formatTable(dataPoints, values)
+
+    expect(result).toContain('2')
+  })
+
+  test('should format timestamp with non-Date value', () => {
+    const dataPoints: DataPoint[] = [
+      {
+        id: 'timestamp',
+        type: 'timestamp',
+        access: 'r',
+      },
+    ]
+
+    const values = { timestamp: 1234567890 }
+
+    const result = formatTable(dataPoints, values)
+
+    expect(result).toContain('1234567890')
+  })
+
+  test('should format string type', () => {
+    const dataPoints: DataPoint[] = [
+      {
+        id: 'device_name',
+        type: 'string',
+        access: 'r',
+      },
+    ]
+
+    const values = { device_name: 'Test Device' }
+
+    const result = formatTable(dataPoints, values)
+
+    expect(result).toContain('Test Device')
+  })
+
+  test('should format Date values', () => {
+    const dataPoints: DataPoint[] = [
+      {
+        id: 'created_at',
+        type: 'timestamp',
+        access: 'r',
+      },
+    ]
+
+    const date = new Date('2025-01-15T10:30:00Z')
+    const values = { created_at: date }
+
+    const result = formatTable(dataPoints, values)
+
+    expect(result).toContain(date.toISOString())
+  })
+
+  test('should format objects as JSON', () => {
+    const dataPoints: DataPoint[] = [
+      {
+        id: 'config',
+        type: 'string' as any,
+        access: 'r',
+      },
+    ]
+
+    const values = { config: { enabled: true, timeout: 5000 } }
+
+    const result = formatTable(dataPoints, values)
+
+    expect(result).toContain('enabled')
+    expect(result).toContain('true')
+  })
+
+  test('should format arrays as JSON', () => {
+    const dataPoints: DataPoint[] = [
+      {
+        id: 'readings',
+        type: 'string' as any,
+        access: 'r',
+      },
+    ]
+
+    const values = { readings: [1, 2, 3, 4, 5] }
+
+    const result = formatTable(dataPoints, values)
+
+    expect(result).toContain('[1,2,3,4,5]')
+  })
+
+  test('should handle unknown enum value gracefully', () => {
+    const dataPoints: DataPoint[] = [
+      {
+        id: 'mode',
+        type: 'enum',
+        access: 'r',
+        enumValues: {
+          0: 'Off',
+          1: 'On',
+        },
+      },
+    ]
+
+    const values = { mode: 99 }
+
+    const result = formatTable(dataPoints, values)
+
+    expect(result).toContain('99')
+  })
+
+  test('should format unknown data type using default case', () => {
+    const dataPoints: DataPoint[] = [
+      {
+        id: 'custom',
+        type: 'custom-type' as any,
+        access: 'r',
+      },
+    ]
+
+    const values = { custom: 'custom-value' }
+
+    const result = formatTable(dataPoints, values)
+
+    expect(result).toContain('custom-value')
+  })
+
+  test('should stringify Date in stringifyValue', () => {
+    const dataPoints: DataPoint[] = [
+      {
+        id: 'date_field',
+        type: 'string' as any,
+        access: 'r',
+      },
+    ]
+
+    const date = new Date('2025-12-24T12:00:00Z')
+    const values = { date_field: date }
+
+    const result = formatTable(dataPoints, values)
+
+    expect(result).toContain(date.toISOString())
+  })
 })
