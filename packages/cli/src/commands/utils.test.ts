@@ -1,8 +1,9 @@
-import * as readline from 'readline/promises'
-
 import type { DataPoint } from '@ya-modbus/driver-types'
 
 import { confirm, floatsEqual, isReadable, isWritable, parseValue, validateValue } from './utils.js'
+
+// Mock readline/promises for confirm tests
+jest.mock('readline/promises')
 
 describe('Utils', () => {
   describe('isReadable', () => {
@@ -245,20 +246,23 @@ describe('Utils', () => {
   describe('confirm', () => {
     let mockQuestion: jest.Mock
     let mockClose: jest.Mock
+    let mockCreateInterface: jest.Mock
 
     beforeEach(() => {
       mockQuestion = jest.fn()
       mockClose = jest.fn()
-
-      // Mock readline.createInterface
-      jest.spyOn(readline, 'createInterface').mockReturnValue({
+      mockCreateInterface = jest.fn().mockReturnValue({
         question: mockQuestion,
         close: mockClose,
-      } as never)
+      })
+
+      // Mock the module
+      const readlineModule = jest.requireMock('readline/promises')
+      readlineModule.createInterface = mockCreateInterface
     })
 
     afterEach(() => {
-      jest.restoreAllMocks()
+      jest.clearAllMocks()
     })
 
     test('should return true when user enters "y"', async () => {
