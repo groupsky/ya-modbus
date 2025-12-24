@@ -1,5 +1,6 @@
 module.exports = {
   projects: [
+    '<rootDir>/packages/cli',
     '<rootDir>/packages/driver-types',
     '<rootDir>/packages/driver-sdk',
     '<rootDir>/packages/ya-modbus-driver-xymd1',

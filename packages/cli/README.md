@@ -20,15 +20,13 @@ CLI tool for testing and developing Modbus device drivers.
 ### Global Installation (Production)
 
 ```bash
-npm install -g @ya-modbus/cli ya-modbus-driver-xymd1
+npm install -g @ya-modbus/cli
 ```
 
 ### Local Development
 
 ```bash
-cd packages/ya-modbus-driver-xymd1
-npm install
-npm run build
+npm install --save-dev @ya-modbus/cli
 ```
 
 ## Usage
