@@ -6,6 +6,22 @@ import { loadDriver } from '../driver-loader/loader.js'
 import { createTransport, type TransportConfig } from '../transport/factory.js'
 
 /**
+ * Default RTU transport configuration values
+ */
+export const DEFAULT_RTU_CONFIG = {
+  port: '/dev/ttyUSB0',
+  baudRate: 9600 as const,
+  dataBits: 8 as const,
+  parity: 'even' as const,
+  stopBits: 1 as const,
+} as const
+
+/**
+ * Default TCP port for Modbus TCP
+ */
+export const DEFAULT_TCP_PORT = 502
+
+/**
  * Check if a data point is readable
  */
 export function isReadable(dataPoint: DataPoint): boolean {
@@ -19,6 +35,60 @@ export function isReadable(dataPoint: DataPoint): boolean {
 export function isWritable(dataPoint: DataPoint): boolean {
   const access = dataPoint.access ?? 'r'
   return access === 'w' || access === 'rw'
+}
+
+/**
+ * Find a data point by ID
+ *
+ * @param driver - Device driver instance
+ * @param id - Data point ID
+ * @returns Data point definition
+ * @throws Error if data point not found
+ */
+export function findDataPoint(driver: DeviceDriver, id: string): DataPoint {
+  const dataPoint = driver.dataPoints.find((dp) => dp.id === id)
+
+  if (!dataPoint) {
+    throw new Error(`Data point not found: ${id}`)
+  }
+
+  return dataPoint
+}
+
+/**
+ * Find and validate a readable data point
+ *
+ * @param driver - Device driver instance
+ * @param id - Data point ID
+ * @returns Data point definition
+ * @throws Error if data point not found or not readable
+ */
+export function findReadableDataPoint(driver: DeviceDriver, id: string): DataPoint {
+  const dataPoint = findDataPoint(driver, id)
+
+  if (!isReadable(dataPoint)) {
+    throw new Error(`Data point is write-only: ${id}`)
+  }
+
+  return dataPoint
+}
+
+/**
+ * Find and validate a writable data point
+ *
+ * @param driver - Device driver instance
+ * @param id - Data point ID
+ * @returns Data point definition
+ * @throws Error if data point not found or not writable
+ */
+export function findWritableDataPoint(driver: DeviceDriver, id: string): DataPoint {
+  const dataPoint = findDataPoint(driver, id)
+
+  if (!isWritable(dataPoint)) {
+    throw new Error(`Data point is read-only: ${id}`)
+  }
+
+  return dataPoint
 }
 
 /**
@@ -171,17 +241,17 @@ export async function withTransport<T>(
     ? {
         // TCP configuration
         host: options.host,
-        port: typeof options.port === 'number' ? options.port : 502,
+        port: typeof options.port === 'number' ? options.port : DEFAULT_TCP_PORT,
         slaveId: options.slaveId,
         timeout: options.timeout,
       }
     : {
         // RTU configuration
-        port: (options.port as string | undefined) ?? '/dev/ttyUSB0',
-        baudRate: (options.baudRate ?? 9600) as 9600,
-        dataBits: (options.dataBits ?? 8) as 8,
-        parity: (options.parity ?? 'even') as 'even',
-        stopBits: (options.stopBits ?? 1) as 1,
+        port: (options.port as string | undefined) ?? DEFAULT_RTU_CONFIG.port,
+        baudRate: (options.baudRate ?? DEFAULT_RTU_CONFIG.baudRate) as 9600,
+        dataBits: (options.dataBits ?? DEFAULT_RTU_CONFIG.dataBits) as 8,
+        parity: (options.parity ?? DEFAULT_RTU_CONFIG.parity) as 'even',
+        stopBits: (options.stopBits ?? DEFAULT_RTU_CONFIG.stopBits) as 1,
         slaveId: options.slaveId,
         timeout: options.timeout,
       }

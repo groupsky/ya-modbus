@@ -1,6 +1,16 @@
-import type { DataPoint } from '@ya-modbus/driver-types'
+import type { DataPoint, DeviceDriver } from '@ya-modbus/driver-types'
 
-import { confirm, floatsEqual, isReadable, isWritable, parseValue, validateValue } from './utils.js'
+import {
+  confirm,
+  findDataPoint,
+  findReadableDataPoint,
+  findWritableDataPoint,
+  floatsEqual,
+  isReadable,
+  isWritable,
+  parseValue,
+  validateValue,
+} from './utils.js'
 
 // Mock readline/promises for confirm tests
 jest.mock('readline/promises')
@@ -47,6 +57,100 @@ describe('Utils', () => {
     test('should default to not writable when access is undefined', () => {
       const dataPoint: DataPoint = { id: 'test', type: 'integer' }
       expect(isWritable(dataPoint)).toBe(false)
+    })
+  })
+
+  describe('findDataPoint', () => {
+    const mockDriver: DeviceDriver = {
+      dataPoints: [
+        { id: 'temperature', type: 'float', access: 'r' },
+        { id: 'setpoint', type: 'float', access: 'rw' },
+        { id: 'mode', type: 'integer', access: 'w' },
+      ],
+      readDataPoint: jest.fn(),
+      readDataPoints: jest.fn(),
+      writeDataPoint: jest.fn(),
+    }
+
+    test('should find existing data point', () => {
+      const result = findDataPoint(mockDriver, 'temperature')
+      expect(result).toEqual({ id: 'temperature', type: 'float', access: 'r' })
+    })
+
+    test('should throw error when data point not found', () => {
+      expect(() => findDataPoint(mockDriver, 'nonexistent')).toThrow(
+        'Data point not found: nonexistent'
+      )
+    })
+  })
+
+  describe('findReadableDataPoint', () => {
+    const mockDriver: DeviceDriver = {
+      dataPoints: [
+        { id: 'temperature', type: 'float', access: 'r' },
+        { id: 'setpoint', type: 'float', access: 'rw' },
+        { id: 'mode', type: 'integer', access: 'w' },
+      ],
+      readDataPoint: jest.fn(),
+      readDataPoints: jest.fn(),
+      writeDataPoint: jest.fn(),
+    }
+
+    test('should find read-only data point', () => {
+      const result = findReadableDataPoint(mockDriver, 'temperature')
+      expect(result).toEqual({ id: 'temperature', type: 'float', access: 'r' })
+    })
+
+    test('should find read-write data point', () => {
+      const result = findReadableDataPoint(mockDriver, 'setpoint')
+      expect(result).toEqual({ id: 'setpoint', type: 'float', access: 'rw' })
+    })
+
+    test('should throw error for write-only data point', () => {
+      expect(() => findReadableDataPoint(mockDriver, 'mode')).toThrow(
+        'Data point is write-only: mode'
+      )
+    })
+
+    test('should throw error when data point not found', () => {
+      expect(() => findReadableDataPoint(mockDriver, 'nonexistent')).toThrow(
+        'Data point not found: nonexistent'
+      )
+    })
+  })
+
+  describe('findWritableDataPoint', () => {
+    const mockDriver: DeviceDriver = {
+      dataPoints: [
+        { id: 'temperature', type: 'float', access: 'r' },
+        { id: 'setpoint', type: 'float', access: 'rw' },
+        { id: 'mode', type: 'integer', access: 'w' },
+      ],
+      readDataPoint: jest.fn(),
+      readDataPoints: jest.fn(),
+      writeDataPoint: jest.fn(),
+    }
+
+    test('should find write-only data point', () => {
+      const result = findWritableDataPoint(mockDriver, 'mode')
+      expect(result).toEqual({ id: 'mode', type: 'integer', access: 'w' })
+    })
+
+    test('should find read-write data point', () => {
+      const result = findWritableDataPoint(mockDriver, 'setpoint')
+      expect(result).toEqual({ id: 'setpoint', type: 'float', access: 'rw' })
+    })
+
+    test('should throw error for read-only data point', () => {
+      expect(() => findWritableDataPoint(mockDriver, 'temperature')).toThrow(
+        'Data point is read-only: temperature'
+      )
+    })
+
+    test('should throw error when data point not found', () => {
+      expect(() => findWritableDataPoint(mockDriver, 'nonexistent')).toThrow(
+        'Data point not found: nonexistent'
+      )
     })
   })
 

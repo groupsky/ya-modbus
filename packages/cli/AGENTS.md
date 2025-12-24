@@ -142,7 +142,6 @@ See existing commands: `src/commands/read.ts`, `src/commands/write.ts`
 - `chalk` - Terminal colors
 - `cli-table3` - Table formatting
 - `modbus-serial` - Modbus RTU/TCP client
-- `zod` - Runtime validation (future use)
 
 **Development**:
 

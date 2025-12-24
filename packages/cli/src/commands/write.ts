@@ -2,9 +2,9 @@ import chalk from 'chalk'
 
 import {
   confirm,
+  findWritableDataPoint,
   floatsEqual,
   isReadable,
-  isWritable,
   parseValue,
   validateValue,
   withDriver,
@@ -47,17 +47,8 @@ export interface WriteOptions {
 export async function writeCommand(options: WriteOptions): Promise<void> {
   await withTransport(options, async (transport) => {
     await withDriver(transport, options, async (driver) => {
-      // Find data point
-      const dataPoint = driver.dataPoints.find((dp) => dp.id === options.dataPoint)
-
-      if (!dataPoint) {
-        throw new Error(`Data point not found: ${options.dataPoint}`)
-      }
-
-      // Check if writable
-      if (!isWritable(dataPoint)) {
-        throw new Error(`Data point is read-only: ${options.dataPoint}`)
-      }
+      // Find and validate writable data point
+      const dataPoint = findWritableDataPoint(driver, options.dataPoint)
 
       // Parse and validate value
       const parsedValue = parseValue(options.value, dataPoint)

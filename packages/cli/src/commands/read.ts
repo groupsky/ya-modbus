@@ -2,7 +2,7 @@ import { formatJSON } from '../formatters/json.js'
 import { formatPerformance, type PerformanceMetrics } from '../formatters/performance.js'
 import { formatTable } from '../formatters/table.js'
 
-import { isReadable, withDriver, withTransport } from './utils.js'
+import { findReadableDataPoint, isReadable, withDriver, withTransport } from './utils.js'
 
 /**
  * Read command options
@@ -59,15 +59,7 @@ export async function readCommand(options: ReadOptions): Promise<void> {
 
         // Validate data points exist and are readable
         for (const id of dataPointIds) {
-          const dp = driver.dataPoints.find((d) => d.id === id)
-
-          if (!dp) {
-            throw new Error(`Data point not found: ${id}`)
-          }
-
-          if (!isReadable(dp)) {
-            throw new Error(`Data point is write-only: ${id}`)
-          }
+          findReadableDataPoint(driver, id)
         }
 
         // Read data points
