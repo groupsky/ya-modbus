@@ -1,3 +1,5 @@
+import readline from 'readline/promises'
+
 import type { DataPoint, DeviceDriver, Transport } from '@ya-modbus/driver-types'
 
 import { loadDriver } from '../driver-loader/loader.js'
@@ -17,6 +19,113 @@ export function isReadable(dataPoint: DataPoint): boolean {
 export function isWritable(dataPoint: DataPoint): boolean {
   const access = dataPoint.access ?? 'r'
   return access === 'w' || access === 'rw'
+}
+
+/**
+ * Compare two floating point numbers for approximate equality
+ *
+ * Uses relative error to handle both very small and very large values correctly.
+ * Also checks absolute error to handle values near zero.
+ *
+ * @param a - First value
+ * @param b - Second value
+ * @param relativeEpsilon - Relative error tolerance (default: 1e-6, or 0.0001%)
+ * @param absoluteEpsilon - Absolute error tolerance for values near zero (default: 1e-9)
+ * @returns True if values are approximately equal
+ */
+export function floatsEqual(
+  a: number,
+  b: number,
+  relativeEpsilon = 1e-6,
+  absoluteEpsilon = 1e-9
+): boolean {
+  const absoluteError = Math.abs(a - b)
+
+  // Check absolute error first (handles values near zero)
+  if (absoluteError < absoluteEpsilon) {
+    return true
+  }
+
+  // Check relative error (handles large and small values)
+  const largestMagnitude = Math.max(Math.abs(a), Math.abs(b))
+  const relativeError = absoluteError / largestMagnitude
+
+  return relativeError < relativeEpsilon
+}
+
+/**
+ * Parse value string based on data point type
+ */
+export function parseValue(valueStr: string, dataPoint: DataPoint): unknown {
+  switch (dataPoint.type) {
+    case 'float':
+      return parseFloat(valueStr)
+
+    case 'integer':
+      return parseInt(valueStr, 10)
+
+    case 'boolean':
+      return valueStr.toLowerCase() === 'true' || valueStr === '1'
+
+    case 'string':
+      return valueStr
+
+    case 'enum': {
+      // Try to parse as number first, otherwise use string
+      const num = parseInt(valueStr, 10)
+      return isNaN(num) ? valueStr : num
+    }
+
+    default:
+      return valueStr
+  }
+}
+
+/**
+ * Validate value against data point constraints
+ */
+export function validateValue(value: unknown, dataPoint: DataPoint): void {
+  // Check min/max for numeric types
+  if ((dataPoint.type === 'float' || dataPoint.type === 'integer') && typeof value === 'number') {
+    if (dataPoint.min !== undefined && value < dataPoint.min) {
+      throw new Error(
+        `Value ${value} is outside valid range [${dataPoint.min}, ${dataPoint.max ?? '∞'}]`
+      )
+    }
+
+    if (dataPoint.max !== undefined && value > dataPoint.max) {
+      throw new Error(
+        `Value ${value} is outside valid range [${dataPoint.min ?? '-∞'}, ${dataPoint.max}]`
+      )
+    }
+  }
+
+  // Validate enum values
+  if (dataPoint.type === 'enum' && dataPoint.enumValues) {
+    const validKeys = Object.keys(dataPoint.enumValues)
+    const valueStr = String(value)
+
+    if (!validKeys.includes(valueStr)) {
+      throw new Error(`Invalid enum value: ${String(value)}. Valid values: ${validKeys.join(', ')}`)
+    }
+  }
+}
+
+/**
+ * Prompt user for confirmation
+ */
+export async function confirm(message: string): Promise<boolean> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  })
+
+  try {
+    const answer = await rl.question(`${message} (y/N): `)
+    return answer.toLowerCase() === 'y'
+  } finally {
+    rl.close()
+  }
 }
 
 /**

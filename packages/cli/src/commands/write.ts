@@ -1,9 +1,15 @@
-import readline from 'readline/promises'
-
-import type { DataPoint } from '@ya-modbus/driver-types'
 import chalk from 'chalk'
 
-import { isWritable, withDriver, withTransport } from './utils.js'
+import {
+  confirm,
+  floatsEqual,
+  isReadable,
+  isWritable,
+  parseValue,
+  validateValue,
+  withDriver,
+  withTransport,
+} from './utils.js'
 
 /**
  * Write command options
@@ -34,113 +40,6 @@ export interface WriteOptions {
 }
 
 /**
- * Compare two floating point numbers for approximate equality
- *
- * Uses relative error to handle both very small and very large values correctly.
- * Also checks absolute error to handle values near zero.
- *
- * @param a - First value
- * @param b - Second value
- * @param relativeEpsilon - Relative error tolerance (default: 1e-6, or 0.0001%)
- * @param absoluteEpsilon - Absolute error tolerance for values near zero (default: 1e-9)
- * @returns True if values are approximately equal
- */
-function floatsEqual(
-  a: number,
-  b: number,
-  relativeEpsilon = 1e-6,
-  absoluteEpsilon = 1e-9
-): boolean {
-  const absoluteError = Math.abs(a - b)
-
-  // Check absolute error first (handles values near zero)
-  if (absoluteError < absoluteEpsilon) {
-    return true
-  }
-
-  // Check relative error (handles large and small values)
-  const largestMagnitude = Math.max(Math.abs(a), Math.abs(b))
-  const relativeError = absoluteError / largestMagnitude
-
-  return relativeError < relativeEpsilon
-}
-
-/**
- * Parse value string based on data point type
- */
-function parseValue(valueStr: string, dataPoint: DataPoint): unknown {
-  switch (dataPoint.type) {
-    case 'float':
-      return parseFloat(valueStr)
-
-    case 'integer':
-      return parseInt(valueStr, 10)
-
-    case 'boolean':
-      return valueStr.toLowerCase() === 'true' || valueStr === '1'
-
-    case 'string':
-      return valueStr
-
-    case 'enum': {
-      // Try to parse as number first, otherwise use string
-      const num = parseInt(valueStr, 10)
-      return isNaN(num) ? valueStr : num
-    }
-
-    default:
-      return valueStr
-  }
-}
-
-/**
- * Validate value against data point constraints
- */
-function validateValue(value: unknown, dataPoint: DataPoint): void {
-  // Check min/max for numeric types
-  if ((dataPoint.type === 'float' || dataPoint.type === 'integer') && typeof value === 'number') {
-    if (dataPoint.min !== undefined && value < dataPoint.min) {
-      throw new Error(
-        `Value ${value} is outside valid range [${dataPoint.min}, ${dataPoint.max ?? '∞'}]`
-      )
-    }
-
-    if (dataPoint.max !== undefined && value > dataPoint.max) {
-      throw new Error(
-        `Value ${value} is outside valid range [${dataPoint.min ?? '-∞'}, ${dataPoint.max}]`
-      )
-    }
-  }
-
-  // Validate enum values
-  if (dataPoint.type === 'enum' && dataPoint.enumValues) {
-    const validKeys = Object.keys(dataPoint.enumValues)
-    const valueStr = String(value)
-
-    if (!validKeys.includes(valueStr)) {
-      throw new Error(`Invalid enum value: ${String(value)}. Valid values: ${validKeys.join(', ')}`)
-    }
-  }
-}
-
-/**
- * Prompt user for confirmation
- */
-async function confirm(message: string): Promise<boolean> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  })
-
-  try {
-    const answer = await rl.question(`${message} (y/N): `)
-    return answer.toLowerCase() === 'y'
-  } finally {
-    rl.close()
-  }
-}
-
-/**
  * Write command implementation
  *
  * @param options - Command options
@@ -166,10 +65,7 @@ export async function writeCommand(options: WriteOptions): Promise<void> {
 
       // Show current value if readable and request confirmation
       if (!options.yes) {
-        const access = dataPoint.access ?? 'r'
-        const isReadable = access === 'r' || access === 'rw'
-
-        if (isReadable) {
+        if (isReadable(dataPoint)) {
           try {
             const currentValue = await driver.readDataPoint(options.dataPoint)
             console.log(chalk.cyan(`Current value: ${String(currentValue)}`))
@@ -197,10 +93,7 @@ export async function writeCommand(options: WriteOptions): Promise<void> {
 
       // Verify if requested
       if (options.verify) {
-        const access = dataPoint.access ?? 'r'
-        const isReadable = access === 'r' || access === 'rw'
-
-        if (!isReadable) {
+        if (!isReadable(dataPoint)) {
           console.log(chalk.yellow('Cannot verify write-only data point'))
           return
         }

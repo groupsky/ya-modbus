@@ -63,4 +63,40 @@ describe('Performance Formatter', () => {
 
     expect(result).toContain('Operations: 15')
   })
+
+  test('should format performance output correctly (snapshot)', () => {
+    const metrics = {
+      responseTimeMs: 45.5,
+      operations: 3,
+      errors: 0,
+    }
+
+    const result = formatPerformance(metrics)
+
+    expect(result).toMatchInlineSnapshot(`
+"
+Performance:
+  Response time: 45.5ms
+  Operations: 3
+  Errors: 0"
+`)
+  })
+
+  test('should format performance with errors (snapshot)', () => {
+    const metrics = {
+      responseTimeMs: 120,
+      operations: 5,
+      errors: 2,
+    }
+
+    const result = formatPerformance(metrics)
+
+    expect(result).toMatchInlineSnapshot(`
+"
+Performance:
+  Response time: 120ms
+  Operations: 5
+  Errors: 2"
+`)
+  })
 })

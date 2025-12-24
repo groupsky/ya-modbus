@@ -116,4 +116,79 @@ describe('JSON Formatter', () => {
     // Nested objects will have 4 spaces (2 per level)
     expect(result).toContain('\n    ')
   })
+
+  test('should format JSON output correctly (snapshot)', () => {
+    const dataPoints: DataPoint[] = [
+      {
+        id: 'temperature',
+        name: 'Temperature',
+        type: 'float',
+        unit: '°C',
+        decimals: 1,
+        access: 'r',
+      },
+      {
+        id: 'humidity',
+        name: 'Humidity',
+        type: 'float',
+        unit: '%',
+        decimals: 1,
+        access: 'r',
+      },
+    ]
+
+    const values = {
+      temperature: 24.5,
+      humidity: 65.2,
+    }
+
+    const metadata = {
+      driver: 'ya-modbus-driver-xymd1',
+      connection: { port: '/dev/ttyUSB0', slaveId: 1 },
+      performance: {
+        responseTimeMs: 45,
+        operations: 2,
+        errors: 0,
+      },
+    }
+
+    const result = formatJSON(dataPoints, values, metadata)
+    const parsed = JSON.parse(result)
+
+    // Remove timestamp for stable snapshot
+    delete parsed.timestamp
+
+    expect(parsed).toMatchInlineSnapshot(`
+      {
+        "connection": {
+          "port": "/dev/ttyUSB0",
+          "slaveId": 1,
+        },
+        "dataPoints": [
+          {
+            "access": "r",
+            "id": "temperature",
+            "name": "Temperature",
+            "type": "float",
+            "unit": "°C",
+            "value": 24.5,
+          },
+          {
+            "access": "r",
+            "id": "humidity",
+            "name": "Humidity",
+            "type": "float",
+            "unit": "%",
+            "value": 65.2,
+          },
+        ],
+        "driver": "ya-modbus-driver-xymd1",
+        "performance": {
+          "errors": 0,
+          "operations": 2,
+          "responseTimeMs": 45,
+        },
+      }
+    `)
+  })
 })

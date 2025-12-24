@@ -384,4 +384,46 @@ describe('Table Formatter', () => {
 
     expect(result).toContain(date.toISOString())
   })
+
+  test('should format table output correctly (snapshot)', () => {
+    const dataPoints: DataPoint[] = [
+      {
+        id: 'temperature',
+        name: 'Temperature',
+        type: 'float',
+        unit: '°C',
+        decimals: 1,
+        access: 'r',
+      },
+      {
+        id: 'humidity',
+        name: 'Humidity',
+        type: 'float',
+        unit: '%',
+        decimals: 1,
+        access: 'r',
+      },
+      {
+        id: 'enabled',
+        name: 'Enabled',
+        type: 'boolean',
+        access: 'r',
+      },
+    ]
+
+    const values = {
+      temperature: 24.5,
+      humidity: 65.2,
+      enabled: true,
+    }
+
+    const result = formatTable(dataPoints, values)
+
+    expect(result).toMatchInlineSnapshot(`
+      "Data Point | Value | Unit
+      Temperature | 24.5 | °C
+      Humidity | 65.2 | %
+      Enabled | true | "
+    `)
+  })
 })
