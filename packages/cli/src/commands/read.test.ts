@@ -1,18 +1,12 @@
 import type { DeviceDriver, Transport } from '@ya-modbus/driver-types'
 
 import * as driverLoader from '../driver-loader/loader.js'
-import * as jsonFormatter from '../formatters/json.js'
-import * as perfFormatter from '../formatters/performance.js'
-import * as tableFormatter from '../formatters/table.js'
 import * as transportFactory from '../transport/factory.js'
 
 import { readCommand } from './read.js'
 
 jest.mock('../transport/factory.js')
 jest.mock('../driver-loader/loader.js')
-jest.mock('../formatters/table.js')
-jest.mock('../formatters/json.js')
-jest.mock('../formatters/performance.js')
 
 describe('Read Command', () => {
   let mockTransport: jest.Mocked<Transport>
@@ -72,11 +66,6 @@ describe('Read Command', () => {
     // Mock factory functions
     jest.spyOn(transportFactory, 'createTransport').mockResolvedValue(mockTransport)
     jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue(mockCreateDriver)
-
-    // Mock formatters
-    jest.spyOn(tableFormatter, 'formatTable').mockReturnValue('TABLE OUTPUT')
-    jest.spyOn(jsonFormatter, 'formatJSON').mockReturnValue('{"json": "output"}')
-    jest.spyOn(perfFormatter, 'formatPerformance').mockReturnValue('PERF OUTPUT')
   })
 
   afterEach(() => {
@@ -121,12 +110,12 @@ describe('Read Command', () => {
     // Verify data point was read
     expect(mockDriver.readDataPoint).toHaveBeenCalledWith('temperature')
 
-    // Verify table formatter was called
-    expect(tableFormatter.formatTable).toHaveBeenCalled()
-
-    // Verify output was printed
-    expect(consoleLogSpy).toHaveBeenCalledWith('TABLE OUTPUT')
-    expect(consoleLogSpy).toHaveBeenCalledWith('PERF OUTPUT')
+    // Verify output contains the data (real formatters used)
+    expect(consoleLogSpy).toHaveBeenCalled()
+    const output = consoleLogSpy.mock.calls.map((call) => call[0]).join('\n')
+    expect(output).toContain('Temperature')
+    expect(output).toContain('24.5')
+    expect(output).toContain('Performance')
   })
 
   test('should read multiple data points', async () => {
@@ -221,12 +210,16 @@ describe('Read Command', () => {
 
     await readCommand(options)
 
-    // Verify JSON formatter was called
-    expect(jsonFormatter.formatJSON).toHaveBeenCalled()
-    expect(tableFormatter.formatTable).not.toHaveBeenCalled()
-
-    // Verify JSON output was printed
-    expect(consoleLogSpy).toHaveBeenCalledWith('{"json": "output"}')
+    // Verify JSON output was printed (real formatter used)
+    expect(consoleLogSpy).toHaveBeenCalled()
+    const output = consoleLogSpy.mock.calls[0]?.[0]
+    expect(output).toBeDefined()
+    // Should be valid JSON
+    const parsed = JSON.parse(output as string)
+    expect(parsed.dataPoints).toBeDefined()
+    expect(parsed.dataPoints).toHaveLength(1)
+    expect(parsed.dataPoints[0].id).toBe('temperature')
+    expect(parsed.dataPoints[0].value).toBe(24.5)
   })
 
   test('should use TCP connection when host is provided', async () => {
@@ -311,14 +304,12 @@ describe('Read Command', () => {
 
     await readCommand(options)
 
-    // Verify performance formatter was called with metrics
-    expect(perfFormatter.formatPerformance).toHaveBeenCalledWith(
-      expect.objectContaining({
-        responseTimeMs: expect.any(Number),
-        operations: 1,
-        errors: 0,
-      })
-    )
+    // Verify performance metrics are in output (real formatter used)
+    const output = consoleLogSpy.mock.calls.map((call) => call[0]).join('\n')
+    expect(output).toContain('Performance')
+    expect(output).toContain('Response time')
+    expect(output).toContain('Operations: 1')
+    expect(output).toContain('Errors: 0')
   })
 
   test('should handle errors gracefully', async () => {
