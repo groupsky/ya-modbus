@@ -1,6 +1,6 @@
-import { loadDriver } from './loader.js'
 import { readFile } from 'fs/promises'
-import { join } from 'path'
+
+import { loadDriver } from './loader.js'
 
 jest.mock('fs/promises')
 

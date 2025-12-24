@@ -1,4 +1,5 @@
 import type { Transport } from '@ya-modbus/driver-types'
+
 import { createRTUTransport, type RTUConfig } from './rtu-transport.js'
 import { createTCPTransport, type TCPConfig } from './tcp-transport.js'
 

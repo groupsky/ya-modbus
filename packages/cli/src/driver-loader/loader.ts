@@ -1,6 +1,7 @@
-import type { CreateDriverFunction } from '@ya-modbus/driver-types'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
+
+import type { CreateDriverFunction } from '@ya-modbus/driver-types'
 
 /**
  * Driver loading options
@@ -29,10 +30,13 @@ async function detectLocalPackage(): Promise<string> {
   try {
     const packageJsonPath = join(process.cwd(), 'package.json')
     const packageJsonContent = await readFile(packageJsonPath, 'utf-8')
-    const packageJson = JSON.parse(packageJsonContent)
+    const packageJson = JSON.parse(packageJsonContent) as {
+      name?: string
+      keywords?: string[]
+    }
 
     // Check if package has ya-modbus-driver keyword
-    const keywords = packageJson.keywords || []
+    const keywords = packageJson.keywords ?? []
     if (!keywords.includes('ya-modbus-driver')) {
       throw new Error(
         'Current package is not a ya-modbus driver. ' +
@@ -40,7 +44,12 @@ async function detectLocalPackage(): Promise<string> {
       )
     }
 
-    return packageJson.name
+    const name = packageJson.name
+    if (!name) {
+      throw new Error('package.json must have a "name" field')
+    }
+
+    return name
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       throw new Error(
@@ -70,7 +79,7 @@ async function tryImport(paths: string[]): Promise<unknown> {
     }
   }
 
-  throw lastError
+  throw lastError ?? new Error('Failed to import module from any path')
 }
 
 /**
@@ -116,7 +125,7 @@ export async function loadDriver(options: LoadDriverOptions): Promise<CreateDriv
       // Load explicit package
       try {
         driverModule = await import(driverPackage)
-      } catch (error) {
+      } catch {
         throw new Error(
           `Driver package not found: ${driverPackage}\n` +
             `Install it with: npm install ${driverPackage}`

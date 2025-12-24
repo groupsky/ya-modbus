@@ -1,5 +1,6 @@
-import { formatTable } from './table.js'
 import type { DataPoint } from '@ya-modbus/driver-types'
+
+import { formatTable } from './table.js'
 
 describe('Table Formatter', () => {
   test('should format single data point as table', () => {

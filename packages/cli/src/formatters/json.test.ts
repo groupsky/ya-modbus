@@ -1,5 +1,6 @@
-import { formatJSON } from './json.js'
 import type { DataPoint } from '@ya-modbus/driver-types'
+
+import { formatJSON } from './json.js'
 
 describe('JSON Formatter', () => {
   test('should format single data point result', () => {
@@ -63,9 +64,7 @@ describe('JSON Formatter', () => {
   })
 
   test('should include timestamp', () => {
-    const dataPoints: DataPoint[] = [
-      { id: 'test', type: 'integer', access: 'r' },
-    ]
+    const dataPoints: DataPoint[] = [{ id: 'test', type: 'integer', access: 'r' }]
 
     const values = { test: 100 }
     const result = formatJSON(dataPoints, values, {})
@@ -76,9 +75,7 @@ describe('JSON Formatter', () => {
   })
 
   test('should include performance metrics if provided', () => {
-    const dataPoints: DataPoint[] = [
-      { id: 'test', type: 'integer', access: 'r' },
-    ]
+    const dataPoints: DataPoint[] = [{ id: 'test', type: 'integer', access: 'r' }]
 
     const values = { test: 100 }
     const performance = {
@@ -109,9 +106,7 @@ describe('JSON Formatter', () => {
   })
 
   test('should use pretty printing with 2-space indentation', () => {
-    const dataPoints: DataPoint[] = [
-      { id: 'test', type: 'integer', access: 'r' },
-    ]
+    const dataPoints: DataPoint[] = [{ id: 'test', type: 'integer', access: 'r' }]
 
     const values = { test: 100 }
     const result = formatJSON(dataPoints, values, {})

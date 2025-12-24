@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander'
-import { readCommand } from './commands/read.js'
-import { writeCommand } from './commands/write.js'
+
+import { readCommand, type ReadOptions } from './commands/read.js'
+import { writeCommand, type WriteOptions } from './commands/write.js'
 
 const program = new Command()
 
@@ -28,12 +29,11 @@ program
   .option('--data-point <id...>', 'Data point ID(s) to read')
   .option('--all', 'Read all readable data points')
   .option('-f, --format <type>', 'Output format: table or json (default: table)', 'table')
-  .action(async (options) => {
+  .action(async (options: ReadOptions & { tcpPort?: number }) => {
     try {
-      await readCommand({
-        ...options,
-        port: options.tcpPort ? undefined : options.port,
-      })
+      // Conditionally include port (don't set to undefined due to exactOptionalPropertyTypes)
+      const { tcpPort: _tcpPort, ...commandOptions } = options
+      await readCommand(commandOptions)
     } catch (error) {
       console.error(`Error: ${(error as Error).message}`)
       process.exit(1)
@@ -58,12 +58,11 @@ program
   .requiredOption('--value <value>', 'Value to write')
   .option('-y, --yes', 'Skip confirmation prompt')
   .option('--verify', 'Read back and verify written value')
-  .action(async (options) => {
+  .action(async (options: WriteOptions & { tcpPort?: number }) => {
     try {
-      await writeCommand({
-        ...options,
-        port: options.tcpPort ? undefined : options.port,
-      })
+      // Conditionally include port (don't set to undefined due to exactOptionalPropertyTypes)
+      const { tcpPort: _tcpPort, ...commandOptions } = options
+      await writeCommand(commandOptions)
     } catch (error) {
       console.error(`Error: ${(error as Error).message}`)
       process.exit(1)

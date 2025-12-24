@@ -14,6 +14,9 @@ module.exports = {
   },
   moduleNameMapper: {
     '^@ya-modbus/(.*)$': '<rootDir>/../$1/src',
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^chalk$': '<rootDir>/src/__mocks__/chalk.ts',
+    '^cli-table3$': '<rootDir>/src/__mocks__/cli-table3.ts',
   },
   collectCoverageFrom: [
     '<rootDir>/src/**/*.ts',

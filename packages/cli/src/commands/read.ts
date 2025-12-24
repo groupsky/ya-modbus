@@ -1,9 +1,10 @@
 import type { DataPoint } from '@ya-modbus/driver-types'
-import { createTransport, type TransportConfig } from '../transport/factory.js'
+
 import { loadDriver } from '../driver-loader/loader.js'
-import { formatTable } from '../formatters/table.js'
 import { formatJSON } from '../formatters/json.js'
 import { formatPerformance, type PerformanceMetrics } from '../formatters/performance.js'
+import { formatTable } from '../formatters/table.js'
+import { createTransport, type TransportConfig } from '../transport/factory.js'
 
 /**
  * Read command options
@@ -38,7 +39,7 @@ export interface ReadOptions {
  * Check if a data point is readable
  */
 function isReadable(dataPoint: DataPoint): boolean {
-  const access = dataPoint.access || 'r'
+  const access = dataPoint.access ?? 'r'
   return access === 'r' || access === 'rw'
 }
 
@@ -57,13 +58,13 @@ export async function readCommand(options: ReadOptions): Promise<void> {
       ? {
           // TCP configuration
           host: options.host,
-          port: (typeof options.port === 'number' ? options.port : 502),
+          port: typeof options.port === 'number' ? options.port : 502,
           slaveId: options.slaveId,
           timeout: options.timeout,
         }
       : {
           // RTU configuration
-          port: options.port!,
+          port: options.port ?? '/dev/ttyUSB0',
           baudRate: (options.baudRate ?? 9600) as 9600,
           dataBits: (options.dataBits ?? 8) as 8,
           parity: (options.parity ?? 'even') as 'even',
@@ -77,9 +78,7 @@ export async function readCommand(options: ReadOptions): Promise<void> {
 
     // Load driver
     const createDriver = await loadDriver(
-      options.driver
-        ? { driverPackage: options.driver }
-        : { localPackage: true }
+      options.driver ? { driverPackage: options.driver } : { localPackage: true }
     )
 
     // Create driver instance
@@ -93,9 +92,7 @@ export async function readCommand(options: ReadOptions): Promise<void> {
 
     if (options.all) {
       // Read all readable data points
-      dataPointIds = driver.dataPoints
-        .filter(isReadable)
-        .map((dp) => dp.id)
+      dataPointIds = driver.dataPoints.filter(isReadable).map((dp) => dp.id)
     } else if (options.dataPoint && options.dataPoint.length > 0) {
       dataPointIds = options.dataPoint
     } else {
@@ -120,7 +117,10 @@ export async function readCommand(options: ReadOptions): Promise<void> {
 
     if (dataPointIds.length === 1) {
       // Single data point - use readDataPoint
-      const dataPointId = dataPointIds[0]!
+      const dataPointId = dataPointIds[0] ?? ''
+      if (!dataPointId) {
+        throw new Error('No data point ID found')
+      }
       const value = await driver.readDataPoint(dataPointId)
       values = { [dataPointId]: value }
     } else {

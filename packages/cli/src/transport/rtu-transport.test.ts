@@ -1,6 +1,6 @@
-import type { Transport } from '@ya-modbus/driver-types'
-import { createRTUTransport } from './rtu-transport.js'
 import type ModbusRTU from 'modbus-serial'
+
+import { createRTUTransport } from './rtu-transport.js'
 
 // Mock modbus-serial
 jest.mock('modbus-serial')
@@ -8,7 +8,7 @@ jest.mock('modbus-serial')
 describe('RTU Transport', () => {
   let mockModbus: jest.Mocked<ModbusRTU>
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset mocks
     jest.clearAllMocks()
 
@@ -30,8 +30,8 @@ describe('RTU Transport', () => {
     } as unknown as jest.Mocked<ModbusRTU>
 
     // Mock the ModbusRTU constructor
-    const ModbusRTUConstructor = require('modbus-serial')
-    ModbusRTUConstructor.mockImplementation(() => mockModbus)
+    const ModbusRTUConstructor = await import('modbus-serial')
+    ;(ModbusRTUConstructor as any).default.mockImplementation(() => mockModbus)
   })
 
   test('should create RTU transport with correct configuration', async () => {
@@ -49,10 +49,12 @@ describe('RTU Transport', () => {
 
     const transport = await createRTUTransport(config)
 
-    expect(mockModbus.connectRTUBuffered).toHaveBeenCalledWith(
-      '/dev/ttyUSB0',
-      { baudRate: 9600, dataBits: 8, parity: 'even', stopBits: 1 }
-    )
+    expect(mockModbus.connectRTUBuffered).toHaveBeenCalledWith('/dev/ttyUSB0', {
+      baudRate: 9600,
+      dataBits: 8,
+      parity: 'even',
+      stopBits: 1,
+    })
     expect(mockModbus.setID).toHaveBeenCalledWith(1)
     expect(mockModbus.setTimeout).toHaveBeenCalledWith(1000)
     expect(transport).toBeDefined()

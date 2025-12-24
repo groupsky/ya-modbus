@@ -50,7 +50,7 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries: number = MAX_RETRI
     }
   }
 
-  throw lastError
+  throw lastError ?? new Error('Unknown error during retry')
 }
 
 /**
@@ -125,7 +125,8 @@ export async function createTCPTransport(config: TCPConfig): Promise<Transport> 
         for (let i = 0; i < values.length * 8; i++) {
           const byteIndex = Math.floor(i / 8)
           const bitIndex = i % 8
-          bools.push((values[byteIndex]! & (1 << bitIndex)) !== 0)
+          const byte = values[byteIndex] ?? 0
+          bools.push((byte & (1 << bitIndex)) !== 0)
         }
         await client.writeCoils(address, bools)
       })

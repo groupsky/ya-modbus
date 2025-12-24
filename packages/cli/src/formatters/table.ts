@@ -1,6 +1,26 @@
-import Table from 'cli-table3'
-import chalk from 'chalk'
 import type { DataPoint } from '@ya-modbus/driver-types'
+import chalk from 'chalk'
+import Table from 'cli-table3'
+
+/**
+ * Convert unknown value to string representation
+ *
+ * @param value - Value to stringify
+ * @returns String representation
+ */
+function stringifyValue(value: unknown): string {
+  if (typeof value === 'string') {
+    return value
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+  if (value instanceof Date) {
+    return value.toISOString()
+  }
+  // For objects/arrays, use JSON to avoid '[object Object]'
+  return JSON.stringify(value)
+}
 
 /**
  * Format a value based on data point metadata
@@ -24,31 +44,31 @@ function formatValue(value: unknown, dataPoint: DataPoint): string {
     }
 
     case 'integer':
-      return String(value)
+      return stringifyValue(value)
 
     case 'boolean':
       return value ? chalk.green('true') : chalk.red('false')
 
     case 'enum': {
       if (dataPoint.enumValues) {
-        const enumKey = String(value)
-        return dataPoint.enumValues[enumKey] || String(value)
+        const enumKey = stringifyValue(value)
+        return dataPoint.enumValues[enumKey] ?? stringifyValue(value)
       }
-      return String(value)
+      return stringifyValue(value)
     }
 
     case 'timestamp': {
       if (value instanceof Date) {
         return value.toISOString()
       }
-      return String(value)
+      return stringifyValue(value)
     }
 
     case 'string':
-      return String(value)
+      return stringifyValue(value)
 
     default:
-      return String(value)
+      return stringifyValue(value)
   }
 }
 
@@ -65,11 +85,7 @@ export function formatTable(
 ): string {
   // Create table with headers
   const table = new Table({
-    head: [
-      chalk.bold('Data Point'),
-      chalk.bold('Value'),
-      chalk.bold('Unit'),
-    ],
+    head: [chalk.bold('Data Point'), chalk.bold('Value'), chalk.bold('Unit')],
     style: {
       head: ['cyan'],
     },
@@ -81,9 +97,9 @@ export function formatTable(
       continue
     }
 
-    const displayName = dp.name || dp.id
+    const displayName = dp.name ?? dp.id
     const formattedValue = formatValue(values[dp.id], dp)
-    const unit = dp.unit || ''
+    const unit = dp.unit ?? ''
 
     table.push([displayName, formattedValue, unit])
   }

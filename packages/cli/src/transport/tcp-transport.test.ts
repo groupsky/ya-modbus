@@ -1,6 +1,6 @@
-import type { Transport } from '@ya-modbus/driver-types'
-import { createTCPTransport } from './tcp-transport.js'
 import type ModbusRTU from 'modbus-serial'
+
+import { createTCPTransport } from './tcp-transport.js'
 
 // Mock modbus-serial
 jest.mock('modbus-serial')
@@ -8,7 +8,7 @@ jest.mock('modbus-serial')
 describe('TCP Transport', () => {
   let mockModbus: jest.Mocked<ModbusRTU>
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks()
 
     mockModbus = {
@@ -27,8 +27,8 @@ describe('TCP Transport', () => {
       isOpen: false,
     } as unknown as jest.Mocked<ModbusRTU>
 
-    const ModbusRTUConstructor = require('modbus-serial')
-    ModbusRTUConstructor.mockImplementation(() => mockModbus)
+    const ModbusRTUConstructor = await import('modbus-serial')
+    ;(ModbusRTUConstructor as any).default.mockImplementation(() => mockModbus)
   })
 
   test('should create TCP transport with correct configuration', async () => {

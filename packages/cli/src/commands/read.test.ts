@@ -1,10 +1,12 @@
-import { readCommand } from './read.js'
 import type { DeviceDriver, Transport } from '@ya-modbus/driver-types'
-import * as transportFactory from '../transport/factory.js'
+
 import * as driverLoader from '../driver-loader/loader.js'
-import * as tableFormatter from '../formatters/table.js'
 import * as jsonFormatter from '../formatters/json.js'
 import * as perfFormatter from '../formatters/performance.js'
+import * as tableFormatter from '../formatters/table.js'
+import * as transportFactory from '../transport/factory.js'
+
+import { readCommand } from './read.js'
 
 jest.mock('../transport/factory.js')
 jest.mock('../driver-loader/loader.js')
@@ -351,9 +353,7 @@ describe('Read Command', () => {
   })
 
   test('should throw error if data point is write-only', async () => {
-    mockDriver.dataPoints = [
-      { id: 'setpoint', type: 'float', access: 'w' },
-    ]
+    mockDriver.dataPoints = [{ id: 'setpoint', type: 'float', access: 'w' }]
 
     const options = {
       port: '/dev/ttyUSB0',

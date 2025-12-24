@@ -1,8 +1,10 @@
-import type { DataPoint } from '@ya-modbus/driver-types'
-import { createTransport, type TransportConfig } from '../transport/factory.js'
-import { loadDriver } from '../driver-loader/loader.js'
-import chalk from 'chalk'
 import readline from 'readline/promises'
+
+import type { DataPoint } from '@ya-modbus/driver-types'
+import chalk from 'chalk'
+
+import { loadDriver } from '../driver-loader/loader.js'
+import { createTransport, type TransportConfig } from '../transport/factory.js'
 
 /**
  * Write command options
@@ -36,7 +38,7 @@ export interface WriteOptions {
  * Check if a data point is writable
  */
 function isWritable(dataPoint: DataPoint): boolean {
-  const access = dataPoint.access || 'r'
+  const access = dataPoint.access ?? 'r'
   return access === 'w' || access === 'rw'
 }
 
@@ -57,10 +59,11 @@ function parseValue(valueStr: string, dataPoint: DataPoint): unknown {
     case 'string':
       return valueStr
 
-    case 'enum':
+    case 'enum': {
       // Try to parse as number first, otherwise use string
       const num = parseInt(valueStr, 10)
       return isNaN(num) ? valueStr : num
+    }
 
     default:
       return valueStr
@@ -72,10 +75,7 @@ function parseValue(valueStr: string, dataPoint: DataPoint): unknown {
  */
 function validateValue(value: unknown, dataPoint: DataPoint): void {
   // Check min/max for numeric types
-  if (
-    (dataPoint.type === 'float' || dataPoint.type === 'integer') &&
-    typeof value === 'number'
-  ) {
+  if ((dataPoint.type === 'float' || dataPoint.type === 'integer') && typeof value === 'number') {
     if (dataPoint.min !== undefined && value < dataPoint.min) {
       throw new Error(
         `Value ${value} is outside valid range [${dataPoint.min}, ${dataPoint.max ?? '∞'}]`
@@ -95,9 +95,7 @@ function validateValue(value: unknown, dataPoint: DataPoint): void {
     const valueStr = String(value)
 
     if (!validKeys.includes(valueStr)) {
-      throw new Error(
-        `Invalid enum value: ${value}. Valid values: ${validKeys.join(', ')}`
-      )
+      throw new Error(`Invalid enum value: ${String(value)}. Valid values: ${validKeys.join(', ')}`)
     }
   }
 }
@@ -129,12 +127,12 @@ export async function writeCommand(options: WriteOptions): Promise<void> {
   const transportConfig: TransportConfig = options.host
     ? {
         host: options.host,
-        port: (typeof options.port === 'number' ? options.port : 502),
+        port: typeof options.port === 'number' ? options.port : 502,
         slaveId: options.slaveId,
         timeout: options.timeout,
       }
     : {
-        port: options.port!,
+        port: options.port ?? '/dev/ttyUSB0',
         baudRate: (options.baudRate ?? 9600) as 9600,
         dataBits: (options.dataBits ?? 8) as 8,
         parity: (options.parity ?? 'even') as 'even',
@@ -175,22 +173,22 @@ export async function writeCommand(options: WriteOptions): Promise<void> {
 
   // Show current value if readable and request confirmation
   if (!options.yes) {
-    const access = dataPoint.access || 'r'
+    const access = dataPoint.access ?? 'r'
     const isReadable = access === 'r' || access === 'rw'
 
     if (isReadable) {
       try {
         const currentValue = await driver.readDataPoint(options.dataPoint)
-        console.log(chalk.cyan(`Current value: ${currentValue}`))
-      } catch (error) {
+        console.log(chalk.cyan(`Current value: ${String(currentValue)}`))
+      } catch {
         console.log(chalk.yellow('Could not read current value'))
       }
     }
 
-    console.log(chalk.cyan(`New value: ${parsedValue}`))
+    console.log(chalk.cyan(`New value: ${String(parsedValue)}`))
 
     const confirmed = await confirm(
-      chalk.bold(`Write ${parsedValue} to ${options.dataPoint}?`)
+      chalk.bold(`Write ${String(parsedValue)} to ${options.dataPoint}?`)
     )
 
     if (!confirmed) {
@@ -202,11 +200,11 @@ export async function writeCommand(options: WriteOptions): Promise<void> {
   // Write value
   await driver.writeDataPoint(options.dataPoint, parsedValue)
 
-  console.log(chalk.green(`Successfully wrote ${parsedValue} to ${options.dataPoint}`))
+  console.log(chalk.green(`Successfully wrote ${String(parsedValue)} to ${options.dataPoint}`))
 
   // Verify if requested
   if (options.verify) {
-    const access = dataPoint.access || 'r'
+    const access = dataPoint.access ?? 'r'
     const isReadable = access === 'r' || access === 'rw'
 
     if (!isReadable) {
@@ -224,11 +222,11 @@ export async function writeCommand(options: WriteOptions): Promise<void> {
           : readValue === parsedValue
 
       if (match) {
-        console.log(chalk.green(`Verification: OK (read back ${readValue})`))
+        console.log(chalk.green(`Verification: OK (read back ${String(readValue)})`))
       } else {
         console.log(
           chalk.red(
-            `Verification: MISMATCH (expected ${parsedValue}, got ${readValue})`
+            `Verification: MISMATCH (expected ${String(parsedValue)}, got ${String(readValue)})`
           )
         )
       }
