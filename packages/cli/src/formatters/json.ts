@@ -7,17 +7,21 @@ export interface JSONMetadata {
   /** Driver package name */
   driver?: string | undefined
   /** Connection details */
-  connection?: {
-    port?: string | undefined
-    host?: string | undefined
-    slaveId?: number | undefined
-  } | undefined
+  connection?:
+    | {
+        port?: string | undefined
+        host?: string | undefined
+        slaveId?: number | undefined
+      }
+    | undefined
   /** Performance metrics */
-  performance?: {
-    responseTimeMs: number
-    operations: number
-    errors: number
-  } | undefined
+  performance?:
+    | {
+        responseTimeMs: number
+        operations: number
+        errors: number
+      }
+    | undefined
 }
 
 /**

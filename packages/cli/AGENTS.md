@@ -31,6 +31,7 @@ src/
 **Pattern**: Wrap `modbus-serial` library to implement Transport interface
 
 RTU and TCP transports share identical structure:
+
 - Implement all 8 Transport methods (readHoldingRegisters, etc.)
 - Automatic retry on transient failures (3 attempts, 100ms backoff)
 - Return Buffers (not arrays) for consistency with driver interface
@@ -42,10 +43,12 @@ RTU and TCP transports share identical structure:
 **Pattern**: Convention over configuration + dynamic imports
 
 Two loading modes:
+
 1. **Auto-detect** (`localPackage: true`): Read cwd package.json, check for `keywords: ["ya-modbus-driver"]`, try import paths (src → dist → package name)
 2. **Explicit** (`driverPackage: 'pkg-name'`): Direct dynamic import
 
 **Import path fallback order**:
+
 ```
 1. ./src/index.ts (development, TypeScript source)
 2. ./dist/index.js (development, compiled)
@@ -59,6 +62,7 @@ Two loading modes:
 **Pattern**: Commander.js subcommands with shared option sets
 
 Common option groups:
+
 - RTU connection: port, baud-rate, parity, data-bits, stop-bits
 - TCP connection: host, tcp-port
 - Shared: slave-id, timeout, driver
@@ -70,6 +74,7 @@ Common option groups:
 **Pattern**: Validate early, fail with helpful messages
 
 Validation order:
+
 1. CLI argument parsing (Commander handles basic types)
 2. Data point existence check
 3. Access mode validation (read-only vs write-only)
@@ -77,6 +82,7 @@ Validation order:
 5. Transport operation
 
 **Error messages include**:
+
 - What went wrong
 - Why it failed
 - How to fix it (install command, permission fix, etc.)
@@ -86,6 +92,7 @@ Validation order:
 ### Transport Tests
 
 Mock `modbus-serial` library:
+
 ```typescript
 jest.mock('modbus-serial')
 const mockModbus = {
@@ -100,6 +107,7 @@ Test retry logic by failing N times then succeeding.
 ### Command Tests
 
 Mock all dependencies:
+
 - `transport/factory` - Return mock transport
 - `driver-loader/loader` - Return mock createDriver function
 - Formatters - Return test strings
@@ -109,8 +117,11 @@ Mock all dependencies:
 ### Integration Tests
 
 Use real XYMD1 driver package with mock transport:
+
 ```typescript
-const mockTransport: Transport = { /* ... */ }
+const mockTransport: Transport = {
+  /* ... */
+}
 const driver = await createDriver({ transport: mockTransport, slaveId: 1 })
 await driver.readDataPoint('temperature')
 ```
@@ -126,6 +137,7 @@ await driver.readDataPoint('temperature')
 5. Update README with examples
 
 **Template**:
+
 ```typescript
 export interface MyCommandOptions {
   // Connection options...
@@ -151,11 +163,13 @@ export async function myCommand(options: MyCommandOptions): Promise<void> {
 ### Debugging Transport Issues
 
 **Enable modbus-serial debug logging**:
+
 ```bash
 DEBUG=modbus-serial ya-modbus read ...
 ```
 
 **Common issues**:
+
 - **Timeouts**: Increase `--timeout`, check wiring, verify slave ID
 - **CRC errors**: Check baud rate, parity, RS-485 termination
 - **Permission denied**: Add user to `dialout` group (Linux)
@@ -171,6 +185,7 @@ DEBUG=modbus-serial ya-modbus read ...
 ## Dependencies
 
 **Production**:
+
 - `commander` - CLI framework
 - `chalk` - Terminal colors
 - `cli-table3` - Table formatting
@@ -178,17 +193,20 @@ DEBUG=modbus-serial ya-modbus read ...
 - `zod` - Runtime validation (future use)
 
 **Development**:
+
 - `jest` + `ts-jest` - Testing
 - `@types/cli-table3` - TypeScript definitions
 
 ## Future Enhancements
 
 **Discovery commands** (planned):
+
 - `discover` - Auto-detect slave ID, baud rate, parity
 - `scan-registers` - Find readable/writable register ranges
 - `test-limits` - Determine max batch size, timing requirements
 
 **Implementation approach**:
+
 - Create `src/discovery/` directory
 - Implement algorithms with tests
 - Add commands to `src/index.ts`
