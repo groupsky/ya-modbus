@@ -2,6 +2,10 @@
 
 CLI tool for testing and developing Modbus device drivers.
 
+## Requirements
+
+- Node.js >= 18.0.0
+
 ## Features
 
 - **Read data points** from Modbus devices (RTU/TCP)
@@ -113,6 +117,7 @@ ya-modbus write \
 ### Connection Options
 
 **RTU (Serial):**
+
 - `--port <path>` - Serial port (e.g., `/dev/ttyUSB0`, `COM3`)
 - `--baud-rate <rate>` - Baud rate (default: 9600)
 - `--parity <type>` - Parity: none, even, odd (default: even)
@@ -120,10 +125,12 @@ ya-modbus write \
 - `--stop-bits <bits>` - Stop bits: 1 or 2 (default: 1)
 
 **TCP:**
+
 - `--host <host>` - TCP host (IP or hostname)
 - `--tcp-port <port>` - TCP port (default: 502)
 
 **Common:**
+
 - `--slave-id <id>` - Modbus slave ID (1-247) **(required)**
 - `--timeout <ms>` - Response timeout in milliseconds (default: 1000)
 - `--driver <package>` - Explicit driver package name
@@ -164,6 +171,7 @@ npx ya-modbus read \
 ```
 
 Output:
+
 ```
 Data Point       Value      Unit
 ────────────────────────────────

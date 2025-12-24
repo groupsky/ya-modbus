@@ -20,10 +20,14 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
+    "lint": "eslint .",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "dev": "tsc --watch"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "@ya-modbus/driver-types": "^0.0.0",
