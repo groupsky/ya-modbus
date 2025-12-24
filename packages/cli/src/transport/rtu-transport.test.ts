@@ -317,6 +317,28 @@ describe('RTU Transport', () => {
     expect(mockModbus.readHoldingRegisters).toHaveBeenCalledTimes(3)
   })
 
+  test('should throw error after exhausting all retries', async () => {
+    const config = {
+      port: '/dev/ttyUSB0',
+      baudRate: 9600 as const,
+      dataBits: 8 as const,
+      parity: 'even' as const,
+      stopBits: 1 as const,
+      slaveId: 1,
+    }
+
+    mockModbus.connectRTUBuffered.mockResolvedValue(undefined)
+    // Make all attempts fail
+    mockModbus.readHoldingRegisters.mockRejectedValue(new Error('Connection lost'))
+
+    const transport = await createRTUTransport(config)
+
+    await expect(transport.readHoldingRegisters(0, 2)).rejects.toThrow('Connection lost')
+
+    // Should have tried 3 times (initial + 2 retries)
+    expect(mockModbus.readHoldingRegisters).toHaveBeenCalledTimes(3)
+  })
+
   test('should close transport', async () => {
     const config = {
       port: '/dev/ttyUSB0',

@@ -283,6 +283,25 @@ describe('TCP Transport', () => {
     ])
   })
 
+  test('should throw error after exhausting all retries', async () => {
+    const config = {
+      host: '192.168.1.100',
+      port: 502,
+      slaveId: 1,
+    }
+
+    mockModbus.connectTCP.mockResolvedValue(undefined)
+    // Make all attempts fail
+    mockModbus.readHoldingRegisters.mockRejectedValue(new Error('Network unreachable'))
+
+    const transport = await createTCPTransport(config)
+
+    await expect(transport.readHoldingRegisters(0, 2)).rejects.toThrow('Network unreachable')
+
+    // Should have tried 3 times (initial + 2 retries)
+    expect(mockModbus.readHoldingRegisters).toHaveBeenCalledTimes(3)
+  })
+
   test('should close transport', async () => {
     const config = {
       host: '192.168.1.100',

@@ -502,4 +502,29 @@ describe('Read Command', () => {
       slaveId: 1,
     })
   })
+
+  test('should format JSON with undefined connection when neither host nor port specified', async () => {
+    const options = {
+      slaveId: 1,
+      baudRate: 9600,
+      parity: 'even',
+      dataBits: 8,
+      stopBits: 1,
+      dataPoint: ['temperature'],
+      format: 'json' as const,
+    }
+
+    mockDriver.readDataPoint.mockResolvedValue(24.5)
+
+    await readCommand(options)
+
+    // Verify JSON output was called
+    expect(consoleLogSpy).toHaveBeenCalled()
+    const output = JSON.parse(consoleLogSpy.mock.calls[0][0])
+
+    // Connection should be undefined when neither host nor port in options
+    expect(output.connection).toBeUndefined()
+    expect(output.dataPoints).toHaveLength(1)
+    expect(output.dataPoints[0].value).toBe(24.5)
+  })
 })
