@@ -148,17 +148,16 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
     },
 
     async writeDataPoint(id: string, value: unknown): Promise<void> {
+      // Encode and validate the value (will throw if read-only or invalid)
+      const buffer = encodeDataPoint(id, value)
+
+      // Route to appropriate register address
       if (id === 'device_address') {
-        const buffer = encodeDataPoint(id, value)
         await transport.writeMultipleRegisters(0x101, buffer)
-        return
-      }
-      if (id === 'baud_rate') {
-        const buffer = encodeDataPoint(id, value)
+      } else {
+        // Must be baud_rate since encodeDataPoint only accepts these two IDs
         await transport.writeMultipleRegisters(0x102, buffer)
-        return
       }
-      throw new Error(`Data point ${id} is read-only`)
     },
 
     async readDataPoints(ids: string[]): Promise<Record<string, unknown>> {
@@ -183,7 +182,8 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         if (id === 'device_address') {
           const buffer = await transport.readHoldingRegisters(0x101, 1)
           result[id] = decodeDataPoint(id, buffer)
-        } else if (id === 'baud_rate') {
+        } else {
+          // Must be baud_rate since filter only allows these two IDs
           const buffer = await transport.readHoldingRegisters(0x102, 1)
           result[id] = decodeDataPoint(id, buffer)
         }

@@ -221,6 +221,31 @@ describe('XYMD1 Driver', () => {
       expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x101, 1)
       expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x102, 1)
     })
+
+    it('should read only device configuration without sensor data', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Mock holding register for device_address: 10 (0x0A)
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x0a]))
+      // Mock holding register for baud_rate: 19200 (0x4B00)
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x4b, 0x00]))
+
+      const values = await driver.readDataPoints(['device_address', 'baud_rate'])
+
+      expect(values).toEqual({
+        device_address: 10,
+        baud_rate: 19200,
+      })
+
+      // Should not read input registers
+      expect(mockTransport.readInputRegisters).not.toHaveBeenCalled()
+      // Should read holding registers separately
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x101, 1)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x102, 1)
+    })
   })
 
   describe('writeDataPoint', () => {
