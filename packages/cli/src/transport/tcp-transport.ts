@@ -126,7 +126,7 @@ export async function createTCPTransport(config: TCPConfig): Promise<Transport> 
         for (let i = 0; i < values.length * 8; i++) {
           const byteIndex = Math.floor(i / 8)
           const bitIndex = i % 8
-          const byte = values[byteIndex]
+          const byte = values[byteIndex] as number // byteIndex < values.length due to loop condition
           bools.push((byte & (1 << bitIndex)) !== 0)
         }
         await client.writeCoils(address, bools)
