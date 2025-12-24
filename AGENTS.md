@@ -1,5 +1,13 @@
 # ya-modbus-mqtt-bridge - Agent Guide
 
+## ⚠️ REQUIRED READING BEFORE ANY DOCUMENTATION CHANGES
+
+**MUST READ** `docs/AGENTS-MAINTENANCE.md` before creating, changing, updating, or modifying:
+
+- Any `AGENTS.md`, `CLAUDE.md`, `.cursorrules` or `.aider.md` file
+
+This ensures consistency, avoids duplication, and maintains proper documentation structure.
+
 ## Quick Navigation
 
 - **Package development**: `packages/AGENTS.md` - TDD workflow, testing, package structure
