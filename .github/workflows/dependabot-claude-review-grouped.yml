@@ -81,6 +81,16 @@ jobs:
         with:
           reviewdog_version: latest
 
+      - name: Verify reviewdog installation
+        run: |
+          if ! command -v reviewdog &> /dev/null; then
+            echo "❌ reviewdog installation failed"
+            echo "Claude will not be able to post inline suggestions"
+            exit 1
+          fi
+          echo "✅ reviewdog is available"
+          reviewdog -version
+
       - name: Fetch metadata
         id: metadata
         uses: dependabot/fetch-metadata@v2
@@ -465,11 +475,35 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
-          # Wait a moment for Claude's comment to be posted
-          sleep 5
+          # Poll for Claude's comment (check every 2s for up to 30s)
+          echo "Waiting for Claude's verification comment..."
+          max_attempts=15
+          attempt=0
+          latest_comment=""
 
-          # Get the latest comment from claude[bot]
-          latest_comment=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | last | .body')
+          while [ $attempt -lt $max_attempts ]; do
+            # Get the latest comment from claude[bot]
+            latest_comment=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | last | .body' 2>/dev/null || echo "")
+
+            # Check if we found a verification comment
+            if echo "$latest_comment" | grep -qE "(✅ \*\*VERIFIED\*\*|⚠️ \*\*ISSUES FOUND\*\*)"; then
+              echo "✅ Found Claude's verification comment after $((attempt * 2)) seconds"
+              break
+            fi
+
+            attempt=$((attempt + 1))
+            if [ $attempt -lt $max_attempts ]; then
+              echo "Attempt $attempt/$max_attempts - waiting 2s for comment..."
+              sleep 2
+            fi
+          done
+
+          if [ -z "$latest_comment" ] || ! echo "$latest_comment" | grep -qE "(✅ \*\*VERIFIED\*\*|⚠️ \*\*ISSUES FOUND\*\*)"; then
+            echo "⚠️  Timeout: Claude's verification comment not found after 30 seconds"
+            echo "verified=false" >> $GITHUB_OUTPUT
+            gh pr comment "$PR_URL" --body "⚠️ **Auto-merge blocked** - Timeout waiting for Claude's final verification. Please check the workflow logs."
+            exit 1
+          fi
 
           echo "Latest Claude comment:"
           echo "$latest_comment"
@@ -487,22 +521,46 @@ jobs:
             exit 1
           fi
 
+      # Evaluate whether this PR should be auto-merged
+      # This step consolidates all the complex conditionals into a single boolean output
+      # to improve readability and maintainability of subsequent steps
+      - name: Evaluate auto-merge eligibility
+        id: evaluate-auto-merge
+        run: |
+          # Check if Claude approved/verified
+          claude_ok="false"
+          if [ "${{ steps.check-approval.outputs.approved }}" = "true" ]; then
+            claude_ok="true"
+          elif [ "${{ steps.check-verification-needed.outputs.needs_verification }}" = "true" ] && \
+               [ "${{ steps.check-final-verification.outputs.verified }}" = "true" ]; then
+            claude_ok="true"
+          fi
+
+          echo "claude_ok=$claude_ok" >> $GITHUB_OUTPUT
+
+          # For grouped PRs, only auto-merge dev dependencies
+          should_auto_merge="false"
+          if [ "$claude_ok" = "true" ] && \
+             [ "${{ steps.metadata.outputs.dependency-type }}" = "direct:development" ]; then
+            should_auto_merge="true"
+          fi
+
+          echo "should_auto_merge=$should_auto_merge" >> $GITHUB_OUTPUT
+
+          echo "📊 Auto-merge evaluation:"
+          echo "  Claude approved/verified: $claude_ok"
+          echo "  Dependency type: ${{ steps.metadata.outputs.dependency-type }}"
+          echo "  Should auto-merge: $should_auto_merge"
+
       - name: Auto-approve if Claude approved
-        if: |
-          steps.check-approval.outputs.approved == 'true' ||
-          (steps.check-verification-needed.outputs.needs_verification == 'true' &&
-           steps.check-final-verification.outputs.verified == 'true')
+        if: steps.evaluate-auto-merge.outputs.claude_ok == 'true'
         run: gh pr review --approve "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract commit message from Claude's comment
-        if: |
-          (steps.check-approval.outputs.approved == 'true' ||
-           (steps.check-verification-needed.outputs.needs_verification == 'true' &&
-            steps.check-final-verification.outputs.verified == 'true')) &&
-          steps.metadata.outputs.dependency-type == 'direct:development'
+        if: steps.evaluate-auto-merge.outputs.should_auto_merge == 'true'
         id: extract-commit-msg
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -540,11 +598,7 @@ jobs:
           fi
 
       - name: Enable auto-merge for dev dependencies
-        if: |
-          (steps.check-approval.outputs.approved == 'true' ||
-           (steps.check-verification-needed.outputs.needs_verification == 'true' &&
-            steps.check-final-verification.outputs.verified == 'true')) &&
-          steps.metadata.outputs.dependency-type == 'direct:development'
+        if: steps.evaluate-auto-merge.outputs.should_auto_merge == 'true'
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_NUMBER: ${{ github.event.pull_request.number }}

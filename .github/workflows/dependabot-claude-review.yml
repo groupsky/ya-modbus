@@ -249,6 +249,16 @@ jobs:
         with:
           reviewdog_version: latest
 
+      - name: Verify reviewdog installation
+        run: |
+          if ! command -v reviewdog &> /dev/null; then
+            echo "❌ reviewdog installation failed"
+            echo "Claude will not be able to post inline suggestions"
+            exit 1
+          fi
+          echo "✅ reviewdog is available"
+          reviewdog -version
+
       - name: Run Claude Review
         uses: anthropics/claude-code-action@v1
         with:
@@ -384,6 +394,9 @@ jobs:
 
     steps:
       # Checkout repository for local actions
+      # IMPORTANT: This step must run BEFORE "Verify contributor trust" step
+      # because the reusable action (.github/actions/verify-trusted-contributor)
+      # requires the repository to be checked out to be accessible via uses: ./
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
@@ -576,12 +589,53 @@ jobs:
             echo "⚠️  Claude found issues or did not verify - blocking auto-merge"
           fi
 
+      # Evaluate whether this PR should be auto-merged
+      # This step consolidates all the complex conditionals into a single boolean output
+      # to improve readability and maintainability of subsequent steps
+      - name: Evaluate auto-merge eligibility
+        id: evaluate-auto-merge
+        run: |
+          # Check if Claude approved/verified
+          claude_ok="false"
+          if [ "${{ steps.check-approval.outputs.approved }}" = "true" ]; then
+            if [ "${{ steps.check-approval.outputs.needs_verification }}" = "false" ]; then
+              claude_ok="true"
+            elif [ "${{ steps.check-verification.outputs.verified }}" = "true" ]; then
+              claude_ok="true"
+            fi
+          fi
+
+          echo "claude_ok=$claude_ok" >> $GITHUB_OUTPUT
+
+          # Check if this update type qualifies for auto-merge
+          should_auto_merge="false"
+          if [ "$claude_ok" = "true" ]; then
+            # GitHub Actions (not major)
+            if [ "${{ needs.metadata.outputs.package-ecosystem }}" = "github_actions" ] && \
+               [ "${{ needs.metadata.outputs.update-type }}" != "version-update:semver-major" ]; then
+              should_auto_merge="true"
+            # npm dev dependencies (patch or minor)
+            elif [ "${{ needs.metadata.outputs.package-ecosystem }}" = "npm" ] && \
+                 [ "${{ needs.metadata.outputs.dependency-type }}" = "direct:development" ] && \
+                 ( [ "${{ needs.metadata.outputs.update-type }}" = "version-update:semver-patch" ] || \
+                   [ "${{ needs.metadata.outputs.update-type }}" = "version-update:semver-minor" ] ); then
+              should_auto_merge="true"
+            # npm prod dependencies (patch only)
+            elif [ "${{ needs.metadata.outputs.package-ecosystem }}" = "npm" ] && \
+                 [ "${{ needs.metadata.outputs.dependency-type }}" = "direct:production" ] && \
+                 [ "${{ needs.metadata.outputs.update-type }}" = "version-update:semver-patch" ]; then
+              should_auto_merge="true"
+            fi
+          fi
+
+          echo "should_auto_merge=$should_auto_merge" >> $GITHUB_OUTPUT
+
+          echo "📊 Auto-merge evaluation:"
+          echo "  Claude approved/verified: $claude_ok"
+          echo "  Should auto-merge: $should_auto_merge"
+
       - name: Auto-approve if Claude approved or verified
-        if: |
-          steps.check-approval.outputs.approved == 'true' && (
-            steps.check-approval.outputs.needs_verification == 'false' ||
-            steps.check-verification.outputs.verified == 'true'
-          )
+        if: steps.evaluate-auto-merge.outputs.claude_ok == 'true'
         run: |
           gh pr review --approve "$PR_URL"
           if [ "${{ steps.check-approval.outputs.needs_verification }}" = "true" ]; then
@@ -592,25 +646,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract commit message from Claude's comment
-        if: |
-          steps.check-approval.outputs.approved == 'true' &&
-          (steps.check-approval.outputs.needs_verification == 'false' ||
-           steps.check-verification.outputs.verified == 'true') &&
-          (
-            (
-              needs.metadata.outputs.package-ecosystem == 'github_actions' &&
-              needs.metadata.outputs.update-type != 'version-update:semver-major'
-            ) || (
-              needs.metadata.outputs.package-ecosystem == 'npm' &&
-              needs.metadata.outputs.dependency-type == 'direct:development' &&
-              (needs.metadata.outputs.update-type == 'version-update:semver-patch' ||
-               needs.metadata.outputs.update-type == 'version-update:semver-minor')
-            ) || (
-              needs.metadata.outputs.package-ecosystem == 'npm' &&
-              needs.metadata.outputs.dependency-type == 'direct:production' &&
-              needs.metadata.outputs.update-type == 'version-update:semver-patch'
-            )
-          )
+        if: steps.evaluate-auto-merge.outputs.should_auto_merge == 'true'
         id: extract-commit-msg
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -654,25 +690,7 @@ jobs:
           fi
 
       - name: Enable auto-merge for approved updates
-        if: |
-          steps.check-approval.outputs.approved == 'true' &&
-          (steps.check-approval.outputs.needs_verification == 'false' ||
-           steps.check-verification.outputs.verified == 'true') &&
-          (
-            (
-              needs.metadata.outputs.package-ecosystem == 'github_actions' &&
-              needs.metadata.outputs.update-type != 'version-update:semver-major'
-            ) || (
-              needs.metadata.outputs.package-ecosystem == 'npm' &&
-              needs.metadata.outputs.dependency-type == 'direct:development' &&
-              (needs.metadata.outputs.update-type == 'version-update:semver-patch' ||
-               needs.metadata.outputs.update-type == 'version-update:semver-minor')
-            ) || (
-              needs.metadata.outputs.package-ecosystem == 'npm' &&
-              needs.metadata.outputs.dependency-type == 'direct:production' &&
-              needs.metadata.outputs.update-type == 'version-update:semver-patch'
-            )
-          )
+        if: steps.evaluate-auto-merge.outputs.should_auto_merge == 'true'
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
