@@ -90,18 +90,20 @@ Dependabot opens/updates a PR with a single dependency change.
 
 ### Timeout Behavior
 
-**Final verification timeout**: 30 seconds
+**Final verification timeout**: 60 seconds
 
 When fixes are applied to a grouped PR, the workflow polls for Claude's final verification comment:
 
-- Checks every 2 seconds for up to 30 seconds (15 attempts)
+- Checks every 2 seconds for up to 60 seconds (30 attempts)
 - Looks for verification markers: `✅ **VERIFIED**` or `⚠️ **ISSUES FOUND**`
+- Logs actual response time for monitoring
 - If timeout occurs: Blocks auto-merge with warning comment
 
-**Why 30 seconds?**
+**Why 60 seconds?**
 
-- Claude typically responds within 10-15 seconds for grouped PRs
-- Allows buffer for GitHub API delays and PR comment posting
+- Claude typically responds within 10-20 seconds for grouped PRs
+- Large grouped PRs with many dependencies may need more time
+- Allows generous buffer for GitHub API delays and PR comment posting
 - Prevents indefinite waiting if Claude agent fails or errors
 
 ## Security Safeguards

@@ -42,9 +42,20 @@ jobs:
         run: |
           # Check that the FIRST commit in the PR is from Dependabot
           # This prevents non-Dependabot PRs from triggering the workflow
-          first_commit_author=$(gh pr view "$PR_URL" --json commits --jq '.commits[0].authors[0].login')
 
-          echo "First commit author: $first_commit_author"
+          # Get commits and validate array is not empty
+          commits=$(gh pr view "$PR_URL" --json commits --jq '.commits')
+          commit_count=$(echo "$commits" | jq 'length')
+
+          if [ "$commit_count" -eq 0 ]; then
+            echo "❌ PR has no commits - cannot verify"
+            echo "is_dependabot_pr=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          first_commit_author=$(echo "$commits" | jq -r '.[0].authors[0].login')
+
+          echo "First commit author: $first_commit_author (total commits: $commit_count)"
 
           if [ "$first_commit_author" = "dependabot[bot]" ] || [ "$first_commit_author" = "app/dependabot" ]; then
             echo "is_dependabot_pr=true" >> $GITHUB_OUTPUT
@@ -410,12 +421,24 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
+          # Get commits and validate array is not empty
+          commits=$(gh pr view "$PR_URL" --json commits --jq '.commits')
+          commit_count=$(echo "$commits" | jq 'length')
+
+          if [ "$commit_count" -eq 0 ]; then
+            echo "❌ PR has no commits - cannot check for fixes"
+            echo "is_fix_commit=false" >> $GITHUB_OUTPUT
+            echo "fix_author=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           # Get latest commit message and author
-          latest_commit_msg=$(gh pr view "$PR_URL" --json commits --jq '.commits[-1].messageHeadline')
-          latest_commit_author=$(gh pr view "$PR_URL" --json commits --jq '.commits[-1].authors[0].login')
+          latest_commit_msg=$(echo "$commits" | jq -r '.[-1].messageHeadline')
+          latest_commit_author=$(echo "$commits" | jq -r '.[-1].authors[0].login')
 
           echo "Latest commit: $latest_commit_msg"
           echo "Latest author: $latest_commit_author"
+          echo "Total commits: $commit_count"
 
           # Initialize outputs
           is_fix_commit=false
@@ -680,6 +703,12 @@ jobs:
 
           echo "Commit subject: $commit_subject"
           echo "Commit body: $commit_body"
+
+          # Validate commit subject is not empty
+          if [ -z "$commit_subject" ]; then
+            echo "❌ Commit subject is empty - cannot enable auto-merge"
+            exit 1
+          fi
 
           # Enable auto-merge with commit message
           if [ -n "$commit_body" ]; then

@@ -26,16 +26,52 @@ jobs:
     outputs:
       is-grouped: ${{ steps.check.outputs.is_grouped }}
       dependency-count: ${{ steps.check.outputs.dependency_count }}
+      is-dependabot-pr: ${{ steps.verify-dependabot.outputs.is_dependabot_pr }}
 
     steps:
+      # Verify this is a genuine Dependabot PR by checking first commit
+      - name: Verify this is a genuine Dependabot PR
+        id: verify-dependabot
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          # Get commits and validate array is not empty
+          commits=$(gh pr view "$PR_URL" --json commits --jq '.commits')
+          commit_count=$(echo "$commits" | jq 'length')
+
+          if [ "$commit_count" -eq 0 ]; then
+            echo "❌ PR has no commits - cannot verify"
+            echo "is_dependabot_pr=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Get first commit author from the PR
+          first_commit_author=$(echo "$commits" | jq -r '.[0].authors[0].login')
+
+          echo "First commit author: $first_commit_author (total commits: $commit_count)"
+
+          # Verify first commit is from Dependabot
+          if [ "$first_commit_author" = "dependabot[bot]" ] || [ "$first_commit_author" = "app/dependabot" ]; then
+            echo "is_dependabot_pr=true" >> $GITHUB_OUTPUT
+            echo "✅ Verified: First commit is from Dependabot"
+          else
+            echo "is_dependabot_pr=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Security: First commit is NOT from Dependabot (author: $first_commit_author)"
+            echo "Skipping workflow for security reasons"
+            exit 0
+          fi
+
       - name: Check if grouped PR
         id: check
+        if: steps.verify-dependabot.outputs.is_dependabot_pr == 'true'
         uses: dependabot/fetch-metadata@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Determine if grouped
         id: analyze
+        if: steps.verify-dependabot.outputs.is_dependabot_pr == 'true'
         run: |
           # Count dependencies (comma-separated)
           deps="${{ steps.check.outputs.dependency-names }}"
@@ -58,6 +94,7 @@ jobs:
     needs: detect-group
     if: |
       github.actor == 'dependabot[bot]' &&
+      needs.detect-group.outputs.is-dependabot-pr == 'true' &&
       needs.detect-group.outputs.is-grouped == 'true'
 
     steps:
@@ -486,11 +523,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
-          # Poll for Claude's comment (check every 2s for up to 30s)
+          # Poll for Claude's comment (check every 2s for up to 60s)
           echo "Waiting for Claude's verification comment..."
-          max_attempts=15
+          max_attempts=30  # 60 seconds total
           attempt=0
           latest_comment=""
+          start_time=$(date +%s)
 
           while [ $attempt -lt $max_attempts ]; do
             # Get the latest comment from claude[bot]
@@ -498,7 +536,9 @@ jobs:
 
             # Check if we found a verification comment
             if echo "$latest_comment" | grep -qE "(✅ \*\*VERIFIED\*\*|⚠️ \*\*ISSUES FOUND\*\*)"; then
-              echo "✅ Found Claude's verification comment after $((attempt * 2)) seconds"
+              end_time=$(date +%s)
+              duration=$((end_time - start_time))
+              echo "✅ Found Claude's verification comment after $duration seconds"
               break
             fi
 
@@ -510,9 +550,11 @@ jobs:
           done
 
           if [ -z "$latest_comment" ] || ! echo "$latest_comment" | grep -qE "(✅ \*\*VERIFIED\*\*|⚠️ \*\*ISSUES FOUND\*\*)"; then
-            echo "⚠️  Timeout: Claude's verification comment not found after 30 seconds"
+            end_time=$(date +%s)
+            duration=$((end_time - start_time))
+            echo "⚠️  Timeout: Claude's verification comment not found after $duration seconds"
             echo "verified=false" >> $GITHUB_OUTPUT
-            gh pr comment "$PR_URL" --body "⚠️ **Auto-merge blocked** - Timeout waiting for Claude's final verification. Please check the workflow logs."
+            gh pr comment "$PR_URL" --body "⚠️ **Auto-merge blocked** - Timeout waiting for Claude's final verification (${duration}s). Please check the workflow logs."
             exit 1
           fi
 
@@ -613,6 +655,12 @@ jobs:
           fi
 
           echo "Commit subject: $commit_subject"
+
+          # Validate commit subject is not empty
+          if [ -z "$commit_subject" ]; then
+            echo "❌ Commit subject is empty - cannot enable auto-merge"
+            exit 1
+          fi
 
           # Enable auto-merge with commit message
           if [ -n "$commit_body" ]; then

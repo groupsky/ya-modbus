@@ -42,29 +42,53 @@ jobs:
             echo "ℹ️  PR does not have required labels"
           fi
 
+      # Checkout repository for reusable actions
+      # IMPORTANT: Must run before verify-reviewer step
+      - name: Checkout repository
+        if: steps.check-pr.outputs.is_ready == 'true'
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            .github/actions
+          sparse-checkout-cone-mode: false
+
+      # Verify reviewer identity matches the review event
+      - name: Verify reviewer identity
+        if: steps.check-pr.outputs.is_ready == 'true'
+        id: verify-identity
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EXPECTED_REVIEWER: ${{ github.event.review.user.login }}
+        run: |
+          echo "Verifying reviewer identity: $EXPECTED_REVIEWER"
+
+          # Get the actual latest approved review from API
+          latest_review=$(gh api "/repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews" \
+            --jq '[.[] | select(.state == "APPROVED")] | last')
+
+          if [ -z "$latest_review" ] || [ "$latest_review" = "null" ]; then
+            echo "❌ No approved reviews found"
+            exit 1
+          fi
+
+          latest_reviewer=$(echo "$latest_review" | jq -r '.user.login')
+
+          if [ "$latest_reviewer" != "$EXPECTED_REVIEWER" ]; then
+            echo "❌ Reviewer mismatch: expected $EXPECTED_REVIEWER, got $latest_reviewer"
+            exit 1
+          fi
+
+          echo "✅ Reviewer identity verified: $latest_reviewer"
+
+      # Verify reviewer is a trusted contributor using reusable action
       - name: Verify reviewer is a trusted contributor
         if: steps.check-pr.outputs.is_ready == 'true'
         id: verify-reviewer
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REVIEWER: ${{ github.event.review.user.login }}
-          REPO: ${{ github.repository }}
-        run: |
-          echo "Verifying reviewer: $REVIEWER"
-
-          # Get commit count for this reviewer in the repository
-          commit_count=$(gh api "/repos/$REPO/commits?author=$REVIEWER&per_page=100" --paginate | jq '. | length')
-
-          echo "Commit count for $REVIEWER: $commit_count"
-
-          # Consider them trusted if they have at least 1 previous commit
-          if [ "$commit_count" -ge 1 ]; then
-            echo "is_trusted=true" >> $GITHUB_OUTPUT
-            echo "✅ Verified: $REVIEWER is a trusted contributor ($commit_count commits)"
-          else
-            echo "is_trusted=false" >> $GITHUB_OUTPUT
-            echo "⚠️  Warning: $REVIEWER is NOT a previous contributor ($commit_count commits)"
-          fi
+        uses: ./.github/actions/verify-trusted-contributor
+        with:
+          username: ${{ github.event.review.user.login }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check CI status
         if: |
@@ -88,18 +112,6 @@ jobs:
             echo "ci_ready=true" >> $GITHUB_OUTPUT
             echo "✅ CI checks are passing or pending"
           fi
-
-      # Checkout repository for local actions
-      - name: Checkout repository
-        if: |
-          steps.check-pr.outputs.is_ready == 'true' &&
-          steps.verify-reviewer.outputs.is_trusted == 'true' &&
-          steps.check-ci.outputs.ci_ready == 'true'
-        uses: actions/checkout@v6
-        with:
-          sparse-checkout: |
-            .github/actions
-          sparse-checkout-cone-mode: false
 
       - name: Extract commit message from Claude's comment
         if: |
@@ -153,6 +165,12 @@ jobs:
 
           echo "Commit subject: $commit_subject"
 
+          # Validate commit subject is not empty
+          if [ -z "$commit_subject" ]; then
+            echo "❌ Commit subject is empty - cannot enable auto-merge"
+            exit 1
+          fi
+
           # Enable auto-merge with commit message
           if [ -n "$commit_body" ]; then
             gh pr merge --auto --squash --subject "$commit_subject" --body "$commit_body" "$PR_URL"
@@ -169,12 +187,17 @@ jobs:
       - name: Post security warning if reviewer is not trusted
         if: |
           steps.check-pr.outputs.is_ready == 'true' &&
-          steps.verify-reviewer.outputs.is_trusted == 'false'
+          steps.verify-reviewer.outputs.is-trusted != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           REVIEWER: ${{ github.event.review.user.login }}
+          REASON: ${{ steps.verify-reviewer.outputs.reason }}
         run: |
-          gh pr comment "$PR_URL" --body "⚠️ **Manual Merge Required** - Approval from @$REVIEWER (not a previous contributor) detected. A trusted contributor must approve or manually merge this PR."
+          gh pr comment "$PR_URL" --body "⚠️ **Manual Merge Required** - Approval from @$REVIEWER detected, but contributor is not trusted.
 
-          echo "⚠️  Security warning posted"
+          **Reason:** $REASON
+
+          A trusted contributor must approve or manually merge this PR."
+
+          echo "⚠️  Security warning posted: $REASON"
