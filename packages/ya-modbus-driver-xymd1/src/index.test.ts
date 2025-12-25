@@ -589,5 +589,21 @@ describe('XYMD1 Driver', () => {
 
       expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledTimes(2)
     })
+
+    it('should handle floating-point precision correctly when encoding', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Test value 2.55 which could round to either 25 or 26 depending on precision
+      // Math.trunc(2.55 * 10) = Math.trunc(25.5) = 25
+      await driver.writeDataPoint('temperature_correction', 2.55)
+
+      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledWith(
+        0x103,
+        Buffer.from([0x00, 0x19]) // 25, not 26
+      )
+    })
   })
 })

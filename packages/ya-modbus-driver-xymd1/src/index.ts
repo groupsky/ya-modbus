@@ -157,7 +157,8 @@ function encodeDataPoint(id: string, value: unknown): Buffer {
       throw new Error('Invalid temperature correction: must be between -10.0 and 10.0')
     }
     const buffer = Buffer.allocUnsafe(2)
-    const intValue = Math.round(value * 10)
+    // Use Math.trunc for predictable rounding toward zero (avoids floating-point precision issues)
+    const intValue = Math.trunc(value * 10)
     buffer.writeInt16BE(intValue, 0)
     return buffer
   }
@@ -166,7 +167,8 @@ function encodeDataPoint(id: string, value: unknown): Buffer {
       throw new Error('Invalid humidity correction: must be between -10.0 and 10.0')
     }
     const buffer = Buffer.allocUnsafe(2)
-    const intValue = Math.round(value * 10)
+    // Use Math.trunc for predictable rounding toward zero (avoids floating-point precision issues)
+    const intValue = Math.trunc(value * 10)
     buffer.writeInt16BE(intValue, 0)
     return buffer
   }
