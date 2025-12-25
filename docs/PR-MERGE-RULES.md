@@ -56,7 +56,24 @@ Never use squash for:
 
 ## Dependabot PRs
 
-Dependabot PRs are handled by the `dependabot-claude-review.yml` workflow with different strategies based on update type.
+Dependabot PRs are handled by specialized Claude workflows depending on whether they update a single dependency or multiple dependencies (grouped).
+
+### Single vs Grouped PRs
+
+**Single-Dependency PRs**:
+
+- Update one package at a time
+- Handled by `dependabot-claude-review.yml`
+- Strategy based on semantic version type (patch/minor/major)
+
+**Grouped PRs**:
+
+- Update multiple packages together (e.g., "npm-typescript" group)
+- Handled by `dependabot-claude-review-grouped.yml`
+- Claude analyzes EACH dependency individually
+- Provides comprehensive review covering all update types
+
+### Single-Dependency PR Strategies
 
 ### Patch Updates (`version-update:semver-patch`)
 
@@ -146,6 +163,58 @@ Claude analyzes breaking changes AND inspects new features, then takes appropria
   - Description: New features, potential use cases, benefits
   - Labels: `enhancement`, `dependencies`
 - Mentions feature issues in PR comment
+
+### Grouped PR Strategy
+
+**When Dependabot creates a PR with MULTIPLE dependencies:**
+
+#### Claude's Workflow
+
+1. **Parse PR changes** - Extract each dependency and its version change
+2. **Categorize updates** - Group by patch/minor/major for each package
+3. **Analyze each category**:
+   - **Patch updates**: Quick validation
+   - **Minor updates**: Feature inspection + create enhancement issues
+   - **Major updates**: Breaking change analysis + migration or fixes
+4. **Provide comprehensive summary**:
+
+   ```
+   ## Grouped Dependency Review
+
+   ### Summary
+   - X patch updates (low risk)
+   - Y minor updates (new features available)
+   - Z major updates (breaking changes)
+
+   ### Patch Updates ✅
+   - package-a: v1.0.0 → v1.0.1
+
+   ### Minor Updates ⬆️
+   - package-b: v2.0.0 → v2.1.0 (issue #123 created)
+
+   ### Major Updates ⚠️
+   - package-c: v3.0.0 → v4.0.0
+     - Breaking changes analyzed
+     - Action taken: [fix/migration/approved]
+
+   ### Overall Recommendation
+   [APPROVED / NEEDS FIXES / MIGRATION REQUIRED]
+   ```
+
+#### Auto-Merge Criteria for Grouped PRs
+
+**Auto-merge enabled when:**
+
+- All individual dependencies analyzed
+- Claude approves with `✅ **APPROVED**` or `✅ **FIXED**`
+- All CI checks pass
+- Dependency type is `direct:development`
+
+**Manual merge required when:**
+
+- Any dependency is `direct:production`
+- Any major update detected
+- Claude flags `⚠️ **REVIEW NEEDED**`
 
 ## Human-Created PRs
 
@@ -279,9 +348,15 @@ chore(deps)(npm): bump typescript from 5.7.0 to 5.8.0 (#45)
 
 ### Workflow Files
 
-- `dependabot-claude-review.yml`: Primary Dependabot PR handling with Claude
+- `dependabot-claude-review.yml`: Claude review for **single-dependency** Dependabot PRs
+- `dependabot-claude-review-grouped.yml`: Claude review for **grouped** Dependabot PRs (multiple dependencies)
 - `claude-code-review.yml`: Claude review for human PRs
 - `ci.yml`: Continuous integration tests
+
+**Note**: Dependabot can create two types of PRs:
+
+1. **Single-dependency PRs**: One package update (handled by `dependabot-claude-review.yml`)
+2. **Grouped PRs**: Multiple packages updated together (handled by `dependabot-claude-review-grouped.yml`)
 
 ### Workflow Behavior
 

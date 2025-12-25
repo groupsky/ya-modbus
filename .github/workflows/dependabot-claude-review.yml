@@ -1,4 +1,7 @@
-name: Dependabot + Claude Review
+name: Dependabot + Claude Review (Single Dependency)
+
+# This workflow handles Dependabot PRs with a SINGLE dependency
+# For grouped PRs (multiple dependencies), see dependabot-claude-review-grouped.yml
 
 on:
   pull_request_target:
@@ -27,6 +30,7 @@ jobs:
       package-ecosystem: ${{ steps.metadata.outputs.package-ecosystem }}
       prev-version: ${{ steps.metadata.outputs.previous-version }}
       new-version: ${{ steps.metadata.outputs.new-version }}
+      is-single: ${{ steps.check-single.outputs.is_single }}
 
     steps:
       - name: Fetch Dependabot metadata
@@ -34,6 +38,21 @@ jobs:
         uses: dependabot/fetch-metadata@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if single dependency
+        id: check-single
+        run: |
+          # Count dependencies (comma-separated)
+          deps="${{ steps.metadata.outputs.dependency-names }}"
+          count=$(echo "$deps" | tr ',' '\n' | wc -l)
+
+          if [ "$count" -eq 1 ]; then
+            echo "is_single=true" >> $GITHUB_OUTPUT
+            echo "✅ Single dependency PR"
+          else
+            echo "is_single=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Grouped PR detected ($count dependencies) - will be handled by dependabot-claude-review-grouped.yml"
+          fi
 
       - name: Display metadata
         run: |
@@ -43,6 +62,7 @@ jobs:
           echo "Package ecosystem: ${{ steps.metadata.outputs.package-ecosystem }}"
           echo "Previous version: ${{ steps.metadata.outputs.previous-version }}"
           echo "New version: ${{ steps.metadata.outputs.new-version }}"
+          echo "Is single dependency: ${{ steps.check-single.outputs.is_single }}"
 
   # Claude review for patch updates (quick check)
   claude-review-patch:
@@ -51,6 +71,7 @@ jobs:
     needs: metadata
     if: |
       github.actor == 'dependabot[bot]' &&
+      needs.metadata.outputs.is-single == 'true' &&
       needs.metadata.outputs.update-type == 'version-update:semver-patch'
 
     steps:
@@ -89,6 +110,7 @@ jobs:
     needs: metadata
     if: |
       github.actor == 'dependabot[bot]' &&
+      needs.metadata.outputs.is-single == 'true' &&
       needs.metadata.outputs.update-type == 'version-update:semver-minor'
 
     steps:
@@ -132,6 +154,7 @@ jobs:
     needs: metadata
     if: |
       github.actor == 'dependabot[bot]' &&
+      needs.metadata.outputs.is-single == 'true' &&
       needs.metadata.outputs.update-type == 'version-update:semver-major'
 
     steps:
@@ -196,12 +219,13 @@ jobs:
 
   # Wait for all reviews and CI to complete before auto-merge decision
   auto-merge-decision:
-    name: Auto-Merge Decision
+    name: Auto-Merge Decision (Single Dependency)
     runs-on: ubuntu-latest
     needs: [metadata, claude-review-patch, claude-review-minor, claude-review-major]
     if: |
       always() &&
       github.actor == 'dependabot[bot]' &&
+      needs.metadata.outputs.is-single == 'true' &&
       github.event.pull_request.draft == false &&
       (needs.claude-review-patch.result == 'success' ||
        needs.claude-review-minor.result == 'success' ||

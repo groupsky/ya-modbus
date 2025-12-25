@@ -1,0 +1,243 @@
+name: Dependabot + Claude Review (Grouped)
+
+# This workflow handles Dependabot PRs that contain MULTIPLE dependencies (groups)
+# For single-dependency PRs, see dependabot-claude-review.yml
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+
+jobs:
+  # Detect if this is a grouped PR
+  detect-group:
+    name: Detect Grouped PR
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    outputs:
+      is-grouped: ${{ steps.check.outputs.is_grouped }}
+      dependency-count: ${{ steps.check.outputs.dependency_count }}
+
+    steps:
+      - name: Check if grouped PR
+        id: check
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine if grouped
+        id: analyze
+        run: |
+          # Count dependencies (comma-separated)
+          deps="${{ steps.check.outputs.dependency-names }}"
+          count=$(echo "$deps" | tr ',' '\n' | wc -l)
+
+          echo "dependency_count=$count" >> $GITHUB_OUTPUT
+
+          if [ "$count" -gt 1 ]; then
+            echo "is_grouped=true" >> $GITHUB_OUTPUT
+            echo "✅ Grouped PR detected: $count dependencies"
+          else
+            echo "is_grouped=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Single dependency PR (will be handled by main workflow)"
+          fi
+
+  # Claude review for GROUPED Dependabot PRs
+  claude-review-grouped:
+    name: Claude Review (Grouped Dependencies)
+    runs-on: ubuntu-latest
+    needs: detect-group
+    if: |
+      github.actor == 'dependabot[bot]' &&
+      needs.detect-group.outputs.is-grouped == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Fetch metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Claude Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            This is a GROUPED Dependabot PR updating MULTIPLE dependencies:
+
+            **Dependencies**: ${{ steps.metadata.outputs.dependency-names }}
+            **Highest severity**: ${{ steps.metadata.outputs.update-type }}
+            **Package ecosystem**: ${{ steps.metadata.outputs.package-ecosystem }}
+            **PR**: #${{ github.event.pull_request.number }}
+
+            ⚠️ IMPORTANT: This PR contains ${{ needs.detect-group.outputs.dependency-count }} dependencies.
+            You MUST analyze EACH dependency individually.
+
+            ## Your Task
+
+            1. **Parse the PR changes** to identify each dependency and its version change
+               - Use `gh pr diff` to see package.json/package-lock.json changes
+               - Extract: package name, old version, new version, update type for EACH
+
+            2. **Categorize each dependency** by update type:
+               - Patch updates (bug fixes)
+               - Minor updates (new features)
+               - Major updates (breaking changes)
+
+            3. **Analyze each category**:
+
+               **For PATCH updates**:
+               - Quick validation that changes look reasonable
+               - Note any unexpected changes
+
+               **For MINOR updates**:
+               - Review changelogs for new features
+               - Identify beneficial features for this codebase
+               - Create GitHub issues for significant opportunities
+
+               **For MAJOR updates**:
+               - Analyze breaking changes in detail
+               - Search codebase for affected usage
+               - Determine if fixes are needed
+               - Create migration issues for complex changes
+
+            4. **Provide comprehensive summary** with structure:
+               ```
+               ## Grouped Dependency Review
+
+               ### Summary
+               - X patch updates (low risk)
+               - Y minor updates (new features available)
+               - Z major updates (breaking changes)
+
+               ### Patch Updates ✅
+               - package-a: v1.0.0 → v1.0.1 (bug fixes)
+               - package-b: v2.3.4 → v2.3.5 (security fix)
+
+               ### Minor Updates ⬆️
+               - package-c: v3.0.0 → v3.1.0
+                 - New feature: XYZ (created issue #123)
+
+               ### Major Updates ⚠️
+               - package-d: v4.0.0 → v5.0.0
+                 - Breaking change: ABC
+                 - Impact: [analysis]
+                 - Action: [fix in PR / create migration issue / approve if no impact]
+
+               ### Overall Recommendation
+               [APPROVED / NEEDS FIXES / MIGRATION REQUIRED]
+               ```
+
+            5. **Take appropriate actions**:
+               - Create enhancement issues for beneficial minor features
+               - Create migration issues for complex major updates
+               - Implement fixes in PR if major breaking changes are simple
+               - Approve if all updates are safe
+
+            6. **Final comment** with your summary and recommendation
+
+            ## Tools Available
+
+            - `gh pr diff` - See all package changes
+            - `gh pr view` - View PR details
+            - `gh issue create` - Create enhancement/migration issues
+            - `WebFetch`, `WebSearch` - Find changelogs
+            - `Read`, `Grep`, `Glob` - Analyze codebase impact
+
+            ## Approval Markers
+
+            Use one of these in your final comment:
+            - ✅ **APPROVED** - All updates safe to merge
+            - ✅ **FIXED** - Breaking changes resolved in this PR
+            - ⚠️ **REVIEW NEEDED** - Issues require human review
+            - ⚠️ **MIGRATION REQUIRED** - Created migration issues
+
+          claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue create:*),WebFetch,WebSearch,Read,Grep,Glob"'
+
+  # Auto-merge decision for grouped PRs
+  auto-merge-grouped:
+    name: Auto-Merge Decision (Grouped)
+    runs-on: ubuntu-latest
+    needs: [detect-group, claude-review-grouped]
+    if: |
+      always() &&
+      github.actor == 'dependabot[bot]' &&
+      needs.detect-group.outputs.is-grouped == 'true' &&
+      needs.claude-review-grouped.result == 'success'
+
+    steps:
+      - name: Fetch metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check Claude approval
+        id: check-approval
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          # Get the latest comment from claude[bot]
+          latest_comment=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | last | .body')
+
+          echo "Latest Claude comment:"
+          echo "$latest_comment"
+
+          # Check if Claude approved
+          if echo "$latest_comment" | grep -q "✅ \*\*APPROVED\*\*"; then
+            echo "approved=true" >> $GITHUB_OUTPUT
+            echo "✅ Claude approved the grouped changes"
+          elif echo "$latest_comment" | grep -q "✅ \*\*FIXED\*\*"; then
+            echo "approved=true" >> $GITHUB_OUTPUT
+            echo "✅ Claude fixed breaking changes"
+          else
+            echo "approved=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Claude did not approve for auto-merge"
+          fi
+
+      - name: Auto-approve if Claude approved
+        if: steps.check-approval.outputs.approved == 'true'
+        run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for dev dependencies
+        if: |
+          steps.check-approval.outputs.approved == 'true' &&
+          steps.metadata.outputs.dependency-type == 'direct:development'
+        run: |
+          gh pr merge --auto --squash "$PR_URL"
+          gh pr edit "$PR_URL" --add-label "dependabot-auto-merge"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Label for manual merge (prod deps or major updates)
+        if: |
+          steps.check-approval.outputs.approved == 'true' &&
+          (steps.metadata.outputs.dependency-type == 'direct:production' ||
+           steps.metadata.outputs.update-type == 'version-update:semver-major')
+        run: |
+          gh pr edit "$PR_URL" --add-label "dependabot-approved" --add-label "ready-to-merge"
+          gh pr comment "$PR_URL" --body "✅ **Claude approved** - Grouped PR ready for manual merge after CI passes."
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
