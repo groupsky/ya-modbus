@@ -532,7 +532,7 @@ jobs:
             ## 📝 Updated Commit Message
 
             **Subject:**
-            chore(deps)(${{ steps.metadata.outputs.package-ecosystem }}): bump ${{ steps.metadata.outputs.dependency-names }} from ${{ steps.metadata.outputs.previous-version }} to ${{ steps.metadata.outputs.new-version }}
+            chore(deps)(${{ needs.metadata.outputs.package-ecosystem }}): bump ${{ needs.metadata.outputs.dependency-names }} from ${{ needs.metadata.outputs.prev-version }} to ${{ needs.metadata.outputs.new-version }}
 
             **Body:**
             [Summary of the dependency update changes]
@@ -541,7 +541,7 @@ jobs:
             - [1-3 line summary of fixes that were applied]
 
             <!-- COMMIT_MESSAGE_START
-            chore(deps)(${{ steps.metadata.outputs.package-ecosystem }}): bump ${{ steps.metadata.outputs.dependency-names }} from ${{ steps.metadata.outputs.previous-version }} to ${{ steps.metadata.outputs.new-version }}
+            chore(deps)(${{ needs.metadata.outputs.package-ecosystem }}): bump ${{ needs.metadata.outputs.dependency-names }} from ${{ needs.metadata.outputs.prev-version }} to ${{ needs.metadata.outputs.new-version }}
 
             [Same body content as above]
             COMMIT_MESSAGE_END -->
