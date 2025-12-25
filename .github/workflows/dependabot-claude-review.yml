@@ -432,7 +432,6 @@ jobs:
         with:
           username: ${{ steps.check-fix-commit.outputs.fix_author }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          min-commits: 2
       - name: Check Claude approval
         id: check-approval
         env:

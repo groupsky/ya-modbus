@@ -328,7 +328,6 @@ jobs:
         with:
           username: ${{ steps.check-fix-commit.outputs.fix_author }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          min-commits: 2
 
       # Block if untrusted contributor
       - name: Block untrusted contributor
