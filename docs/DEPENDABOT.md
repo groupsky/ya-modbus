@@ -365,9 +365,96 @@ Workflows use sparse checkout to minimize exposure:
 
 Only checks out what's needed for the workflow.
 
+## Reusable Actions
+
+The workflows use several reusable composite actions to eliminate code duplication and provide consistent behavior:
+
+### Claude Approval Extraction
+
+**Action**: `.github/actions/extract-claude-approval`
+
+Extracts Claude's approval status and decision markers from PR comments.
+
+**Markers detected**:
+
+- `✅ **APPROVED**` - Direct approval for auto-merge
+- `✅ **VERIFIED**` - Fix commit verified safe
+- `🔧 **FIXABLE**` - Fixable breaking changes identified
+- `⚠️ **MIGRATION REQUIRED**` - Complex migration needed
+- `⚠️ **REVIEW NEEDED**` - Human review required
+- `⚠️ **ISSUES FOUND**` - Fix verification failed
+
+**Features**:
+
+- Handles fix commit special cases with contributor trust verification
+- Posts security warnings for untrusted contributors
+- Outputs structured decision information
+
+**See**: `.github/actions/extract-claude-approval/README.md`
+
+### Commit Message Extraction
+
+**Action**: `.github/actions/extract-claude-commit-message`
+
+Extracts commit messages from Claude's PR comments using hidden HTML markers.
+
+**Features**:
+
+- Retrieves latest Claude-suggested commit message
+- Supports fallback commit messages
+- Splits message into subject and body
+
+**See**: `.github/actions/extract-claude-commit-message/README.md` (created in low priority fixes)
+
+### Contributor Trust Verification
+
+**Action**: `.github/actions/verify-trusted-contributor`
+
+Verifies if a contributor is trusted based on commit history, allowlist, denylist, or team membership.
+
+**Features**:
+
+- Configurable minimum commit count (default: 2)
+- Allowlist/denylist support
+- GitHub team membership verification
+- Rate limit handling with graceful degradation
+
+**See**: `.github/actions/verify-trusted-contributor/README.md`
+
+### Bash Utilities
+
+**Action**: `.github/actions/bash-utilities`
+
+Provides reusable bash functions for workflows.
+
+**Rate limiting functions**:
+
+- `check_rate_limit <threshold>` - Check if API rate limit is above threshold
+- `wait_for_rate_limit [threshold]` - Wait for rate limit reset if needed
+- `retry_backoff <command>` - Execute command with exponential backoff
+
+**Messaging functions**:
+
+- `success_msg <message>` - Standardized success message (✅)
+- `error_msg <message>` - Standardized error message (❌)
+- `warn_msg <message>` - Standardized warning message (⚠️)
+- `info_msg <message>` - Standardized info message (ℹ️)
+- `security_msg <message>` - Standardized security message (🔒)
+
+**See**: `.github/actions/bash-utilities/README.md`
+
+**Best practices**:
+
+- [Bash retry with exponential backoff](https://gist.github.com/rainabba/9b6bbcac087d46d1a1314825aee8b322)
+- [GitHub API rate limits](https://docs.github.com/en/rest/rate-limit/rate-limit)
+- [Managing rate limits guide](https://www.lunar.dev/post/a-developers-guide-managing-rate-limits-for-the-github-api)
+
 ## References
 
 - **Complete merge rules**: `docs/PR-MERGE-RULES.md`
 - **Dependabot config**: `.github/dependabot.yml`
 - **Workflow guide**: `.github/workflows/AGENTS.md`
 - **Trusted contributor action**: `.github/actions/verify-trusted-contributor/README.md`
+- **Claude approval action**: `.github/actions/extract-claude-approval/README.md`
+- **Commit message action**: `.github/actions/extract-claude-commit-message/README.md`
+- **Bash utilities action**: `.github/actions/bash-utilities/README.md`

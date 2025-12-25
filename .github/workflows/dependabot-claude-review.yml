@@ -470,54 +470,14 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check Claude approval
         id: check-approval
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          IS_FIX_COMMIT: ${{ steps.check-fix-commit.outputs.is_fix_commit }}
-          IS_TRUSTED: ${{ steps.verify-contributor.outputs.is-trusted }}
-          FIX_AUTHOR: ${{ steps.check-fix-commit.outputs.fix_author }}
-          TRUST_REASON: ${{ steps.verify-contributor.outputs.reason }}
-        run: |
-          # Get the latest comment from claude[bot]
-          latest_comment=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | last | .body')
-
-          echo "Latest Claude comment:"
-          echo "$latest_comment"
-
-          # Check if Claude approved for auto-merge
-          if echo "$latest_comment" | grep -q "✅ \*\*APPROVED\*\*"; then
-            echo "approved=true" >> $GITHUB_OUTPUT
-            echo "needs_verification=false" >> $GITHUB_OUTPUT
-            echo "✅ Claude approved the changes"
-          elif [ "$IS_FIX_COMMIT" = "true" ] && echo "$latest_comment" | grep -q "🔧 \*\*FIXABLE\*\*"; then
-            # Special case: This is a fix commit for a FIXABLE PR
-            # Check contributor trust before proceeding
-            if [ "$IS_TRUSTED" = "true" ]; then
-              echo "approved=true" >> $GITHUB_OUTPUT
-              echo "needs_verification=true" >> $GITHUB_OUTPUT
-              echo "✅ Fix commit from trusted contributor - needs final verification"
-            else
-              echo "approved=false" >> $GITHUB_OUTPUT
-              echo "needs_verification=false" >> $GITHUB_OUTPUT
-              echo "⚠️  Fix commit from untrusted contributor ($FIX_AUTHOR) - blocking auto-merge"
-              echo "Reason: $TRUST_REASON"
-              gh pr comment "$PR_URL" --body "⚠️ **SECURITY BLOCK** - Fix commit from @$FIX_AUTHOR who is not a trusted contributor.
-
-              **Reason:** $TRUST_REASON
-
-              A repository maintainer must manually review and approve this PR."
-            fi
-          else
-            echo "approved=false" >> $GITHUB_OUTPUT
-            echo "needs_verification=false" >> $GITHUB_OUTPUT
-            if echo "$latest_comment" | grep -q "🔧 \*\*FIXABLE\*\*"; then
-              echo "⚠️  Claude identified fixable breaking changes - manual fixes required"
-            elif echo "$latest_comment" | grep -q "⚠️ \*\*MIGRATION REQUIRED\*\*"; then
-              echo "⚠️  Claude identified complex migration needed"
-            else
-              echo "⚠️  Claude did not approve for auto-merge"
-            fi
-          fi
+        uses: ./.github/actions/extract-claude-approval
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          is-fix-commit: ${{ steps.check-fix-commit.outputs.is_fix_commit }}
+          is-trusted-contributor: ${{ steps.verify-contributor.outputs.is_trusted }}
+          fix-author: ${{ steps.check-fix-commit.outputs.fix_author }}
+          trust-reason: ${{ steps.verify-contributor.outputs.reason }}
 
       - name: Checkout repository for final verification
         if: steps.check-approval.outputs.needs_verification == 'true'

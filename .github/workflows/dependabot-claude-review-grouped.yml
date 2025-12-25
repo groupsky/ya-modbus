@@ -292,44 +292,21 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check Claude approval
-        id: check-approval
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        run: |
-          # Get the latest comment from claude[bot]
-          latest_comment=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | last | .body')
-
-          echo "Latest Claude comment:"
-          echo "$latest_comment"
-
-          # Check if Claude approved for auto-merge
-          # Only APPROVED marker enables auto-merge
-          # FIXABLE, MIGRATION REQUIRED, REVIEW NEEDED all require manual intervention
-          if echo "$latest_comment" | grep -q "✅ \*\*APPROVED\*\*"; then
-            echo "approved=true" >> $GITHUB_OUTPUT
-            echo "✅ Claude approved the grouped changes"
-          else
-            echo "approved=false" >> $GITHUB_OUTPUT
-            if echo "$latest_comment" | grep -q "🔧 \*\*FIXABLE\*\*"; then
-              echo "⚠️  Claude identified fixable breaking changes - manual fixes required"
-            elif echo "$latest_comment" | grep -q "⚠️ \*\*MIGRATION REQUIRED\*\*"; then
-              echo "⚠️  Claude identified complex migration needed"
-            elif echo "$latest_comment" | grep -q "⚠️ \*\*REVIEW NEEDED\*\*"; then
-              echo "⚠️  Claude requires human review"
-            else
-              echo "⚠️  Claude did not approve for auto-merge"
-            fi
-          fi
-
       # Checkout repository for local actions
+      # IMPORTANT: Must run before extract-claude-approval step
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           sparse-checkout: |
             .github/actions
           sparse-checkout-cone-mode: false
+
+      - name: Check Claude approval
+        id: check-approval
+        uses: ./.github/actions/extract-claude-approval
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # Check if there are fix commits that need final verification
       - name: Check for fix commits
@@ -516,29 +493,29 @@ jobs:
             Use `gh pr comment` to post your verification result.
           claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Grep,Glob"'
 
-      - name: Check final verification result
+      - name: Wait for and check final verification result
         if: steps.check-verification-needed.outputs.needs_verification == 'true'
         id: check-final-verification
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
-          # Poll for Claude's comment (check every 2s for up to 60s)
-          echo "Waiting for Claude's verification comment..."
+          # Poll for Claude's verification comment (check every 2s for up to 60s)
+          echo "ℹ️  Waiting for Claude's verification comment..."
           max_attempts=30  # 60 seconds total
           attempt=0
-          latest_comment=""
           start_time=$(date +%s)
+          found_comment=false
 
           while [ $attempt -lt $max_attempts ]; do
-            # Get the latest comment from claude[bot]
+            # Check if latest Claude comment has verification markers
             latest_comment=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | last | .body' 2>/dev/null || echo "")
 
-            # Check if we found a verification comment
             if echo "$latest_comment" | grep -qE "(✅ \*\*VERIFIED\*\*|⚠️ \*\*ISSUES FOUND\*\*)"; then
               end_time=$(date +%s)
               duration=$((end_time - start_time))
               echo "✅ Found Claude's verification comment after $duration seconds"
+              found_comment=true
               break
             fi
 
@@ -549,7 +526,8 @@ jobs:
             fi
           done
 
-          if [ -z "$latest_comment" ] || ! echo "$latest_comment" | grep -qE "(✅ \*\*VERIFIED\*\*|⚠️ \*\*ISSUES FOUND\*\*)"; then
+          # Check if we timed out
+          if [ "$found_comment" = "false" ]; then
             end_time=$(date +%s)
             duration=$((end_time - start_time))
             echo "⚠️  Timeout: Claude's verification comment not found after $duration seconds"
@@ -558,21 +536,25 @@ jobs:
             exit 1
           fi
 
-          echo "Latest Claude comment:"
-          echo "$latest_comment"
+      - name: Extract final verification decision
+        if: steps.check-verification-needed.outputs.needs_verification == 'true'
+        id: extract-final-verification
+        uses: ./.github/actions/extract-claude-approval
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-          # Check if verified
-          if echo "$latest_comment" | grep -q "✅ \*\*VERIFIED\*\*"; then
-            echo "verified=true" >> $GITHUB_OUTPUT
-            echo "✅ Claude verified the fixes"
-          else
-            echo "verified=false" >> $GITHUB_OUTPUT
-            echo "⚠️  Claude found issues or did not verify"
-
-            # Post blocking comment
-            gh pr comment "$PR_URL" --body "⚠️ **Auto-merge blocked** - Claude's final verification did not pass. Please review the concerns raised above."
-            exit 1
-          fi
+      - name: Block if verification failed
+        if: |
+          steps.check-verification-needed.outputs.needs_verification == 'true' &&
+          steps.extract-final-verification.outputs.decision != 'VERIFIED'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          echo "⚠️  Claude found issues or did not verify (decision: ${{ steps.extract-final-verification.outputs.decision }})"
+          gh pr comment "$PR_URL" --body "⚠️ **Auto-merge blocked** - Claude's final verification did not pass. Please review the concerns raised above."
+          exit 1
 
       # Evaluate whether this PR should be auto-merged
       # This step consolidates all the complex conditionals into a single boolean output
@@ -585,7 +567,7 @@ jobs:
           if [ "${{ steps.check-approval.outputs.approved }}" = "true" ]; then
             claude_ok="true"
           elif [ "${{ steps.check-verification-needed.outputs.needs_verification }}" = "true" ] && \
-               [ "${{ steps.check-final-verification.outputs.verified }}" = "true" ]; then
+               [ "${{ steps.extract-final-verification.outputs.decision }}" = "VERIFIED" ]; then
             claude_ok="true"
           fi
 

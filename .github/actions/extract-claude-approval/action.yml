@@ -1,0 +1,144 @@
+name: Extract Claude Approval Status
+description: Extracts Claude's approval status and decision markers from PR comments
+
+inputs:
+  pr-url:
+    description: Pull request URL
+    required: true
+  github-token:
+    description: GitHub token for API access
+    required: true
+  is-fix-commit:
+    description: 'Whether this is a fix commit (true/false)'
+    required: false
+    default: 'false'
+  is-trusted-contributor:
+    description: 'Whether the fix author is trusted (true/false)'
+    required: false
+    default: 'false'
+  fix-author:
+    description: 'Username of the fix commit author'
+    required: false
+    default: ''
+  trust-reason:
+    description: 'Reason for trust decision'
+    required: false
+    default: ''
+
+outputs:
+  approved:
+    description: 'true if approved for auto-merge, false otherwise'
+    value: ${{ steps.check-approval.outputs.approved }}
+  decision:
+    description: 'Claude decision marker: APPROVED, FIXABLE, MIGRATION_REQUIRED, REVIEW_NEEDED, VERIFIED, ISSUES_FOUND, or NONE'
+    value: ${{ steps.check-approval.outputs.decision }}
+  needs-verification:
+    description: 'true if fix commit needs final verification, false otherwise'
+    value: ${{ steps.check-approval.outputs.needs_verification }}
+  latest-comment:
+    description: 'Full text of latest Claude comment'
+    value: ${{ steps.check-approval.outputs.latest_comment }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check Claude approval status
+      id: check-approval
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR_URL: ${{ inputs.pr-url }}
+        IS_FIX_COMMIT: ${{ inputs.is-fix-commit }}
+        IS_TRUSTED: ${{ inputs.is-trusted-contributor }}
+        FIX_AUTHOR: ${{ inputs.fix-author }}
+        TRUST_REASON: ${{ inputs.trust-reason }}
+      run: |
+        # Get the latest comment from claude[bot]
+        latest_comment=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | last | .body')
+
+        echo "ℹ️  Analyzing Claude's latest comment..."
+
+        # Initialize outputs
+        approved="false"
+        decision="NONE"
+        needs_verification="false"
+
+        # Check for approval/decision markers
+        if echo "$latest_comment" | grep -q "✅ \*\*VERIFIED\*\*"; then
+          # Final verification passed (for fix commits)
+          decision="VERIFIED"
+          approved="true"
+          echo "✅ Claude verified the fixes"
+
+        elif echo "$latest_comment" | grep -q "⚠️ \*\*ISSUES FOUND\*\*"; then
+          # Final verification failed (for fix commits)
+          decision="ISSUES_FOUND"
+          approved="false"
+          echo "❌ Claude found issues with the fixes"
+
+        elif echo "$latest_comment" | grep -q "✅ \*\*APPROVED\*\*"; then
+          # Direct approval for auto-merge
+          decision="APPROVED"
+          approved="true"
+          echo "✅ Claude approved the changes"
+
+        elif echo "$latest_comment" | grep -q "🔧 \*\*FIXABLE\*\*"; then
+          # Fixable breaking changes identified
+          decision="FIXABLE"
+
+          # Special handling for fix commits
+          if [ "$IS_FIX_COMMIT" = "true" ]; then
+            if [ "$IS_TRUSTED" = "true" ]; then
+              # Trusted contributor applied fix - needs verification
+              approved="true"
+              needs_verification="true"
+              echo "✅ Fix commit from trusted contributor - needs final verification"
+            else
+              # Untrusted contributor - block auto-merge
+              approved="false"
+              echo "⚠️  Fix commit from untrusted contributor ($FIX_AUTHOR) - blocking auto-merge"
+              echo "Reason: $TRUST_REASON"
+
+              # Post security warning
+              gh pr comment "$PR_URL" --body "⚠️ **SECURITY BLOCK** - Fix commit from @$FIX_AUTHOR who is not a trusted contributor.
+
+              **Reason:** $TRUST_REASON
+
+              A repository maintainer must manually review and approve this PR."
+            fi
+          else
+            # Not a fix commit yet - manual fixes required
+            approved="false"
+            echo "⚠️  Claude identified fixable breaking changes - manual fixes required"
+          fi
+
+        elif echo "$latest_comment" | grep -q "⚠️ \*\*MIGRATION REQUIRED\*\*"; then
+          # Complex migration needed
+          decision="MIGRATION_REQUIRED"
+          approved="false"
+          echo "⚠️  Claude identified complex migration needed"
+
+        elif echo "$latest_comment" | grep -q "⚠️ \*\*REVIEW NEEDED\*\*"; then
+          # Manual review required
+          decision="REVIEW_NEEDED"
+          approved="false"
+          echo "⚠️  Claude requires human review"
+
+        else
+          # No recognized marker
+          decision="NONE"
+          approved="false"
+          echo "⚠️  Claude did not approve for auto-merge"
+        fi
+
+        # Output results
+        {
+          echo "approved=$approved"
+          echo "decision=$decision"
+          echo "needs_verification=$needs_verification"
+          echo "latest_comment<<EOF"
+          echo "$latest_comment"
+          echo "EOF"
+        } >> $GITHUB_OUTPUT
+
+        echo "📊 Approval status: approved=$approved, decision=$decision, needs_verification=$needs_verification"

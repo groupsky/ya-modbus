@@ -1,0 +1,156 @@
+name: Bash Utilities
+description: Provides reusable bash functions for rate limiting, retries, and standardized messaging
+
+inputs:
+  github-token:
+    description: GitHub token for API access
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Export utility functions
+      shell: bash
+      run: |
+        # Export functions to be available in subsequent steps
+        cat >> $GITHUB_ENV <<'UTILITIES_EOF'
+        BASH_UTILITIES_LOADED=true
+        UTILITIES_EOF
+
+        # Create utilities script
+        cat > /tmp/gh-utilities.sh <<'EOF'
+        #!/bin/bash
+
+        # Retry function with exponential backoff
+        # Usage: retry_backoff <command> [args...]
+        # Environment variables:
+        #   ATTEMPTS (default: 5) - Maximum retry attempts
+        #   TIMEOUT (default: 2) - Initial timeout in seconds
+        function retry_backoff() {
+          local max_attempts=${ATTEMPTS:-5}
+          local timeout=${TIMEOUT:-2}
+          local attempts=0
+          local exitCode=1
+
+          while [ $attempts -lt $max_attempts ]; do
+            "$@"
+            exitCode=$?
+
+            if [ $exitCode -eq 0 ]; then
+              break
+            fi
+
+            echo "⚠️  Attempt $((attempts + 1))/$max_attempts failed. Retrying in ${timeout}s..." >&2
+            sleep $timeout
+            attempts=$((attempts + 1))
+            timeout=$((timeout * 2))
+          done
+
+          if [ $exitCode -ne 0 ]; then
+            echo "❌ Max retry attempts ($max_attempts) reached" >&2
+          fi
+
+          return $exitCode
+        }
+
+        # Check GitHub API rate limit
+        # Usage: check_rate_limit <threshold>
+        # Returns: 0 if remaining > threshold, 1 otherwise
+        function check_rate_limit() {
+          local threshold=${1:-100}
+          local remaining
+
+          remaining=$(gh api rate_limit --jq '.resources.core.remaining' 2>/dev/null)
+
+          if [ $? -ne 0 ]; then
+            echo "⚠️  Unable to check rate limit" >&2
+            return 0  # Assume OK if we can't check
+          fi
+
+          echo "ℹ️  API rate limit: $remaining requests remaining" >&2
+
+          if [ "$remaining" -lt "$threshold" ]; then
+            local reset_time
+            reset_time=$(gh api rate_limit --jq '.resources.core.reset')
+            local current_time=$(date +%s)
+            local wait_seconds=$((reset_time - current_time))
+
+            echo "⚠️  Rate limit low ($remaining < $threshold)" >&2
+            echo "⏰ Rate limit resets in $((wait_seconds / 60)) minutes" >&2
+            return 1
+          fi
+
+          return 0
+        }
+
+        # Wait for rate limit to reset
+        # Usage: wait_for_rate_limit [threshold]
+        function wait_for_rate_limit() {
+          local threshold=${1:-100}
+
+          if check_rate_limit "$threshold"; then
+            return 0
+          fi
+
+          local reset_time
+          reset_time=$(gh api rate_limit --jq '.resources.core.reset')
+          local current_time=$(date +%s)
+          local wait_seconds=$((reset_time - current_time + 5))
+
+          if [ $wait_seconds -gt 0 ]; then
+            echo "⏳ Waiting $wait_seconds seconds for rate limit reset..." >&2
+            sleep $wait_seconds
+          fi
+
+          return 0
+        }
+
+        # Standardized success message
+        # Usage: success_msg <message>
+        function success_msg() {
+          echo "✅ $*"
+        }
+
+        # Standardized error message
+        # Usage: error_msg <message>
+        function error_msg() {
+          echo "❌ $*" >&2
+        }
+
+        # Standardized warning message
+        # Usage: warn_msg <message>
+        function warn_msg() {
+          echo "⚠️  $*" >&2
+        }
+
+        # Standardized info message
+        # Usage: info_msg <message>
+        function info_msg() {
+          echo "ℹ️  $*"
+        }
+
+        # Standardized security warning
+        # Usage: security_msg <message>
+        function security_msg() {
+          echo "🔒 Security: $*" >&2
+        }
+
+        # Export all functions
+        export -f retry_backoff
+        export -f check_rate_limit
+        export -f wait_for_rate_limit
+        export -f success_msg
+        export -f error_msg
+        export -f warn_msg
+        export -f info_msg
+        export -f security_msg
+        EOF
+
+        chmod +x /tmp/gh-utilities.sh
+
+        # Source the utilities
+        source /tmp/gh-utilities.sh
+
+        echo "✅ Bash utilities loaded and exported"
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
