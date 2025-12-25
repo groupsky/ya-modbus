@@ -40,6 +40,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           # Check that the FIRST commit in the PR is from Dependabot
           # This prevents non-Dependabot PRs from triggering the workflow
 
@@ -88,6 +94,12 @@ jobs:
 
       - name: Display metadata
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           echo "ℹ️  Dependency names: ${{ steps.metadata.outputs.dependency-names }}"
           echo "ℹ️  Dependency type: ${{ steps.metadata.outputs.dependency-type }}"
           echo "ℹ️  Update type: ${{ steps.metadata.outputs.update-type }}"
@@ -262,6 +274,12 @@ jobs:
 
       - name: Verify reviewdog installation
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           if ! command -v reviewdog &> /dev/null; then
             echo "❌ reviewdog installation failed"
             echo "⚠️  Claude will not be able to post inline suggestions"
@@ -421,6 +439,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           # Get commits and validate array is not empty
           commits=$(gh pr view "$PR_URL" --json commits --jq '.commits')
           commit_count=$(echo "$commits" | jq 'length')
@@ -558,6 +582,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           # Get the latest comment from claude[bot] (should be the verification)
           latest_comment=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | last | .body')
 
@@ -578,6 +608,12 @@ jobs:
       - name: Evaluate auto-merge eligibility
         id: evaluate-auto-merge
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           # Check if Claude approved/verified
           claude_ok="false"
           if [ "${{ steps.check-approval.outputs.approved }}" = "true" ]; then
@@ -650,6 +686,12 @@ jobs:
           PREV_VERSION: ${{ needs.metadata.outputs.prev-version }}
           NEW_VERSION: ${{ needs.metadata.outputs.new-version }}
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           # Use Claude's commit message if available, otherwise fallback to default format
           if [ -n "$COMMIT_SUBJECT" ]; then
             echo "ℹ️  Using Claude-suggested commit message"
