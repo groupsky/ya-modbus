@@ -8,10 +8,10 @@ module.exports = {
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
     global: {
-      branches: 90, // Lowered from 95% - remaining gaps are defensive code (null coalescing) and complex dynamic imports in CLI
+      branches: 95,
       functions: 95,
-      lines: 90, // Lowered from 95% - CLI package has ESM dynamic import paths that are hard to unit test
-      statements: 90, // Lowered from 95% - CLI package has ESM dynamic import paths that are hard to unit test
+      lines: 95,
+      statements: 95,
     },
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
