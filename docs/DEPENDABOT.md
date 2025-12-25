@@ -142,7 +142,8 @@ All Dependabot PRs go through three layers of security verification:
 
 ### 1. First Commit Verification
 
-- Verifies first commit in PR is from `dependabot[bot]`
+- Uses reusable action: `.github/actions/verify-dependabot-pr`
+- Verifies first commit in PR is from `dependabot[bot]` or `app/dependabot`
 - Prevents non-Dependabot PRs from triggering automated workflows
 - Blocks malicious PRs masquerading as Dependabot
 
@@ -369,6 +370,20 @@ Only checks out what's needed for the workflow.
 
 The workflows use several reusable composite actions to eliminate code duplication and provide consistent behavior:
 
+### Dependabot PR Verification
+
+**Action**: `.github/actions/verify-dependabot-pr`
+
+Verifies that a PR is a genuine Dependabot PR by checking the first commit author.
+
+**Outputs**:
+
+- `is-dependabot-pr` - Boolean indicating if first commit is from Dependabot
+- `first-commit-author` - Login of the first commit author
+- `commit-count` - Total number of commits in the PR
+
+**See**: `.github/actions/verify-dependabot-pr/README.md`
+
 ### Claude Approval Extraction
 
 **Action**: `.github/actions/extract-claude-approval`
@@ -454,6 +469,7 @@ Provides reusable bash functions for workflows.
 - **Complete merge rules**: `docs/PR-MERGE-RULES.md`
 - **Dependabot config**: `.github/dependabot.yml`
 - **Workflow guide**: `.github/workflows/AGENTS.md`
+- **Dependabot PR verification action**: `.github/actions/verify-dependabot-pr/README.md`
 - **Trusted contributor action**: `.github/actions/verify-trusted-contributor/README.md`
 - **Claude approval action**: `.github/actions/extract-claude-approval/README.md`
 - **Commit message action**: `.github/actions/extract-claude-commit-message/README.md`

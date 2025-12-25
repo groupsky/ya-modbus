@@ -1,0 +1,67 @@
+name: 'Verify Dependabot PR'
+description: 'Verifies that a PR is a genuine Dependabot PR by checking the first commit author'
+
+inputs:
+  pr-url:
+    description: 'Pull request URL'
+    required: true
+  github-token:
+    description: 'GitHub token for API access'
+    required: true
+
+outputs:
+  is-dependabot-pr:
+    description: 'true if the first commit is from Dependabot, false otherwise'
+    value: ${{ steps.verify.outputs.is_dependabot_pr }}
+  first-commit-author:
+    description: 'The login of the first commit author'
+    value: ${{ steps.verify.outputs.first_commit_author }}
+  commit-count:
+    description: 'Total number of commits in the PR'
+    value: ${{ steps.verify.outputs.commit_count }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify Dependabot PR
+      id: verify
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR_URL: ${{ inputs.pr-url }}
+      run: |
+        # Enable debug mode if ACTIONS_STEP_DEBUG is set
+        if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+          set -x
+          echo "🐛 Debug mode enabled"
+        fi
+
+        # Get commits and validate array is not empty
+        commits=$(gh pr view "$PR_URL" --json commits --jq '.commits')
+        commit_count=$(echo "$commits" | jq 'length')
+
+        if [ "$commit_count" -eq 0 ]; then
+          echo "❌ PR has no commits - cannot verify"
+          echo "is_dependabot_pr=false" >> $GITHUB_OUTPUT
+          echo "commit_count=0" >> $GITHUB_OUTPUT
+          echo "first_commit_author=" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        # Get first commit author from the PR
+        first_commit_author=$(echo "$commits" | jq -r '.[0].authors[0].login')
+
+        echo "ℹ️  First commit author: $first_commit_author (total commits: $commit_count)"
+
+        # Output commit info
+        echo "commit_count=$commit_count" >> $GITHUB_OUTPUT
+        echo "first_commit_author=$first_commit_author" >> $GITHUB_OUTPUT
+
+        # Verify first commit is from Dependabot
+        if [ "$first_commit_author" = "dependabot[bot]" ] || [ "$first_commit_author" = "app/dependabot" ]; then
+          echo "is_dependabot_pr=true" >> $GITHUB_OUTPUT
+          echo "✅ Verified: First commit is from Dependabot"
+        else
+          echo "is_dependabot_pr=false" >> $GITHUB_OUTPUT
+          echo "❌ Not a Dependabot PR: First commit author is $first_commit_author"
+        fi

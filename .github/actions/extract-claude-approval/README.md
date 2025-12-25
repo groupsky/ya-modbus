@@ -164,6 +164,7 @@ When `is-fix-commit='true'`:
 
 ## Related Actions
 
+- `.github/actions/verify-dependabot-pr` - Verifies PR is genuine Dependabot PR
 - `.github/actions/verify-trusted-contributor` - Verifies contributor trustworthiness
 - `.github/actions/extract-claude-commit-message` - Extracts commit message from Claude's comments
 
