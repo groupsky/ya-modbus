@@ -1,12 +1,8 @@
 /**
  * XYMD1 Temperature and Humidity Sensor Driver
  *
- * Device specifications:
- * - Default address: 1
- * - Baud rate: 9600
- * - Parity: Even
- * - Stop bits: 1
- * - Data bits: 8
+ * Factory default device specifications are exported via the DEFAULT_CONFIG constant.
+ * See DEFAULT_CONFIG for baud rate, parity, data bits, stop bits, and default address.
  *
  * Register mapping:
  * - Input registers 1-2: Temperature (×10) and Humidity (×10)
@@ -25,8 +21,11 @@ import type {
 
 /**
  * Valid baud rates for XYMD1
+ *
+ * The device supports these three baud rates for serial communication.
+ * The default is 9600 bps (see DEFAULT_CONFIG).
  */
-const VALID_BAUD_RATES = [9600, 14400, 19200] as const
+export const VALID_BAUD_RATES = [9600, 14400, 19200] as const
 
 /**
  * Default XYMD1 device configuration
