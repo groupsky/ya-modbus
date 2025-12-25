@@ -49,7 +49,7 @@ jobs:
           # Get first commit author from the PR
           first_commit_author=$(echo "$commits" | jq -r '.[0].authors[0].login')
 
-          echo "First commit author: $first_commit_author (total commits: $commit_count)"
+          echo "ℹ️  First commit author: $first_commit_author (total commits: $commit_count)"
 
           # Verify first commit is from Dependabot
           if [ "$first_commit_author" = "dependabot[bot]" ] || [ "$first_commit_author" = "app/dependabot" ]; then
@@ -58,7 +58,7 @@ jobs:
           else
             echo "is_dependabot_pr=false" >> $GITHUB_OUTPUT
             echo "⚠️  Security: First commit is NOT from Dependabot (author: $first_commit_author)"
-            echo "Skipping workflow for security reasons"
+            echo "⚠️  Skipping workflow for security reasons"
             exit 0
           fi
 
@@ -122,7 +122,7 @@ jobs:
         run: |
           if ! command -v reviewdog &> /dev/null; then
             echo "❌ reviewdog installation failed"
-            echo "Claude will not be able to post inline suggestions"
+            echo "⚠️  Claude will not be able to post inline suggestions"
             exit 1
           fi
           echo "✅ reviewdog is available"
@@ -320,15 +320,15 @@ jobs:
           commits=$(gh pr view "$PR_URL" --json commits --jq '.commits')
           commit_count=$(echo "$commits" | jq 'length')
 
-          echo "Total commits in PR: $commit_count"
+          echo "ℹ️  Total commits in PR: $commit_count"
 
           if [ "$commit_count" -gt 1 ]; then
             # Get the latest commit info
             latest_commit_author=$(echo "$commits" | jq -r '.[-1].authors[0].login')
             latest_commit_message=$(echo "$commits" | jq -r '.[-1].messageHeadline')
 
-            echo "Latest commit author: $latest_commit_author"
-            echo "Latest commit message: $latest_commit_message"
+            echo "ℹ️  Latest commit author: $latest_commit_author"
+            echo "ℹ️  Latest commit message: $latest_commit_message"
 
             # Check if this is a fix commit (not from Dependabot)
             if [ "$latest_commit_author" != "dependabot[bot]" ] && [ "$latest_commit_author" != "app/dependabot" ]; then
@@ -375,8 +375,8 @@ jobs:
           REASON: ${{ steps.verify-contributor.outputs.reason }}
         run: |
           echo "❌ Security block: Untrusted contributor"
-          echo "Author: $AUTHOR"
-          echo "Reason: $REASON"
+          echo "ℹ️  Author: $AUTHOR"
+          echo "ℹ️  Reason: $REASON"
 
           gh pr comment "$PR_URL" --body "⚠️ **SECURITY BLOCK** - Fix commit from @$AUTHOR who is not a trusted contributor.
 
@@ -521,7 +521,7 @@ jobs:
 
             attempt=$((attempt + 1))
             if [ $attempt -lt $max_attempts ]; then
-              echo "Attempt $attempt/$max_attempts - waiting 2s for comment..."
+              echo "ℹ️  Attempt $attempt/$max_attempts - waiting 2s for comment..."
               sleep 2
             fi
           done
@@ -583,9 +583,9 @@ jobs:
           echo "should_auto_merge=$should_auto_merge" >> $GITHUB_OUTPUT
 
           echo "📊 Auto-merge evaluation:"
-          echo "  Claude approved/verified: $claude_ok"
-          echo "  Dependency type: ${{ steps.metadata.outputs.dependency-type }}"
-          echo "  Should auto-merge: $should_auto_merge"
+          echo "  • Claude approved/verified: $claude_ok"
+          echo "  • Dependency type: ${{ steps.metadata.outputs.dependency-type }}"
+          echo "  • Should auto-merge: $should_auto_merge"
 
       - name: Auto-approve if Claude approved
         if: steps.evaluate-auto-merge.outputs.claude_ok == 'true'
@@ -616,11 +616,11 @@ jobs:
         run: |
           # Use Claude's commit message if available, otherwise fallback
           if [ -n "$COMMIT_SUBJECT" ]; then
-            echo "Using Claude-suggested commit message"
+            echo "ℹ️  Using Claude-suggested commit message"
             commit_subject="$COMMIT_SUBJECT"
             commit_body="$COMMIT_BODY"
           else
-            echo "Using fallback commit message format"
+            echo "ℹ️  Using fallback commit message format"
             # Count dependencies
             dep_count=$(echo "$DEPENDENCY_NAMES" | tr ',' '\n' | wc -l)
 
@@ -636,7 +636,7 @@ jobs:
             commit_body="Grouped dependency updates."
           fi
 
-          echo "Commit subject: $commit_subject"
+          echo "ℹ️  Commit subject: $commit_subject"
 
           # Validate commit subject is not empty
           if [ -z "$commit_subject" ]; then

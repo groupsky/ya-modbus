@@ -31,7 +31,7 @@ jobs:
           # Get PR labels
           labels=$(gh pr view "$PR_URL" --json labels --jq '.labels[].name' | tr '\n' ',')
 
-          echo "PR labels: $labels"
+          echo "ℹ️  PR labels: $labels"
 
           # Check if PR has both required labels
           if echo "$labels" | grep -q "ready-to-merge" && echo "$labels" | grep -q "dependabot-approved"; then
@@ -61,7 +61,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           EXPECTED_REVIEWER: ${{ github.event.review.user.login }}
         run: |
-          echo "Verifying reviewer identity: $EXPECTED_REVIEWER"
+          echo "ℹ️  Verifying reviewer identity: $EXPECTED_REVIEWER"
 
           # Get the actual latest approved review from API
           latest_review=$(gh api "/repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews" \
@@ -102,7 +102,7 @@ jobs:
           # Get CI status for the PR
           status=$(gh pr view "$PR_URL" --json statusCheckRollup --jq '.statusCheckRollup[].state' | sort -u | tr '\n' ',')
 
-          echo "CI status: $status"
+          echo "ℹ️  CI status: $status"
 
           # Check if all checks are passing or pending (no failures)
           if echo "$status" | grep -qE "(FAILURE|ERROR)"; then
@@ -154,16 +154,16 @@ jobs:
         run: |
           # Use Claude's commit message if available, otherwise fallback
           if [ -n "$COMMIT_SUBJECT" ]; then
-            echo "Using Claude-suggested commit message"
+            echo "ℹ️  Using Claude-suggested commit message"
             commit_subject="$COMMIT_SUBJECT"
             commit_body="$COMMIT_BODY"
           else
-            echo "Using fallback commit message format"
+            echo "ℹ️  Using fallback commit message format"
             commit_subject="chore(deps)($ECOSYSTEM): bump $DEPENDENCY_NAMES from $PREV_VERSION to $NEW_VERSION (#$PR_NUMBER)"
             commit_body="Automated dependency update."
           fi
 
-          echo "Commit subject: $commit_subject"
+          echo "ℹ️  Commit subject: $commit_subject"
 
           # Validate commit subject is not empty
           if [ -z "$commit_subject" ]; then

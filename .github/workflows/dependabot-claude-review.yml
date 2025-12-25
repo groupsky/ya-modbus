@@ -55,7 +55,7 @@ jobs:
 
           first_commit_author=$(echo "$commits" | jq -r '.[0].authors[0].login')
 
-          echo "First commit author: $first_commit_author (total commits: $commit_count)"
+          echo "ℹ️  First commit author: $first_commit_author (total commits: $commit_count)"
 
           if [ "$first_commit_author" = "dependabot[bot]" ] || [ "$first_commit_author" = "app/dependabot" ]; then
             echo "is_dependabot_pr=true" >> $GITHUB_OUTPUT
@@ -88,13 +88,13 @@ jobs:
 
       - name: Display metadata
         run: |
-          echo "Dependency names: ${{ steps.metadata.outputs.dependency-names }}"
-          echo "Dependency type: ${{ steps.metadata.outputs.dependency-type }}"
-          echo "Update type: ${{ steps.metadata.outputs.update-type }}"
-          echo "Package ecosystem: ${{ steps.metadata.outputs.package-ecosystem }}"
-          echo "Previous version: ${{ steps.metadata.outputs.previous-version }}"
-          echo "New version: ${{ steps.metadata.outputs.new-version }}"
-          echo "Is single dependency: ${{ steps.check-single.outputs.is_single }}"
+          echo "ℹ️  Dependency names: ${{ steps.metadata.outputs.dependency-names }}"
+          echo "ℹ️  Dependency type: ${{ steps.metadata.outputs.dependency-type }}"
+          echo "ℹ️  Update type: ${{ steps.metadata.outputs.update-type }}"
+          echo "ℹ️  Package ecosystem: ${{ steps.metadata.outputs.package-ecosystem }}"
+          echo "ℹ️  Previous version: ${{ steps.metadata.outputs.previous-version }}"
+          echo "ℹ️  New version: ${{ steps.metadata.outputs.new-version }}"
+          echo "ℹ️  Is single dependency: ${{ steps.check-single.outputs.is_single }}"
 
   # Claude review for patch updates (quick check)
   claude-review-patch:
@@ -264,7 +264,7 @@ jobs:
         run: |
           if ! command -v reviewdog &> /dev/null; then
             echo "❌ reviewdog installation failed"
-            echo "Claude will not be able to post inline suggestions"
+            echo "⚠️  Claude will not be able to post inline suggestions"
             exit 1
           fi
           echo "✅ reviewdog is available"
@@ -436,9 +436,9 @@ jobs:
           latest_commit_msg=$(echo "$commits" | jq -r '.[-1].messageHeadline')
           latest_commit_author=$(echo "$commits" | jq -r '.[-1].authors[0].login')
 
-          echo "Latest commit: $latest_commit_msg"
-          echo "Latest author: $latest_commit_author"
-          echo "Total commits: $commit_count"
+          echo "ℹ️  Latest commit: $latest_commit_msg"
+          echo "ℹ️  Latest author: $latest_commit_author"
+          echo "ℹ️  Total commits: $commit_count"
 
           # Initialize outputs
           is_fix_commit=false
@@ -561,7 +561,7 @@ jobs:
           # Get the latest comment from claude[bot] (should be the verification)
           latest_comment=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | last | .body')
 
-          echo "Latest Claude verification comment:"
+          echo "ℹ️  Latest Claude verification comment:"
           echo "$latest_comment"
 
           if echo "$latest_comment" | grep -q "✅ \*\*VERIFIED\*\*"; then
@@ -614,8 +614,8 @@ jobs:
           echo "should_auto_merge=$should_auto_merge" >> $GITHUB_OUTPUT
 
           echo "📊 Auto-merge evaluation:"
-          echo "  Claude approved/verified: $claude_ok"
-          echo "  Should auto-merge: $should_auto_merge"
+          echo "  • Claude approved/verified: $claude_ok"
+          echo "  • Should auto-merge: $should_auto_merge"
 
       - name: Auto-approve if Claude approved or verified
         if: steps.evaluate-auto-merge.outputs.claude_ok == 'true'
@@ -652,17 +652,17 @@ jobs:
         run: |
           # Use Claude's commit message if available, otherwise fallback to default format
           if [ -n "$COMMIT_SUBJECT" ]; then
-            echo "Using Claude-suggested commit message"
+            echo "ℹ️  Using Claude-suggested commit message"
             commit_subject="$COMMIT_SUBJECT"
             commit_body="$COMMIT_BODY"
           else
-            echo "Using fallback commit message format"
+            echo "ℹ️  Using fallback commit message format"
             commit_subject="chore(deps)($ECOSYSTEM): bump $DEPENDENCY_NAMES from $PREV_VERSION to $NEW_VERSION (#$PR_NUMBER)"
             commit_body="Automated dependency update."
           fi
 
-          echo "Commit subject: $commit_subject"
-          echo "Commit body: $commit_body"
+          echo "ℹ️  Commit subject: $commit_subject"
+          echo "ℹ️  Commit body: $commit_body"
 
           # Validate commit subject is not empty
           if [ -z "$commit_subject" ]; then
