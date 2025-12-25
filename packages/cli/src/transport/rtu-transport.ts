@@ -1,6 +1,8 @@
 import type { Transport } from '@ya-modbus/driver-types'
 import ModbusRTU from 'modbus-serial'
 
+import { withRetry } from './retry.js'
+
 /**
  * RTU transport configuration
  */
@@ -19,46 +21,6 @@ export interface RTUConfig {
   slaveId: number
   /** Response timeout in milliseconds (default: 1000) */
   timeout?: number | undefined
-}
-
-/**
- * Maximum number of retry attempts for transient failures
- */
-const MAX_RETRIES = 3
-
-/**
- * Delay between retry attempts in milliseconds
- */
-const RETRY_DELAY_MS = 100
-
-/**
- * Sleep for specified milliseconds
- */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-/**
- * Retry a function with exponential backoff
- */
-async function withRetry<T>(fn: () => Promise<T>, maxRetries: number = MAX_RETRIES): Promise<T> {
-  let lastError: Error | undefined
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn()
-    } catch (error) {
-      lastError = error as Error
-
-      // Don't retry on the last attempt
-      if (attempt < maxRetries) {
-        await sleep(RETRY_DELAY_MS)
-      }
-    }
-  }
-
-  // lastError is always defined here since we only reach this point after catching an error
-  throw lastError as Error
 }
 
 /**
