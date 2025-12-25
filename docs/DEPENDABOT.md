@@ -330,13 +330,62 @@ env:
 
 ## Workflow Permissions
 
+### Required Permissions by Workflow
+
+#### Dependabot Review Workflows
+
+Both `dependabot-claude-review.yml` and `dependabot-claude-review-grouped.yml` require:
+
 ```yaml
 permissions:
-  contents: write # For auto-merge
-  pull-requests: write # For comments and reviews
-  issues: write # For creating issues
-  actions: read # For checking CI status
+  contents: write # Enable auto-merge, commit suggestions via reviewdog
+  pull-requests: write # Post comments, reviews, add labels, approve PRs
+  issues: write # Create feature/migration issues from changelog analysis
+  actions: read # Check CI status before enabling auto-merge
 ```
+
+#### Manual Approval Workflow
+
+`auto-merge-on-approval.yml` requires:
+
+```yaml
+permissions:
+  contents: write # Enable auto-merge on approved PRs
+  pull-requests: write # Post comments, edit labels
+```
+
+### Permission Details
+
+| Permission             | Scope  | Used For                                                        | Required By                            |
+| ---------------------- | ------ | --------------------------------------------------------------- | -------------------------------------- |
+| `contents: write`      | Repo   | Enabling auto-merge, committing reviewdog suggestions           | All Dependabot workflows               |
+| `pull-requests: write` | PRs    | Posting comments, adding labels, approving PRs, posting reviews | All Dependabot workflows               |
+| `issues: write`        | Issues | Creating feature enhancement and migration issues               | Review workflows only (not auto-merge) |
+| `actions: read`        | CI     | Checking CI status via `statusCheckRollup` API                  | Review workflows only (not auto-merge) |
+
+### Minimum Permissions for Read-Only Operation
+
+For testing or dry-run scenarios without auto-merge:
+
+```yaml
+permissions:
+  contents: read # View repository and PR contents
+  pull-requests: read # Read PR metadata
+  actions: read # Check CI status
+```
+
+**Note**: This configuration will prevent:
+
+- Auto-merge from being enabled
+- Comments and labels from being posted
+- Issues from being created
+- PR approvals from being submitted
+
+### Security Notes
+
+- **Use `pull_request_target`**: Required for write permissions on Dependabot PRs
+- **`GITHUB_TOKEN` scope**: Automatically scoped to the repository, prevents cross-repo access
+- **Token usage**: Always use `${{ secrets.GITHUB_TOKEN }}` to avoid OIDC validation issues when workflow files are modified in PRs
 
 ## Security Considerations
 
