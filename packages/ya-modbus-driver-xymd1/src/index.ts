@@ -180,7 +180,10 @@ function encodeDataPoint(id: string, value: unknown): Buffer {
     return buffer
   }
   if (id === 'baud_rate') {
-    if (typeof value !== 'number' || !SUPPORTED_CONFIG.validBaudRates.includes(value)) {
+    if (
+      typeof value !== 'number' ||
+      !(SUPPORTED_CONFIG.validBaudRates as readonly number[]).includes(value)
+    ) {
       throw new Error(
         `Invalid baud rate: must be one of ${SUPPORTED_CONFIG.validBaudRates.join(', ')}`
       )
