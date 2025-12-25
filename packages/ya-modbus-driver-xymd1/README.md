@@ -60,6 +60,31 @@ await driver.writeDataPoint('temperature_correction', -1.5)
 await driver.writeDataPoint('humidity_correction', 2.0)
 ```
 
+### Using Default Configuration
+
+The driver exports a `DEFAULT_CONFIG` constant with factory-default device settings:
+
+```typescript
+import { createDriver, DEFAULT_CONFIG } from 'ya-modbus-driver-xymd1'
+import { ModbusRTU } from '@ya-modbus/transport-rtu'
+
+// Use default configuration for connecting to factory-default device
+const transport = new ModbusRTU({
+  path: '/dev/ttyUSB0',
+  baudRate: DEFAULT_CONFIG.baudRate, // 9600
+  parity: DEFAULT_CONFIG.parity, // 'even'
+  dataBits: DEFAULT_CONFIG.dataBits, // 8
+  stopBits: DEFAULT_CONFIG.stopBits, // 1
+})
+
+const driver = await createDriver({
+  transport,
+  slaveId: DEFAULT_CONFIG.defaultAddress, // 1
+})
+```
+
+This ensures your code always uses the correct factory defaults and makes it easier to update if device specifications change.
+
 ## Data Points
 
 | ID                       | Name                   | Type    | Unit | Access     | Description                                                                                |

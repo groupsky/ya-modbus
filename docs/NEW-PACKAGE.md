@@ -180,7 +180,42 @@ Reference other workspace packages:
 
 Device driver packages should follow naming: `ya-modbus-driver-<device>`
 
-See `packages/ya-modbus-driver-xymd1` for reference.
+**Required exports**:
+
+1. **createDriver function**: Main driver factory function
+
+**Recommended exports**:
+
+1. **DEFAULT_CONFIG constant**: Factory-default device configuration
+   ```typescript
+   export const DEFAULT_CONFIG = {
+     baudRate: 9600,
+     parity: 'even' as const,
+     dataBits: 8,
+     stopBits: 1,
+     defaultAddress: 1,
+   } as const
+   ```
+2. **Valid configuration constants**: Export validation constants to enable DRY testing
+   ```typescript
+   export const VALID_BAUD_RATES = [9600, 14400, 19200] as const
+   ```
+
+**Benefits**:
+
+- Makes device specifications discoverable via code completion
+- Reduces configuration errors
+- Provides single source of truth for defaults
+- Enables DRY compliance in tests
+- Type-safe with TypeScript `as const`
+
+**Documentation recommendations** (if implementing DEFAULT_CONFIG):
+
+- File header comment should reference DEFAULT_CONFIG instead of duplicating values
+- README should include example using DEFAULT_CONFIG
+- Add JSDoc with usage example on DEFAULT_CONFIG constant
+
+See `packages/ya-modbus-driver-xymd1` for reference implementation.
 
 ### Utility Package
 

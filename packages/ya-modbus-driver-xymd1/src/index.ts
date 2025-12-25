@@ -1,12 +1,8 @@
 /**
  * XYMD1 Temperature and Humidity Sensor Driver
  *
- * Device specifications:
- * - Default address: 1
- * - Baud rate: 9600
- * - Parity: Even
- * - Stop bits: 1
- * - Data bits: 8
+ * Factory default device specifications are exported via the DEFAULT_CONFIG constant.
+ * See DEFAULT_CONFIG for baud rate, parity, data bits, stop bits, and default address.
  *
  * Register mapping:
  * - Input registers 1-2: Temperature (×10) and Humidity (×10)
@@ -25,8 +21,44 @@ import type {
 
 /**
  * Valid baud rates for XYMD1
+ *
+ * The device supports these three baud rates for serial communication.
+ * The default is 9600 bps (see DEFAULT_CONFIG).
  */
-const VALID_BAUD_RATES = [9600, 14400, 19200] as const
+export const VALID_BAUD_RATES = [9600, 14400, 19200] as const
+
+/**
+ * Default XYMD1 device configuration
+ *
+ * Use these values when connecting to a factory-default XYMD1 device.
+ * These are the settings the device ships with from the manufacturer.
+ *
+ * @example
+ * ```typescript
+ * import { DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
+ *
+ * const transport = await createRTUTransport({
+ *   port: '/dev/ttyUSB0',
+ *   baudRate: DEFAULT_CONFIG.baudRate,
+ *   parity: DEFAULT_CONFIG.parity,
+ *   dataBits: DEFAULT_CONFIG.dataBits,
+ *   stopBits: DEFAULT_CONFIG.stopBits,
+ *   slaveId: DEFAULT_CONFIG.defaultAddress,
+ * })
+ * ```
+ */
+export const DEFAULT_CONFIG = {
+  /** Default baud rate (9600 bps) */
+  baudRate: 9600,
+  /** Default parity (even) */
+  parity: 'even' as const,
+  /** Default data bits (8) */
+  dataBits: 8,
+  /** Default stop bits (1) */
+  stopBits: 1,
+  /** Default Modbus slave address (1) */
+  defaultAddress: 1,
+} as const
 
 /**
  * Data point definitions for XYMD1
