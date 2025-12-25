@@ -76,4 +76,12 @@ export interface Transport {
    * @param values - Coil values as Buffer
    */
   writeMultipleCoils(address: number, values: Buffer): Promise<void>
+
+  /**
+   * Close the transport connection
+   *
+   * Releases resources and allows the process to exit.
+   * Should be called when done using the transport.
+   */
+  close(): Promise<void>
 }
