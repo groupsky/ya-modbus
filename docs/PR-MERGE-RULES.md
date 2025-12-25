@@ -475,7 +475,10 @@ chore(deps)(npm): bump 5 dependencies (#47)
 1. **Claude analyzes changes**: Reviews changelog/release notes
 2. **Claude crafts message**: Subject + body with key changes (2-5 lines)
 3. **Claude posts suggestion**: Includes commit message with hidden HTML marker
-4. **Auto-merge extracts**: Uses Claude's message when merging
+4. **If fixes are applied**: Claude performs final verification and crafts **updated commit message** that includes:
+   - Original dependency update information
+   - Summary of fixes that were applied (1-3 lines)
+5. **Auto-merge extracts**: Uses Claude's **latest** message when merging (updated message if fixes were applied, original otherwise)
 
 **Grouped PRs:**
 
@@ -495,9 +498,10 @@ chore(deps)(npm): bump 5 dependencies (#47)
 **Benefits**:
 
 - Descriptive messages based on actual changelog content
-- Accurately reflects what the update contains
+- Accurately reflects what the update contains (including fixes if applied)
 - Human-reviewable before merge
 - Grouped PRs get intelligent summaries across all dependencies
+- Updated messages when fixes are applied ensure commit history reflects all changes
 - Leverages Claude's understanding of changelogs
 
 ## Automated Workflows

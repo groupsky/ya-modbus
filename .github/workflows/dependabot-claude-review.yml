@@ -511,6 +511,9 @@ jobs:
             3. Check for any introduced bugs, security issues, or unintended changes
             4. Ensure code quality and project conventions are maintained
             5. Confirm everything looks safe to merge
+            6. **Craft an updated commit message** that includes:
+               - The dependency update information
+               - Summary of fixes that were applied (1-3 lines)
 
             **Tools available**:
             - `gh pr diff` - View all changes in the PR
@@ -520,8 +523,34 @@ jobs:
             **Response format**:
             Post a comment with one of these markers:
 
-            - ✅ **VERIFIED** - Fixes look good, safe to auto-merge after CI passes
-            - ⚠️ **ISSUES FOUND** - [Describe problems found - will block auto-merge]
+            **If verified and safe to merge:**
+            ```
+            ✅ **VERIFIED** - Fixes look good, safe to auto-merge after CI passes
+
+            [Brief summary of what was verified]
+
+            ## 📝 Updated Commit Message
+
+            **Subject:**
+            chore(deps)(${{ steps.metadata.outputs.package-ecosystem }}): bump ${{ steps.metadata.outputs.dependency-names }} from ${{ steps.metadata.outputs.previous-version }} to ${{ steps.metadata.outputs.new-version }}
+
+            **Body:**
+            [Summary of the dependency update changes]
+
+            Applied fixes:
+            - [1-3 line summary of fixes that were applied]
+
+            <!-- COMMIT_MESSAGE_START
+            chore(deps)(${{ steps.metadata.outputs.package-ecosystem }}): bump ${{ steps.metadata.outputs.dependency-names }} from ${{ steps.metadata.outputs.previous-version }} to ${{ steps.metadata.outputs.new-version }}
+
+            [Same body content as above]
+            COMMIT_MESSAGE_END -->
+            ```
+
+            **If issues found:**
+            ```
+            ⚠️ **ISSUES FOUND** - [Describe problems found - will block auto-merge]
+            ```
 
             Use `gh pr comment` to post your verification result.
           claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Grep,Glob"'
@@ -587,19 +616,27 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
-          # Get all comments from claude[bot]
-          comments=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | .[].body')
+          # Get all comments from claude[bot], newest first
+          comments=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | reverse | .[].body')
 
-          # Extract commit message from hidden HTML comment
-          # Look for <!-- COMMIT_MESSAGE_START ... COMMIT_MESSAGE_END -->
-          commit_message=$(echo "$comments" | sed -n '/<!-- COMMIT_MESSAGE_START/,/COMMIT_MESSAGE_END -->/p' | sed '1d;$d' | head -n -0)
+          # Extract commit message from the LATEST comment that has one
+          # This ensures we use the final verification message if it exists, otherwise the original review
+          commit_message=""
+          while IFS= read -r comment; do
+            # Check if this comment contains a commit message marker
+            if echo "$comment" | grep -q "<!-- COMMIT_MESSAGE_START"; then
+              # Extract the commit message from this comment
+              commit_message=$(echo "$comment" | sed -n '/<!-- COMMIT_MESSAGE_START/,/COMMIT_MESSAGE_END -->/p' | sed '1d;$d')
+              break
+            fi
+          done <<< "$comments"
 
           if [ -n "$commit_message" ]; then
             # Extract subject (first line) and body (rest)
             commit_subject=$(echo "$commit_message" | head -n 1)
             commit_body=$(echo "$commit_message" | tail -n +2 | sed '/^$/d')
 
-            echo "Found Claude-suggested commit message"
+            echo "Found Claude-suggested commit message (using latest)"
             echo "Subject: $commit_subject"
             echo "Body: $commit_body"
 

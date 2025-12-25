@@ -99,17 +99,26 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
-          # Get all comments from claude[bot]
-          comments=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | .[].body')
+          # Get all comments from claude[bot], newest first
+          comments=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | reverse | .[].body')
 
-          # Extract commit message from hidden HTML comment
-          commit_message=$(echo "$comments" | sed -n '/<!-- COMMIT_MESSAGE_START/,/COMMIT_MESSAGE_END -->/p' | sed '1d;$d' | head -n -0)
+          # Extract commit message from the LATEST comment that has one
+          # This ensures we use the final verification message if it exists, otherwise the original review
+          commit_message=""
+          while IFS= read -r comment; do
+            # Check if this comment contains a commit message marker
+            if echo "$comment" | grep -q "<!-- COMMIT_MESSAGE_START"; then
+              # Extract the commit message from this comment
+              commit_message=$(echo "$comment" | sed -n '/<!-- COMMIT_MESSAGE_START/,/COMMIT_MESSAGE_END -->/p' | sed '1d;$d')
+              break
+            fi
+          done <<< "$comments"
 
           if [ -n "$commit_message" ]; then
             commit_subject=$(echo "$commit_message" | head -n 1)
             commit_body=$(echo "$commit_message" | tail -n +2 | sed '/^$/d')
 
-            echo "Found Claude-suggested commit message"
+            echo "Found Claude-suggested commit message (using latest)"
             {
               echo "commit_subject=$commit_subject"
               echo "commit_body<<EOF"

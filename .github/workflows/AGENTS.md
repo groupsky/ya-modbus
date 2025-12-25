@@ -113,7 +113,9 @@ Use `.nvmrc` when:
    - Before auto-merge of fix commits, Claude performs final review
    - Verifies fixes correctly address breaking changes
    - Checks for bugs, security issues, unintended changes
+   - **Crafts updated commit message** that includes both dependency update and fixes
    - Markers: `✅ **VERIFIED**` (approved) or `⚠️ **ISSUES FOUND**` (blocked)
+   - Auto-merge uses the **latest** commit message (updated if fixes applied)
 
 ### Workflow Permissions
 
