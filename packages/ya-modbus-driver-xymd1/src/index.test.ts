@@ -4,7 +4,7 @@
 
 import type { Transport } from '@ya-modbus/driver-types'
 
-import { createDriver, DEFAULT_CONFIG } from './index'
+import { createDriver, DEFAULT_CONFIG, VALID_BAUD_RATES } from './index'
 
 describe('DEFAULT_CONFIG', () => {
   it('should export default device configuration', () => {
@@ -18,7 +18,7 @@ describe('DEFAULT_CONFIG', () => {
 
   it('should have correct baud rate from valid rates', () => {
     // Ensure default baud rate is one of the valid rates for XYMD1
-    expect([9600, 14400, 19200]).toContain(DEFAULT_CONFIG.baudRate)
+    expect(VALID_BAUD_RATES).toContain(DEFAULT_CONFIG.baudRate)
   })
 
   it('should have all required properties', () => {
