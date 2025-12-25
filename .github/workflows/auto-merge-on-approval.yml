@@ -89,47 +89,28 @@ jobs:
             echo "✅ CI checks are passing or pending"
           fi
 
+      # Checkout repository for local actions
+      - name: Checkout repository
+        if: |
+          steps.check-pr.outputs.is_ready == 'true' &&
+          steps.verify-reviewer.outputs.is_trusted == 'true' &&
+          steps.check-ci.outputs.ci_ready == 'true'
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            .github/actions
+          sparse-checkout-cone-mode: false
+
       - name: Extract commit message from Claude's comment
         if: |
           steps.check-pr.outputs.is_ready == 'true' &&
           steps.verify-reviewer.outputs.is_trusted == 'true' &&
           steps.check-ci.outputs.ci_ready == 'true'
         id: extract-commit-msg
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        run: |
-          # Get all comments from claude[bot], newest first
-          comments=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | reverse | .[].body')
-
-          # Extract commit message from the LATEST comment that has one
-          # This ensures we use the final verification message if it exists, otherwise the original review
-          commit_message=""
-          while IFS= read -r comment; do
-            # Check if this comment contains a commit message marker
-            if echo "$comment" | grep -q "<!-- COMMIT_MESSAGE_START"; then
-              # Extract the commit message from this comment
-              commit_message=$(echo "$comment" | sed -n '/<!-- COMMIT_MESSAGE_START/,/COMMIT_MESSAGE_END -->/p' | sed '1d;$d')
-              break
-            fi
-          done <<< "$comments"
-
-          if [ -n "$commit_message" ]; then
-            commit_subject=$(echo "$commit_message" | head -n 1)
-            commit_body=$(echo "$commit_message" | tail -n +2 | sed '/^$/d')
-
-            echo "Found Claude-suggested commit message (using latest)"
-            {
-              echo "commit_subject=$commit_subject"
-              echo "commit_body<<EOF"
-              echo "$commit_body"
-              echo "EOF"
-            } >> $GITHUB_OUTPUT
-          else
-            echo "No commit message found, will use fallback"
-            echo "commit_subject=" >> $GITHUB_OUTPUT
-            echo "commit_body=" >> $GITHUB_OUTPUT
-          fi
+        uses: ./.github/actions/extract-claude-commit-message
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Fetch Dependabot metadata (fallback)
         if: |

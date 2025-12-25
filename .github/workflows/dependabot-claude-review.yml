@@ -648,46 +648,10 @@ jobs:
       - name: Extract commit message from Claude's comment
         if: steps.evaluate-auto-merge.outputs.should_auto_merge == 'true'
         id: extract-commit-msg
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        run: |
-          # Get all comments from claude[bot], newest first
-          comments=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | reverse | .[].body')
-
-          # Extract commit message from the LATEST comment that has one
-          # This ensures we use the final verification message if it exists, otherwise the original review
-          commit_message=""
-          while IFS= read -r comment; do
-            # Check if this comment contains a commit message marker
-            if echo "$comment" | grep -q "<!-- COMMIT_MESSAGE_START"; then
-              # Extract the commit message from this comment
-              commit_message=$(echo "$comment" | sed -n '/<!-- COMMIT_MESSAGE_START/,/COMMIT_MESSAGE_END -->/p' | sed '1d;$d')
-              break
-            fi
-          done <<< "$comments"
-
-          if [ -n "$commit_message" ]; then
-            # Extract subject (first line) and body (rest)
-            commit_subject=$(echo "$commit_message" | head -n 1)
-            commit_body=$(echo "$commit_message" | tail -n +2 | sed '/^$/d')
-
-            echo "Found Claude-suggested commit message (using latest)"
-            echo "Subject: $commit_subject"
-            echo "Body: $commit_body"
-
-            # Output for next step (escape newlines for GitHub Actions)
-            {
-              echo "commit_subject=$commit_subject"
-              echo "commit_body<<EOF"
-              echo "$commit_body"
-              echo "EOF"
-            } >> $GITHUB_OUTPUT
-          else
-            echo "⚠️  No commit message found in Claude's comment, will use default format"
-            echo "commit_subject=" >> $GITHUB_OUTPUT
-            echo "commit_body=" >> $GITHUB_OUTPUT
-          fi
+        uses: ./.github/actions/extract-claude-commit-message
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable auto-merge for approved updates
         if: steps.evaluate-auto-merge.outputs.should_auto_merge == 'true'

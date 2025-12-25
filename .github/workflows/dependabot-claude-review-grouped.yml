@@ -318,15 +318,25 @@ jobs:
 
             # Check if this is a fix commit (not from Dependabot)
             if [ "$latest_commit_author" != "dependabot[bot]" ] && [ "$latest_commit_author" != "app/dependabot" ]; then
+              # Detect if this is an "Apply suggestions" commit
+              is_apply_suggestions="false"
+              if echo "$latest_commit_message" | grep -qi "apply.*suggestion"; then
+                is_apply_suggestions="true"
+                echo "📝 Detected 'Apply suggestions' commit from @$latest_commit_author"
+              fi
+
               echo "fix_author=$latest_commit_author" >> $GITHUB_OUTPUT
               echo "has_fix_commits=true" >> $GITHUB_OUTPUT
+              echo "is_apply_suggestions=$is_apply_suggestions" >> $GITHUB_OUTPUT
               echo "✅ Fix commits detected from @$latest_commit_author"
             else
               echo "has_fix_commits=false" >> $GITHUB_OUTPUT
+              echo "is_apply_suggestions=false" >> $GITHUB_OUTPUT
               echo "ℹ️  No fix commits (all from Dependabot)"
             fi
           else
             echo "has_fix_commits=false" >> $GITHUB_OUTPUT
+            echo "is_apply_suggestions=false" >> $GITHUB_OUTPUT
             echo "ℹ️  Only one commit (Dependabot's initial commit)"
           fi
 
@@ -416,6 +426,7 @@ jobs:
             **Context**:
             - This grouped PR updates ${{ needs.detect-group.outputs.dependency-count }} dependencies
             - Fix commits were applied by: @${{ steps.check-fix-commit.outputs.fix_author }}
+            - Applied via: ${{ steps.check-fix-commit.outputs.is_apply_suggestions == 'true' && 'GitHub suggestion (Apply suggestion button)' || 'Manual commit' }}
             - The workflow is requesting your final verification before enabling auto-merge
 
             **Your task**:
@@ -562,40 +573,10 @@ jobs:
       - name: Extract commit message from Claude's comment
         if: steps.evaluate-auto-merge.outputs.should_auto_merge == 'true'
         id: extract-commit-msg
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        run: |
-          # Get all comments from claude[bot], newest first
-          comments=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | reverse | .[].body')
-
-          # Extract commit message from the LATEST comment that has one
-          commit_message=""
-          while IFS= read -r comment; do
-            # Check if this comment contains a commit message marker
-            if echo "$comment" | grep -q "<!-- COMMIT_MESSAGE_START"; then
-              # Extract the commit message from this comment
-              commit_message=$(echo "$comment" | sed -n '/<!-- COMMIT_MESSAGE_START/,/COMMIT_MESSAGE_END -->/p' | sed '1d;$d')
-              break
-            fi
-          done <<< "$comments"
-
-          if [ -n "$commit_message" ]; then
-            commit_subject=$(echo "$commit_message" | head -n 1)
-            commit_body=$(echo "$commit_message" | tail -n +2 | sed '/^$/d')
-
-            echo "Found Claude-suggested commit message (using latest)"
-            {
-              echo "commit_subject=$commit_subject"
-              echo "commit_body<<EOF"
-              echo "$commit_body"
-              echo "EOF"
-            } >> $GITHUB_OUTPUT
-          else
-            echo "No commit message found, will use fallback"
-            echo "commit_subject=" >> $GITHUB_OUTPUT
-            echo "commit_body=" >> $GITHUB_OUTPUT
-          fi
+        uses: ./.github/actions/extract-claude-commit-message
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable auto-merge for dev dependencies
         if: steps.evaluate-auto-merge.outputs.should_auto_merge == 'true'

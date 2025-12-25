@@ -1,0 +1,95 @@
+name: Extract Claude Commit Message
+description: Extracts commit message from Claude's PR comments using hidden HTML markers
+
+inputs:
+  pr-url:
+    description: Pull request URL
+    required: true
+  github-token:
+    description: GitHub token for API access
+    required: true
+  fallback-subject:
+    description: Fallback commit subject if no message found
+    required: false
+    default: ''
+  fallback-body:
+    description: Fallback commit body if no message found
+    required: false
+    default: ''
+
+outputs:
+  commit-subject:
+    description: Extracted commit subject (first line) or fallback
+    value: ${{ steps.extract.outputs.commit_subject }}
+  commit-body:
+    description: Extracted commit body (remaining lines) or fallback
+    value: ${{ steps.extract.outputs.commit_body }}
+  found:
+    description: 'true if commit message was found, false if using fallback'
+    value: ${{ steps.extract.outputs.found }}
+
+runs:
+  using: composite
+  steps:
+    - name: Extract commit message from Claude's comment
+      id: extract
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR_URL: ${{ inputs.pr-url }}
+        FALLBACK_SUBJECT: ${{ inputs.fallback-subject }}
+        FALLBACK_BODY: ${{ inputs.fallback-body }}
+      run: |
+        # Get all comments from claude[bot], newest first
+        comments=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | reverse | .[].body')
+
+        # Extract commit message from the LATEST comment that has one
+        # This ensures we use the final verification message if it exists, otherwise the original review
+        commit_message=""
+        while IFS= read -r comment; do
+          # Check if this comment contains a commit message marker
+          if echo "$comment" | grep -q "<!-- COMMIT_MESSAGE_START"; then
+            # Extract the commit message from this comment
+            commit_message=$(echo "$comment" | sed -n '/<!-- COMMIT_MESSAGE_START/,/COMMIT_MESSAGE_END -->/p' | sed '1d;$d')
+            break
+          fi
+        done <<< "$comments"
+
+        if [ -n "$commit_message" ]; then
+          # Extract subject (first line) and body (rest)
+          commit_subject=$(echo "$commit_message" | head -n 1)
+          commit_body=$(echo "$commit_message" | tail -n +2 | sed '/^$/d')
+
+          echo "✅ Found Claude-suggested commit message (using latest)"
+          echo "Subject: $commit_subject"
+          echo "Body: $commit_body"
+
+          # Output for next step (escape newlines for GitHub Actions)
+          {
+            echo "commit_subject=$commit_subject"
+            echo "commit_body<<EOF"
+            echo "$commit_body"
+            echo "EOF"
+            echo "found=true"
+          } >> $GITHUB_OUTPUT
+        else
+          echo "⚠️  No commit message found in Claude's comments"
+
+          if [ -n "$FALLBACK_SUBJECT" ]; then
+            echo "Using provided fallback"
+            {
+              echo "commit_subject=$FALLBACK_SUBJECT"
+              echo "commit_body<<EOF"
+              echo "$FALLBACK_BODY"
+              echo "EOF"
+              echo "found=false"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "No fallback provided"
+            {
+              echo "commit_subject="
+              echo "commit_body="
+              echo "found=false"
+            } >> $GITHUB_OUTPUT
+          fi
+        fi

@@ -81,7 +81,6 @@ A reusable composite action for verifying if a GitHub contributor is trusted bas
   with:
     username: ${{ github.actor }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
-    min-commits: 3
     lookback-days: 90
 ```
 
@@ -94,7 +93,6 @@ A reusable composite action for verifying if a GitHub contributor is trusted bas
   with:
     username: ${{ github.actor }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
-    min-commits: 3
     lookback-days: 180
     allowlist: 'maintainer1,maintainer2'
     denylist: 'spammer1,spammer2'
@@ -180,7 +178,6 @@ Team membership checking requires organization-level API access. Ensure:
   with:
     username: ${{ steps.detect-fix.outputs.author }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
-    min-commits: 2
 
 - name: Block untrusted contributor
   if: steps.verify-author.outputs.is-trusted != 'true'
@@ -201,7 +198,6 @@ Team membership checking requires organization-level API access. Ensure:
     username: ${{ github.actor }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
     check-teams: 'myorg/core-team'
-    min-commits: 10
 
 - name: Auto-approve if core team
   if: steps.verify.outputs.is-trusted == 'true'
@@ -219,11 +215,10 @@ Team membership checking requires organization-level API access. Ensure:
   with:
     username: ${{ github.actor }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
-    min-commits: 3
     lookback-days: 90
 ```
 
-This ensures the contributor has made at least 3 commits in the last 90 days, verifying they are actively contributing.
+This ensures the contributor has made at least 2 commits in the last 90 days (using the default min-commits), verifying they are actively contributing.
 
 ## Troubleshooting
 

@@ -126,8 +126,11 @@ runs:
 
               echo "Checking team membership: $org/$team"
 
-              # Check if user is a member of this team
-              if gh api "/orgs/$org/teams/$team/memberships/$USERNAME" --silent 2>/dev/null; then
+              # Check if user is a member of this team (with rate limit handling)
+              team_check_output=$(gh api "/orgs/$org/teams/$team/memberships/$USERNAME" 2>&1)
+              team_check_status=$?
+
+              if [ $team_check_status -eq 0 ]; then
                 echo "✅ User $USERNAME is a member of team $org/$team"
                 is_trusted=true
                 reason="User is a member of team $org/$team"
@@ -137,6 +140,9 @@ runs:
                 echo "first_commit_date=" >> $GITHUB_OUTPUT
                 echo "latest_commit_date=" >> $GITHUB_OUTPUT
                 exit 0
+              elif echo "$team_check_output" | grep -q "API rate limit exceeded"; then
+                echo "⚠️  Rate limit exceeded checking team membership"
+                # Continue to commit history check as fallback
               fi
             else
               echo "⚠️  Warning: Invalid team slug format: $team_slug (expected: org/team-slug)"
@@ -155,16 +161,34 @@ runs:
           echo "Looking back $LOOKBACK_DAYS days (since $since_date)"
         fi
 
-        # Fetch commits from this author
+        # Fetch commits from this author (with rate limit handling)
         # Using REST API: GET /repos/{owner}/{repo}/commits
-        commits_json=$(gh api "/repos/$REPOSITORY/commits?author=$USERNAME&per_page=100${date_filter}" --paginate 2>/dev/null || echo "[]")
+        commits_output=$(gh api "/repos/$REPOSITORY/commits?author=$USERNAME&per_page=100${date_filter}" --paginate 2>&1)
+        commits_status=$?
 
-        # Count commits
-        commit_count=$(echo "$commits_json" | jq '. | length')
+        if [ $commits_status -ne 0 ]; then
+          if echo "$commits_output" | grep -q "API rate limit exceeded"; then
+            echo "⚠️  API rate limit exceeded"
+            is_trusted=false
+            reason="Unable to verify: GitHub API rate limit exceeded"
+            commit_count=0
+          else
+            echo "⚠️  API error: $commits_output"
+            commits_json="[]"
+            commit_count=0
+          fi
+        else
+          commits_json="$commits_output"
+          # Count commits
+          commit_count=$(echo "$commits_json" | jq '. | length')
+        fi
 
         echo "Found $commit_count commit(s) from $USERNAME"
 
-        if [ "$commit_count" -eq 0 ]; then
+        if [ "$reason" = "Unable to verify: GitHub API rate limit exceeded" ]; then
+          # Rate limit already set reason
+          :
+        elif [ "$commit_count" -eq 0 ]; then
           echo "❌ No commits found for $USERNAME"
           is_trusted=false
           reason="No commits found in repository"
