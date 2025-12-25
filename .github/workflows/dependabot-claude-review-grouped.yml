@@ -67,6 +67,20 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install reviewdog
+        uses: reviewdog/action-setup@v1
+        with:
+          reviewdog_version: latest
+
       - name: Fetch metadata
         id: metadata
         uses: dependabot/fetch-metadata@v2
@@ -114,9 +128,21 @@ jobs:
                **For MAJOR updates**:
                - Analyze breaking changes in detail
                - Search codebase for affected usage
-               - For SIMPLE fixes (< 10 lines): Provide code snippets in summary
+               - For SIMPLE fixes (< 10 lines): Implement fixes locally and use reviewdog to create suggestions
                - For COMPLEX fixes: Create migration issues with detailed steps
-               - IMPORTANT: Do NOT actually implement code changes - only analyze and recommend
+
+               **Simple fixes workflow**:
+               1. Use Edit/Write to implement fixes locally
+               2. Run `npm test` and `npm run lint` to verify
+               3. Use reviewdog to post changes as GitHub suggestions:
+                  ```bash
+                  TMPFILE=$(mktemp)
+                  git diff > "${TMPFILE}"
+                  export REVIEWDOG_GITHUB_API_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+                  reviewdog -f=diff -f.diff.strip=1 -reporter=github-pr-review < "${TMPFILE}"
+                  git stash -u && git stash drop
+                  rm -f "${TMPFILE}"
+                  ```
 
             4. **Provide comprehensive summary** with structure:
                ```
@@ -155,9 +181,11 @@ jobs:
 
             ## Tools Available
 
-            - `gh pr diff` - See all package changes
-            - `gh pr view` - View PR details
-            - `gh issue create` - Create enhancement/migration issues
+            - `Edit`, `Write` - Make local code changes to fix breaking changes
+            - `Bash(npm test)`, `Bash(npm run lint)` - Verify fixes work
+            - `Bash(reviewdog ...)` - Post changes as GitHub inline suggestions
+            - `Bash(gh pr diff:*)`, `Bash(gh pr view:*)` - View PR details
+            - `Bash(gh pr comment:*)`, `Bash(gh issue create:*)` - PR/issue management
             - `WebFetch`, `WebSearch` - Find changelogs
             - `Read`, `Grep`, `Glob` - Analyze codebase impact
 
@@ -165,11 +193,11 @@ jobs:
 
             Use one of these in your final comment:
             - ✅ **APPROVED** - All updates safe to merge after CI passes
-            - 🔧 **FIXABLE** - Simple breaking changes found, code snippets provided, manual fixes needed
+            - 🔧 **FIXABLE** - Simple breaking changes found, implemented locally and posted as suggestions
             - ⚠️ **REVIEW NEEDED** - Complex issues require human review
             - ⚠️ **MIGRATION REQUIRED** - Created migration issues, manual work needed
 
-          claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue create:*),WebFetch,WebSearch,Read,Grep,Glob"'
+          claude_args: '--allowed-tools "Edit,Write,Bash(npm *),Bash(git *),Bash(reviewdog *),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue create:*),WebFetch,WebSearch,Read,Grep,Glob"'
 
   # Auto-merge decision for grouped PRs
   auto-merge-grouped:

@@ -188,6 +188,20 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install reviewdog
+        uses: reviewdog/action-setup@v1
+        with:
+          reviewdog_version: latest
+
       - name: Run Claude Review
         uses: anthropics/claude-code-action@v1
         with:
@@ -212,32 +226,49 @@ jobs:
             **Breaking Change Handling:**
 
             **If breaking changes are SIMPLE (< 10 lines of code changes):**
-            - Analyze exactly what needs to change (file, line numbers, old code, new code)
-            - Create a GitHub PR review with inline suggestion comments using:
-              ```bash
-              # Start a review
-              gh pr review $PR_NUMBER --comment --body "🔧 **FIXABLE** - Simple breaking changes detected. See inline suggestions below."
 
-              # For each fix, create suggestion comment (GitHub API):
-              # POST /repos/{owner}/{repo}/pulls/{pr_number}/comments
-              # Body format:
-              # ```suggestion
-              # [new code here]
-              # ```
-              # This creates "Apply suggestion" button for each change
-              ```
-            - Comment structure for EACH fix:
-              ```
-              **File**: `path/to/file.ts:42`
-              **Breaking change**: [explain what changed in dependency]
-              **Fix required**: [explain the code change needed]
+            Use reviewdog to create inline GitHub suggestions:
 
-              ```suggestion
-              [exact new code to apply]
-              ```
-              ```
-            - Also create a summary GitHub issue documenting all fixes for reference
-            - Do NOT close the PR - it stays open for manual application of suggestions
+            1. **Implement fixes locally**:
+               - Use Edit/Write tools to fix the code
+               - Make all necessary changes to address breaking changes
+
+            2. **Verify fixes work**:
+               ```bash
+               npm test
+               npm run lint
+               ```
+
+            3. **Post fixes as GitHub suggestions using reviewdog**:
+               ```bash
+               # Save current diff
+               TMPFILE=$(mktemp)
+               git diff > "${TMPFILE}"
+
+               # Post as inline suggestions
+               export REVIEWDOG_GITHUB_API_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+               reviewdog -f=diff -f.diff.strip=1 -reporter=github-pr-review < "${TMPFILE}"
+
+               # Clean up changes
+               git stash -u && git stash drop
+
+               # Remove temp file
+               rm -f "${TMPFILE}"
+               ```
+
+            4. **Post summary comment**:
+               ```bash
+               gh pr comment $PR_NUMBER --body "🔧 **FIXABLE** - Simple breaking changes detected and fixed locally. Applied inline suggestions for you to review and apply."
+               ```
+
+            5. **Create tracking issue** documenting all fixes for reference
+
+            **Benefits of this approach**:
+            - You test fixes locally before suggesting
+            - Reviewdog handles multi-line changes, insertions, deletions automatically
+            - Creates proper "Apply suggestion" buttons
+            - User maintains authorship when applying
+            - PR stays open for manual application of suggestions
 
             **If breaking changes are COMPLEX (affect multiple files or require design decisions):**
             - Create a detailed GitHub issue with:
@@ -259,10 +290,14 @@ jobs:
               - Labels: "enhancement", "dependencies"
             - Mention the feature issue(s) in your PR comment
 
-            Use `gh pr comment`, `gh issue create`, and `gh pr close` with your Bash tool.
-            Use WebFetch and WebSearch to find changelogs and migration guides.
-            Use Read, Grep, and Glob to analyze codebase impact.
-          claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue create:*),Bash(gh pr close:*),WebFetch,WebSearch,Read,Grep,Glob"'
+            **Tools available**:
+            - `Edit`, `Write`: Make local code changes to fix breaking changes
+            - `Bash(npm test)`, `Bash(npm run lint)`: Verify fixes work
+            - `Bash(reviewdog ...)`: Post changes as GitHub inline suggestions
+            - `Bash(gh pr comment:*)`, `Bash(gh issue create:*)`, `Bash(gh pr close:*)`: PR/issue management
+            - `WebFetch`, `WebSearch`: Find changelogs and migration guides
+            - `Read`, `Grep`, `Glob`: Analyze codebase impact
+          claude_args: '--allowed-tools "Edit,Write,Bash(npm *),Bash(git *),Bash(reviewdog *),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue create:*),Bash(gh pr close:*),WebFetch,WebSearch,Read,Grep,Glob"'
 
   # Wait for all reviews and CI to complete before auto-merge decision
   auto-merge-decision:

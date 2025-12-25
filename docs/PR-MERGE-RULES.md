@@ -155,12 +155,27 @@ Claude analyzes breaking changes AND inspects new features, then takes appropria
 
 **If changes are simple (< 10 lines of code):**
 
-- Claude analyzes exactly what needs to change
-- Creates **inline suggestion comments** with "Apply suggestion" buttons
-- Each suggestion shows the exact code change needed
-- Creates summary GitHub issue documenting all fixes
-- Issue labeled: `breaking-change`, `dependencies`, `easy-fix`
-- Comments: `🔧 **FIXABLE**` with issue link
+Claude implements and tests fixes locally, then posts them as suggestions:
+
+1. **Claude implements fixes**:
+   - Makes local code changes using Edit/Write tools
+   - Runs `npm test` to verify fixes work
+   - Runs `npm run lint` to ensure code quality
+
+2. **Claude posts as GitHub suggestions using reviewdog**:
+   - Converts local diff to inline suggestions
+   - Creates "Apply suggestion" buttons for each change
+   - Supports multi-line changes, insertions, deletions automatically
+
+3. **Claude documents**:
+   - Creates summary GitHub issue documenting all fixes
+   - Issue labeled: `breaking-change`, `dependencies`, `easy-fix`
+   - Comments: `🔧 **FIXABLE**` with issue link
+
+**Benefits**:
+
+- Fixes are tested locally before being suggested
+- Reviewdog handles complex multi-line suggestions
 - PR stays open for you to apply suggestions
 
 **After you apply the suggestions:**
@@ -441,6 +456,24 @@ chore(deps)(npm): bump typescript from 5.7.0 to 5.8.0 (#45)
 
 1. **Single-dependency PRs**: One package update (handled by `dependabot-claude-review.yml`)
 2. **Grouped PRs**: Multiple packages updated together (handled by `dependabot-claude-review-grouped.yml`)
+
+### Tools Used
+
+**reviewdog**: Automated code review tool that converts diffs into GitHub inline suggestions
+
+- Installed in major update workflows via `reviewdog/action-setup@v1`
+- Claude uses it to post local fixes as "Apply suggestion" comments
+- Supports multi-line changes, insertions, deletions
+- Maintains user authorship when suggestions are applied
+- Enables Claude to test fixes locally before suggesting
+- GitHub: https://github.com/reviewdog/reviewdog
+
+**Why reviewdog?**
+
+- More reliable than manual GitHub API suggestion creation
+- Handles complex multi-line changes automatically
+- Standardized workflow used by many projects
+- Reduces workflow complexity and error potential
 
 ### Workflow Behavior
 
