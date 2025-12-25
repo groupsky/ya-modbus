@@ -12,6 +12,8 @@
  * - Input registers 1-2: Temperature (×10) and Humidity (×10)
  * - Holding register 0x101: Device address configuration
  * - Holding register 0x102: Baud rate configuration
+ * - Holding register 0x103: Temperature correction (signed, ×10, -100 to +100)
+ * - Holding register 0x104: Humidity correction (signed, ×10, -100 to +100)
  */
 
 import type {
@@ -75,6 +77,30 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
       38400: '38400 bps',
     },
   },
+  {
+    id: 'temperature_correction',
+    name: 'Temperature Correction',
+    type: 'float',
+    unit: '°C',
+    access: 'rw',
+    pollType: 'on-demand',
+    description: 'Temperature correction offset (-10.0 to +10.0°C)',
+    decimals: 1,
+    min: -10.0,
+    max: 10.0,
+  },
+  {
+    id: 'humidity_correction',
+    name: 'Humidity Correction',
+    type: 'float',
+    unit: '%',
+    access: 'rw',
+    pollType: 'on-demand',
+    description: 'Humidity correction offset (-10.0 to +10.0%RH)',
+    decimals: 1,
+    min: -10.0,
+    max: 10.0,
+  },
 ]
 
 /**
@@ -94,6 +120,14 @@ function decodeDataPoint(id: string, rawValue: Buffer): unknown {
   }
   if (id === 'baud_rate') {
     return rawValue.readUInt16BE(0)
+  }
+  if (id === 'temperature_correction') {
+    const correction = rawValue.readInt16BE(0)
+    return correction / 10
+  }
+  if (id === 'humidity_correction') {
+    const correction = rawValue.readInt16BE(0)
+    return correction / 10
   }
   throw new Error(`Unknown data point: ${id}`)
 }
@@ -116,6 +150,24 @@ function encodeDataPoint(id: string, value: unknown): Buffer {
     }
     const buffer = Buffer.allocUnsafe(2)
     buffer.writeUInt16BE(value, 0)
+    return buffer
+  }
+  if (id === 'temperature_correction') {
+    if (typeof value !== 'number' || value < -10.0 || value > 10.0) {
+      throw new Error('Invalid temperature correction: must be between -10.0 and 10.0')
+    }
+    const buffer = Buffer.allocUnsafe(2)
+    const intValue = Math.round(value * 10)
+    buffer.writeInt16BE(intValue, 0)
+    return buffer
+  }
+  if (id === 'humidity_correction') {
+    if (typeof value !== 'number' || value < -10.0 || value > 10.0) {
+      throw new Error('Invalid humidity correction: must be between -10.0 and 10.0')
+    }
+    const buffer = Buffer.allocUnsafe(2)
+    const intValue = Math.round(value * 10)
+    buffer.writeInt16BE(intValue, 0)
     return buffer
   }
   throw new Error(`Data point ${id} is read-only`)
@@ -142,6 +194,14 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         const buffer = await transport.readHoldingRegisters(0x102, 1)
         return decodeDataPoint(id, buffer)
       }
+      if (id === 'temperature_correction') {
+        const buffer = await transport.readHoldingRegisters(0x103, 1)
+        return decodeDataPoint(id, buffer)
+      }
+      if (id === 'humidity_correction') {
+        const buffer = await transport.readHoldingRegisters(0x104, 1)
+        return decodeDataPoint(id, buffer)
+      }
       // Always read both input registers for temperature and humidity
       const buffer = await transport.readInputRegisters(1, 2)
       return decodeDataPoint(id, buffer)
@@ -154,9 +214,12 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
       // Route to appropriate register address
       if (id === 'device_address') {
         await transport.writeMultipleRegisters(0x101, buffer)
-      } else {
-        // Must be baud_rate since encodeDataPoint only accepts these two IDs
+      } else if (id === 'baud_rate') {
         await transport.writeMultipleRegisters(0x102, buffer)
+      } else if (id === 'temperature_correction') {
+        await transport.writeMultipleRegisters(0x103, buffer)
+      } else if (id === 'humidity_correction') {
+        await transport.writeMultipleRegisters(0x104, buffer)
       }
     },
 
@@ -166,7 +229,11 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
       // Separate data points by register type
       const inputRegisterPoints = ids.filter((id) => id === 'temperature' || id === 'humidity')
       const holdingRegisterPoints = ids.filter(
-        (id) => id === 'device_address' || id === 'baud_rate'
+        (id) =>
+          id === 'device_address' ||
+          id === 'baud_rate' ||
+          id === 'temperature_correction' ||
+          id === 'humidity_correction'
       )
 
       // Read input registers (temperature and humidity) if needed
@@ -182,9 +249,14 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         if (id === 'device_address') {
           const buffer = await transport.readHoldingRegisters(0x101, 1)
           result[id] = decodeDataPoint(id, buffer)
-        } else {
-          // Must be baud_rate since filter only allows these two IDs
+        } else if (id === 'baud_rate') {
           const buffer = await transport.readHoldingRegisters(0x102, 1)
+          result[id] = decodeDataPoint(id, buffer)
+        } else if (id === 'temperature_correction') {
+          const buffer = await transport.readHoldingRegisters(0x103, 1)
+          result[id] = decodeDataPoint(id, buffer)
+        } else if (id === 'humidity_correction') {
+          const buffer = await transport.readHoldingRegisters(0x104, 1)
           result[id] = decodeDataPoint(id, buffer)
         }
       }
