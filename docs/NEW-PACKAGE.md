@@ -48,8 +48,18 @@ module.exports = {
     '!<rootDir>/src/**/*.test.ts',
     '!<rootDir>/src/**/*.d.ts',
   ],
+  coverageThreshold: {
+    global: {
+      branches: 95,
+      functions: 95,
+      lines: 95,
+      statements: 95,
+    },
+  },
 }
 ```
+
+**REQUIRED**: All new packages must set minimum coverage thresholds of **95%** for branches, functions, lines, and statements. This ensures high test quality and prevents regressions.
 
 See `packages/cli/jest.config.cjs` or `packages/ya-modbus-driver-xymd1/jest.config.cjs` for reference.
 
@@ -118,6 +128,8 @@ After creating the package:
 - [ ] `npm run build` builds the package
 - [ ] `npm run test` from package directory runs tests
 - [ ] `npm test` from root discovers and runs package tests
+- [ ] Coverage thresholds are set to 95% in jest.config.cjs
+- [ ] Tests achieve at least 95% coverage across all metrics
 - [ ] `npm run lint` from package directory lints successfully
 - [ ] `npm run lint` from root includes the package
 - [ ] AGENTS.md follows guidelines in `docs/AGENTS-MAINTENANCE.md`
