@@ -4,30 +4,79 @@
 
 import type { Transport } from '@ya-modbus/driver-types'
 
-import { createDriver, DEFAULT_CONFIG, VALID_BAUD_RATES } from './index'
+import {
+  createDriver,
+  DEFAULT_CONFIG,
+  VALID_BAUD_RATES,
+  VALID_PARITY,
+  VALID_DATA_BITS,
+  VALID_STOP_BITS,
+} from './index'
 
-describe('DEFAULT_CONFIG', () => {
-  it('should export default device configuration', () => {
-    expect(DEFAULT_CONFIG).toBeDefined()
-    expect(DEFAULT_CONFIG.baudRate).toBe(9600)
-    expect(DEFAULT_CONFIG.parity).toBe('even')
-    expect(DEFAULT_CONFIG.dataBits).toBe(8)
-    expect(DEFAULT_CONFIG.stopBits).toBe(1)
-    expect(DEFAULT_CONFIG.defaultAddress).toBe(1)
+describe('Configuration Constants', () => {
+  describe('DEFAULT_CONFIG', () => {
+    it('should export default device configuration', () => {
+      expect(DEFAULT_CONFIG).toBeDefined()
+      expect(DEFAULT_CONFIG.baudRate).toBe(9600)
+      expect(DEFAULT_CONFIG.parity).toBe('even')
+      expect(DEFAULT_CONFIG.dataBits).toBe(8)
+      expect(DEFAULT_CONFIG.stopBits).toBe(1)
+      expect(DEFAULT_CONFIG.defaultAddress).toBe(1)
+    })
+
+    it('should have correct baud rate from valid rates', () => {
+      // Ensure default baud rate is one of the valid rates for XYMD1
+      expect(VALID_BAUD_RATES).toContain(DEFAULT_CONFIG.baudRate)
+    })
+
+    it('should have all required properties', () => {
+      // Verify all expected properties are present
+      expect(DEFAULT_CONFIG).toHaveProperty('baudRate')
+      expect(DEFAULT_CONFIG).toHaveProperty('parity')
+      expect(DEFAULT_CONFIG).toHaveProperty('dataBits')
+      expect(DEFAULT_CONFIG).toHaveProperty('stopBits')
+      expect(DEFAULT_CONFIG).toHaveProperty('defaultAddress')
+    })
   })
 
-  it('should have correct baud rate from valid rates', () => {
-    // Ensure default baud rate is one of the valid rates for XYMD1
-    expect(VALID_BAUD_RATES).toContain(DEFAULT_CONFIG.baudRate)
+  describe('VALID_BAUD_RATES', () => {
+    it('should export supported baud rates', () => {
+      expect(VALID_BAUD_RATES).toEqual([9600, 14400, 19200])
+    })
+
+    it('should include default baud rate', () => {
+      expect(VALID_BAUD_RATES).toContain(DEFAULT_CONFIG.baudRate)
+    })
   })
 
-  it('should have all required properties', () => {
-    // Verify all expected properties are present
-    expect(DEFAULT_CONFIG).toHaveProperty('baudRate')
-    expect(DEFAULT_CONFIG).toHaveProperty('parity')
-    expect(DEFAULT_CONFIG).toHaveProperty('dataBits')
-    expect(DEFAULT_CONFIG).toHaveProperty('stopBits')
-    expect(DEFAULT_CONFIG).toHaveProperty('defaultAddress')
+  describe('VALID_PARITY', () => {
+    it('should export supported parity settings', () => {
+      expect(VALID_PARITY).toEqual(['even', 'none'])
+    })
+
+    it('should include default parity', () => {
+      expect(VALID_PARITY).toContain(DEFAULT_CONFIG.parity)
+    })
+  })
+
+  describe('VALID_DATA_BITS', () => {
+    it('should export supported data bits', () => {
+      expect(VALID_DATA_BITS).toEqual([8])
+    })
+
+    it('should include default data bits', () => {
+      expect(VALID_DATA_BITS).toContain(DEFAULT_CONFIG.dataBits)
+    })
+  })
+
+  describe('VALID_STOP_BITS', () => {
+    it('should export supported stop bits', () => {
+      expect(VALID_STOP_BITS).toEqual([1])
+    })
+
+    it('should include default stop bits', () => {
+      expect(VALID_STOP_BITS).toContain(DEFAULT_CONFIG.stopBits)
+    })
   })
 })
 

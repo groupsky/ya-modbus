@@ -29,6 +29,28 @@ import type {
 export const VALID_BAUD_RATES = [9600, 14400, 19200] as const
 
 /**
+ * Valid parity settings for XYMD1
+ *
+ * The device supports even and none parity.
+ * The default is 'even' (see DEFAULT_CONFIG).
+ */
+export const VALID_PARITY = ['even', 'none'] as const
+
+/**
+ * Valid data bits for XYMD1
+ *
+ * The device only supports 8 data bits.
+ */
+export const VALID_DATA_BITS = [8] as const
+
+/**
+ * Valid stop bits for XYMD1
+ *
+ * The device only supports 1 stop bit.
+ */
+export const VALID_STOP_BITS = [1] as const
+
+/**
  * Default XYMD1 device configuration
  *
  * Use these values when connecting to a factory-default XYMD1 device.

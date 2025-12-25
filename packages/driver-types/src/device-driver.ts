@@ -142,3 +142,56 @@ export interface DefaultTCPConfig {
  * Drivers should export DEFAULT_CONFIG matching one of these types
  */
 export type DefaultConfig = DefaultSerialConfig | DefaultTCPConfig
+
+/**
+ * Supported serial port configuration values
+ *
+ * Drivers should export constants defining which values their device supports.
+ * Use readonly arrays with 'as const' for type narrowing.
+ *
+ * @example
+ * ```typescript
+ * // Device supports 9600, 14400, and 19200 bps
+ * export const VALID_BAUD_RATES = [9600, 14400, 19200] as const
+ *
+ * // Device supports even and none parity
+ * export const VALID_PARITY = ['even', 'none'] as const
+ *
+ * // Device only supports 8 data bits
+ * export const VALID_DATA_BITS = [8] as const
+ *
+ * // Device only supports 1 stop bit
+ * export const VALID_STOP_BITS = [1] as const
+ * ```
+ */
+export interface SupportedSerialConfig {
+  /**
+   * Supported baud rates
+   * Common values: 2400, 4800, 9600, 14400, 19200, 38400, 57600, 115200
+   */
+  readonly validBaudRates?: readonly number[]
+
+  /**
+   * Supported parity settings
+   * Values: 'none', 'even', 'odd'
+   */
+  readonly validParity?: readonly ('none' | 'even' | 'odd')[]
+
+  /**
+   * Supported data bits
+   * Common values: 7, 8
+   */
+  readonly validDataBits?: readonly (7 | 8)[]
+
+  /**
+   * Supported stop bits
+   * Common values: 1, 2
+   */
+  readonly validStopBits?: readonly (1 | 2)[]
+
+  /**
+   * Supported slave address range
+   * Typically 1-247 for Modbus
+   */
+  readonly validAddressRange?: readonly [min: number, max: number]
+}

@@ -212,9 +212,16 @@ Device driver packages should follow naming: `ya-modbus-driver-<device>`
    ```
 
 2. **Valid configuration constants**: Export validation constants to enable DRY testing
+
    ```typescript
+   // Export all supported configuration values for your device
    export const VALID_BAUD_RATES = [9600, 14400, 19200] as const
+   export const VALID_PARITY = ['even', 'none'] as const
+   export const VALID_DATA_BITS = [8] as const
+   export const VALID_STOP_BITS = [1] as const
    ```
+
+   Only export the constants that are relevant for your device. For example, if your device supports all standard parity settings, you may omit `VALID_PARITY`.
 
 **Benefits**:
 
