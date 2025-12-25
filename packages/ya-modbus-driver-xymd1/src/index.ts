@@ -121,13 +121,9 @@ function decodeDataPoint(id: string, rawValue: Buffer): unknown {
   if (id === 'baud_rate') {
     return rawValue.readUInt16BE(0)
   }
-  if (id === 'temperature_correction') {
-    const correction = rawValue.readInt16BE(0)
-    return correction / 10
-  }
-  if (id === 'humidity_correction') {
-    const correction = rawValue.readInt16BE(0)
-    return correction / 10
+  // Both correction values use the same signed 16-bit encoding
+  if (id === 'temperature_correction' || id === 'humidity_correction') {
+    return rawValue.readInt16BE(0) / 10
   }
   throw new Error(`Unknown data point: ${id}`)
 }
@@ -152,19 +148,11 @@ function encodeDataPoint(id: string, value: unknown): Buffer {
     buffer.writeUInt16BE(value, 0)
     return buffer
   }
-  if (id === 'temperature_correction') {
-    if (typeof value !== 'number' || value < -10.0 || value > 10.0) {
-      throw new Error('Invalid temperature correction: must be between -10.0 and 10.0')
-    }
-    const buffer = Buffer.allocUnsafe(2)
-    // Use Math.trunc for predictable rounding toward zero (avoids floating-point precision issues)
-    const intValue = Math.trunc(value * 10)
-    buffer.writeInt16BE(intValue, 0)
-    return buffer
-  }
-  if (id === 'humidity_correction') {
-    if (typeof value !== 'number' || value < -10.0 || value > 10.0) {
-      throw new Error('Invalid humidity correction: must be between -10.0 and 10.0')
+  // Both correction values use the same validation and encoding
+  if (id === 'temperature_correction' || id === 'humidity_correction') {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < -10.0 || value > 10.0) {
+      const fieldName = id === 'temperature_correction' ? 'temperature' : 'humidity'
+      throw new Error(`Invalid ${fieldName} correction: must be between -10.0 and 10.0`)
     }
     const buffer = Buffer.allocUnsafe(2)
     // Use Math.trunc for predictable rounding toward zero (avoids floating-point precision issues)
