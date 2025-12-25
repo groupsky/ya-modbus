@@ -335,6 +335,100 @@ describe('XYMD1 Driver', () => {
       // Should batch read both correction registers together (optimization)
       expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x103, 2)
     })
+
+    it('should read all 4 holding registers in single batch when all requested', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Mock all 4 holding registers: device_address=52, baud_rate=9600, temp_corr=2.5, hum_corr=-3.0
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(
+        Buffer.from([
+          0x00,
+          0x34, // device_address = 52
+          0x25,
+          0x80, // baud_rate = 9600
+          0x00,
+          0x19, // temperature_correction = 2.5 (25)
+          0xff,
+          0xe2, // humidity_correction = -3.0 (-30)
+        ])
+      )
+
+      const values = await driver.readDataPoints([
+        'device_address',
+        'baud_rate',
+        'temperature_correction',
+        'humidity_correction',
+      ])
+
+      expect(values).toEqual({
+        device_address: 52,
+        baud_rate: 9600,
+        temperature_correction: 2.5,
+        humidity_correction: -3.0,
+      })
+
+      // Should batch read all 4 registers in a single transaction (maximum optimization)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x101, 4)
+    })
+
+    it('should read individual device_address when only that is requested', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x0a]))
+
+      const values = await driver.readDataPoints(['device_address'])
+
+      expect(values).toEqual({ device_address: 10 })
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x101, 1)
+    })
+
+    it('should read individual baud_rate when only that is requested', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x4b, 0x00]))
+
+      const values = await driver.readDataPoints(['baud_rate'])
+
+      expect(values).toEqual({ baud_rate: 19200 })
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x102, 1)
+    })
+
+    it('should read individual temperature_correction when only that is requested', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x19]))
+
+      const values = await driver.readDataPoints(['temperature_correction'])
+
+      expect(values).toEqual({ temperature_correction: 2.5 })
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x103, 1)
+    })
+
+    it('should read individual humidity_correction when only that is requested', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0xff, 0xe2]))
+
+      const values = await driver.readDataPoints(['humidity_correction'])
+
+      expect(values).toEqual({ humidity_correction: -3.0 })
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x104, 1)
+    })
   })
 
   describe('writeDataPoint', () => {

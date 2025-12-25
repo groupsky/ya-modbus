@@ -234,46 +234,57 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         }
       }
 
-      // Batch adjacent holding register reads for optimization
-      const configPoints = holdingRegisterPoints.filter(
-        (id) => id === 'device_address' || id === 'baud_rate'
-      )
-      const correctionPoints = holdingRegisterPoints.filter(
-        (id) => id === 'temperature_correction' || id === 'humidity_correction'
-      )
-
-      // Read device_address and baud_rate together if both requested (registers 0x101-0x102)
-      if (configPoints.length === 2) {
-        const buffer = await transport.readHoldingRegisters(0x101, 2)
+      // Optimize holding register reads by batching adjacent registers
+      // All 4 holding registers are sequential: 0x101, 0x102, 0x103, 0x104
+      if (holdingRegisterPoints.length === 4) {
+        // Read all 4 registers in a single transaction (0x101-0x104)
+        const buffer = await transport.readHoldingRegisters(0x101, 4)
         result['device_address'] = buffer.readUInt16BE(0)
         result['baud_rate'] = buffer.readUInt16BE(2)
+        result['temperature_correction'] = buffer.readInt16BE(4) / 10
+        result['humidity_correction'] = buffer.readInt16BE(6) / 10
       } else {
-        // Read individually if only one is requested
-        for (const id of configPoints) {
-          if (id === 'device_address') {
-            const buffer = await transport.readHoldingRegisters(0x101, 1)
-            result[id] = decodeDataPoint(id, buffer)
-          } else if (id === 'baud_rate') {
-            const buffer = await transport.readHoldingRegisters(0x102, 1)
-            result[id] = decodeDataPoint(id, buffer)
+        // Batch by adjacent register groups
+        const configPoints = holdingRegisterPoints.filter(
+          (id) => id === 'device_address' || id === 'baud_rate'
+        )
+        const correctionPoints = holdingRegisterPoints.filter(
+          (id) => id === 'temperature_correction' || id === 'humidity_correction'
+        )
+
+        // Read device_address and baud_rate together if both requested (registers 0x101-0x102)
+        if (configPoints.length === 2) {
+          const buffer = await transport.readHoldingRegisters(0x101, 2)
+          result['device_address'] = buffer.readUInt16BE(0)
+          result['baud_rate'] = buffer.readUInt16BE(2)
+        } else {
+          // Read individually if only one is requested
+          for (const id of configPoints) {
+            if (id === 'device_address') {
+              const buffer = await transport.readHoldingRegisters(0x101, 1)
+              result[id] = decodeDataPoint(id, buffer)
+            } else if (id === 'baud_rate') {
+              const buffer = await transport.readHoldingRegisters(0x102, 1)
+              result[id] = decodeDataPoint(id, buffer)
+            }
           }
         }
-      }
 
-      // Read temperature_correction and humidity_correction together if both requested (registers 0x103-0x104)
-      if (correctionPoints.length === 2) {
-        const buffer = await transport.readHoldingRegisters(0x103, 2)
-        result['temperature_correction'] = buffer.readInt16BE(0) / 10
-        result['humidity_correction'] = buffer.readInt16BE(2) / 10
-      } else {
-        // Read individually if only one is requested
-        for (const id of correctionPoints) {
-          if (id === 'temperature_correction') {
-            const buffer = await transport.readHoldingRegisters(0x103, 1)
-            result[id] = decodeDataPoint(id, buffer)
-          } else if (id === 'humidity_correction') {
-            const buffer = await transport.readHoldingRegisters(0x104, 1)
-            result[id] = decodeDataPoint(id, buffer)
+        // Read temperature_correction and humidity_correction together if both requested (registers 0x103-0x104)
+        if (correctionPoints.length === 2) {
+          const buffer = await transport.readHoldingRegisters(0x103, 2)
+          result['temperature_correction'] = buffer.readInt16BE(0) / 10
+          result['humidity_correction'] = buffer.readInt16BE(2) / 10
+        } else {
+          // Read individually if only one is requested
+          for (const id of correctionPoints) {
+            if (id === 'temperature_correction') {
+              const buffer = await transport.readHoldingRegisters(0x103, 1)
+              result[id] = decodeDataPoint(id, buffer)
+            } else if (id === 'humidity_correction') {
+              const buffer = await transport.readHoldingRegisters(0x104, 1)
+              result[id] = decodeDataPoint(id, buffer)
+            }
           }
         }
       }
