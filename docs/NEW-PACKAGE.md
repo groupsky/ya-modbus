@@ -252,6 +252,30 @@ Device driver packages should follow naming: `ya-modbus-driver-<device>`
 - README should include example using DEFAULT_CONFIG
 - Add JSDoc with usage example on DEFAULT_CONFIG constant
 
+**Testing recommendations** (if implementing both DEFAULT_CONFIG and SUPPORTED_CONFIG):
+
+Add cross-validation tests to ensure DEFAULT_CONFIG values are within SUPPORTED_CONFIG constraints:
+
+```typescript
+describe('Configuration consistency', () => {
+  it('should include DEFAULT_CONFIG baud rate in valid baud rates', () => {
+    expect(SUPPORTED_CONFIG.validBaudRates).toContain(DEFAULT_CONFIG.baudRate)
+  })
+
+  it('should include DEFAULT_CONFIG parity in valid parity options', () => {
+    expect(SUPPORTED_CONFIG.validParity).toContain(DEFAULT_CONFIG.parity)
+  })
+
+  it('should include DEFAULT_CONFIG address in valid address range', () => {
+    const [min, max] = SUPPORTED_CONFIG.validAddressRange
+    expect(DEFAULT_CONFIG.defaultAddress).toBeGreaterThanOrEqual(min)
+    expect(DEFAULT_CONFIG.defaultAddress).toBeLessThanOrEqual(max)
+  })
+})
+```
+
+This pattern ensures the factory defaults are always valid according to the device's supported values.
+
 See `packages/ya-modbus-driver-xymd1` for reference implementation.
 
 ### Utility Package

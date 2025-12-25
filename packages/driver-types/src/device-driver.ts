@@ -149,6 +149,10 @@ export type DefaultConfig = DefaultSerialConfig | DefaultTCPConfig
  * Serial driver packages should export a SUPPORTED_CONFIG constant implementing this interface
  * to define device-specific serial configuration constraints.
  *
+ * All properties are optional - only specify values that are device-specific.
+ * Omit properties if your device supports all standard Modbus values for that setting.
+ * For example, omit `validParity` if your device supports all parity options (none/even/odd).
+ *
  * @example
  * ```typescript
  * import type { SupportedSerialConfig } from '@ya-modbus/driver-types'
@@ -220,7 +224,6 @@ export interface SupportedTCPConfig {
   /**
    * Supported device address range
    * For Modbus TCP, this is the unit ID (typically 1-247)
-   * Named "address" for consistency with DefaultTCPConfig.defaultAddress
    */
   readonly validAddressRange?: readonly [min: number, max: number]
 }

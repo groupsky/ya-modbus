@@ -169,9 +169,14 @@ function decodeDataPoint(id: string, rawValue: Buffer): unknown {
 
 /**
  * Validate that a value is one of the supported baud rates
+ *
+ * Note: Type cast is required because TypeScript preserves the literal tuple type
+ * `readonly [9600, 14400, 19200]` from `as const`, but .includes() expects
+ * `readonly number[]`. This pattern will be common in driver validation helpers.
  */
 function isValidBaudRate(value: unknown): value is number {
   if (typeof value !== 'number') return false
+  // Type cast needed because .includes() expects exact array type, not readonly tuple
   return (SUPPORTED_CONFIG.validBaudRates as readonly number[]).includes(value)
 }
 
