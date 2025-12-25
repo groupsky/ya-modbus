@@ -50,6 +50,23 @@ jobs:
           pr-url: ${{ github.event.pull_request.html_url }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      # Post initial comment to provide immediate feedback
+      - name: Post workflow start comment
+        if: steps.verify-dependabot.outputs.is-dependabot-pr == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
+          gh pr comment "$PR_URL" --body "🤖 **Claude is reviewing this Dependabot PR...**
+
+          I'll analyze the dependency update and provide feedback shortly."
+
       - name: Fetch Dependabot metadata
         id: metadata
         uses: dependabot/fetch-metadata@v2
