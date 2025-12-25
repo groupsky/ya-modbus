@@ -511,6 +511,18 @@ describe('XYMD1 Driver', () => {
       )
     })
 
+    it('should reject previously-listed but unsupported baud rates', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // These rates were listed in initial implementation but were never actually supported by the device
+      await expect(driver.writeDataPoint('baud_rate', 2400)).rejects.toThrow('Invalid baud rate')
+      await expect(driver.writeDataPoint('baud_rate', 4800)).rejects.toThrow('Invalid baud rate')
+      await expect(driver.writeDataPoint('baud_rate', 38400)).rejects.toThrow('Invalid baud rate')
+    })
+
     it('should accept standard baud rates', async () => {
       const driver = await createDriver({
         transport: mockTransport,
