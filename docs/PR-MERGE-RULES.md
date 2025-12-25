@@ -73,6 +73,34 @@ Dependabot PRs are handled by specialized Claude workflows depending on whether 
 - Claude analyzes EACH dependency individually
 - Provides comprehensive review covering all update types
 
+### Security Safeguards
+
+**All Dependabot PRs go through security verification:**
+
+1. **First Commit Verification**
+   - Workflow verifies the first commit in the PR is from `dependabot[bot]`
+   - Prevents non-Dependabot PRs from triggering automated workflows
+   - Blocks malicious PRs masquerading as Dependabot updates
+
+2. **Contributor Trust Verification** (for fix commits)
+   - When you apply suggested fixes, workflow verifies you're a trusted contributor
+   - Trusted = at least one previous commit in the repository
+   - Untrusted contributors trigger manual review requirement
+   - Prevents unknown actors from injecting code via fix commits
+
+3. **Final Claude Verification** (for fix commits)
+   - Before enabling auto-merge, Claude performs final verification
+   - Reviews all applied fixes for correctness and safety
+   - Checks for bugs, security issues, or unintended changes
+   - Only approves if fixes correctly address breaking changes
+   - Marker: `✅ **VERIFIED**` (safe) or `⚠️ **ISSUES FOUND**` (blocked)
+
+**Security failures:**
+
+- Untrusted contributor: PR labeled for manual review, comment posted
+- Claude finds issues in fixes: Auto-merge blocked, manual review required
+- First commit not from Dependabot: Workflow skips processing entirely
+
 ### Single-Dependency PR Strategies
 
 ### Patch Updates (`version-update:semver-patch`)
@@ -140,11 +168,21 @@ Claude analyzes breaking changes AND inspects new features, then takes appropria
 1. You click "Apply suggestion" button(s) on Claude's review comments
 2. GitHub commits the changes with your authorship
 3. Commit triggers workflow to run again
-4. Workflow detects this is a "fix commit"
-5. Automatically approves and enables auto-merge
+4. **Security verification** (automatic):
+   - ✅ Verifies first commit in PR is from Dependabot
+   - ✅ Verifies you are a trusted contributor (previous commits to repo)
+   - ✅ Claude performs final verification of your fixes
+5. If all security checks pass: Automatically approves and enables auto-merge
 6. PR merges after CI passes
 
-**No manual merge needed!** The workflow auto-approves fix commits.
+**No manual merge needed!** The workflow auto-approves fix commits after security verification.
+
+**Security safeguards:**
+
+- Only PRs with first commit from Dependabot are processed
+- Only trusted contributors (with previous commits) can apply fixes for auto-merge
+- Claude performs final verification before enabling auto-merge
+- Untrusted contributors trigger manual review requirement
 
 ##### 2. Complex Breaking Changes
 

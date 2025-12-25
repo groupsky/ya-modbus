@@ -94,6 +94,25 @@ Use `.nvmrc` when:
 - Use `github_token: ${{ secrets.GITHUB_TOKEN }}` to avoid OIDC validation issues
 - OIDC fails when workflow files are modified in PR (chicken-and-egg problem)
 
+**Security Safeguards** (implemented in `dependabot-claude-review.yml`):
+
+1. **First Commit Verification**:
+   - Verifies first commit in PR is from `dependabot[bot]`
+   - Prevents non-Dependabot PRs from triggering automated workflows
+   - Blocks malicious PRs masquerading as Dependabot
+
+2. **Contributor Trust Verification**:
+   - For fix commits, verifies author has previous commits in repo
+   - Uses GitHub API to check commit history
+   - Untrusted contributors trigger manual review
+   - Prevents unknown actors from injecting code
+
+3. **Final Claude Verification**:
+   - Before auto-merge of fix commits, Claude performs final review
+   - Verifies fixes correctly address breaking changes
+   - Checks for bugs, security issues, unintended changes
+   - Markers: `✅ **VERIFIED**` (approved) or `⚠️ **ISSUES FOUND**` (blocked)
+
 ### Workflow Permissions
 
 ```yaml

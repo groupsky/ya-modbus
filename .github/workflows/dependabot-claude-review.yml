@@ -31,8 +31,29 @@ jobs:
       prev-version: ${{ steps.metadata.outputs.previous-version }}
       new-version: ${{ steps.metadata.outputs.new-version }}
       is-single: ${{ steps.check-single.outputs.is_single }}
+      is-dependabot-pr: ${{ steps.verify-dependabot.outputs.is_dependabot_pr }}
 
     steps:
+      - name: Verify this is a genuine Dependabot PR
+        id: verify-dependabot
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          # Check that the FIRST commit in the PR is from Dependabot
+          # This prevents non-Dependabot PRs from triggering the workflow
+          first_commit_author=$(gh pr view "$PR_URL" --json commits --jq '.commits[0].authors[0].login')
+
+          echo "First commit author: $first_commit_author"
+
+          if [ "$first_commit_author" = "dependabot[bot]" ] || [ "$first_commit_author" = "app/dependabot" ]; then
+            echo "is_dependabot_pr=true" >> $GITHUB_OUTPUT
+            echo "✅ Verified: First commit is from Dependabot"
+          else
+            echo "is_dependabot_pr=false" >> $GITHUB_OUTPUT
+            echo "⚠️  First commit is NOT from Dependabot - skipping workflow"
+          fi
+
       - name: Fetch Dependabot metadata
         id: metadata
         uses: dependabot/fetch-metadata@v2
@@ -71,6 +92,7 @@ jobs:
     needs: metadata
     if: |
       github.actor == 'dependabot[bot]' &&
+      needs.metadata.outputs.is-dependabot-pr == 'true' &&
       needs.metadata.outputs.is-single == 'true' &&
       needs.metadata.outputs.update-type == 'version-update:semver-patch'
 
@@ -110,6 +132,7 @@ jobs:
     needs: metadata
     if: |
       github.actor == 'dependabot[bot]' &&
+      needs.metadata.outputs.is-dependabot-pr == 'true' &&
       needs.metadata.outputs.is-single == 'true' &&
       needs.metadata.outputs.update-type == 'version-update:semver-minor'
 
@@ -154,6 +177,7 @@ jobs:
     needs: metadata
     if: |
       github.actor == 'dependabot[bot]' &&
+      needs.metadata.outputs.is-dependabot-pr == 'true' &&
       needs.metadata.outputs.is-single == 'true' &&
       needs.metadata.outputs.update-type == 'version-update:semver-major'
 
@@ -262,33 +286,64 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
+          REPO: ${{ github.repository }}
         run: |
-          # Get latest commit message
+          # Get latest commit message and author
           latest_commit_msg=$(gh pr view "$PR_URL" --json commits --jq '.commits[-1].messageHeadline')
           latest_commit_author=$(gh pr view "$PR_URL" --json commits --jq '.commits[-1].authors[0].login')
 
           echo "Latest commit: $latest_commit_msg"
           echo "Latest author: $latest_commit_author"
 
+          # Initialize outputs
+          is_fix_commit=false
+          is_trusted_contributor=false
+
           # Check if this commit is from applying suggestions
           # GitHub uses specific commit messages for applied suggestions
           if echo "$latest_commit_msg" | grep -qiE "(apply suggestions?|update.*suggestion|co-authored-by.*github-actions)"; then
-            echo "is_fix_commit=true" >> $GITHUB_OUTPUT
+            is_fix_commit=true
             echo "✅ Detected fix commit (applied suggestion)"
           elif [ "$latest_commit_author" != "dependabot[bot]" ] && [ "$latest_commit_author" != "app/dependabot" ]; then
             # Non-Dependabot commit after Dependabot PR - likely a manual fix
-            echo "is_fix_commit=true" >> $GITHUB_OUTPUT
+            is_fix_commit=true
             echo "✅ Detected manual fix commit from $latest_commit_author"
           else
-            echo "is_fix_commit=false" >> $GITHUB_OUTPUT
             echo "ℹ️  Not a fix commit"
           fi
+
+          # If this is a fix commit from a human, verify they are a trusted contributor
+          if [ "$is_fix_commit" = "true" ] && [ "$latest_commit_author" != "dependabot[bot]" ] && [ "$latest_commit_author" != "app/dependabot" ]; then
+            echo "Verifying contributor: $latest_commit_author"
+
+            # Get commit count for this author in the repository
+            # Using commits API with author filter
+            commit_count=$(gh api "/repos/$REPO/commits?author=$latest_commit_author&per_page=100" --paginate | jq '. | length')
+
+            echo "Commit count for $latest_commit_author: $commit_count"
+
+            # Consider them trusted if they have more than 1 commit (this one + at least one previous)
+            if [ "$commit_count" -gt 1 ]; then
+              is_trusted_contributor=true
+              echo "✅ Verified: $latest_commit_author is a trusted contributor ($commit_count commits)"
+            else
+              is_trusted_contributor=false
+              echo "⚠️  Warning: $latest_commit_author is NOT a previous contributor (only $commit_count commit(s))"
+            fi
+          fi
+
+          # Set outputs
+          echo "is_fix_commit=$is_fix_commit" >> $GITHUB_OUTPUT
+          echo "is_trusted_contributor=$is_trusted_contributor" >> $GITHUB_OUTPUT
+          echo "fix_author=$latest_commit_author" >> $GITHUB_OUTPUT
       - name: Check Claude approval
         id: check-approval
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           IS_FIX_COMMIT: ${{ steps.check-fix-commit.outputs.is_fix_commit }}
+          IS_TRUSTED: ${{ steps.check-fix-commit.outputs.is_trusted_contributor }}
+          FIX_AUTHOR: ${{ steps.check-fix-commit.outputs.fix_author }}
         run: |
           # Get the latest comment from claude[bot]
           latest_comment=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | last | .body')
@@ -299,17 +354,24 @@ jobs:
           # Check if Claude approved for auto-merge
           if echo "$latest_comment" | grep -q "✅ \*\*APPROVED\*\*"; then
             echo "approved=true" >> $GITHUB_OUTPUT
+            echo "needs_verification=false" >> $GITHUB_OUTPUT
             echo "✅ Claude approved the changes"
           elif [ "$IS_FIX_COMMIT" = "true" ] && echo "$latest_comment" | grep -q "🔧 \*\*FIXABLE\*\*"; then
             # Special case: This is a fix commit for a FIXABLE PR
-            # Auto-approve because the fixes were applied from Claude's suggestions
-            echo "approved=true" >> $GITHUB_OUTPUT
-            echo "✅ Auto-approving: Fixes applied to previously FIXABLE PR"
-
-            # Add a comment explaining the auto-approval
-            gh pr comment "$PR_URL" --body "✅ **AUTO-APPROVED** - Detected applied fixes for breaking changes. Auto-merge will proceed after CI passes."
+            # Check contributor trust before proceeding
+            if [ "$IS_TRUSTED" = "true" ]; then
+              echo "approved=true" >> $GITHUB_OUTPUT
+              echo "needs_verification=true" >> $GITHUB_OUTPUT
+              echo "✅ Fix commit from trusted contributor - needs final verification"
+            else
+              echo "approved=false" >> $GITHUB_OUTPUT
+              echo "needs_verification=false" >> $GITHUB_OUTPUT
+              echo "⚠️  Fix commit from untrusted contributor ($FIX_AUTHOR) - blocking auto-merge"
+              gh pr comment "$PR_URL" --body "⚠️ **SECURITY BLOCK** - Fix commit from @$FIX_AUTHOR who is not a previous contributor. Manual review required."
+            fi
           else
             echo "approved=false" >> $GITHUB_OUTPUT
+            echo "needs_verification=false" >> $GITHUB_OUTPUT
             if echo "$latest_comment" | grep -q "🔧 \*\*FIXABLE\*\*"; then
               echo "⚠️  Claude identified fixable breaking changes - manual fixes required"
             elif echo "$latest_comment" | grep -q "⚠️ \*\*MIGRATION REQUIRED\*\*"; then
@@ -319,16 +381,91 @@ jobs:
             fi
           fi
 
-      - name: Auto-approve if Claude approved
-        if: steps.check-approval.outputs.approved == 'true'
-        run: gh pr review --approve "$PR_URL"
+      - name: Checkout repository for final verification
+        if: steps.check-approval.outputs.needs_verification == 'true'
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Final Claude verification before merge
+        if: steps.check-approval.outputs.needs_verification == 'true'
+        id: final-verification
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            FINAL VERIFICATION before auto-merge of Dependabot PR #${{ github.event.pull_request.number }}
+
+            **Context**:
+            - This Dependabot PR was marked as 🔧 **FIXABLE** with breaking changes
+            - A fix commit was applied by a trusted contributor: @${{ steps.check-fix-commit.outputs.fix_author }}
+            - The workflow is requesting your final verification before enabling auto-merge
+
+            **Your task**:
+            1. Review the fix commit(s) that were applied after the initial Dependabot update
+            2. Verify the fixes correctly address the breaking changes you identified
+            3. Check for any introduced bugs, security issues, or unintended changes
+            4. Ensure code quality and project conventions are maintained
+            5. Confirm everything looks safe to merge
+
+            **Tools available**:
+            - `gh pr diff` - View all changes in the PR
+            - `gh pr view` - View PR details and commit history
+            - `Read`, `Grep`, `Glob` - Analyze codebase if needed
+
+            **Response format**:
+            Post a comment with one of these markers:
+
+            - ✅ **VERIFIED** - Fixes look good, safe to auto-merge after CI passes
+            - ⚠️ **ISSUES FOUND** - [Describe problems found - will block auto-merge]
+
+            Use `gh pr comment` to post your verification result.
+          claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Grep,Glob"'
+
+      - name: Check final verification result
+        if: steps.check-approval.outputs.needs_verification == 'true'
+        id: check-verification
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          # Get the latest comment from claude[bot] (should be the verification)
+          latest_comment=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | last | .body')
+
+          echo "Latest Claude verification comment:"
+          echo "$latest_comment"
+
+          if echo "$latest_comment" | grep -q "✅ \*\*VERIFIED\*\*"; then
+            echo "verified=true" >> $GITHUB_OUTPUT
+            echo "✅ Claude verified the fixes - proceeding with auto-merge"
+          else
+            echo "verified=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Claude found issues or did not verify - blocking auto-merge"
+          fi
+
+      - name: Auto-approve if Claude approved or verified
+        if: |
+          steps.check-approval.outputs.approved == 'true' && (
+            steps.check-approval.outputs.needs_verification == 'false' ||
+            steps.check-verification.outputs.verified == 'true'
+          )
+        run: |
+          gh pr review --approve "$PR_URL"
+          if [ "${{ steps.check-approval.outputs.needs_verification }}" = "true" ]; then
+            gh pr comment "$PR_URL" --body "✅ **AUTO-APPROVED** - Applied fixes verified by Claude. Auto-merge will proceed after CI passes."
+          fi
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable auto-merge for approved updates
         if: |
-          steps.check-approval.outputs.approved == 'true' && (
+          steps.check-approval.outputs.approved == 'true' &&
+          (steps.check-approval.outputs.needs_verification == 'false' ||
+           steps.check-verification.outputs.verified == 'true') &&
+          (
             (
               needs.metadata.outputs.package-ecosystem == 'github_actions' &&
               needs.metadata.outputs.update-type != 'version-update:semver-major'
@@ -352,7 +489,10 @@ jobs:
 
       - name: Label for manual merge
         if: |
-          steps.check-approval.outputs.approved == 'true' && (
+          steps.check-approval.outputs.approved == 'true' &&
+          (steps.check-approval.outputs.needs_verification == 'false' ||
+           steps.check-verification.outputs.verified == 'true') &&
+          (
             (needs.metadata.outputs.package-ecosystem == 'npm' &&
              needs.metadata.outputs.dependency-type == 'direct:production' &&
              needs.metadata.outputs.update-type != 'version-update:semver-patch') ||
