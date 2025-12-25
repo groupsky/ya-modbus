@@ -2,7 +2,6 @@ module.exports = {
   displayName: '@ya-modbus/cli',
   preset: 'ts-jest',
   testEnvironment: 'node',
-  rootDir: '.',
   testMatch: ['<rootDir>/src/**/*.test.ts'],
   transform: {
     '^.+\\.tsx?$': [
@@ -13,9 +12,13 @@ module.exports = {
     ],
   },
   moduleNameMapper: {
+    // Map workspace package imports to their source directories for testing
     '^@ya-modbus/(.*)$': '<rootDir>/../$1/src',
+    // Strip .js extensions from relative imports (ESM compatibility)
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    // Mock chalk to avoid terminal formatting in test output
     '^chalk$': '<rootDir>/src/__mocks__/chalk.ts',
+    // Mock cli-table3 to simplify table output assertions
     '^cli-table3$': '<rootDir>/src/__mocks__/cli-table3.ts',
   },
   collectCoverageFrom: [
