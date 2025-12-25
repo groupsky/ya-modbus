@@ -177,7 +177,35 @@ jobs:
                - Implement fixes in PR if major breaking changes are simple
                - Approve if all updates are safe
 
-            6. **Final comment** with your summary and recommendation
+            6. **Craft commit message** (if approved):
+               - Count dependencies: ${{ needs.detect-group.outputs.dependency-count }}
+               - If ≤3: List all packages in subject
+               - If >3: Use count summary in subject
+               - Body: Summarize key changes across all dependencies (3-6 lines)
+                 - Group similar changes (e.g., "Bug fixes in X, Y, Z")
+                 - Highlight important changes
+                 - Keep concise but informative
+
+            7. **Final comment** with your summary, recommendation, and commit message
+
+            **Comment format (if approved):**
+            ```
+            [Your grouped dependency review summary]
+
+            ## 📝 Suggested Commit Message
+
+            **Subject:**
+            chore(deps)(${{ steps.metadata.outputs.package-ecosystem }}): bump [packages or count]
+
+            **Body:**
+            [Your summary of key changes across all dependencies]
+
+            <!-- COMMIT_MESSAGE_START
+            chore(deps)(${{ steps.metadata.outputs.package-ecosystem }}): bump [packages or count]
+
+            [Same body content]
+            COMMIT_MESSAGE_END -->
+            ```
 
             ## Tools Available
 
@@ -192,7 +220,7 @@ jobs:
             ## Approval Markers
 
             Use one of these in your final comment:
-            - ✅ **APPROVED** - All updates safe to merge after CI passes
+            - ✅ **APPROVED** - All updates safe to merge after CI passes (include commit message)
             - 🔧 **FIXABLE** - Simple breaking changes found, implemented locally and posted as suggestions
             - ⚠️ **REVIEW NEEDED** - Complex issues require human review
             - ⚠️ **MIGRATION REQUIRED** - Created migration issues, manual work needed
@@ -255,6 +283,38 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract commit message from Claude's comment
+        if: |
+          steps.check-approval.outputs.approved == 'true' &&
+          steps.metadata.outputs.dependency-type == 'direct:development'
+        id: extract-commit-msg
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          # Get all comments from claude[bot]
+          comments=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | .[].body')
+
+          # Extract commit message from hidden HTML comment
+          commit_message=$(echo "$comments" | sed -n '/<!-- COMMIT_MESSAGE_START/,/COMMIT_MESSAGE_END -->/p' | sed '1d;$d' | head -n -0)
+
+          if [ -n "$commit_message" ]; then
+            commit_subject=$(echo "$commit_message" | head -n 1)
+            commit_body=$(echo "$commit_message" | tail -n +2 | sed '/^$/d')
+
+            echo "Found Claude-suggested commit message"
+            {
+              echo "commit_subject=$commit_subject"
+              echo "commit_body<<EOF"
+              echo "$commit_body"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "No commit message found, will use fallback"
+            echo "commit_subject=" >> $GITHUB_OUTPUT
+            echo "commit_body=" >> $GITHUB_OUTPUT
+          fi
+
       - name: Enable auto-merge for dev dependencies
         if: |
           steps.check-approval.outputs.approved == 'true' &&
@@ -263,30 +323,43 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SUBJECT: ${{ steps.extract-commit-msg.outputs.commit_subject }}
+          COMMIT_BODY: ${{ steps.extract-commit-msg.outputs.commit_body }}
+          # Fallback values
           ECOSYSTEM: ${{ steps.metadata.outputs.package-ecosystem }}
           DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
-          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
         run: |
-          # Format commit message for grouped PR
-          # Format: chore(deps)(<ecosystem>): bump <package1>, <package2>, ... (#<pr>)
-
-          # Count dependencies
-          dep_count=$(echo "$DEPENDENCY_NAMES" | tr ',' '\n' | wc -l)
-
-          # Construct commit message
-          if [ "$dep_count" -le 3 ]; then
-            # Few dependencies - list them all
-            deps=$(echo "$DEPENDENCY_NAMES" | tr ',' ', ')
-            commit_subject="chore(deps)($ECOSYSTEM): bump $deps (#$PR_NUMBER)"
+          # Use Claude's commit message if available, otherwise fallback
+          if [ -n "$COMMIT_SUBJECT" ]; then
+            echo "Using Claude-suggested commit message"
+            commit_subject="$COMMIT_SUBJECT"
+            commit_body="$COMMIT_BODY"
           else
-            # Many dependencies - use summary
-            commit_subject="chore(deps)($ECOSYSTEM): bump $dep_count dependencies (#$PR_NUMBER)"
+            echo "Using fallback commit message format"
+            # Count dependencies
+            dep_count=$(echo "$DEPENDENCY_NAMES" | tr ',' '\n' | wc -l)
+
+            # Construct commit message
+            if [ "$dep_count" -le 3 ]; then
+              # Few dependencies - list them all
+              deps=$(echo "$DEPENDENCY_NAMES" | tr ',' ', ')
+              commit_subject="chore(deps)($ECOSYSTEM): bump $deps (#$PR_NUMBER)"
+            else
+              # Many dependencies - use summary
+              commit_subject="chore(deps)($ECOSYSTEM): bump $dep_count dependencies (#$PR_NUMBER)"
+            fi
+            commit_body="Grouped dependency updates."
           fi
 
-          echo "Commit message: $commit_subject"
+          echo "Commit subject: $commit_subject"
 
-          # Enable auto-merge with formatted commit message
-          gh pr merge --auto --squash --subject "$commit_subject" "$PR_URL"
+          # Enable auto-merge with commit message
+          if [ -n "$commit_body" ]; then
+            gh pr merge --auto --squash --subject "$commit_subject" --body "$commit_body" "$PR_URL"
+          else
+            gh pr merge --auto --squash --subject "$commit_subject" "$PR_URL"
+          fi
+
           gh pr edit "$PR_URL" --add-label "dependabot-auto-merge"
 
       - name: Label for manual merge (prod deps or major updates)

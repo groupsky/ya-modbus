@@ -470,23 +470,34 @@ chore(deps)(npm): bump 5 dependencies (#47)
 
 **How commit messages are created:**
 
-1. **Claude analyzes changes**: Reviews changelog/release notes to understand what changed
-2. **Claude crafts message**: Creates descriptive commit message with:
-   - Subject: Following the format above
-   - Body: Concise summary of key changes from changelog (2-5 lines)
-3. **Claude posts suggestion**: Includes commit message in PR comment with hidden HTML marker
-4. **Auto-merge extracts**: Parses Claude's suggested message and uses it when merging
+**Single-dependency PRs:**
 
-**Fallback**: If Claude doesn't provide a commit message, workflows use default format:
+1. **Claude analyzes changes**: Reviews changelog/release notes
+2. **Claude crafts message**: Subject + body with key changes (2-5 lines)
+3. **Claude posts suggestion**: Includes commit message with hidden HTML marker
+4. **Auto-merge extracts**: Uses Claude's message when merging
 
-- Subject: `chore(deps)(<ecosystem>): bump <package> from <old> to <new> (#<pr>)`
-- Body: `Automated dependency update.`
+**Grouped PRs:**
+
+1. **Claude analyzes all dependencies**: Reviews each dependency's changes
+2. **Claude crafts message**:
+   - Subject: Lists packages (≤3) or count (>3)
+   - Body: Summarizes changes across all dependencies (3-6 lines)
+   - Groups similar changes (e.g., "Bug fixes in X, Y, Z")
+3. **Claude posts suggestion**: Same format with HTML marker
+4. **Auto-merge extracts**: Uses Claude's message when merging
+
+**Fallback** (if Claude doesn't provide commit message):
+
+- Single: `chore(deps)(<ecosystem>): bump <package> from <old> to <new> (#<pr>)` + "Automated dependency update."
+- Grouped: `chore(deps)(<ecosystem>): bump <packages or count> (#<pr>)` + "Grouped dependency updates."
 
 **Benefits**:
 
-- More descriptive commit messages based on actual changes
+- Descriptive messages based on actual changelog content
 - Accurately reflects what the update contains
 - Human-reviewable before merge
+- Grouped PRs get intelligent summaries across all dependencies
 - Leverages Claude's understanding of changelogs
 
 ## Automated Workflows
