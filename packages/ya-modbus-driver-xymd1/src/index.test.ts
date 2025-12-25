@@ -41,7 +41,7 @@ describe('XYMD1 Driver', () => {
       })
 
       const dataPoints = driver.dataPoints
-      expect(dataPoints).toHaveLength(4)
+      expect(dataPoints).toHaveLength(6)
 
       const tempPoint = dataPoints.find((dp) => dp.id === 'temperature')
       expect(tempPoint).toBeDefined()
@@ -66,6 +66,24 @@ describe('XYMD1 Driver', () => {
       expect(baudRatePoint?.type).toBe('enum')
       expect(baudRatePoint?.access).toBe('rw')
       expect(baudRatePoint?.pollType).toBe('on-demand')
+
+      const tempCorrectionPoint = dataPoints.find((dp) => dp.id === 'temperature_correction')
+      expect(tempCorrectionPoint).toBeDefined()
+      expect(tempCorrectionPoint?.type).toBe('float')
+      expect(tempCorrectionPoint?.unit).toBe('°C')
+      expect(tempCorrectionPoint?.access).toBe('rw')
+      expect(tempCorrectionPoint?.pollType).toBe('on-demand')
+      expect(tempCorrectionPoint?.min).toBe(-10.0)
+      expect(tempCorrectionPoint?.max).toBe(10.0)
+
+      const humCorrectionPoint = dataPoints.find((dp) => dp.id === 'humidity_correction')
+      expect(humCorrectionPoint).toBeDefined()
+      expect(humCorrectionPoint?.type).toBe('float')
+      expect(humCorrectionPoint?.unit).toBe('%')
+      expect(humCorrectionPoint?.access).toBe('rw')
+      expect(humCorrectionPoint?.pollType).toBe('on-demand')
+      expect(humCorrectionPoint?.min).toBe(-10.0)
+      expect(humCorrectionPoint?.max).toBe(10.0)
     })
   })
 
@@ -156,6 +174,55 @@ describe('XYMD1 Driver', () => {
       expect(baudRate).toBe(9600)
       expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x102, 1)
     })
+
+    it.each([
+      {
+        dataPoint: 'temperature_correction',
+        register: 0x103,
+        value: 2.5,
+        rawValue: [0x00, 0x19],
+        description: '+2.5°C (value 25)',
+      },
+      {
+        dataPoint: 'temperature_correction',
+        register: 0x103,
+        value: -3.0,
+        rawValue: [0xff, 0xe2],
+        description: '-3.0°C (value -30 = 0xFFE2)',
+      },
+      {
+        dataPoint: 'temperature_correction',
+        register: 0x103,
+        value: 0,
+        rawValue: [0x00, 0x00],
+        description: '0°C',
+      },
+      {
+        dataPoint: 'humidity_correction',
+        register: 0x104,
+        value: 5.0,
+        rawValue: [0x00, 0x32],
+        description: '+5.0%RH (value 50)',
+      },
+      {
+        dataPoint: 'humidity_correction',
+        register: 0x104,
+        value: -3.0,
+        rawValue: [0xff, 0xe2],
+        description: '-3.0%RH (value -30 = 0xFFE2)',
+      },
+    ])('should read $dataPoint: $description', async ({ dataPoint, register, value, rawValue }) => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      mockTransport.readHoldingRegisters.mockResolvedValue(Buffer.from(rawValue))
+
+      const correction = await driver.readDataPoint(dataPoint)
+      expect(correction).toBe(value)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(register, 1)
+    })
   })
 
   describe('readDataPoints', () => {
@@ -196,10 +263,10 @@ describe('XYMD1 Driver', () => {
 
       // Mock input registers: temp=245 (24.5°C), humidity=652 (65.2%)
       mockTransport.readInputRegisters.mockResolvedValue(Buffer.from([0x00, 0xf5, 0x02, 0x8c]))
-      // Mock holding register for device_address: 52 (0x34)
-      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x34]))
-      // Mock holding register for baud_rate: 9600 (0x2580)
-      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x25, 0x80]))
+      // Mock batched holding registers: device_address=52 (0x0034), baud_rate=9600 (0x2580)
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(
+        Buffer.from([0x00, 0x34, 0x25, 0x80])
+      )
 
       const values = await driver.readDataPoints([
         'temperature',
@@ -217,9 +284,8 @@ describe('XYMD1 Driver', () => {
 
       // Should read input registers once for temp/humidity
       expect(mockTransport.readInputRegisters).toHaveBeenCalledWith(1, 2)
-      // Should read holding registers separately for device_address and baud_rate
-      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x101, 1)
-      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x102, 1)
+      // Should batch read both config registers together (optimization)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x101, 2)
     })
 
     it('should read only device configuration without sensor data', async () => {
@@ -228,10 +294,10 @@ describe('XYMD1 Driver', () => {
         slaveId: 1,
       })
 
-      // Mock holding register for device_address: 10 (0x0A)
-      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x0a]))
-      // Mock holding register for baud_rate: 19200 (0x4B00)
-      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x4b, 0x00]))
+      // Mock batched holding registers: device_address=10 (0x000A), baud_rate=19200 (0x4B00)
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(
+        Buffer.from([0x00, 0x0a, 0x4b, 0x00])
+      )
 
       const values = await driver.readDataPoints(['device_address', 'baud_rate'])
 
@@ -242,20 +308,138 @@ describe('XYMD1 Driver', () => {
 
       // Should not read input registers
       expect(mockTransport.readInputRegisters).not.toHaveBeenCalled()
-      // Should read holding registers separately
+      // Should batch read both config registers together (optimization)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x101, 2)
+    })
+
+    it('should read correction values without sensor data', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Mock batched holding registers: temperature_correction=+2.5°C (25), humidity_correction=-3.0%RH (-30)
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(
+        Buffer.from([0x00, 0x19, 0xff, 0xe2])
+      )
+
+      const values = await driver.readDataPoints(['temperature_correction', 'humidity_correction'])
+
+      expect(values).toEqual({
+        temperature_correction: 2.5,
+        humidity_correction: -3.0,
+      })
+
+      // Should not read input registers
+      expect(mockTransport.readInputRegisters).not.toHaveBeenCalled()
+      // Should batch read both correction registers together (optimization)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x103, 2)
+    })
+
+    it('should read all 4 holding registers in single batch when all requested', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Mock all 4 holding registers: device_address=52, baud_rate=9600, temp_corr=2.5, hum_corr=-3.0
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(
+        Buffer.from([
+          0x00,
+          0x34, // device_address = 52
+          0x25,
+          0x80, // baud_rate = 9600
+          0x00,
+          0x19, // temperature_correction = 2.5 (25)
+          0xff,
+          0xe2, // humidity_correction = -3.0 (-30)
+        ])
+      )
+
+      const values = await driver.readDataPoints([
+        'device_address',
+        'baud_rate',
+        'temperature_correction',
+        'humidity_correction',
+      ])
+
+      expect(values).toEqual({
+        device_address: 52,
+        baud_rate: 9600,
+        temperature_correction: 2.5,
+        humidity_correction: -3.0,
+      })
+
+      // Should batch read all 4 registers in a single transaction (maximum optimization)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x101, 4)
+    })
+
+    it('should read individual device_address when only that is requested', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x0a]))
+
+      const values = await driver.readDataPoints(['device_address'])
+
+      expect(values).toEqual({ device_address: 10 })
       expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x101, 1)
+    })
+
+    it('should read individual baud_rate when only that is requested', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x4b, 0x00]))
+
+      const values = await driver.readDataPoints(['baud_rate'])
+
+      expect(values).toEqual({ baud_rate: 19200 })
       expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x102, 1)
+    })
+
+    it('should read individual temperature_correction when only that is requested', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x19]))
+
+      const values = await driver.readDataPoints(['temperature_correction'])
+
+      expect(values).toEqual({ temperature_correction: 2.5 })
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x103, 1)
+    })
+
+    it('should read individual humidity_correction when only that is requested', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0xff, 0xe2]))
+
+      const values = await driver.readDataPoints(['humidity_correction'])
+
+      expect(values).toEqual({ humidity_correction: -3.0 })
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x104, 1)
     })
   })
 
   describe('writeDataPoint', () => {
-    it('should throw error as device is read-only', async () => {
+    it('should throw error when writing to read-only data point', async () => {
       const driver = await createDriver({
         transport: mockTransport,
         slaveId: 1,
       })
 
       await expect(driver.writeDataPoint('temperature', 25)).rejects.toThrow()
+      await expect(driver.writeDataPoint('humidity', 50)).rejects.toThrow()
     })
 
     it('should configure device address', async () => {
@@ -340,6 +524,121 @@ describe('XYMD1 Driver', () => {
       }
 
       expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledTimes(validRates.length)
+    })
+
+    it.each([
+      {
+        dataPoint: 'temperature_correction',
+        register: 0x103,
+        value: 2.5,
+        encoded: [0x00, 0x19],
+        description: '+2.5°C (25 × 10 = 0x0019)',
+      },
+      {
+        dataPoint: 'temperature_correction',
+        register: 0x103,
+        value: -3.0,
+        encoded: [0xff, 0xe2],
+        description: '-3.0°C (-30 × 10 = 0xFFE2)',
+      },
+      {
+        dataPoint: 'temperature_correction',
+        register: 0x103,
+        value: 0,
+        encoded: [0x00, 0x00],
+        description: '0°C',
+      },
+      {
+        dataPoint: 'humidity_correction',
+        register: 0x104,
+        value: 5.0,
+        encoded: [0x00, 0x32],
+        description: '+5.0%RH (50 × 10 = 0x0032)',
+      },
+      {
+        dataPoint: 'humidity_correction',
+        register: 0x104,
+        value: -3.0,
+        encoded: [0xff, 0xe2],
+        description: '-3.0%RH (-30 × 10 = 0xFFE2)',
+      },
+    ])('should write $dataPoint: $description', async ({ dataPoint, register, value, encoded }) => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      await driver.writeDataPoint(dataPoint, value)
+
+      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledWith(
+        register,
+        Buffer.from(encoded)
+      )
+    })
+
+    it.each([
+      {
+        dataPoint: 'temperature_correction',
+        invalidValue: -10.1,
+        errorMessage: 'Invalid temperature correction',
+      },
+      {
+        dataPoint: 'temperature_correction',
+        invalidValue: 10.1,
+        errorMessage: 'Invalid temperature correction',
+      },
+      {
+        dataPoint: 'humidity_correction',
+        invalidValue: -10.1,
+        errorMessage: 'Invalid humidity correction',
+      },
+      {
+        dataPoint: 'humidity_correction',
+        invalidValue: 10.1,
+        errorMessage: 'Invalid humidity correction',
+      },
+    ])(
+      'should reject $dataPoint value $invalidValue',
+      async ({ dataPoint, invalidValue, errorMessage }) => {
+        const driver = await createDriver({
+          transport: mockTransport,
+          slaveId: 1,
+        })
+
+        await expect(driver.writeDataPoint(dataPoint, invalidValue)).rejects.toThrow(errorMessage)
+      }
+    )
+
+    it.each([
+      { dataPoint: 'temperature_correction', values: [-10.0, 10.0] },
+      { dataPoint: 'humidity_correction', values: [-10.0, 10.0] },
+    ])('should accept $dataPoint boundary values', async ({ dataPoint, values }) => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      for (const value of values) {
+        await driver.writeDataPoint(dataPoint, value)
+      }
+
+      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledTimes(values.length)
+    })
+
+    it('should handle floating-point precision correctly when encoding', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Test value 2.55 which could round to either 25 or 26 depending on precision
+      // Math.trunc(2.55 * 10) = Math.trunc(25.5) = 25
+      await driver.writeDataPoint('temperature_correction', 2.55)
+
+      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledWith(
+        0x103,
+        Buffer.from([0x00, 0x19]) // 25, not 26
+      )
     })
   })
 })
