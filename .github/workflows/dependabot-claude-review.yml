@@ -1,0 +1,271 @@
+name: Dependabot + Claude Review
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+
+jobs:
+  # Fetch metadata about the Dependabot PR
+  metadata:
+    name: Fetch Dependabot Metadata
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    outputs:
+      dependency-names: ${{ steps.metadata.outputs.dependency-names }}
+      dependency-type: ${{ steps.metadata.outputs.dependency-type }}
+      update-type: ${{ steps.metadata.outputs.update-type }}
+      package-ecosystem: ${{ steps.metadata.outputs.package-ecosystem }}
+      prev-version: ${{ steps.metadata.outputs.previous-version }}
+      new-version: ${{ steps.metadata.outputs.new-version }}
+
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Display metadata
+        run: |
+          echo "Dependency names: ${{ steps.metadata.outputs.dependency-names }}"
+          echo "Dependency type: ${{ steps.metadata.outputs.dependency-type }}"
+          echo "Update type: ${{ steps.metadata.outputs.update-type }}"
+          echo "Package ecosystem: ${{ steps.metadata.outputs.package-ecosystem }}"
+          echo "Previous version: ${{ steps.metadata.outputs.previous-version }}"
+          echo "New version: ${{ steps.metadata.outputs.new-version }}"
+
+  # Claude review for patch updates (quick check)
+  claude-review-patch:
+    name: Claude Review (Patch)
+    runs-on: ubuntu-latest
+    needs: metadata
+    if: |
+      github.actor == 'dependabot[bot]' &&
+      needs.metadata.outputs.update-type == 'version-update:semver-patch'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Run Claude Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            This is a Dependabot PATCH update for:
+            - Dependencies: ${{ needs.metadata.outputs.dependency-names }}
+            - Type: ${{ needs.metadata.outputs.dependency-type }}
+            - Version: ${{ needs.metadata.outputs.prev-version }} → ${{ needs.metadata.outputs.new-version }}
+
+            Patch updates are typically bug fixes with no breaking changes. Please:
+
+            1. Review the changes in this PR
+            2. Check if there are any unexpected code changes beyond version bumps
+            3. Verify this looks like a normal patch update
+            4. If everything looks good, comment: "✅ **APPROVED** - Patch update looks good for auto-merge"
+            5. If you find issues, comment with concerns and mark: "⚠️ **REVIEW NEEDED**"
+
+            Use `gh pr comment` with your Bash tool to leave your review.
+          claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"'
+
+  # Claude review for minor updates (moderate check + feature inspection)
+  claude-review-minor:
+    name: Claude Review (Minor)
+    runs-on: ubuntu-latest
+    needs: metadata
+    if: |
+      github.actor == 'dependabot[bot]' &&
+      needs.metadata.outputs.update-type == 'version-update:semver-minor'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Run Claude Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            This is a Dependabot MINOR update for:
+            - Dependencies: ${{ needs.metadata.outputs.dependency-names }}
+            - Type: ${{ needs.metadata.outputs.dependency-type }}
+            - Version: ${{ needs.metadata.outputs.prev-version }} → ${{ needs.metadata.outputs.new-version }}
+
+            Minor updates may include new features. Please:
+
+            1. Review the changes in this PR
+            2. Try to find and review the changelog/release notes for new features
+            3. Assess if any new features could benefit this codebase
+            4. If beneficial features found, create a GitHub issue with:
+               - Title: "Explore new features from [dependency] v${{ needs.metadata.outputs.new-version }}"
+               - Description of the new features and potential use cases
+               - Label: "enhancement", "dependencies"
+            5. Comment on the PR with your findings:
+               - If auto-merge appropriate: "✅ **APPROVED** - Minor update safe for merge. [Link to issue if created]"
+               - If issues found: "⚠️ **REVIEW NEEDED** - [explain concerns]"
+
+            Use `gh issue create` and `gh pr comment` with your Bash tool.
+          claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue create:*),WebFetch,WebSearch"'
+
+  # Claude review for major updates (thorough check + breaking change analysis)
+  claude-review-major:
+    name: Claude Review (Major)
+    runs-on: ubuntu-latest
+    needs: metadata
+    if: |
+      github.actor == 'dependabot[bot]' &&
+      needs.metadata.outputs.update-type == 'version-update:semver-major'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Run Claude Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            This is a Dependabot MAJOR update for:
+            - Dependencies: ${{ needs.metadata.outputs.dependency-names }}
+            - Type: ${{ needs.metadata.outputs.dependency-type }}
+            - Version: ${{ needs.metadata.outputs.prev-version }} → ${{ needs.metadata.outputs.new-version }}
+            - PR: #${{ github.event.pull_request.number }}
+
+            Major updates may contain BREAKING CHANGES. Please:
+
+            1. Review the changes in this PR
+            2. Find and analyze the changelog/migration guide for breaking changes
+            3. Search the codebase for usage of the updated dependency
+            4. Assess the impact of breaking changes on our code
+            5. Determine the appropriate action:
+
+            **If breaking changes can be fixed in this PR:**
+            - Implement the necessary code changes to handle breaking changes
+            - Update tests if needed
+            - Comment: "✅ **FIXED** - Breaking changes resolved. Ready for review and merge."
+
+            **If breaking changes require more work OR affect multiple areas:**
+            - Create a detailed GitHub issue with:
+              - Title: "Migration required: [dependency] v${{ needs.metadata.outputs.prev-version }} → v${{ needs.metadata.outputs.new-version }}"
+              - Description: Breaking changes, affected code areas, migration steps
+              - Labels: "breaking-change", "dependencies", "help wanted"
+            - Comment on PR: "⚠️ **MIGRATION REQUIRED** - Created issue #[issue-number] for tracking. Recommend closing this PR until migration is ready."
+            - Close the PR with comment explaining why
+
+            **If no breaking changes affect our code:**
+            - Comment: "✅ **APPROVED** - Major version bump but no breaking changes affect our codebase. Safe to merge after CI passes."
+
+            Use `gh pr comment`, `gh issue create`, and `gh pr close` with your Bash tool.
+            Use WebFetch and WebSearch to find changelogs and migration guides.
+            Use Read, Grep, and Glob to analyze codebase impact.
+          claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue create:*),Bash(gh pr close:*),WebFetch,WebSearch,Read,Grep,Glob"'
+
+  # Wait for all reviews and CI to complete before auto-merge decision
+  auto-merge-decision:
+    name: Auto-Merge Decision
+    runs-on: ubuntu-latest
+    needs: [metadata, claude-review-patch, claude-review-minor, claude-review-major]
+    if: |
+      always() &&
+      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.draft == false &&
+      (needs.claude-review-patch.result == 'success' ||
+       needs.claude-review-minor.result == 'success' ||
+       needs.claude-review-major.result == 'success' ||
+       needs.claude-review-patch.result == 'skipped' ||
+       needs.claude-review-minor.result == 'skipped' ||
+       needs.claude-review-major.result == 'skipped')
+
+    steps:
+      - name: Check Claude approval
+        id: check-approval
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          # Get the latest comment from claude[bot]
+          latest_comment=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | last | .body')
+
+          echo "Latest Claude comment:"
+          echo "$latest_comment"
+
+          # Check if Claude approved
+          if echo "$latest_comment" | grep -q "✅ \*\*APPROVED\*\*"; then
+            echo "approved=true" >> $GITHUB_OUTPUT
+            echo "✅ Claude approved the changes"
+          elif echo "$latest_comment" | grep -q "✅ \*\*FIXED\*\*"; then
+            echo "approved=true" >> $GITHUB_OUTPUT
+            echo "✅ Claude fixed breaking changes"
+          else
+            echo "approved=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Claude did not approve for auto-merge"
+          fi
+
+      - name: Auto-approve if Claude approved
+        if: steps.check-approval.outputs.approved == 'true'
+        run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for approved updates
+        if: |
+          steps.check-approval.outputs.approved == 'true' && (
+            (
+              needs.metadata.outputs.package-ecosystem == 'github_actions' &&
+              needs.metadata.outputs.update-type != 'version-update:semver-major'
+            ) || (
+              needs.metadata.outputs.package-ecosystem == 'npm' &&
+              needs.metadata.outputs.dependency-type == 'direct:development' &&
+              (needs.metadata.outputs.update-type == 'version-update:semver-patch' ||
+               needs.metadata.outputs.update-type == 'version-update:semver-minor')
+            ) || (
+              needs.metadata.outputs.package-ecosystem == 'npm' &&
+              needs.metadata.outputs.dependency-type == 'direct:production' &&
+              needs.metadata.outputs.update-type == 'version-update:semver-patch'
+            )
+          )
+        run: |
+          gh pr merge --auto --squash "$PR_URL"
+          gh pr edit "$PR_URL" --add-label "dependabot-auto-merge"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Label for manual merge
+        if: |
+          steps.check-approval.outputs.approved == 'true' && (
+            (needs.metadata.outputs.package-ecosystem == 'npm' &&
+             needs.metadata.outputs.dependency-type == 'direct:production' &&
+             needs.metadata.outputs.update-type != 'version-update:semver-patch') ||
+            (needs.metadata.outputs.package-ecosystem == 'github_actions' &&
+             needs.metadata.outputs.update-type == 'version-update:semver-major')
+          )
+        run: |
+          gh pr edit "$PR_URL" --add-label "dependabot-approved" --add-label "ready-to-merge"
+          gh pr comment "$PR_URL" --body "✅ **Claude approved** - This PR is ready for manual merge after CI passes."
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

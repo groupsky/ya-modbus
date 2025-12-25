@@ -95,6 +95,26 @@ npm run build --workspace=packages/devices
 
 **Fix mixed commit**: `git reset --soft HEAD~1`, unstage unrelated files, recommit separately.
 
+## Pull Request Merge Rules
+
+**IMPORTANT**: See `docs/PR-MERGE-RULES.md` for complete merge rules and procedures.
+
+**Key points**:
+
+- **Always use squash commits** when merging PRs
+- **Always include PR number** in commit message: `(#123)`
+- **Format commits for terminal** - no HTML tags
+- **Dependabot PRs**: Automatically reviewed by Claude (see workflow details in docs)
+- **Manual PRs**: Require human review approval
+
+**Commit message format**:
+
+```
+<type>(<scope>): <subject> (#<pr-number>)
+
+<body>
+```
+
 ## Key Architectural Decisions
 
 When implementing features, consult `docs/ARCHITECTURE.md` for:

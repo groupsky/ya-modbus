@@ -1,4 +1,9 @@
-name: Dependabot Auto-Merge
+name: Dependabot Auto-Merge (Legacy)
+
+# DEPRECATED: This workflow is kept for backward compatibility but is no longer the primary workflow.
+# Use dependabot-claude-review.yml for intelligent Dependabot PR handling with Claude integration.
+#
+# This workflow provides basic auto-merge without Claude review as a fallback.
 
 on:
   pull_request_target:
