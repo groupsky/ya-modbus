@@ -57,30 +57,60 @@ jobs:
           grep -A 1 "package-ecosystem: 'npm'" "$config_file" | grep "directory:" | awk '{print $2}' | tr -d "'"
           echo ""
 
-          # Check each package directory
-          coverage_ok=true
+          # Check if root package.json has workspaces configured
+          has_workspaces=$(jq -r '.workspaces // empty' package.json 2>/dev/null)
+          root_npm_config=$(grep -A 1 "package-ecosystem: 'npm'" "$config_file" | grep "directory: '/'")
 
-          for pkg in $packages; do
-            # Get directory relative to root
-            pkg_dir=$(dirname "$pkg")
+          if [ -n "$has_workspaces" ] && [ -n "$root_npm_config" ]; then
+            echo "ℹ️  npm workspaces detected with root Dependabot config"
+            echo "   Root configuration covers all workspace packages"
+            echo ""
 
-            # For root package.json, directory should be "/"
-            if [ "$pkg_dir" = "." ]; then
-              search_dir="directory: '/'"
-            else
-              # Remove leading ./ if present
-              pkg_dir=${pkg_dir#./}
-              search_dir="directory: '/$pkg_dir'"
-            fi
+            # Verify all packages are in workspace
+            coverage_ok=true
+            for pkg in $packages; do
+              pkg_dir=$(dirname "$pkg")
+              if [ "$pkg_dir" = "." ]; then
+                echo "✅ $pkg_dir is covered (root)"
+              else
+                pkg_dir=${pkg_dir#./}
+                # Check if package is in workspace
+                if echo "$has_workspaces" | jq -e --arg dir "$pkg_dir" 'any(. == $dir or . == ($dir | split("/")[0] + "/*"))' >/dev/null 2>&1; then
+                  echo "✅ $pkg_dir is covered (workspace)"
+                else
+                  echo "❌ $pkg_dir is NOT in workspace configuration!"
+                  coverage_ok=false
+                fi
+              fi
+            done
+          else
+            # No workspaces - check each package directory individually
+            echo "ℹ️  No npm workspaces detected - verifying individual package coverage"
+            echo ""
 
-            # Check if this directory is in dependabot.yml
-            if grep -q "$search_dir" "$config_file"; then
-              echo "✅ $pkg_dir is covered"
-            else
-              echo "❌ $pkg_dir is NOT covered by Dependabot!"
-              coverage_ok=false
-            fi
-          done
+            coverage_ok=true
+            for pkg in $packages; do
+              # Get directory relative to root
+              pkg_dir=$(dirname "$pkg")
+
+              # For root package.json, directory should be "/"
+              if [ "$pkg_dir" = "." ]; then
+                search_dir="directory: '/'"
+              else
+                # Remove leading ./ if present
+                pkg_dir=${pkg_dir#./}
+                search_dir="directory: '/$pkg_dir'"
+              fi
+
+              # Check if this directory is in dependabot.yml
+              if grep -q "$search_dir" "$config_file"; then
+                echo "✅ $pkg_dir is covered"
+              else
+                echo "❌ $pkg_dir is NOT covered by Dependabot!"
+                coverage_ok=false
+              fi
+            done
+          fi
 
           echo ""
 
