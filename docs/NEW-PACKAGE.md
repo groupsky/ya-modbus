@@ -180,10 +180,13 @@ Reference other workspace packages:
 
 Device driver packages should follow naming: `ya-modbus-driver-<device>`
 
-**Required exports for driver packages**:
+**Required exports**:
 
 1. **createDriver function**: Main driver factory function
-2. **DEFAULT_CONFIG constant**: Factory-default device configuration
+
+**Recommended exports**:
+
+1. **DEFAULT_CONFIG constant**: Factory-default device configuration
    ```typescript
    export const DEFAULT_CONFIG = {
      baudRate: 9600,
@@ -193,7 +196,7 @@ Device driver packages should follow naming: `ya-modbus-driver-<device>`
      defaultAddress: 1,
    } as const
    ```
-3. **Valid configuration constants** (recommended): Export validation constants to enable DRY testing
+2. **Valid configuration constants**: Export validation constants to enable DRY testing
    ```typescript
    export const VALID_BAUD_RATES = [9600, 14400, 19200] as const
    ```
@@ -206,7 +209,7 @@ Device driver packages should follow naming: `ya-modbus-driver-<device>`
 - Enables DRY compliance in tests
 - Type-safe with TypeScript `as const`
 
-**Documentation requirements**:
+**Documentation recommendations** (if implementing DEFAULT_CONFIG):
 
 - File header comment should reference DEFAULT_CONFIG instead of duplicating values
 - README should include example using DEFAULT_CONFIG
