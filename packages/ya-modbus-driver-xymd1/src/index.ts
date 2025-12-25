@@ -17,6 +17,7 @@ import type {
   DataPoint,
   CreateDriverFunction,
   DriverConfig,
+  DefaultSerialConfig,
 } from '@ya-modbus/driver-types'
 
 /**
@@ -47,16 +48,11 @@ export const VALID_BAUD_RATES = [9600, 14400, 19200] as const
  * })
  * ```
  */
-export const DEFAULT_CONFIG = {
-  /** Default baud rate (9600 bps) */
+export const DEFAULT_CONFIG: DefaultSerialConfig = {
   baudRate: 9600,
-  /** Default parity (even) */
-  parity: 'even' as const,
-  /** Default data bits (8) */
+  parity: 'even',
   dataBits: 8,
-  /** Default stop bits (1) */
   stopBits: 1,
-  /** Default Modbus slave address (1) */
   defaultAddress: 1,
 } as const
 
