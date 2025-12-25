@@ -146,22 +146,20 @@ export type DefaultConfig = DefaultSerialConfig | DefaultTCPConfig
 /**
  * Supported serial port configuration values
  *
- * Drivers should export constants defining which values their device supports.
- * Use readonly arrays with 'as const' for type narrowing.
+ * Serial driver packages should export a SUPPORTED_CONFIG constant implementing this interface
+ * to define device-specific serial configuration constraints.
  *
  * @example
  * ```typescript
- * // Device supports 9600, 14400, and 19200 bps
- * export const VALID_BAUD_RATES = [9600, 14400, 19200] as const
+ * import type { SupportedSerialConfig } from '@ya-modbus/driver-types'
  *
- * // Device supports even and none parity
- * export const VALID_PARITY = ['even', 'none'] as const
- *
- * // Device only supports 8 data bits
- * export const VALID_DATA_BITS = [8] as const
- *
- * // Device only supports 1 stop bit
- * export const VALID_STOP_BITS = [1] as const
+ * export const SUPPORTED_CONFIG = {
+ *   validBaudRates: [9600, 14400, 19200],
+ *   validParity: ['even', 'none'],
+ *   validDataBits: [8],
+ *   validStopBits: [1],
+ *   validAddressRange: [1, 247],
+ * } as const satisfies SupportedSerialConfig
  * ```
  */
 export interface SupportedSerialConfig {
@@ -195,3 +193,40 @@ export interface SupportedSerialConfig {
    */
   readonly validAddressRange?: readonly [min: number, max: number]
 }
+
+/**
+ * Supported TCP configuration values
+ *
+ * TCP driver packages should export a SUPPORTED_CONFIG constant implementing this interface
+ * to define device-specific TCP configuration constraints.
+ *
+ * @example
+ * ```typescript
+ * import type { SupportedTCPConfig } from '@ya-modbus/driver-types'
+ *
+ * export const SUPPORTED_CONFIG = {
+ *   validPorts: [502, 503],
+ *   validUnitIdRange: [1, 247],
+ * } as const satisfies SupportedTCPConfig
+ * ```
+ */
+export interface SupportedTCPConfig {
+  /**
+   * Supported TCP ports
+   * Typically [502] for standard Modbus TCP
+   */
+  readonly validPorts?: readonly number[]
+
+  /**
+   * Supported Modbus unit ID range
+   * Typically 1-247 for Modbus
+   */
+  readonly validUnitIdRange?: readonly [min: number, max: number]
+}
+
+/**
+ * Union type for supported device configuration
+ *
+ * Drivers should export SUPPORTED_CONFIG matching one of these types
+ */
+export type SupportedConfig = SupportedSerialConfig | SupportedTCPConfig

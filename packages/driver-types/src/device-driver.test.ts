@@ -10,6 +10,8 @@ import type {
   DefaultTCPConfig,
   DefaultConfig,
   SupportedSerialConfig,
+  SupportedTCPConfig,
+  SupportedConfig,
 } from './device-driver.js'
 
 describe('DefaultSerialConfig', () => {
@@ -215,5 +217,65 @@ describe('SupportedSerialConfig', () => {
     expect(supportedConfig.validParity).toEqual(['even', 'none'])
     expect(supportedConfig.validDataBits).toEqual([8])
     expect(supportedConfig.validStopBits).toEqual([1])
+  })
+})
+
+describe('SupportedTCPConfig', () => {
+  it('should accept valid TCP configuration', () => {
+    const supportedConfig: SupportedTCPConfig = {
+      validPorts: [502, 503],
+      validUnitIdRange: [1, 247],
+    }
+
+    expect(supportedConfig.validPorts).toEqual([502, 503])
+    expect(supportedConfig.validUnitIdRange).toEqual([1, 247])
+  })
+
+  it('should accept partial TCP configuration', () => {
+    const partialConfig: SupportedTCPConfig = {
+      validPorts: [502],
+    }
+
+    expect(partialConfig.validPorts).toEqual([502])
+    expect(partialConfig.validUnitIdRange).toBeUndefined()
+  })
+
+  it('should preserve literal types with as const satisfies', () => {
+    const supportedConfig = {
+      validPorts: [502],
+      validUnitIdRange: [1, 247],
+    } as const satisfies SupportedTCPConfig
+
+    // Type assertions to verify literal types are preserved
+    const _portsType: readonly [502] = supportedConfig.validPorts
+    const _unitIdType: readonly [1, 247] = supportedConfig.validUnitIdRange
+
+    expect(_portsType).toEqual([502])
+    expect(_unitIdType).toEqual([1, 247])
+  })
+})
+
+describe('SupportedConfig union type', () => {
+  it('should accept SupportedSerialConfig', () => {
+    const serialConfig: SupportedConfig = {
+      validBaudRates: [9600, 14400, 19200],
+      validParity: ['even', 'none'],
+      validDataBits: [8],
+      validStopBits: [1],
+      validAddressRange: [1, 247],
+    }
+
+    expect(serialConfig.validBaudRates).toEqual([9600, 14400, 19200])
+    expect('validBaudRates' in serialConfig).toBe(true)
+  })
+
+  it('should accept SupportedTCPConfig', () => {
+    const tcpConfig: SupportedConfig = {
+      validPorts: [502],
+      validUnitIdRange: [1, 247],
+    }
+
+    expect(tcpConfig.validPorts).toEqual([502])
+    expect('validPorts' in tcpConfig).toBe(true)
   })
 })

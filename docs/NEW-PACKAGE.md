@@ -227,6 +227,17 @@ Device driver packages should follow naming: `ya-modbus-driver-<device>`
 
    Only include the properties that are device-specific. Omit properties if your device supports standard values (e.g., omit `validParity` if supporting all standard parity settings).
 
+   For Modbus TCP devices, use `SupportedTCPConfig`:
+
+   ```typescript
+   import type { SupportedTCPConfig } from '@ya-modbus/driver-types'
+
+   export const SUPPORTED_CONFIG = {
+     validPorts: [502],
+     validUnitIdRange: [1, 247],
+   } as const satisfies SupportedTCPConfig
+   ```
+
 **Benefits**:
 
 - Makes device specifications discoverable via code completion
