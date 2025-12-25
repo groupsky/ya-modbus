@@ -29,6 +29,39 @@ import type {
 const VALID_BAUD_RATES = [9600, 14400, 19200] as const
 
 /**
+ * Default XYMD1 device configuration
+ *
+ * Use these values when connecting to a factory-default XYMD1 device.
+ * These are the settings the device ships with from the manufacturer.
+ *
+ * @example
+ * ```typescript
+ * import { DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
+ *
+ * const transport = await createRTUTransport({
+ *   port: '/dev/ttyUSB0',
+ *   baudRate: DEFAULT_CONFIG.baudRate,
+ *   parity: DEFAULT_CONFIG.parity,
+ *   dataBits: DEFAULT_CONFIG.dataBits,
+ *   stopBits: DEFAULT_CONFIG.stopBits,
+ *   slaveId: DEFAULT_CONFIG.defaultAddress,
+ * })
+ * ```
+ */
+export const DEFAULT_CONFIG = {
+  /** Default baud rate (9600 bps) */
+  baudRate: 9600,
+  /** Default parity (even) */
+  parity: 'even' as const,
+  /** Default data bits (8) */
+  dataBits: 8,
+  /** Default stop bits (1) */
+  stopBits: 1,
+  /** Default Modbus slave address (1) */
+  defaultAddress: 1,
+} as const
+
+/**
  * Data point definitions for XYMD1
  */
 const DATA_POINTS: ReadonlyArray<DataPoint> = [

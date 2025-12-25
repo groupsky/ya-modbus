@@ -4,7 +4,32 @@
 
 import type { Transport } from '@ya-modbus/driver-types'
 
-import { createDriver } from './index'
+import { createDriver, DEFAULT_CONFIG } from './index'
+
+describe('DEFAULT_CONFIG', () => {
+  it('should export default device configuration', () => {
+    expect(DEFAULT_CONFIG).toBeDefined()
+    expect(DEFAULT_CONFIG.baudRate).toBe(9600)
+    expect(DEFAULT_CONFIG.parity).toBe('even')
+    expect(DEFAULT_CONFIG.dataBits).toBe(8)
+    expect(DEFAULT_CONFIG.stopBits).toBe(1)
+    expect(DEFAULT_CONFIG.defaultAddress).toBe(1)
+  })
+
+  it('should have correct baud rate from valid rates', () => {
+    // Ensure default baud rate is one of the valid rates for XYMD1
+    expect([9600, 14400, 19200]).toContain(DEFAULT_CONFIG.baudRate)
+  })
+
+  it('should have all required properties', () => {
+    // Verify all expected properties are present
+    expect(DEFAULT_CONFIG).toHaveProperty('baudRate')
+    expect(DEFAULT_CONFIG).toHaveProperty('parity')
+    expect(DEFAULT_CONFIG).toHaveProperty('dataBits')
+    expect(DEFAULT_CONFIG).toHaveProperty('stopBits')
+    expect(DEFAULT_CONFIG).toHaveProperty('defaultAddress')
+  })
+})
 
 describe('XYMD1 Driver', () => {
   let mockTransport: jest.Mocked<Transport>
