@@ -36,6 +36,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           # Get commits and validate array is not empty
           commits=$(gh pr view "$PR_URL" --json commits --jq '.commits')
           commit_count=$(echo "$commits" | jq 'length')
@@ -73,6 +79,12 @@ jobs:
         id: analyze
         if: steps.verify-dependabot.outputs.is_dependabot_pr == 'true'
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           # Count dependencies (comma-separated)
           deps="${{ steps.check.outputs.dependency-names }}"
           count=$(echo "$deps" | tr ',' '\n' | wc -l)
@@ -120,6 +132,12 @@ jobs:
 
       - name: Verify reviewdog installation
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           if ! command -v reviewdog &> /dev/null; then
             echo "❌ reviewdog installation failed"
             echo "⚠️  Claude will not be able to post inline suggestions"
@@ -316,6 +334,12 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           REPO: ${{ github.repository }}
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           # Get all commits in the PR
           commits=$(gh pr view "$PR_URL" --json commits --jq '.commits')
           commit_count=$(echo "$commits" | jq 'length')
@@ -374,6 +398,12 @@ jobs:
           AUTHOR: ${{ steps.check-fix-commit.outputs.fix_author }}
           REASON: ${{ steps.verify-contributor.outputs.reason }}
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           echo "❌ Security block: Untrusted contributor"
           echo "ℹ️  Author: $AUTHOR"
           echo "ℹ️  Reason: $REASON"
@@ -393,6 +423,12 @@ jobs:
           steps.verify-contributor.outputs.is-trusted == 'true'
         id: check-verification-needed
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           # Final verification is needed if:
           # 1. Fix commits exist from a trusted contributor
           # 2. The contributor passed the trust check earlier
@@ -500,6 +536,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           # Poll for Claude's verification comment (check every 2s for up to 60s)
           echo "ℹ️  Waiting for Claude's verification comment..."
           max_attempts=30  # 60 seconds total
@@ -552,6 +594,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           echo "⚠️  Claude found issues or did not verify (decision: ${{ steps.extract-final-verification.outputs.decision }})"
           gh pr comment "$PR_URL" --body "⚠️ **Auto-merge blocked** - Claude's final verification did not pass. Please review the concerns raised above."
           exit 1
@@ -562,6 +610,12 @@ jobs:
       - name: Evaluate auto-merge eligibility
         id: evaluate-auto-merge
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           # Check if Claude approved/verified
           claude_ok="false"
           if [ "${{ steps.check-approval.outputs.approved }}" = "true" ]; then
@@ -614,6 +668,12 @@ jobs:
           ECOSYSTEM: ${{ steps.metadata.outputs.package-ecosystem }}
           DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           # Use Claude's commit message if available, otherwise fallback
           if [ -n "$COMMIT_SUBJECT" ]; then
             echo "ℹ️  Using Claude-suggested commit message"
@@ -660,9 +720,15 @@ jobs:
             steps.check-final-verification.outputs.verified == 'true')) &&
           (steps.metadata.outputs.dependency-type == 'direct:production' ||
            steps.metadata.outputs.update-type == 'version-update:semver-major')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           gh pr edit "$PR_URL" --add-label "dependabot-approved" --add-label "ready-to-merge"
           gh pr comment "$PR_URL" --body "✅ **Claude approved** - Grouped PR ready for manual merge after CI passes."
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -28,6 +28,12 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           # Get PR labels
           labels=$(gh pr view "$PR_URL" --json labels --jq '.labels[].name' | tr '\n' ',')
 
@@ -61,6 +67,12 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           EXPECTED_REVIEWER: ${{ github.event.review.user.login }}
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           echo "ℹ️  Verifying reviewer identity: $EXPECTED_REVIEWER"
 
           # Get the actual latest approved review from API
@@ -99,6 +111,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           # Get CI status for the PR
           status=$(gh pr view "$PR_URL" --json statusCheckRollup --jq '.statusCheckRollup[].state' | sort -u | tr '\n' ',')
 
@@ -152,6 +170,12 @@ jobs:
           PREV_VERSION: ${{ steps.dep-metadata.outputs.previous-version }}
           NEW_VERSION: ${{ steps.dep-metadata.outputs.new-version }}
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           # Use Claude's commit message if available, otherwise fallback
           if [ -n "$COMMIT_SUBJECT" ]; then
             echo "ℹ️  Using Claude-suggested commit message"
@@ -194,6 +218,12 @@ jobs:
           REVIEWER: ${{ github.event.review.user.login }}
           REASON: ${{ steps.verify-reviewer.outputs.reason }}
         run: |
+          # Enable debug mode if ACTIONS_STEP_DEBUG is set
+          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+            set -x
+            echo "🐛 Debug mode enabled"
+          fi
+
           gh pr comment "$PR_URL" --body "⚠️ **Manual Merge Required** - Approval from @$REVIEWER detected, but contributor is not trusted.
 
           **Reason:** $REASON
