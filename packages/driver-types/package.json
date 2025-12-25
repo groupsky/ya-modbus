@@ -17,6 +17,8 @@
   ],
   "scripts": {
     "build": "tsc --build",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "jest",
+    "lint": "eslint ."
   }
 }

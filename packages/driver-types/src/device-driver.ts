@@ -91,13 +91,13 @@ export type CreateDriverFunction = (config: DriverConfig) => Promise<DeviceDrive
  *
  * @example
  * ```typescript
- * export const DEFAULT_CONFIG: DefaultSerialConfig = {
+ * export const DEFAULT_CONFIG = {
  *   baudRate: 9600,
  *   parity: 'even',
  *   dataBits: 8,
  *   stopBits: 1,
  *   defaultAddress: 1,
- * } as const
+ * } as const satisfies DefaultSerialConfig
  * ```
  */
 export interface DefaultSerialConfig {
@@ -122,10 +122,10 @@ export interface DefaultSerialConfig {
  *
  * @example
  * ```typescript
- * export const DEFAULT_CONFIG: DefaultTCPConfig = {
+ * export const DEFAULT_CONFIG = {
  *   defaultAddress: 1,
  *   defaultPort: 502,
- * } as const
+ * } as const satisfies DefaultTCPConfig
  * ```
  */
 export interface DefaultTCPConfig {

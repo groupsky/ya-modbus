@@ -191,13 +191,13 @@ Device driver packages should follow naming: `ya-modbus-driver-<device>`
    ```typescript
    import type { DefaultSerialConfig } from '@ya-modbus/driver-types'
 
-   export const DEFAULT_CONFIG: DefaultSerialConfig = {
+   export const DEFAULT_CONFIG = {
      baudRate: 9600,
      parity: 'even',
      dataBits: 8,
      stopBits: 1,
      defaultAddress: 1,
-   } as const
+   } as const satisfies DefaultSerialConfig
    ```
 
    For Modbus TCP devices, use `DefaultTCPConfig`:
@@ -205,10 +205,10 @@ Device driver packages should follow naming: `ya-modbus-driver-<device>`
    ```typescript
    import type { DefaultTCPConfig } from '@ya-modbus/driver-types'
 
-   export const DEFAULT_CONFIG: DefaultTCPConfig = {
+   export const DEFAULT_CONFIG = {
      defaultAddress: 1,
      defaultPort: 502,
-   } as const
+   } as const satisfies DefaultTCPConfig
    ```
 
 2. **Valid configuration constants**: Export validation constants to enable DRY testing
