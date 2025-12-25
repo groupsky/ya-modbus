@@ -342,6 +342,31 @@ describe('XYMD1 Driver', () => {
       expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x101, 1)
       expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x102, 1)
     })
+
+    it('should read correction values without sensor data', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Mock holding register for temperature_correction: +2.5°C (25)
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x19]))
+      // Mock holding register for humidity_correction: -3.0%RH (-30 = 0xFFE2)
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0xff, 0xe2]))
+
+      const values = await driver.readDataPoints(['temperature_correction', 'humidity_correction'])
+
+      expect(values).toEqual({
+        temperature_correction: 2.5,
+        humidity_correction: -3.0,
+      })
+
+      // Should not read input registers
+      expect(mockTransport.readInputRegisters).not.toHaveBeenCalled()
+      // Should read holding registers for corrections
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x103, 1)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x104, 1)
+    })
   })
 
   describe('writeDataPoint', () => {
