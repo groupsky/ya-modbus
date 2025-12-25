@@ -515,12 +515,37 @@ jobs:
               needs.metadata.outputs.update-type == 'version-update:semver-patch'
             )
           )
-        run: |
-          gh pr merge --auto --squash "$PR_URL"
-          gh pr edit "$PR_URL" --add-label "dependabot-auto-merge"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ECOSYSTEM: ${{ needs.metadata.outputs.package-ecosystem }}
+          DEPENDENCY_NAMES: ${{ needs.metadata.outputs.dependency-names }}
+          PREV_VERSION: ${{ needs.metadata.outputs.prev-version }}
+          NEW_VERSION: ${{ needs.metadata.outputs.new-version }}
+          UPDATE_TYPE: ${{ needs.metadata.outputs.update-type }}
+        run: |
+          # Format commit message according to PR-MERGE-RULES.md
+          # Format: chore(deps)(<ecosystem>): <dependency-action> <package> from <old> to <new> (#<pr>)
+
+          # Determine action based on update type
+          case "$UPDATE_TYPE" in
+            "version-update:semver-major"|"version-update:semver-minor"|"version-update:semver-patch")
+              action="bump"
+              ;;
+            *)
+              action="update"
+              ;;
+          esac
+
+          # Construct commit message
+          commit_subject="chore(deps)($ECOSYSTEM): $action $DEPENDENCY_NAMES from $PREV_VERSION to $NEW_VERSION (#$PR_NUMBER)"
+
+          echo "Commit message: $commit_subject"
+
+          # Enable auto-merge with formatted commit message
+          gh pr merge --auto --squash --subject "$commit_subject" "$PR_URL"
+          gh pr edit "$PR_URL" --add-label "dependabot-auto-merge"
 
       - name: Label for manual merge
         if: |

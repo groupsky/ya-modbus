@@ -259,12 +259,35 @@ jobs:
         if: |
           steps.check-approval.outputs.approved == 'true' &&
           steps.metadata.outputs.dependency-type == 'direct:development'
-        run: |
-          gh pr merge --auto --squash "$PR_URL"
-          gh pr edit "$PR_URL" --add-label "dependabot-auto-merge"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ECOSYSTEM: ${{ steps.metadata.outputs.package-ecosystem }}
+          DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+        run: |
+          # Format commit message for grouped PR
+          # Format: chore(deps)(<ecosystem>): bump <package1>, <package2>, ... (#<pr>)
+
+          # Count dependencies
+          dep_count=$(echo "$DEPENDENCY_NAMES" | tr ',' '\n' | wc -l)
+
+          # Construct commit message
+          if [ "$dep_count" -le 3 ]; then
+            # Few dependencies - list them all
+            deps=$(echo "$DEPENDENCY_NAMES" | tr ',' ', ')
+            commit_subject="chore(deps)($ECOSYSTEM): bump $deps (#$PR_NUMBER)"
+          else
+            # Many dependencies - use summary
+            commit_subject="chore(deps)($ECOSYSTEM): bump $dep_count dependencies (#$PR_NUMBER)"
+          fi
+
+          echo "Commit message: $commit_subject"
+
+          # Enable auto-merge with formatted commit message
+          gh pr merge --auto --squash --subject "$commit_subject" "$PR_URL"
+          gh pr edit "$PR_URL" --add-label "dependabot-auto-merge"
 
       - name: Label for manual merge (prod deps or major updates)
         if: |

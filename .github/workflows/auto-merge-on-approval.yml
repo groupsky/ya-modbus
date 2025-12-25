@@ -89,6 +89,16 @@ jobs:
             echo "✅ CI checks are passing or pending"
           fi
 
+      - name: Fetch Dependabot metadata for commit message
+        if: |
+          steps.check-pr.outputs.is_ready == 'true' &&
+          steps.verify-reviewer.outputs.is_trusted == 'true' &&
+          steps.check-ci.outputs.ci_ready == 'true'
+        id: dep-metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Enable auto-merge
         if: |
           steps.check-pr.outputs.is_ready == 'true' &&
@@ -97,10 +107,40 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           REVIEWER: ${{ github.event.review.user.login }}
+          ECOSYSTEM: ${{ steps.dep-metadata.outputs.package-ecosystem }}
+          DEPENDENCY_NAMES: ${{ steps.dep-metadata.outputs.dependency-names }}
+          PREV_VERSION: ${{ steps.dep-metadata.outputs.previous-version }}
+          NEW_VERSION: ${{ steps.dep-metadata.outputs.new-version }}
+          UPDATE_TYPE: ${{ steps.dep-metadata.outputs.update-type }}
         run: |
-          # Enable auto-merge
-          gh pr merge --auto --squash "$PR_URL"
+          # Format commit message according to PR-MERGE-RULES.md
+          # Format: chore(deps)(<ecosystem>): <dependency-action> <package> from <old> to <new> (#<pr>)
+
+          # Determine action based on update type
+          case "$UPDATE_TYPE" in
+            "version-update:semver-major")
+              action="bump"
+              ;;
+            "version-update:semver-minor")
+              action="bump"
+              ;;
+            "version-update:semver-patch")
+              action="bump"
+              ;;
+            *)
+              action="update"
+              ;;
+          esac
+
+          # Construct commit message
+          commit_subject="chore(deps)($ECOSYSTEM): $action $DEPENDENCY_NAMES from $PREV_VERSION to $NEW_VERSION (#$PR_NUMBER)"
+
+          echo "Commit message: $commit_subject"
+
+          # Enable auto-merge with formatted commit message
+          gh pr merge --auto --squash --subject "$commit_subject" "$PR_URL"
 
           # Add label to indicate auto-merge was enabled
           gh pr edit "$PR_URL" --add-label "dependabot-auto-merge"

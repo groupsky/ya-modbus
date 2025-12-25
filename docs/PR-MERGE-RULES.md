@@ -432,8 +432,10 @@ feat: add new feature  ❌ (missing scope and PR number)
 
 Dependabot PRs use a specific format:
 
+**Single-dependency PRs:**
+
 ```
-chore(deps)(<ecosystem>): <dependency-action> <package> from <old> to <new> (#<pr>)
+chore(deps)(<ecosystem>): bump <package> from <old> to <new> (#<pr>)
 ```
 
 Example:
@@ -441,6 +443,32 @@ Example:
 ```
 chore(deps)(npm): bump typescript from 5.7.0 to 5.8.0 (#45)
 ```
+
+**Grouped PRs (≤3 dependencies):**
+
+```
+chore(deps)(<ecosystem>): bump <package1>, <package2>, <package3> (#<pr>)
+```
+
+Example:
+
+```
+chore(deps)(npm): bump typescript, ts-node, @types/node (#46)
+```
+
+**Grouped PRs (>3 dependencies):**
+
+```
+chore(deps)(<ecosystem>): bump <N> dependencies (#<pr>)
+```
+
+Example:
+
+```
+chore(deps)(npm): bump 5 dependencies (#47)
+```
+
+**Note**: All workflows automatically format commit messages according to these rules when enabling auto-merge. You don't need to manually set commit messages.
 
 ## Automated Workflows
 
