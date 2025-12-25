@@ -128,12 +128,23 @@ Claude analyzes breaking changes AND inspects new features, then takes appropria
 **If changes are simple (< 10 lines of code):**
 
 - Claude analyzes exactly what needs to change
-- Provides complete code snippets in PR comment
-- Creates GitHub issue with full code changes
+- Creates **inline suggestion comments** with "Apply suggestion" buttons
+- Each suggestion shows the exact code change needed
+- Creates summary GitHub issue documenting all fixes
 - Issue labeled: `breaking-change`, `dependencies`, `easy-fix`
 - Comments: `🔧 **FIXABLE**` with issue link
-- PR stays open for manual application of fixes
-- Manual review and merge required after fixes applied
+- PR stays open for you to apply suggestions
+
+**After you apply the suggestions:**
+
+1. You click "Apply suggestion" button(s) on Claude's review comments
+2. GitHub commits the changes with your authorship
+3. Commit triggers workflow to run again
+4. Workflow detects this is a "fix commit"
+5. Automatically approves and enables auto-merge
+6. PR merges after CI passes
+
+**No manual merge needed!** The workflow auto-approves fix commits.
 
 ##### 2. Complex Breaking Changes
 

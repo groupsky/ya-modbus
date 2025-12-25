@@ -188,14 +188,32 @@ jobs:
             **Breaking Change Handling:**
 
             **If breaking changes are SIMPLE (< 10 lines of code changes):**
-            - Analyze exactly what needs to change
-            - Provide complete code snippets in your comment showing the fixes
-            - Create a GitHub issue with:
-              - Title: "Apply breaking change fixes: [dependency] v${{ needs.metadata.outputs.prev-version }} → v${{ needs.metadata.outputs.new-version }}"
-              - Description: Breaking changes, required code changes with full snippets
-              - Labels: "breaking-change", "dependencies", "easy-fix"
-            - Comment on PR: "🔧 **FIXABLE** - Simple breaking changes. Created issue #[issue-number] with code changes. Manual application required before merge."
-            - Do NOT close the PR - it stays open for manual fixes
+            - Analyze exactly what needs to change (file, line numbers, old code, new code)
+            - Create a GitHub PR review with inline suggestion comments using:
+              ```bash
+              # Start a review
+              gh pr review $PR_NUMBER --comment --body "🔧 **FIXABLE** - Simple breaking changes detected. See inline suggestions below."
+
+              # For each fix, create suggestion comment (GitHub API):
+              # POST /repos/{owner}/{repo}/pulls/{pr_number}/comments
+              # Body format:
+              # ```suggestion
+              # [new code here]
+              # ```
+              # This creates "Apply suggestion" button for each change
+              ```
+            - Comment structure for EACH fix:
+              ```
+              **File**: `path/to/file.ts:42`
+              **Breaking change**: [explain what changed in dependency]
+              **Fix required**: [explain the code change needed]
+
+              ```suggestion
+              [exact new code to apply]
+              ```
+              ```
+            - Also create a summary GitHub issue documenting all fixes for reference
+            - Do NOT close the PR - it stays open for manual application of suggestions
 
             **If breaking changes are COMPLEX (affect multiple files or require design decisions):**
             - Create a detailed GitHub issue with:
@@ -229,9 +247,8 @@ jobs:
     needs: [metadata, claude-review-patch, claude-review-minor, claude-review-major]
     if: |
       always() &&
-      github.actor == 'dependabot[bot]' &&
-      needs.metadata.outputs.is-single == 'true' &&
       github.event.pull_request.draft == false &&
+      needs.metadata.outputs.is-single == 'true' &&
       (needs.claude-review-patch.result == 'success' ||
        needs.claude-review-minor.result == 'success' ||
        needs.claude-review-major.result == 'success' ||
@@ -240,11 +257,38 @@ jobs:
        needs.claude-review-major.result == 'skipped')
 
     steps:
+      - name: Check if this is a fix commit
+        id: check-fix-commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          # Get latest commit message
+          latest_commit_msg=$(gh pr view "$PR_URL" --json commits --jq '.commits[-1].messageHeadline')
+          latest_commit_author=$(gh pr view "$PR_URL" --json commits --jq '.commits[-1].authors[0].login')
+
+          echo "Latest commit: $latest_commit_msg"
+          echo "Latest author: $latest_commit_author"
+
+          # Check if this commit is from applying suggestions
+          # GitHub uses specific commit messages for applied suggestions
+          if echo "$latest_commit_msg" | grep -qiE "(apply suggestions?|update.*suggestion|co-authored-by.*github-actions)"; then
+            echo "is_fix_commit=true" >> $GITHUB_OUTPUT
+            echo "✅ Detected fix commit (applied suggestion)"
+          elif [ "$latest_commit_author" != "dependabot[bot]" ] && [ "$latest_commit_author" != "app/dependabot" ]; then
+            # Non-Dependabot commit after Dependabot PR - likely a manual fix
+            echo "is_fix_commit=true" >> $GITHUB_OUTPUT
+            echo "✅ Detected manual fix commit from $latest_commit_author"
+          else
+            echo "is_fix_commit=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Not a fix commit"
+          fi
       - name: Check Claude approval
         id: check-approval
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
+          IS_FIX_COMMIT: ${{ steps.check-fix-commit.outputs.is_fix_commit }}
         run: |
           # Get the latest comment from claude[bot]
           latest_comment=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | last | .body')
@@ -253,11 +297,17 @@ jobs:
           echo "$latest_comment"
 
           # Check if Claude approved for auto-merge
-          # Only APPROVED marker enables auto-merge
-          # FIXABLE, MIGRATION REQUIRED, REVIEW NEEDED all require manual intervention
           if echo "$latest_comment" | grep -q "✅ \*\*APPROVED\*\*"; then
             echo "approved=true" >> $GITHUB_OUTPUT
             echo "✅ Claude approved the changes"
+          elif [ "$IS_FIX_COMMIT" = "true" ] && echo "$latest_comment" | grep -q "🔧 \*\*FIXABLE\*\*"; then
+            # Special case: This is a fix commit for a FIXABLE PR
+            # Auto-approve because the fixes were applied from Claude's suggestions
+            echo "approved=true" >> $GITHUB_OUTPUT
+            echo "✅ Auto-approving: Fixes applied to previously FIXABLE PR"
+
+            # Add a comment explaining the auto-approval
+            gh pr comment "$PR_URL" --body "✅ **AUTO-APPROVED** - Detected applied fixes for breaking changes. Auto-merge will proceed after CI passes."
           else
             echo "approved=false" >> $GITHUB_OUTPUT
             if echo "$latest_comment" | grep -q "🔧 \*\*FIXABLE\*\*"; then
