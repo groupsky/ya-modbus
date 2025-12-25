@@ -10,7 +10,7 @@ export interface RTUConfig {
   /** Serial port path (e.g., /dev/ttyUSB0, COM1) */
   port: string
   /** Baud rate */
-  baudRate: 2400 | 4800 | 9600 | 19200 | 38400 | 115200
+  baudRate: 2400 | 4800 | 9600 | 14400 | 19200 | 38400 | 115200
   /** Data bits */
   dataBits: 7 | 8
   /** Parity */
