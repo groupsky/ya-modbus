@@ -263,10 +263,10 @@ describe('XYMD1 Driver', () => {
 
       // Mock input registers: temp=245 (24.5°C), humidity=652 (65.2%)
       mockTransport.readInputRegisters.mockResolvedValue(Buffer.from([0x00, 0xf5, 0x02, 0x8c]))
-      // Mock holding register for device_address: 52 (0x34)
-      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x34]))
-      // Mock holding register for baud_rate: 9600 (0x2580)
-      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x25, 0x80]))
+      // Mock batched holding registers: device_address=52 (0x0034), baud_rate=9600 (0x2580)
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(
+        Buffer.from([0x00, 0x34, 0x25, 0x80])
+      )
 
       const values = await driver.readDataPoints([
         'temperature',
@@ -284,9 +284,8 @@ describe('XYMD1 Driver', () => {
 
       // Should read input registers once for temp/humidity
       expect(mockTransport.readInputRegisters).toHaveBeenCalledWith(1, 2)
-      // Should read holding registers separately for device_address and baud_rate
-      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x101, 1)
-      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x102, 1)
+      // Should batch read both config registers together (optimization)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x101, 2)
     })
 
     it('should read only device configuration without sensor data', async () => {
@@ -295,10 +294,10 @@ describe('XYMD1 Driver', () => {
         slaveId: 1,
       })
 
-      // Mock holding register for device_address: 10 (0x0A)
-      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x0a]))
-      // Mock holding register for baud_rate: 19200 (0x4B00)
-      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x4b, 0x00]))
+      // Mock batched holding registers: device_address=10 (0x000A), baud_rate=19200 (0x4B00)
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(
+        Buffer.from([0x00, 0x0a, 0x4b, 0x00])
+      )
 
       const values = await driver.readDataPoints(['device_address', 'baud_rate'])
 
@@ -309,9 +308,8 @@ describe('XYMD1 Driver', () => {
 
       // Should not read input registers
       expect(mockTransport.readInputRegisters).not.toHaveBeenCalled()
-      // Should read holding registers separately
-      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x101, 1)
-      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x102, 1)
+      // Should batch read both config registers together (optimization)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x101, 2)
     })
 
     it('should read correction values without sensor data', async () => {
@@ -320,10 +318,10 @@ describe('XYMD1 Driver', () => {
         slaveId: 1,
       })
 
-      // Mock holding register for temperature_correction: +2.5°C (25)
-      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x19]))
-      // Mock holding register for humidity_correction: -3.0%RH (-30 = 0xFFE2)
-      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0xff, 0xe2]))
+      // Mock batched holding registers: temperature_correction=+2.5°C (25), humidity_correction=-3.0%RH (-30)
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(
+        Buffer.from([0x00, 0x19, 0xff, 0xe2])
+      )
 
       const values = await driver.readDataPoints(['temperature_correction', 'humidity_correction'])
 
@@ -334,9 +332,8 @@ describe('XYMD1 Driver', () => {
 
       // Should not read input registers
       expect(mockTransport.readInputRegisters).not.toHaveBeenCalled()
-      // Should read holding registers for corrections
-      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x103, 1)
-      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x104, 1)
+      // Should batch read both correction registers together (optimization)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x103, 2)
     })
   })
 
