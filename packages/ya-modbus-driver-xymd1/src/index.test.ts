@@ -175,82 +175,53 @@ describe('XYMD1 Driver', () => {
       expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x102, 1)
     })
 
-    it('should read temperature correction (positive value)', async () => {
+    it.each([
+      {
+        dataPoint: 'temperature_correction',
+        register: 0x103,
+        value: 2.5,
+        rawValue: [0x00, 0x19],
+        description: '+2.5°C (value 25)',
+      },
+      {
+        dataPoint: 'temperature_correction',
+        register: 0x103,
+        value: -3.0,
+        rawValue: [0xff, 0xe2],
+        description: '-3.0°C (value -30 = 0xFFE2)',
+      },
+      {
+        dataPoint: 'temperature_correction',
+        register: 0x103,
+        value: 0,
+        rawValue: [0x00, 0x00],
+        description: '0°C',
+      },
+      {
+        dataPoint: 'humidity_correction',
+        register: 0x104,
+        value: 5.0,
+        rawValue: [0x00, 0x32],
+        description: '+5.0%RH (value 50)',
+      },
+      {
+        dataPoint: 'humidity_correction',
+        register: 0x104,
+        value: -3.0,
+        rawValue: [0xff, 0xe2],
+        description: '-3.0%RH (value -30 = 0xFFE2)',
+      },
+    ])('should read $dataPoint: $description', async ({ dataPoint, register, value, rawValue }) => {
       const driver = await createDriver({
         transport: mockTransport,
         slaveId: 1,
       })
 
-      // Mock response: +2.5°C correction (value 25)
-      mockTransport.readHoldingRegisters.mockResolvedValue(
-        Buffer.from([0x00, 0x19]) // 25 as 16-bit value
-      )
+      mockTransport.readHoldingRegisters.mockResolvedValue(Buffer.from(rawValue))
 
-      const correction = await driver.readDataPoint('temperature_correction')
-      expect(correction).toBe(2.5)
-      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x103, 1)
-    })
-
-    it('should read temperature correction (negative value)', async () => {
-      const driver = await createDriver({
-        transport: mockTransport,
-        slaveId: 1,
-      })
-
-      // Mock response: -3.0°C correction (value -30 = 0xFFE2 in two's complement)
-      mockTransport.readHoldingRegisters.mockResolvedValue(
-        Buffer.from([0xff, 0xe2]) // -30 as signed 16-bit value
-      )
-
-      const correction = await driver.readDataPoint('temperature_correction')
-      expect(correction).toBe(-3.0)
-      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x103, 1)
-    })
-
-    it('should read temperature correction (zero)', async () => {
-      const driver = await createDriver({
-        transport: mockTransport,
-        slaveId: 1,
-      })
-
-      // Mock response: 0°C correction
-      mockTransport.readHoldingRegisters.mockResolvedValue(Buffer.from([0x00, 0x00]))
-
-      const correction = await driver.readDataPoint('temperature_correction')
-      expect(correction).toBe(0)
-      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x103, 1)
-    })
-
-    it('should read humidity correction (positive value)', async () => {
-      const driver = await createDriver({
-        transport: mockTransport,
-        slaveId: 1,
-      })
-
-      // Mock response: +5.0%RH correction (value 50)
-      mockTransport.readHoldingRegisters.mockResolvedValue(
-        Buffer.from([0x00, 0x32]) // 50 as 16-bit value
-      )
-
-      const correction = await driver.readDataPoint('humidity_correction')
-      expect(correction).toBe(5.0)
-      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x104, 1)
-    })
-
-    it('should read humidity correction (negative value)', async () => {
-      const driver = await createDriver({
-        transport: mockTransport,
-        slaveId: 1,
-      })
-
-      // Mock response: -3.0%RH correction (value -30 = 0xFFE2 in two's complement)
-      mockTransport.readHoldingRegisters.mockResolvedValue(
-        Buffer.from([0xff, 0xe2]) // -30 as signed 16-bit value
-      )
-
-      const correction = await driver.readDataPoint('humidity_correction')
-      expect(correction).toBe(-3.0)
-      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x104, 1)
+      const correction = await driver.readDataPoint(dataPoint)
+      expect(correction).toBe(value)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(register, 1)
     })
   })
 
@@ -464,130 +435,103 @@ describe('XYMD1 Driver', () => {
       expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledTimes(validRates.length)
     })
 
-    it('should write temperature correction (positive value)', async () => {
+    it.each([
+      {
+        dataPoint: 'temperature_correction',
+        register: 0x103,
+        value: 2.5,
+        encoded: [0x00, 0x19],
+        description: '+2.5°C (25 × 10 = 0x0019)',
+      },
+      {
+        dataPoint: 'temperature_correction',
+        register: 0x103,
+        value: -3.0,
+        encoded: [0xff, 0xe2],
+        description: '-3.0°C (-30 × 10 = 0xFFE2)',
+      },
+      {
+        dataPoint: 'temperature_correction',
+        register: 0x103,
+        value: 0,
+        encoded: [0x00, 0x00],
+        description: '0°C',
+      },
+      {
+        dataPoint: 'humidity_correction',
+        register: 0x104,
+        value: 5.0,
+        encoded: [0x00, 0x32],
+        description: '+5.0%RH (50 × 10 = 0x0032)',
+      },
+      {
+        dataPoint: 'humidity_correction',
+        register: 0x104,
+        value: -3.0,
+        encoded: [0xff, 0xe2],
+        description: '-3.0%RH (-30 × 10 = 0xFFE2)',
+      },
+    ])('should write $dataPoint: $description', async ({ dataPoint, register, value, encoded }) => {
       const driver = await createDriver({
         transport: mockTransport,
         slaveId: 1,
       })
 
-      await driver.writeDataPoint('temperature_correction', 2.5)
+      await driver.writeDataPoint(dataPoint, value)
 
-      // 2.5°C = 25 (×10) = 0x0019
       expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledWith(
-        0x103,
-        Buffer.from([0x00, 0x19])
+        register,
+        Buffer.from(encoded)
       )
     })
 
-    it('should write temperature correction (negative value)', async () => {
+    it.each([
+      {
+        dataPoint: 'temperature_correction',
+        invalidValue: -10.1,
+        errorMessage: 'Invalid temperature correction',
+      },
+      {
+        dataPoint: 'temperature_correction',
+        invalidValue: 10.1,
+        errorMessage: 'Invalid temperature correction',
+      },
+      {
+        dataPoint: 'humidity_correction',
+        invalidValue: -10.1,
+        errorMessage: 'Invalid humidity correction',
+      },
+      {
+        dataPoint: 'humidity_correction',
+        invalidValue: 10.1,
+        errorMessage: 'Invalid humidity correction',
+      },
+    ])(
+      'should reject $dataPoint value $invalidValue',
+      async ({ dataPoint, invalidValue, errorMessage }) => {
+        const driver = await createDriver({
+          transport: mockTransport,
+          slaveId: 1,
+        })
+
+        await expect(driver.writeDataPoint(dataPoint, invalidValue)).rejects.toThrow(errorMessage)
+      }
+    )
+
+    it.each([
+      { dataPoint: 'temperature_correction', values: [-10.0, 10.0] },
+      { dataPoint: 'humidity_correction', values: [-10.0, 10.0] },
+    ])('should accept $dataPoint boundary values', async ({ dataPoint, values }) => {
       const driver = await createDriver({
         transport: mockTransport,
         slaveId: 1,
       })
 
-      await driver.writeDataPoint('temperature_correction', -3.0)
+      for (const value of values) {
+        await driver.writeDataPoint(dataPoint, value)
+      }
 
-      // -3.0°C = -30 (×10) = 0xFFE2 in two's complement
-      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledWith(
-        0x103,
-        Buffer.from([0xff, 0xe2])
-      )
-    })
-
-    it('should write temperature correction (zero)', async () => {
-      const driver = await createDriver({
-        transport: mockTransport,
-        slaveId: 1,
-      })
-
-      await driver.writeDataPoint('temperature_correction', 0)
-
-      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledWith(
-        0x103,
-        Buffer.from([0x00, 0x00])
-      )
-    })
-
-    it('should write humidity correction (positive value)', async () => {
-      const driver = await createDriver({
-        transport: mockTransport,
-        slaveId: 1,
-      })
-
-      await driver.writeDataPoint('humidity_correction', 5.0)
-
-      // 5.0%RH = 50 (×10) = 0x0032
-      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledWith(
-        0x104,
-        Buffer.from([0x00, 0x32])
-      )
-    })
-
-    it('should write humidity correction (negative value)', async () => {
-      const driver = await createDriver({
-        transport: mockTransport,
-        slaveId: 1,
-      })
-
-      await driver.writeDataPoint('humidity_correction', -3.0)
-
-      // -3.0%RH = -30 (×10) = 0xFFE2 in two's complement
-      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledWith(
-        0x104,
-        Buffer.from([0xff, 0xe2])
-      )
-    })
-
-    it('should validate temperature correction range', async () => {
-      const driver = await createDriver({
-        transport: mockTransport,
-        slaveId: 1,
-      })
-
-      await expect(driver.writeDataPoint('temperature_correction', -10.1)).rejects.toThrow(
-        'Invalid temperature correction'
-      )
-      await expect(driver.writeDataPoint('temperature_correction', 10.1)).rejects.toThrow(
-        'Invalid temperature correction'
-      )
-    })
-
-    it('should accept temperature correction boundary values', async () => {
-      const driver = await createDriver({
-        transport: mockTransport,
-        slaveId: 1,
-      })
-
-      await driver.writeDataPoint('temperature_correction', -10.0)
-      await driver.writeDataPoint('temperature_correction', 10.0)
-
-      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledTimes(2)
-    })
-
-    it('should validate humidity correction range', async () => {
-      const driver = await createDriver({
-        transport: mockTransport,
-        slaveId: 1,
-      })
-
-      await expect(driver.writeDataPoint('humidity_correction', -10.1)).rejects.toThrow(
-        'Invalid humidity correction'
-      )
-      await expect(driver.writeDataPoint('humidity_correction', 10.1)).rejects.toThrow(
-        'Invalid humidity correction'
-      )
-    })
-
-    it('should accept humidity correction boundary values', async () => {
-      const driver = await createDriver({
-        transport: mockTransport,
-        slaveId: 1,
-      })
-
-      await driver.writeDataPoint('humidity_correction', -10.0)
-      await driver.writeDataPoint('humidity_correction', 10.0)
-
-      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledTimes(2)
+      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledTimes(values.length)
     })
 
     it('should handle floating-point precision correctly when encoding', async () => {
