@@ -106,6 +106,36 @@ When fixes are applied to a grouped PR, the workflow polls for Claude's final ve
 - Allows generous buffer for GitHub API delays and PR comment posting
 - Prevents indefinite waiting if Claude agent fails or errors
 
+## Workflow Trigger Behavior
+
+### Race Condition Handling
+
+**Trigger**: `pull_request_target` (both single and grouped workflows)
+
+The workflows use `pull_request_target` which automatically re-runs on PR updates, including:
+
+- **`opened`**: Initial Dependabot PR creation
+- **`synchronize`**: New commits pushed to the PR (including applied fixes)
+- **`reopened`**: PR reopened after being closed
+
+**How fix commits are handled:**
+
+1. **Initial run**: Claude reviews Dependabot's changes, may post suggestions via reviewdog
+2. **User applies fixes**: Either manually or via "Apply suggestion" button
+3. **Automatic re-run**: `synchronize` event triggers workflow again
+4. **Fix detection**: Workflow detects non-Dependabot commits
+5. **Verification**: Contributor trust check + final Claude verification
+6. **Auto-merge decision**: Based on verification results
+
+**Important notes:**
+
+- Fixes applied **during** workflow execution won't be detected in that run
+- A new workflow run will trigger automatically when fixes are pushed
+- Users should wait for Claude's initial review before applying fixes
+- Multiple fix commits trigger multiple workflow runs (last one prevails)
+
+**Best practice**: Apply fixes after Claude's initial review completes to avoid race conditions.
+
 ## Security Safeguards
 
 All Dependabot PRs go through three layers of security verification:
