@@ -19,7 +19,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Retry a function with exponential backoff
+ * Retry a function with fixed delay between attempts
  *
  * @param fn - The async function to retry
  * @param maxRetries - Maximum number of attempts (default: MAX_RETRIES)

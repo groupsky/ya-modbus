@@ -2,7 +2,7 @@ import { formatJSON } from '../formatters/json.js'
 import { formatPerformance, type PerformanceMetrics } from '../formatters/performance.js'
 import { formatTable } from '../formatters/table.js'
 
-import { findReadableDataPoint, isReadable, withDriver, withTransport } from './utils.js'
+import { isReadable, withDriver, withTransport } from './utils.js'
 
 /**
  * Read command options
@@ -55,9 +55,16 @@ export async function readCommand(options: ReadOptions): Promise<void> {
         throw new Error('Either --data-point or --all must be specified')
       }
 
-      // Validate data points exist and are readable
+      // Validate data points exist and are readable (O(N) using Map lookup)
+      const dataPointMap = new Map(driver.dataPoints.map((dp) => [dp.id, dp]))
       for (const id of dataPointIds) {
-        findReadableDataPoint(driver, id)
+        const dataPoint = dataPointMap.get(id)
+        if (!dataPoint) {
+          throw new Error(`Data point not found: ${id}`)
+        }
+        if (!isReadable(dataPoint)) {
+          throw new Error(`Data point is write-only: ${id}`)
+        }
       }
 
       // Read data points

@@ -31,7 +31,7 @@ src/
 **Pattern**: Wrap `modbus-serial` to implement Transport interface
 
 - Implement all 8 Transport methods
-- Automatic retry on transient failures (3 attempts, 100ms backoff)
+- Automatic retry on transient failures (3 attempts, 100ms fixed delay)
 - Return Buffers for consistency with driver interface
 
 **Retry rationale**: RTU on RS-485 has transient bus collisions; auto-retry improves reliability.
@@ -48,9 +48,10 @@ Two loading modes:
 **Import path fallback order**:
 
 ```
-1. ./src/index.ts (development, TypeScript source)
-2. ./dist/index.js (development, compiled)
-3. <package-name> (production, installed)
+1. ./src/index.js (development, TypeScript compiled)
+2. ./src/index.ts (development, TypeScript source)
+3. ./dist/index.js (development, built output)
+4. <package-name> (production, installed via symlink)
 ```
 
 **Validation**: Ensure module exports `createDriver` function and is callable.
