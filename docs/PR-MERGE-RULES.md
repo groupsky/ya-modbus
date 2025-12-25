@@ -100,11 +100,13 @@ Dependabot PRs are handled by the `dependabot-claude-review.yml` workflow with d
 
 ### Major Updates (`version-update:semver-major`)
 
-**Strategy: Claude analysis + breaking change handling**
+**Strategy: Claude analysis + breaking change handling + feature inspection**
 
-Claude analyzes breaking changes and takes one of three actions:
+Claude analyzes breaking changes AND inspects new features, then takes appropriate actions:
 
-#### 1. Fixable Breaking Changes
+#### Breaking Change Actions
+
+##### 1. Fixable Breaking Changes
 
 **If Claude can fix in the PR:**
 
@@ -113,7 +115,7 @@ Claude analyzes breaking changes and takes one of three actions:
 - Comments: `✅ **FIXED**`
 - Manual review and merge required after CI passes
 
-#### 2. Complex Breaking Changes
+##### 2. Complex Breaking Changes
 
 **If changes require significant work:**
 
@@ -125,7 +127,7 @@ Claude analyzes breaking changes and takes one of three actions:
 - Claude closes PR with explanation
 - Migration tracked in issue
 
-#### 3. No Impact Breaking Changes
+##### 3. No Impact Breaking Changes
 
 **If breaking changes don't affect our code:**
 
@@ -133,6 +135,17 @@ Claude analyzes breaking changes and takes one of three actions:
 - Comments: `✅ **APPROVED**`
 - Labeled: `dependabot-approved`, `ready-to-merge`
 - Manual merge required after CI passes
+
+#### New Feature Opportunities
+
+**In addition to handling breaking changes:**
+
+- Claude reviews changelog for beneficial new features
+- Creates separate GitHub issues for significant opportunities:
+  - Title: `Explore new features from [package] vX.Y.Z`
+  - Description: New features, potential use cases, benefits
+  - Labels: `enhancement`, `dependencies`
+- Mentions feature issues in PR comment
 
 ## Human-Created PRs
 

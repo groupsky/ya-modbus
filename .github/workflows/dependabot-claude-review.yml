@@ -153,13 +153,16 @@ jobs:
             - Version: ${{ needs.metadata.outputs.prev-version }} → ${{ needs.metadata.outputs.new-version }}
             - PR: #${{ github.event.pull_request.number }}
 
-            Major updates may contain BREAKING CHANGES. Please:
+            Major updates may contain BREAKING CHANGES and NEW FEATURES. Please:
 
             1. Review the changes in this PR
-            2. Find and analyze the changelog/migration guide for breaking changes
+            2. Find and analyze the changelog/migration guide for breaking changes AND new features
             3. Search the codebase for usage of the updated dependency
             4. Assess the impact of breaking changes on our code
-            5. Determine the appropriate action:
+            5. Identify any new features that could benefit this codebase
+            6. Determine the appropriate action:
+
+            **Breaking Change Handling:**
 
             **If breaking changes can be fixed in this PR:**
             - Implement the necessary code changes to handle breaking changes
@@ -176,6 +179,15 @@ jobs:
 
             **If no breaking changes affect our code:**
             - Comment: "✅ **APPROVED** - Major version bump but no breaking changes affect our codebase. Safe to merge after CI passes."
+
+            **New Feature Opportunities:**
+
+            In addition to breaking changes, if you find beneficial new features:
+            - Create a separate GitHub issue for each significant new feature opportunity with:
+              - Title: "Explore new features from [dependency] v${{ needs.metadata.outputs.new-version }}"
+              - Description: New features, potential use cases, benefits to codebase
+              - Labels: "enhancement", "dependencies"
+            - Mention the feature issue(s) in your PR comment
 
             Use `gh pr comment`, `gh issue create`, and `gh pr close` with your Bash tool.
             Use WebFetch and WebSearch to find changelogs and migration guides.

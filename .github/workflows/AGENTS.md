@@ -75,10 +75,11 @@ Use `.nvmrc` when:
 
 **Major Updates** (`version-update:semver-major`):
 
-- Claude analyzes breaking changes
+- Claude analyzes breaking changes AND inspects new features
 - **If fixable**: Claude implements fixes in PR
 - **If complex**: Claude creates migration issue and closes PR
 - **If no impact**: Claude approves for manual merge
+- **New features**: Claude creates separate enhancement issues for beneficial features
 
 ### Security Considerations
 

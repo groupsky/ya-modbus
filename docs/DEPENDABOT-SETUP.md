@@ -67,10 +67,11 @@ Intelligent automated review and merging using Claude AI:
 
 **Major updates** (`version-update:semver-major`):
 
-- ⚠️ Claude analyzes breaking changes
+- ⚠️ Claude analyzes breaking changes AND inspects new features
 - ✅ Implements fixes in PR if possible
 - ⚠️ Creates migration issue and closes PR if too complex
 - ✅ Approves for manual merge if no impact
+- ✅ Creates separate enhancement issues for beneficial new features
 
 **Features**:
 
@@ -153,9 +154,10 @@ Dependabot PRs are automatically handled by Claude AI based on semantic versioni
 
 **Major Updates** (breaking changes):
 
-- Claude analyzes breaking changes
+- Claude analyzes breaking changes AND inspects new features
 - If fixable: Claude implements fixes in the PR
 - If complex: Claude creates migration issue and closes PR
+- Creates enhancement issues for beneficial new features
 - Manual review and merge required
 
 ### Manual Dependabot Triggers
