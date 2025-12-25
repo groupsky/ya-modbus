@@ -206,7 +206,7 @@ export interface SupportedSerialConfig {
  *
  * export const SUPPORTED_CONFIG = {
  *   validPorts: [502, 503],
- *   validUnitIdRange: [1, 247],
+ *   validAddressRange: [1, 247],
  * } as const satisfies SupportedTCPConfig
  * ```
  */
@@ -218,10 +218,11 @@ export interface SupportedTCPConfig {
   readonly validPorts?: readonly number[]
 
   /**
-   * Supported Modbus unit ID range
-   * Typically 1-247 for Modbus
+   * Supported device address range
+   * For Modbus TCP, this is the unit ID (typically 1-247)
+   * Named "address" for consistency with DefaultTCPConfig.defaultAddress
    */
-  readonly validUnitIdRange?: readonly [min: number, max: number]
+  readonly validAddressRange?: readonly [min: number, max: number]
 }
 
 /**

@@ -168,22 +168,28 @@ function decodeDataPoint(id: string, rawValue: Buffer): unknown {
 }
 
 /**
+ * Validate that a value is one of the supported baud rates
+ */
+function isValidBaudRate(value: unknown): value is number {
+  if (typeof value !== 'number') return false
+  return (SUPPORTED_CONFIG.validBaudRates as readonly number[]).includes(value)
+}
+
+/**
  * Encode data point value to Modbus register value(s)
  */
 function encodeDataPoint(id: string, value: unknown): Buffer {
   if (id === 'device_address') {
-    if (typeof value !== 'number' || value < 1 || value > 247) {
-      throw new Error('Invalid device address: must be between 1 and 247')
+    const [min, max] = SUPPORTED_CONFIG.validAddressRange
+    if (typeof value !== 'number' || value < min || value > max) {
+      throw new Error(`Invalid device address: must be between ${min} and ${max}`)
     }
     const buffer = Buffer.allocUnsafe(2)
     buffer.writeUInt16BE(value, 0)
     return buffer
   }
   if (id === 'baud_rate') {
-    if (
-      typeof value !== 'number' ||
-      !(SUPPORTED_CONFIG.validBaudRates as readonly number[]).includes(value)
-    ) {
+    if (!isValidBaudRate(value)) {
       throw new Error(
         `Invalid baud rate: must be one of ${SUPPORTED_CONFIG.validBaudRates.join(', ')}`
       )

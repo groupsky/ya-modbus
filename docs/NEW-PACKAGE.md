@@ -234,7 +234,7 @@ Device driver packages should follow naming: `ya-modbus-driver-<device>`
 
    export const SUPPORTED_CONFIG = {
      validPorts: [502],
-     validUnitIdRange: [1, 247],
+     validAddressRange: [1, 247],
    } as const satisfies SupportedTCPConfig
    ```
 
