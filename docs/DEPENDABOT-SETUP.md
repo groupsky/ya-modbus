@@ -48,29 +48,39 @@ Validates Dependabot configuration coverage:
 
 **Triggers**: On push to main, PR changes to dependabot.yml or package.json files, weekly schedule, manual dispatch
 
-#### `dependabot-auto-merge.yml`
+#### `dependabot-claude-review.yml`
 
-Automated approval and merging for safe updates:
+Intelligent automated review and merging using Claude AI:
 
-**Auto-approved and auto-merged**:
+**Patch updates** (`version-update:semver-patch`):
 
-- ✅ Patch updates to development dependencies
-- ✅ Minor updates to development dependencies
-- ✅ Patch and minor updates to GitHub Actions
+- ✅ Claude performs quick validation
+- ✅ Auto-merged for dev and prod dependencies if approved
+- ✅ Minimal risk, maximum automation
 
-**Manual review required**:
+**Minor updates** (`version-update:semver-minor`):
 
-- ⚠️ Major version updates (any dependency)
-- ⚠️ Production dependency updates (any version)
+- ✅ Claude reviews changes and inspects new features
+- ✅ Creates GitHub issues for beneficial features
+- ✅ Auto-merged for dev dependencies only
+- ⚠️ Manual merge required for prod dependencies
+
+**Major updates** (`version-update:semver-major`):
+
+- ⚠️ Claude analyzes breaking changes
+- ✅ Implements fixes in PR if possible
+- ⚠️ Creates migration issue and closes PR if too complex
+- ✅ Approves for manual merge if no impact
 
 **Features**:
 
 - Fetches Dependabot metadata (dependency type, update type)
-- Automatically approves safe PRs
-- Enables auto-merge after CI passes
-- Adds labels: `dependabot-approved`, `dependabot-auto-merge`, `dependabot-manual-review`
-- Comments on PRs requiring manual review with checklist
-- Requests code owner review for production changes
+- Claude AI reviews based on semantic versioning severity
+- Creates GitHub issues for new features and migration tasks
+- Automatically approves and merges safe PRs after CI passes
+- Adds labels: `dependabot-approved`, `dependabot-auto-merge`, `ready-to-merge`, `breaking-change`
+- Implements breaking change fixes when possible
+- Comprehensive documentation in `docs/PR-MERGE-RULES.md`
 
 ## Dependency Optimization
 
@@ -126,19 +136,27 @@ gh run list --workflow=dependabot-verify.yml
 
 ### Managing Dependabot PRs
 
-Dependabot PRs are automatically handled based on update type:
+Dependabot PRs are automatically handled by Claude AI based on semantic versioning:
 
-**Patch/Minor Dev Deps & GitHub Actions**:
+**Patch Updates** (bug fixes):
 
-- Automatically approved
-- Automatically merged after CI passes
+- Claude performs quick validation
+- Automatically approved and merged after CI passes
 - No action needed
 
-**Major Updates & Production Deps**:
+**Minor Updates** (new features):
 
-- Comment added with review checklist
-- Code owner review requested
-- Manual approval and merge required
+- Claude reviews and inspects new features
+- Creates GitHub issues for beneficial features
+- Dev deps: Auto-merged after CI
+- Prod deps: Manual merge required after Claude approval
+
+**Major Updates** (breaking changes):
+
+- Claude analyzes breaking changes
+- If fixable: Claude implements fixes in the PR
+- If complex: Claude creates migration issue and closes PR
+- Manual review and merge required
 
 ### Manual Dependabot Triggers
 
@@ -152,12 +170,16 @@ gh api /repos/{owner}/{repo}/dependabot/alerts
 
 ### Customizing Auto-Merge Behavior
 
-Edit `.github/workflows/dependabot-auto-merge.yml` to adjust:
+Edit `.github/workflows/dependabot-claude-review.yml` to adjust:
 
-- Update types that auto-merge
-- Dependency types that auto-merge
+- Update types that auto-merge (patch/minor/major)
+- Dependency types that auto-merge (dev/prod)
 - Package ecosystems that auto-merge
+- Claude prompts and review criteria
 - Labels applied to PRs
+- Auto-merge conditions
+
+See `docs/PR-MERGE-RULES.md` for complete merge rules and behavior.
 
 ## Best Practices
 

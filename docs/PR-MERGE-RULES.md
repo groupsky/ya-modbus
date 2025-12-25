@@ -268,7 +268,6 @@ chore(deps)(npm): bump typescript from 5.7.0 to 5.8.0 (#45)
 
 - `dependabot-claude-review.yml`: Primary Dependabot PR handling with Claude
 - `claude-code-review.yml`: Claude review for human PRs
-- `dependabot-auto-merge.yml`: Legacy fallback (deprecated)
 - `ci.yml`: Continuous integration tests
 
 ### Workflow Behavior

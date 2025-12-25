@@ -43,7 +43,6 @@ Use `.nvmrc` when:
 
 - **`dependabot-claude-review.yml`**: Primary workflow for Dependabot PR handling with Claude AI
 - **`claude-code-review.yml`**: Claude review for human-created PRs (on @claude mention)
-- **`dependabot-auto-merge.yml`**: Legacy fallback (deprecated, kept for compatibility)
 - **`dependabot-verify.yml`**: Validates Dependabot configuration coverage
 
 ### Dependabot PR Workflow
