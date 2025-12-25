@@ -4,14 +4,7 @@
 
 import type { Transport } from '@ya-modbus/driver-types'
 
-import {
-  createDriver,
-  DEFAULT_CONFIG,
-  VALID_BAUD_RATES,
-  VALID_PARITY,
-  VALID_DATA_BITS,
-  VALID_STOP_BITS,
-} from './index'
+import { createDriver, DEFAULT_CONFIG, SUPPORTED_CONFIG } from './index'
 
 describe('Configuration Constants', () => {
   describe('DEFAULT_CONFIG', () => {
@@ -24,11 +17,6 @@ describe('Configuration Constants', () => {
       expect(DEFAULT_CONFIG.defaultAddress).toBe(1)
     })
 
-    it('should have correct baud rate from valid rates', () => {
-      // Ensure default baud rate is one of the valid rates for XYMD1
-      expect(VALID_BAUD_RATES).toContain(DEFAULT_CONFIG.baudRate)
-    })
-
     it('should have all required properties', () => {
       // Verify all expected properties are present
       expect(DEFAULT_CONFIG).toHaveProperty('baudRate')
@@ -39,43 +27,36 @@ describe('Configuration Constants', () => {
     })
   })
 
-  describe('VALID_BAUD_RATES', () => {
-    it('should export supported baud rates', () => {
-      expect(VALID_BAUD_RATES).toEqual([9600, 14400, 19200])
+  describe('SUPPORTED_CONFIG', () => {
+    it('should export supported configuration values', () => {
+      expect(SUPPORTED_CONFIG).toBeDefined()
+      expect(SUPPORTED_CONFIG.validBaudRates).toEqual([9600, 14400, 19200])
+      expect(SUPPORTED_CONFIG.validParity).toEqual(['even', 'none'])
+      expect(SUPPORTED_CONFIG.validDataBits).toEqual([8])
+      expect(SUPPORTED_CONFIG.validStopBits).toEqual([1])
+      expect(SUPPORTED_CONFIG.validAddressRange).toEqual([1, 247])
     })
 
-    it('should include default baud rate', () => {
-      expect(VALID_BAUD_RATES).toContain(DEFAULT_CONFIG.baudRate)
-    })
-  })
-
-  describe('VALID_PARITY', () => {
-    it('should export supported parity settings', () => {
-      expect(VALID_PARITY).toEqual(['even', 'none'])
+    it('should include DEFAULT_CONFIG baud rate in valid baud rates', () => {
+      expect(SUPPORTED_CONFIG.validBaudRates).toContain(DEFAULT_CONFIG.baudRate)
     })
 
-    it('should include default parity', () => {
-      expect(VALID_PARITY).toContain(DEFAULT_CONFIG.parity)
-    })
-  })
-
-  describe('VALID_DATA_BITS', () => {
-    it('should export supported data bits', () => {
-      expect(VALID_DATA_BITS).toEqual([8])
+    it('should include DEFAULT_CONFIG parity in valid parity settings', () => {
+      expect(SUPPORTED_CONFIG.validParity).toContain(DEFAULT_CONFIG.parity)
     })
 
-    it('should include default data bits', () => {
-      expect(VALID_DATA_BITS).toContain(DEFAULT_CONFIG.dataBits)
-    })
-  })
-
-  describe('VALID_STOP_BITS', () => {
-    it('should export supported stop bits', () => {
-      expect(VALID_STOP_BITS).toEqual([1])
+    it('should include DEFAULT_CONFIG data bits in valid data bits', () => {
+      expect(SUPPORTED_CONFIG.validDataBits).toContain(DEFAULT_CONFIG.dataBits)
     })
 
-    it('should include default stop bits', () => {
-      expect(VALID_STOP_BITS).toContain(DEFAULT_CONFIG.stopBits)
+    it('should include DEFAULT_CONFIG stop bits in valid stop bits', () => {
+      expect(SUPPORTED_CONFIG.validStopBits).toContain(DEFAULT_CONFIG.stopBits)
+    })
+
+    it('should include DEFAULT_CONFIG address in valid address range', () => {
+      const [min, max] = SUPPORTED_CONFIG.validAddressRange
+      expect(DEFAULT_CONFIG.defaultAddress).toBeGreaterThanOrEqual(min)
+      expect(DEFAULT_CONFIG.defaultAddress).toBeLessThanOrEqual(max)
     })
   })
 })

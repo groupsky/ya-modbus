@@ -18,37 +18,28 @@ import type {
   CreateDriverFunction,
   DriverConfig,
   DefaultSerialConfig,
+  SupportedSerialConfig,
 } from '@ya-modbus/driver-types'
 
 /**
- * Valid baud rates for XYMD1
+ * Supported configuration values for XYMD1
  *
- * The device supports these three baud rates for serial communication.
- * The default is 9600 bps (see DEFAULT_CONFIG).
- */
-export const VALID_BAUD_RATES = [9600, 14400, 19200] as const
-
-/**
- * Valid parity settings for XYMD1
+ * The device supports:
+ * - Baud rates: 9600, 14400, 19200 bps
+ * - Parity: even, none
+ * - Data bits: 8 only
+ * - Stop bits: 1 only
+ * - Slave address: 1-247 (standard Modbus range)
  *
- * The device supports even and none parity.
- * The default is 'even' (see DEFAULT_CONFIG).
+ * See DEFAULT_CONFIG for factory defaults.
  */
-export const VALID_PARITY = ['even', 'none'] as const
-
-/**
- * Valid data bits for XYMD1
- *
- * The device only supports 8 data bits.
- */
-export const VALID_DATA_BITS = [8] as const
-
-/**
- * Valid stop bits for XYMD1
- *
- * The device only supports 1 stop bit.
- */
-export const VALID_STOP_BITS = [1] as const
+export const SUPPORTED_CONFIG = {
+  validBaudRates: [9600, 14400, 19200],
+  validParity: ['even', 'none'],
+  validDataBits: [8],
+  validStopBits: [1],
+  validAddressRange: [1, 247],
+} as const satisfies SupportedSerialConfig
 
 /**
  * Default XYMD1 device configuration
@@ -189,8 +180,10 @@ function encodeDataPoint(id: string, value: unknown): Buffer {
     return buffer
   }
   if (id === 'baud_rate') {
-    if (typeof value !== 'number' || !(VALID_BAUD_RATES as readonly number[]).includes(value)) {
-      throw new Error(`Invalid baud rate: must be one of ${VALID_BAUD_RATES.join(', ')}`)
+    if (typeof value !== 'number' || !SUPPORTED_CONFIG.validBaudRates.includes(value)) {
+      throw new Error(
+        `Invalid baud rate: must be one of ${SUPPORTED_CONFIG.validBaudRates.join(', ')}`
+      )
     }
     const buffer = Buffer.allocUnsafe(2)
     buffer.writeUInt16BE(value, 0)

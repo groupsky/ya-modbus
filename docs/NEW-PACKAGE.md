@@ -211,17 +211,21 @@ Device driver packages should follow naming: `ya-modbus-driver-<device>`
    } as const satisfies DefaultTCPConfig
    ```
 
-2. **Valid configuration constants**: Export validation constants to enable DRY testing
+2. **Supported configuration values**: Export device-specific supported configuration values
 
    ```typescript
-   // Export all supported configuration values for your device
-   export const VALID_BAUD_RATES = [9600, 14400, 19200] as const
-   export const VALID_PARITY = ['even', 'none'] as const
-   export const VALID_DATA_BITS = [8] as const
-   export const VALID_STOP_BITS = [1] as const
+   import type { SupportedSerialConfig } from '@ya-modbus/driver-types'
+
+   export const SUPPORTED_CONFIG = {
+     validBaudRates: [9600, 14400, 19200],
+     validParity: ['even', 'none'],
+     validDataBits: [8],
+     validStopBits: [1],
+     validAddressRange: [1, 247],
+   } as const satisfies SupportedSerialConfig
    ```
 
-   Only export the constants that are relevant for your device. For example, if your device supports all standard parity settings, you may omit `VALID_PARITY`.
+   Only include the properties that are device-specific. Omit properties if your device supports standard values (e.g., omit `validParity` if supporting all standard parity settings).
 
 **Benefits**:
 
