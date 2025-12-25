@@ -117,10 +117,35 @@ jobs:
             Patch updates are typically bug fixes with no breaking changes. Please:
 
             1. Review the changes in this PR
-            2. Check if there are any unexpected code changes beyond version bumps
-            3. Verify this looks like a normal patch update
-            4. If everything looks good, comment: "✅ **APPROVED** - Patch update looks good for auto-merge"
-            5. If you find issues, comment with concerns and mark: "⚠️ **REVIEW NEEDED**"
+            2. Look for changelog/release notes to understand what changed
+            3. Check if there are any unexpected code changes beyond version bumps
+            4. Verify this looks like a normal patch update
+            5. Craft a descriptive commit message:
+               - Subject: `chore(deps)(${{ needs.metadata.outputs.package-ecosystem }}): bump ${{ needs.metadata.outputs.dependency-names }} from ${{ needs.metadata.outputs.prev-version }} to ${{ needs.metadata.outputs.new-version }}`
+               - Body: Summarize the key changes from changelog (bug fixes, improvements, etc.)
+               - Keep body concise (2-4 lines max)
+            6. Post your review with the commit message
+
+            **Comment format (if approved):**
+            ```
+            ✅ **APPROVED** - Patch update looks good for auto-merge
+
+            ## 📝 Suggested Commit Message
+
+            **Subject:**
+            chore(deps)(${{ needs.metadata.outputs.package-ecosystem }}): bump ${{ needs.metadata.outputs.dependency-names }} from ${{ needs.metadata.outputs.prev-version }} to ${{ needs.metadata.outputs.new-version }}
+
+            **Body:**
+            [Your concise summary of changes from changelog]
+
+            <!-- COMMIT_MESSAGE_START
+            chore(deps)(${{ needs.metadata.outputs.package-ecosystem }}): bump ${{ needs.metadata.outputs.dependency-names }} from ${{ needs.metadata.outputs.prev-version }} to ${{ needs.metadata.outputs.new-version }}
+
+            [Same body content]
+            COMMIT_MESSAGE_END -->
+            ```
+
+            The hidden HTML comment (between `<!-- COMMIT_MESSAGE_START` and `COMMIT_MESSAGE_END -->`) will be parsed by the auto-merge workflow.
 
             Use `gh pr comment` with your Bash tool to leave your review.
           claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"'
@@ -157,15 +182,37 @@ jobs:
             Minor updates may include new features. Please:
 
             1. Review the changes in this PR
-            2. Try to find and review the changelog/release notes for new features
+            2. Find and review the changelog/release notes for new features and changes
             3. Assess if any new features could benefit this codebase
             4. If beneficial features found, create a GitHub issue with:
                - Title: "Explore new features from [dependency] v${{ needs.metadata.outputs.new-version }}"
                - Description of the new features and potential use cases
                - Label: "enhancement", "dependencies"
-            5. Comment on the PR with your findings:
-               - If auto-merge appropriate: "✅ **APPROVED** - Minor update safe for merge. [Link to issue if created]"
-               - If issues found: "⚠️ **REVIEW NEEDED** - [explain concerns]"
+            5. Craft a descriptive commit message:
+               - Subject: `chore(deps)(${{ needs.metadata.outputs.package-ecosystem }}): bump ${{ needs.metadata.outputs.dependency-names }} from ${{ needs.metadata.outputs.prev-version }} to ${{ needs.metadata.outputs.new-version }}`
+               - Body: Summarize key changes and new features from changelog (3-5 lines max)
+            6. Comment on the PR with your findings
+
+            **Comment format (if approved):**
+            ```
+            ✅ **APPROVED** - Minor update safe for merge. [Link to issue if created]
+
+            ## 📝 Suggested Commit Message
+
+            **Subject:**
+            chore(deps)(${{ needs.metadata.outputs.package-ecosystem }}): bump ${{ needs.metadata.outputs.dependency-names }} from ${{ needs.metadata.outputs.prev-version }} to ${{ needs.metadata.outputs.new-version }}
+
+            **Body:**
+            [Your summary of key changes and new features]
+
+            <!-- COMMIT_MESSAGE_START
+            chore(deps)(${{ needs.metadata.outputs.package-ecosystem }}): bump ${{ needs.metadata.outputs.dependency-names }} from ${{ needs.metadata.outputs.prev-version }} to ${{ needs.metadata.outputs.new-version }}
+
+            [Same body content]
+            COMMIT_MESSAGE_END -->
+            ```
+
+            If issues found: "⚠️ **REVIEW NEEDED** - [explain concerns]"
 
             Use `gh issue create` and `gh pr comment` with your Bash tool.
           claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue create:*),WebFetch,WebSearch"'
@@ -279,7 +326,27 @@ jobs:
             - Close the PR with comment explaining why
 
             **If no breaking changes affect our code:**
-            - Comment: "✅ **APPROVED** - Major version bump but no breaking changes affect our codebase. Safe to merge after CI passes."
+            - Craft a descriptive commit message:
+              - Subject: `chore(deps)(${{ needs.metadata.outputs.package-ecosystem }}): bump ${{ needs.metadata.outputs.dependency-names }} from ${{ needs.metadata.outputs.prev-version }} to ${{ needs.metadata.outputs.new-version }}`
+              - Body: Summarize major version changes, what's new, and confirm no breaking changes affect the codebase
+            - Comment format:
+              ```
+              ✅ **APPROVED** - Major version bump but no breaking changes affect our codebase. Safe to merge after CI passes.
+
+              ## 📝 Suggested Commit Message
+
+              **Subject:**
+              chore(deps)(${{ needs.metadata.outputs.package-ecosystem }}): bump ${{ needs.metadata.outputs.dependency-names }} from ${{ needs.metadata.outputs.prev-version }} to ${{ needs.metadata.outputs.new-version }}
+
+              **Body:**
+              [Your summary of major version changes and confirmation]
+
+              <!-- COMMIT_MESSAGE_START
+              chore(deps)(${{ needs.metadata.outputs.package-ecosystem }}): bump ${{ needs.metadata.outputs.dependency-names }} from ${{ needs.metadata.outputs.prev-version }} to ${{ needs.metadata.outputs.new-version }}
+
+              [Same body content]
+              COMMIT_MESSAGE_END -->
+              ```
 
             **New Feature Opportunities:**
 
@@ -495,6 +562,60 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract commit message from Claude's comment
+        if: |
+          steps.check-approval.outputs.approved == 'true' &&
+          (steps.check-approval.outputs.needs_verification == 'false' ||
+           steps.check-verification.outputs.verified == 'true') &&
+          (
+            (
+              needs.metadata.outputs.package-ecosystem == 'github_actions' &&
+              needs.metadata.outputs.update-type != 'version-update:semver-major'
+            ) || (
+              needs.metadata.outputs.package-ecosystem == 'npm' &&
+              needs.metadata.outputs.dependency-type == 'direct:development' &&
+              (needs.metadata.outputs.update-type == 'version-update:semver-patch' ||
+               needs.metadata.outputs.update-type == 'version-update:semver-minor')
+            ) || (
+              needs.metadata.outputs.package-ecosystem == 'npm' &&
+              needs.metadata.outputs.dependency-type == 'direct:production' &&
+              needs.metadata.outputs.update-type == 'version-update:semver-patch'
+            )
+          )
+        id: extract-commit-msg
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          # Get all comments from claude[bot]
+          comments=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | .[].body')
+
+          # Extract commit message from hidden HTML comment
+          # Look for <!-- COMMIT_MESSAGE_START ... COMMIT_MESSAGE_END -->
+          commit_message=$(echo "$comments" | sed -n '/<!-- COMMIT_MESSAGE_START/,/COMMIT_MESSAGE_END -->/p' | sed '1d;$d' | head -n -0)
+
+          if [ -n "$commit_message" ]; then
+            # Extract subject (first line) and body (rest)
+            commit_subject=$(echo "$commit_message" | head -n 1)
+            commit_body=$(echo "$commit_message" | tail -n +2 | sed '/^$/d')
+
+            echo "Found Claude-suggested commit message"
+            echo "Subject: $commit_subject"
+            echo "Body: $commit_body"
+
+            # Output for next step (escape newlines for GitHub Actions)
+            {
+              echo "commit_subject=$commit_subject"
+              echo "commit_body<<EOF"
+              echo "$commit_body"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "⚠️  No commit message found in Claude's comment, will use default format"
+            echo "commit_subject=" >> $GITHUB_OUTPUT
+            echo "commit_body=" >> $GITHUB_OUTPUT
+          fi
+
       - name: Enable auto-merge for approved updates
         if: |
           steps.check-approval.outputs.approved == 'true' &&
@@ -519,32 +640,35 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SUBJECT: ${{ steps.extract-commit-msg.outputs.commit_subject }}
+          COMMIT_BODY: ${{ steps.extract-commit-msg.outputs.commit_body }}
+          # Fallback values if no commit message found
           ECOSYSTEM: ${{ needs.metadata.outputs.package-ecosystem }}
           DEPENDENCY_NAMES: ${{ needs.metadata.outputs.dependency-names }}
           PREV_VERSION: ${{ needs.metadata.outputs.prev-version }}
           NEW_VERSION: ${{ needs.metadata.outputs.new-version }}
-          UPDATE_TYPE: ${{ needs.metadata.outputs.update-type }}
         run: |
-          # Format commit message according to PR-MERGE-RULES.md
-          # Format: chore(deps)(<ecosystem>): <dependency-action> <package> from <old> to <new> (#<pr>)
+          # Use Claude's commit message if available, otherwise fallback to default format
+          if [ -n "$COMMIT_SUBJECT" ]; then
+            echo "Using Claude-suggested commit message"
+            commit_subject="$COMMIT_SUBJECT"
+            commit_body="$COMMIT_BODY"
+          else
+            echo "Using fallback commit message format"
+            commit_subject="chore(deps)($ECOSYSTEM): bump $DEPENDENCY_NAMES from $PREV_VERSION to $NEW_VERSION (#$PR_NUMBER)"
+            commit_body="Automated dependency update."
+          fi
 
-          # Determine action based on update type
-          case "$UPDATE_TYPE" in
-            "version-update:semver-major"|"version-update:semver-minor"|"version-update:semver-patch")
-              action="bump"
-              ;;
-            *)
-              action="update"
-              ;;
-          esac
+          echo "Commit subject: $commit_subject"
+          echo "Commit body: $commit_body"
 
-          # Construct commit message
-          commit_subject="chore(deps)($ECOSYSTEM): $action $DEPENDENCY_NAMES from $PREV_VERSION to $NEW_VERSION (#$PR_NUMBER)"
+          # Enable auto-merge with commit message
+          if [ -n "$commit_body" ]; then
+            gh pr merge --auto --squash --subject "$commit_subject" --body "$commit_body" "$PR_URL"
+          else
+            gh pr merge --auto --squash --subject "$commit_subject" "$PR_URL"
+          fi
 
-          echo "Commit message: $commit_subject"
-
-          # Enable auto-merge with formatted commit message
-          gh pr merge --auto --squash --subject "$commit_subject" "$PR_URL"
           gh pr edit "$PR_URL" --add-label "dependabot-auto-merge"
 
       - name: Label for manual merge

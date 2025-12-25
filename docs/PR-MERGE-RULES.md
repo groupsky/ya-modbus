@@ -468,7 +468,26 @@ Example:
 chore(deps)(npm): bump 5 dependencies (#47)
 ```
 
-**Note**: All workflows automatically format commit messages according to these rules when enabling auto-merge. You don't need to manually set commit messages.
+**How commit messages are created:**
+
+1. **Claude analyzes changes**: Reviews changelog/release notes to understand what changed
+2. **Claude crafts message**: Creates descriptive commit message with:
+   - Subject: Following the format above
+   - Body: Concise summary of key changes from changelog (2-5 lines)
+3. **Claude posts suggestion**: Includes commit message in PR comment with hidden HTML marker
+4. **Auto-merge extracts**: Parses Claude's suggested message and uses it when merging
+
+**Fallback**: If Claude doesn't provide a commit message, workflows use default format:
+
+- Subject: `chore(deps)(<ecosystem>): bump <package> from <old> to <new> (#<pr>)`
+- Body: `Automated dependency update.`
+
+**Benefits**:
+
+- More descriptive commit messages based on actual changes
+- Accurately reflects what the update contains
+- Human-reviewable before merge
+- Leverages Claude's understanding of changelogs
 
 ## Automated Workflows
 

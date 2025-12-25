@@ -89,7 +89,40 @@ jobs:
             echo "✅ CI checks are passing or pending"
           fi
 
-      - name: Fetch Dependabot metadata for commit message
+      - name: Extract commit message from Claude's comment
+        if: |
+          steps.check-pr.outputs.is_ready == 'true' &&
+          steps.verify-reviewer.outputs.is_trusted == 'true' &&
+          steps.check-ci.outputs.ci_ready == 'true'
+        id: extract-commit-msg
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          # Get all comments from claude[bot]
+          comments=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | .[].body')
+
+          # Extract commit message from hidden HTML comment
+          commit_message=$(echo "$comments" | sed -n '/<!-- COMMIT_MESSAGE_START/,/COMMIT_MESSAGE_END -->/p' | sed '1d;$d' | head -n -0)
+
+          if [ -n "$commit_message" ]; then
+            commit_subject=$(echo "$commit_message" | head -n 1)
+            commit_body=$(echo "$commit_message" | tail -n +2 | sed '/^$/d')
+
+            echo "Found Claude-suggested commit message"
+            {
+              echo "commit_subject=$commit_subject"
+              echo "commit_body<<EOF"
+              echo "$commit_body"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "No commit message found, will use fallback"
+            echo "commit_subject=" >> $GITHUB_OUTPUT
+            echo "commit_body=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fetch Dependabot metadata (fallback)
         if: |
           steps.check-pr.outputs.is_ready == 'true' &&
           steps.verify-reviewer.outputs.is_trusted == 'true' &&
@@ -109,43 +142,36 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REVIEWER: ${{ github.event.review.user.login }}
+          COMMIT_SUBJECT: ${{ steps.extract-commit-msg.outputs.commit_subject }}
+          COMMIT_BODY: ${{ steps.extract-commit-msg.outputs.commit_body }}
+          # Fallback metadata
           ECOSYSTEM: ${{ steps.dep-metadata.outputs.package-ecosystem }}
           DEPENDENCY_NAMES: ${{ steps.dep-metadata.outputs.dependency-names }}
           PREV_VERSION: ${{ steps.dep-metadata.outputs.previous-version }}
           NEW_VERSION: ${{ steps.dep-metadata.outputs.new-version }}
-          UPDATE_TYPE: ${{ steps.dep-metadata.outputs.update-type }}
         run: |
-          # Format commit message according to PR-MERGE-RULES.md
-          # Format: chore(deps)(<ecosystem>): <dependency-action> <package> from <old> to <new> (#<pr>)
+          # Use Claude's commit message if available, otherwise fallback
+          if [ -n "$COMMIT_SUBJECT" ]; then
+            echo "Using Claude-suggested commit message"
+            commit_subject="$COMMIT_SUBJECT"
+            commit_body="$COMMIT_BODY"
+          else
+            echo "Using fallback commit message format"
+            commit_subject="chore(deps)($ECOSYSTEM): bump $DEPENDENCY_NAMES from $PREV_VERSION to $NEW_VERSION (#$PR_NUMBER)"
+            commit_body="Automated dependency update."
+          fi
 
-          # Determine action based on update type
-          case "$UPDATE_TYPE" in
-            "version-update:semver-major")
-              action="bump"
-              ;;
-            "version-update:semver-minor")
-              action="bump"
-              ;;
-            "version-update:semver-patch")
-              action="bump"
-              ;;
-            *)
-              action="update"
-              ;;
-          esac
+          echo "Commit subject: $commit_subject"
 
-          # Construct commit message
-          commit_subject="chore(deps)($ECOSYSTEM): $action $DEPENDENCY_NAMES from $PREV_VERSION to $NEW_VERSION (#$PR_NUMBER)"
+          # Enable auto-merge with commit message
+          if [ -n "$commit_body" ]; then
+            gh pr merge --auto --squash --subject "$commit_subject" --body "$commit_body" "$PR_URL"
+          else
+            gh pr merge --auto --squash --subject "$commit_subject" "$PR_URL"
+          fi
 
-          echo "Commit message: $commit_subject"
-
-          # Enable auto-merge with formatted commit message
-          gh pr merge --auto --squash --subject "$commit_subject" "$PR_URL"
-
-          # Add label to indicate auto-merge was enabled
           gh pr edit "$PR_URL" --add-label "dependabot-auto-merge"
 
-          # Post comment
           gh pr comment "$PR_URL" --body "✅ **Auto-merge enabled** - Approved by @$REVIEWER (trusted contributor). PR will merge automatically after all CI checks pass."
 
           echo "✅ Auto-merge enabled successfully"
