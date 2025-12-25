@@ -62,14 +62,14 @@ await driver.writeDataPoint('humidity_correction', 2.0)
 
 ## Data Points
 
-| ID                       | Name                   | Type    | Unit | Access     | Description                                                                                            |
-| ------------------------ | ---------------------- | ------- | ---- | ---------- | ------------------------------------------------------------------------------------------------------ |
-| `temperature`            | Temperature            | float   | °C   | Read-only  | Temperature in degrees Celsius                                                                         |
-| `humidity`               | Relative Humidity      | float   | %    | Read-only  | Relative humidity percentage (0-100%)                                                                  |
-| `device_address`         | Device Address         | integer | -    | Read-write | Modbus device address (1-247). Changes applied after device restart.                                   |
-| `baud_rate`              | Baud Rate              | enum    | -    | Read-write | Serial communication baud rate (2400, 4800, 9600, 19200, 38400). Changes applied after device restart. |
-| `temperature_correction` | Temperature Correction | float   | °C   | Read-write | Temperature correction offset (-10.0 to +10.0°C). Applied immediately.                                 |
-| `humidity_correction`    | Humidity Correction    | float   | %    | Read-write | Humidity correction offset (-10.0 to +10.0%RH). Applied immediately.                                   |
+| ID                       | Name                   | Type    | Unit | Access     | Description                                                                                |
+| ------------------------ | ---------------------- | ------- | ---- | ---------- | ------------------------------------------------------------------------------------------ |
+| `temperature`            | Temperature            | float   | °C   | Read-only  | Temperature in degrees Celsius                                                             |
+| `humidity`               | Relative Humidity      | float   | %    | Read-only  | Relative humidity percentage (0-100%)                                                      |
+| `device_address`         | Device Address         | integer | -    | Read-write | Modbus device address (1-247). Changes applied after device restart.                       |
+| `baud_rate`              | Baud Rate              | enum    | -    | Read-write | Serial communication baud rate (9600, 14400, 19200). Changes applied after device restart. |
+| `temperature_correction` | Temperature Correction | float   | °C   | Read-write | Temperature correction offset (-10.0 to +10.0°C). Applied immediately.                     |
+| `humidity_correction`    | Humidity Correction    | float   | %    | Read-write | Humidity correction offset (-10.0 to +10.0%RH). Applied immediately.                       |
 
 ## Register Mapping
 
