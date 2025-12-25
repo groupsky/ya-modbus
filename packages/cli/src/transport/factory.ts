@@ -10,6 +10,13 @@ import { createTCPTransport, type TCPConfig } from './tcp-transport.js'
 export type TransportConfig = RTUConfig | TCPConfig
 
 /**
+ * Type guard to check if config is RTU
+ */
+function isRTUConfig(config: TransportConfig): config is RTUConfig {
+  return 'port' in config && !('host' in config)
+}
+
+/**
  * Create a transport instance based on configuration
  *
  * Detects whether to create RTU or TCP transport based on the config:
@@ -26,7 +33,7 @@ export async function createTransport(config: TransportConfig): Promise<Transpor
     throw new Error('Cannot specify both port (RTU) and host (TCP)')
   }
 
-  if ('port' in config) {
+  if (isRTUConfig(config)) {
     return createRTUTransport(config)
   }
 
