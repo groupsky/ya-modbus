@@ -83,6 +83,27 @@ Use `.nvmrc` when:
 - **If no impact**: Claude approves for manual merge
 - **New features**: Claude creates separate enhancement issues for beneficial features
 
+### Grouped Dependabot PRs
+
+**Workflow**: `dependabot-claude-review-grouped.yml`
+
+**Process**:
+
+1. **Detect if grouped**: Check if PR has multiple dependencies
+2. **Claude review**: Analyzes each dependency individually
+   - Categorizes by update type (patch/minor/major)
+   - For major updates with breaking changes, can suggest fixes via reviewdog
+3. **Approval markers**:
+   - ✅ **APPROVED** - Auto-merge enabled for dev deps
+   - 🔧 **FIXABLE** - Manual fixes required (Claude posts suggestions)
+   - ⚠️ **MIGRATION REQUIRED** - Complex migration needed
+   - ⚠️ **REVIEW NEEDED** - Human review required
+4. **Final verification** (if fixes applied):
+   - Same as single-dependency workflow
+   - Detects fix commits, runs final Claude verification
+   - Crafts updated commit message including fixes
+5. **Auto-merge or label**: Based on dependency type and update type
+
 ### Security Considerations
 
 **Use `pull_request_target` for Dependabot PRs**:

@@ -276,8 +276,181 @@ jobs:
             fi
           fi
 
+      # Check if there are fix commits that need final verification
+      - name: Check for fix commits
+        id: check-fix-commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Get all commits in the PR
+          commits=$(gh pr view "$PR_URL" --json commits --jq '.commits')
+          commit_count=$(echo "$commits" | jq 'length')
+
+          echo "Total commits in PR: $commit_count"
+
+          if [ "$commit_count" -gt 1 ]; then
+            # Get the latest commit info
+            latest_commit_author=$(echo "$commits" | jq -r '.[-1].authors[0].login')
+            latest_commit_message=$(echo "$commits" | jq -r '.[-1].messageHeadline')
+
+            echo "Latest commit author: $latest_commit_author"
+            echo "Latest commit message: $latest_commit_message"
+
+            # Check if this is a fix commit (not from Dependabot)
+            if [ "$latest_commit_author" != "dependabot[bot]" ] && [ "$latest_commit_author" != "app/dependabot" ]; then
+              echo "fix_author=$latest_commit_author" >> $GITHUB_OUTPUT
+              echo "has_fix_commits=true" >> $GITHUB_OUTPUT
+              echo "✅ Fix commits detected from @$latest_commit_author"
+            else
+              echo "has_fix_commits=false" >> $GITHUB_OUTPUT
+              echo "ℹ️  No fix commits (all from Dependabot)"
+            fi
+          else
+            echo "has_fix_commits=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Only one commit (Dependabot's initial commit)"
+          fi
+
+      # Determine if final verification is needed
+      - name: Check if verification needed
+        id: check-verification-needed
+        run: |
+          # Final verification needed if:
+          # 1. PR was marked as FIXABLE (not APPROVED)
+          # 2. Fix commits exist
+          # 3. Now being approved for merge
+
+          was_fixable="${{ contains(steps.check-approval.outputs.*, 'FIXABLE') }}"
+          has_fixes="${{ steps.check-fix-commit.outputs.has_fix_commits }}"
+
+          if [ "$has_fixes" = "true" ]; then
+            echo "needs_verification=true" >> $GITHUB_OUTPUT
+            echo "✅ Final verification needed - fix commits detected"
+          else
+            echo "needs_verification=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No verification needed - no fix commits"
+          fi
+
+      # Setup for final verification
+      - name: Checkout repository
+        if: steps.check-verification-needed.outputs.needs_verification == 'true'
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        if: steps.check-verification-needed.outputs.needs_verification == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        if: steps.check-verification-needed.outputs.needs_verification == 'true'
+        run: npm ci
+
+      # Final Claude verification for fix commits
+      - name: Final Claude verification before merge
+        if: steps.check-verification-needed.outputs.needs_verification == 'true'
+        id: final-verification
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            FINAL VERIFICATION before auto-merge of grouped Dependabot PR #${{ github.event.pull_request.number }}
+
+            **Context**:
+            - This grouped PR updates ${{ needs.detect-group.outputs.dependency-count }} dependencies
+            - Fix commits were applied by: @${{ steps.check-fix-commit.outputs.fix_author }}
+            - The workflow is requesting your final verification before enabling auto-merge
+
+            **Your task**:
+            1. Review the fix commit(s) that were applied after the initial Dependabot update
+            2. Verify the fixes correctly address any breaking changes
+            3. Check for any introduced bugs, security issues, or unintended changes
+            4. Ensure code quality and project conventions are maintained
+            5. Confirm everything looks safe to merge
+            6. **Craft an updated commit message** that includes:
+               - Summary of the grouped dependency updates
+               - Summary of fixes that were applied (1-3 lines)
+
+            **Tools available**:
+            - `gh pr diff` - View all changes in the PR
+            - `gh pr view` - View PR details and commit history
+            - `Read`, `Grep`, `Glob` - Analyze codebase if needed
+
+            **Response format**:
+            Post a comment with one of these markers:
+
+            **If verified and safe to merge:**
+            ```
+            ✅ **VERIFIED** - Fixes look good, safe to auto-merge after CI passes
+
+            [Brief summary of what was verified]
+
+            ## 📝 Updated Commit Message
+
+            **Subject:**
+            chore(deps)(${{ steps.metadata.outputs.package-ecosystem }}): bump ${{ needs.detect-group.outputs.dependency-count }} dependencies
+
+            **Body:**
+            [Summary of the grouped dependency updates]
+
+            Applied fixes:
+            - [1-3 line summary of fixes that were applied]
+
+            <!-- COMMIT_MESSAGE_START
+            chore(deps)(${{ steps.metadata.outputs.package-ecosystem }}): bump ${{ needs.detect-group.outputs.dependency-count }} dependencies
+
+            [Same body content as above]
+            COMMIT_MESSAGE_END -->
+            ```
+
+            **If issues found:**
+            ```
+            ⚠️ **ISSUES FOUND** - [Describe problems found - will block auto-merge]
+            ```
+
+            Use `gh pr comment` to post your verification result.
+          claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Grep,Glob"'
+
+      - name: Check final verification result
+        if: steps.check-verification-needed.outputs.needs_verification == 'true'
+        id: check-final-verification
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          # Wait a moment for Claude's comment to be posted
+          sleep 5
+
+          # Get the latest comment from claude[bot]
+          latest_comment=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | last | .body')
+
+          echo "Latest Claude comment:"
+          echo "$latest_comment"
+
+          # Check if verified
+          if echo "$latest_comment" | grep -q "✅ \*\*VERIFIED\*\*"; then
+            echo "verified=true" >> $GITHUB_OUTPUT
+            echo "✅ Claude verified the fixes"
+          else
+            echo "verified=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Claude found issues or did not verify"
+
+            # Post blocking comment
+            gh pr comment "$PR_URL" --body "⚠️ **Auto-merge blocked** - Claude's final verification did not pass. Please review the concerns raised above."
+            exit 1
+          fi
+
       - name: Auto-approve if Claude approved
-        if: steps.check-approval.outputs.approved == 'true'
+        if: |
+          steps.check-approval.outputs.approved == 'true' ||
+          (steps.check-verification-needed.outputs.needs_verification == 'true' &&
+           steps.check-final-verification.outputs.verified == 'true')
         run: gh pr review --approve "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
@@ -285,7 +458,9 @@ jobs:
 
       - name: Extract commit message from Claude's comment
         if: |
-          steps.check-approval.outputs.approved == 'true' &&
+          (steps.check-approval.outputs.approved == 'true' ||
+           (steps.check-verification-needed.outputs.needs_verification == 'true' &&
+            steps.check-final-verification.outputs.verified == 'true')) &&
           steps.metadata.outputs.dependency-type == 'direct:development'
         id: extract-commit-msg
         env:
@@ -325,7 +500,9 @@ jobs:
 
       - name: Enable auto-merge for dev dependencies
         if: |
-          steps.check-approval.outputs.approved == 'true' &&
+          (steps.check-approval.outputs.approved == 'true' ||
+           (steps.check-verification-needed.outputs.needs_verification == 'true' &&
+            steps.check-final-verification.outputs.verified == 'true')) &&
           steps.metadata.outputs.dependency-type == 'direct:development'
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
@@ -372,7 +549,9 @@ jobs:
 
       - name: Label for manual merge (prod deps or major updates)
         if: |
-          steps.check-approval.outputs.approved == 'true' &&
+          (steps.check-approval.outputs.approved == 'true' ||
+           (steps.check-verification-needed.outputs.needs_verification == 'true' &&
+            steps.check-final-verification.outputs.verified == 'true')) &&
           (steps.metadata.outputs.dependency-type == 'direct:production' ||
            steps.metadata.outputs.update-type == 'version-update:semver-major')
         run: |

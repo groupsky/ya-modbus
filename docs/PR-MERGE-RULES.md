@@ -488,7 +488,10 @@ chore(deps)(npm): bump 5 dependencies (#47)
    - Body: Summarizes changes across all dependencies (3-6 lines)
    - Groups similar changes (e.g., "Bug fixes in X, Y, Z")
 3. **Claude posts suggestion**: Same format with HTML marker
-4. **Auto-merge extracts**: Uses Claude's message when merging
+4. **If fixes are applied**: Claude performs final verification and crafts **updated commit message** that includes:
+   - Summary of grouped dependency updates
+   - Summary of fixes that were applied (1-3 lines)
+5. **Auto-merge extracts**: Uses Claude's **latest** message when merging (updated message if fixes were applied, original otherwise)
 
 **Fallback** (if Claude doesn't provide commit message):
 
