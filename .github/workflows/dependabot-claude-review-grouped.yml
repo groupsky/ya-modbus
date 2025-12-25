@@ -114,8 +114,9 @@ jobs:
                **For MAJOR updates**:
                - Analyze breaking changes in detail
                - Search codebase for affected usage
-               - Determine if fixes are needed
-               - Create migration issues for complex changes
+               - For SIMPLE fixes (< 10 lines): Provide code snippets in summary
+               - For COMPLEX fixes: Create migration issues with detailed steps
+               - IMPORTANT: Do NOT actually implement code changes - only analyze and recommend
 
             4. **Provide comprehensive summary** with structure:
                ```
@@ -163,10 +164,10 @@ jobs:
             ## Approval Markers
 
             Use one of these in your final comment:
-            - ✅ **APPROVED** - All updates safe to merge
-            - ✅ **FIXED** - Breaking changes resolved in this PR
-            - ⚠️ **REVIEW NEEDED** - Issues require human review
-            - ⚠️ **MIGRATION REQUIRED** - Created migration issues
+            - ✅ **APPROVED** - All updates safe to merge after CI passes
+            - 🔧 **FIXABLE** - Simple breaking changes found, code snippets provided, manual fixes needed
+            - ⚠️ **REVIEW NEEDED** - Complex issues require human review
+            - ⚠️ **MIGRATION REQUIRED** - Created migration issues, manual work needed
 
           claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue create:*),WebFetch,WebSearch,Read,Grep,Glob"'
 
@@ -200,16 +201,23 @@ jobs:
           echo "Latest Claude comment:"
           echo "$latest_comment"
 
-          # Check if Claude approved
+          # Check if Claude approved for auto-merge
+          # Only APPROVED marker enables auto-merge
+          # FIXABLE, MIGRATION REQUIRED, REVIEW NEEDED all require manual intervention
           if echo "$latest_comment" | grep -q "✅ \*\*APPROVED\*\*"; then
             echo "approved=true" >> $GITHUB_OUTPUT
             echo "✅ Claude approved the grouped changes"
-          elif echo "$latest_comment" | grep -q "✅ \*\*FIXED\*\*"; then
-            echo "approved=true" >> $GITHUB_OUTPUT
-            echo "✅ Claude fixed breaking changes"
           else
             echo "approved=false" >> $GITHUB_OUTPUT
-            echo "⚠️  Claude did not approve for auto-merge"
+            if echo "$latest_comment" | grep -q "🔧 \*\*FIXABLE\*\*"; then
+              echo "⚠️  Claude identified fixable breaking changes - manual fixes required"
+            elif echo "$latest_comment" | grep -q "⚠️ \*\*MIGRATION REQUIRED\*\*"; then
+              echo "⚠️  Claude identified complex migration needed"
+            elif echo "$latest_comment" | grep -q "⚠️ \*\*REVIEW NEEDED\*\*"; then
+              echo "⚠️  Claude requires human review"
+            else
+              echo "⚠️  Claude did not approve for auto-merge"
+            fi
           fi
 
       - name: Auto-approve if Claude approved

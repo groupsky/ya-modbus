@@ -123,14 +123,17 @@ Claude analyzes breaking changes AND inspects new features, then takes appropria
 
 #### Breaking Change Actions
 
-##### 1. Fixable Breaking Changes
+##### 1. Simple Breaking Changes (Fixable)
 
-**If Claude can fix in the PR:**
+**If changes are simple (< 10 lines of code):**
 
-- Claude implements necessary code changes
-- Updates tests and documentation
-- Comments: `✅ **FIXED**`
-- Manual review and merge required after CI passes
+- Claude analyzes exactly what needs to change
+- Provides complete code snippets in PR comment
+- Creates GitHub issue with full code changes
+- Issue labeled: `breaking-change`, `dependencies`, `easy-fix`
+- Comments: `🔧 **FIXABLE**` with issue link
+- PR stays open for manual application of fixes
+- Manual review and merge required after fixes applied
 
 ##### 2. Complex Breaking Changes
 
@@ -206,15 +209,17 @@ Claude analyzes breaking changes AND inspects new features, then takes appropria
 **Auto-merge enabled when:**
 
 - All individual dependencies analyzed
-- Claude approves with `✅ **APPROVED**` or `✅ **FIXED**`
+- Claude approves with `✅ **APPROVED**`
 - All CI checks pass
 - Dependency type is `direct:development`
+
+**Note**: `🔧 **FIXABLE**`, `⚠️ **MIGRATION REQUIRED**`, and `⚠️ **REVIEW NEEDED**` require manual intervention and will NOT auto-merge.
 
 **Manual merge required when:**
 
 - Any dependency is `direct:production`
 - Any major update detected
-- Claude flags `⚠️ **REVIEW NEEDED**`
+- Claude flags for manual review
 
 ## Human-Created PRs
 
@@ -400,7 +405,9 @@ The workflows use these labels:
 **Check:**
 
 1. Are all CI checks passing?
-2. Did Claude approve with `✅ **APPROVED**` or `✅ **FIXED**`?
+2. Did Claude approve with `✅ **APPROVED**`?
+   - Note: `🔧 **FIXABLE**` requires manual fixes before merge
+   - Note: `⚠️ **MIGRATION REQUIRED**` or `⚠️ **REVIEW NEEDED**` will NOT auto-merge
 3. Is auto-merge enabled? (check PR page)
 4. Does the PR meet auto-merge criteria?
 

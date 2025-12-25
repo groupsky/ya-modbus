@@ -187,15 +187,20 @@ jobs:
 
             **Breaking Change Handling:**
 
-            **If breaking changes can be fixed in this PR:**
-            - Implement the necessary code changes to handle breaking changes
-            - Update tests if needed
-            - Comment: "✅ **FIXED** - Breaking changes resolved. Ready for review and merge."
+            **If breaking changes are SIMPLE (< 10 lines of code changes):**
+            - Analyze exactly what needs to change
+            - Provide complete code snippets in your comment showing the fixes
+            - Create a GitHub issue with:
+              - Title: "Apply breaking change fixes: [dependency] v${{ needs.metadata.outputs.prev-version }} → v${{ needs.metadata.outputs.new-version }}"
+              - Description: Breaking changes, required code changes with full snippets
+              - Labels: "breaking-change", "dependencies", "easy-fix"
+            - Comment on PR: "🔧 **FIXABLE** - Simple breaking changes. Created issue #[issue-number] with code changes. Manual application required before merge."
+            - Do NOT close the PR - it stays open for manual fixes
 
-            **If breaking changes require more work OR affect multiple areas:**
+            **If breaking changes are COMPLEX (affect multiple files or require design decisions):**
             - Create a detailed GitHub issue with:
               - Title: "Migration required: [dependency] v${{ needs.metadata.outputs.prev-version }} → v${{ needs.metadata.outputs.new-version }}"
-              - Description: Breaking changes, affected code areas, migration steps
+              - Description: Breaking changes, affected code areas, migration steps, design considerations
               - Labels: "breaking-change", "dependencies", "help wanted"
             - Comment on PR: "⚠️ **MIGRATION REQUIRED** - Created issue #[issue-number] for tracking. Recommend closing this PR until migration is ready."
             - Close the PR with comment explaining why
@@ -247,16 +252,21 @@ jobs:
           echo "Latest Claude comment:"
           echo "$latest_comment"
 
-          # Check if Claude approved
+          # Check if Claude approved for auto-merge
+          # Only APPROVED marker enables auto-merge
+          # FIXABLE, MIGRATION REQUIRED, REVIEW NEEDED all require manual intervention
           if echo "$latest_comment" | grep -q "✅ \*\*APPROVED\*\*"; then
             echo "approved=true" >> $GITHUB_OUTPUT
             echo "✅ Claude approved the changes"
-          elif echo "$latest_comment" | grep -q "✅ \*\*FIXED\*\*"; then
-            echo "approved=true" >> $GITHUB_OUTPUT
-            echo "✅ Claude fixed breaking changes"
           else
             echo "approved=false" >> $GITHUB_OUTPUT
-            echo "⚠️  Claude did not approve for auto-merge"
+            if echo "$latest_comment" | grep -q "🔧 \*\*FIXABLE\*\*"; then
+              echo "⚠️  Claude identified fixable breaking changes - manual fixes required"
+            elif echo "$latest_comment" | grep -q "⚠️ \*\*MIGRATION REQUIRED\*\*"; then
+              echo "⚠️  Claude identified complex migration needed"
+            else
+              echo "⚠️  Claude did not approve for auto-merge"
+            fi
           fi
 
       - name: Auto-approve if Claude approved
