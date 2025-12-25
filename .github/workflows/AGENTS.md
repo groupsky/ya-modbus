@@ -42,6 +42,8 @@ Use `.nvmrc` when:
 ### Workflow Files
 
 - **`dependabot-claude-review.yml`**: Primary workflow for Dependabot PR handling with Claude AI
+- **`dependabot-claude-review-grouped.yml`**: Handles grouped Dependabot PRs (multiple dependencies)
+- **`auto-merge-on-approval.yml`**: Auto-enables merge when trusted contributor approves `ready-to-merge` PRs
 - **`claude-code-review.yml`**: Claude review for human-created PRs (on @claude mention)
 - **`dependabot-verify.yml`**: Validates Dependabot configuration coverage
 
@@ -122,6 +124,106 @@ permissions:
   issues: write # For creating issues
   actions: read # For checking CI status
 ```
+
+### Manual Approval Auto-Merge
+
+**Workflow**: `auto-merge-on-approval.yml`
+
+**Purpose**: Automatically enables auto-merge when a trusted contributor approves a PR labeled `ready-to-merge`
+
+**Trigger**: `pull_request_review` event (when review submitted)
+
+**Process**:
+
+1. Checks review state is `approved`
+2. Verifies PR has `ready-to-merge` + `dependabot-approved` labels
+3. Verifies reviewer is trusted contributor (has previous commits)
+4. Checks CI status (no failures)
+5. If all pass: Enables auto-merge with squash strategy
+
+**Security**:
+
+- Only trusted contributors can trigger auto-merge
+- Untrusted reviewers get warning comment
+- Requires both Claude approval labels
+- Won't enable if CI is failing
+
+**Use case**: Production dependency minor/major updates, major GitHub Actions updates
+
+### Creating GitHub Suggestions from Local Changes
+
+**Tool**: [reviewdog](https://github.com/reviewdog/reviewdog) + [action-suggester](https://github.com/reviewdog/action-suggester)
+
+**Purpose**: Convert local code fixes into GitHub inline suggestions that users can apply with one click
+
+**Installation**:
+
+```bash
+# Via curl
+curl -sfL https://raw.githubusercontent.com/reviewdog/reviewdog/master/install.sh | sh -s
+
+# Via Homebrew
+brew install reviewdog/tap/reviewdog
+
+# Via Go
+go install github.com/reviewdog/reviewdog/cmd/reviewdog@latest
+```
+
+**Usage for Claude to create suggestions**:
+
+```bash
+# 1. Claude makes local changes (fixes breaking changes, applies linter, etc.)
+# Example: Fix code to work with new dependency version
+# ... Claude uses Edit/Write tools to make changes ...
+
+# 2. Run tests to verify changes work
+npm test
+
+# 3. Run linter and formatter
+npm run lint
+npm run format
+
+# 4. Create diff and convert to GitHub suggestions
+export REVIEWDOG_GITHUB_API_TOKEN="$GITHUB_TOKEN"
+TMPFILE=$(mktemp)
+git diff > "${TMPFILE}"
+
+# 5. Post as GitHub suggestions (multi-line, inline, deletions, etc.)
+reviewdog -f=diff -f.diff.strip=1 -reporter=github-pr-review < "${TMPFILE}"
+
+# 6. Optionally clean up
+git stash -u && git stash drop
+```
+
+**Workflow integration** (for GitHub Actions):
+
+```yaml
+- name: Apply fixes and create suggestions
+  run: |
+    # Apply formatter/linter fixes
+    npm run lint --fix
+    npm run format
+
+- name: Suggest changes
+  uses: reviewdog/action-suggester@v1.21.0
+  with:
+    tool_name: eslint-fix
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**Benefits**:
+
+- Users can apply fixes with "Apply suggestion" button
+- Supports multi-line changes, insertions, deletions
+- Works with any linter/formatter outputting diffs
+- Maintains user authorship when applied
+- Claude can test changes locally before suggesting
+
+**Limitations**:
+
+- Requires `REVIEWDOG_GITHUB_API_TOKEN` environment variable
+- Token needs `repo` scope (private) or `public_repo` (public)
+- GitHub Actions: use `github_token: ${{ secrets.GITHUB_TOKEN }}`
 
 ### References
 

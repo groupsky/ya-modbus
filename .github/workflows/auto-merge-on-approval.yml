@@ -1,0 +1,124 @@
+name: Auto-Merge on Manual Approval
+
+# This workflow automatically enables auto-merge when a trusted contributor
+# approves a PR that Claude has already approved but requires manual merge
+# (e.g., production dependencies with minor/major updates)
+
+on:
+  pull_request_review:
+    types:
+      - submitted
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge-on-approval:
+    name: Enable Auto-Merge on Approval
+    runs-on: ubuntu-latest
+    # Only run on approved reviews
+    if: github.event.review.state == 'approved'
+
+    steps:
+      - name: Check if PR is ready for auto-merge
+        id: check-pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # Get PR labels
+          labels=$(gh pr view "$PR_URL" --json labels --jq '.labels[].name' | tr '\n' ',')
+
+          echo "PR labels: $labels"
+
+          # Check if PR has both required labels
+          if echo "$labels" | grep -q "ready-to-merge" && echo "$labels" | grep -q "dependabot-approved"; then
+            echo "is_ready=true" >> $GITHUB_OUTPUT
+            echo "✅ PR has required labels (ready-to-merge + dependabot-approved)"
+          else
+            echo "is_ready=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  PR does not have required labels"
+          fi
+
+      - name: Verify reviewer is a trusted contributor
+        if: steps.check-pr.outputs.is_ready == 'true'
+        id: verify-reviewer
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REVIEWER: ${{ github.event.review.user.login }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Verifying reviewer: $REVIEWER"
+
+          # Get commit count for this reviewer in the repository
+          commit_count=$(gh api "/repos/$REPO/commits?author=$REVIEWER&per_page=100" --paginate | jq '. | length')
+
+          echo "Commit count for $REVIEWER: $commit_count"
+
+          # Consider them trusted if they have at least 1 previous commit
+          if [ "$commit_count" -ge 1 ]; then
+            echo "is_trusted=true" >> $GITHUB_OUTPUT
+            echo "✅ Verified: $REVIEWER is a trusted contributor ($commit_count commits)"
+          else
+            echo "is_trusted=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Warning: $REVIEWER is NOT a previous contributor ($commit_count commits)"
+          fi
+
+      - name: Check CI status
+        if: |
+          steps.check-pr.outputs.is_ready == 'true' &&
+          steps.verify-reviewer.outputs.is_trusted == 'true'
+        id: check-ci
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          # Get CI status for the PR
+          status=$(gh pr view "$PR_URL" --json statusCheckRollup --jq '.statusCheckRollup[].state' | sort -u | tr '\n' ',')
+
+          echo "CI status: $status"
+
+          # Check if all checks are passing or pending (no failures)
+          if echo "$status" | grep -qE "(FAILURE|ERROR)"; then
+            echo "ci_ready=false" >> $GITHUB_OUTPUT
+            echo "❌ CI checks have failures"
+          else
+            echo "ci_ready=true" >> $GITHUB_OUTPUT
+            echo "✅ CI checks are passing or pending"
+          fi
+
+      - name: Enable auto-merge
+        if: |
+          steps.check-pr.outputs.is_ready == 'true' &&
+          steps.verify-reviewer.outputs.is_trusted == 'true' &&
+          steps.check-ci.outputs.ci_ready == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REVIEWER: ${{ github.event.review.user.login }}
+        run: |
+          # Enable auto-merge
+          gh pr merge --auto --squash "$PR_URL"
+
+          # Add label to indicate auto-merge was enabled
+          gh pr edit "$PR_URL" --add-label "dependabot-auto-merge"
+
+          # Post comment
+          gh pr comment "$PR_URL" --body "✅ **Auto-merge enabled** - Approved by @$REVIEWER (trusted contributor). PR will merge automatically after all CI checks pass."
+
+          echo "✅ Auto-merge enabled successfully"
+
+      - name: Post security warning if reviewer is not trusted
+        if: |
+          steps.check-pr.outputs.is_ready == 'true' &&
+          steps.verify-reviewer.outputs.is_trusted == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REVIEWER: ${{ github.event.review.user.login }}
+        run: |
+          gh pr comment "$PR_URL" --body "⚠️ **Manual Merge Required** - Approval from @$REVIEWER (not a previous contributor) detected. A trusted contributor must approve or manually merge this PR."
+
+          echo "⚠️  Security warning posted"

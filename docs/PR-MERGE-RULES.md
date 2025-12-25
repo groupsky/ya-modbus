@@ -203,7 +203,36 @@ Claude analyzes breaking changes AND inspects new features, then takes appropria
 - Claude verifies by analyzing codebase
 - Comments: `✅ **APPROVED**`
 - Labeled: `dependabot-approved`, `ready-to-merge`
-- Manual merge required after CI passes
+- **Manual approval triggers auto-merge** (see below)
+
+##### Manual Approval Auto-Merge
+
+**When a PR is labeled `ready-to-merge`:**
+
+PRs that require manual review (production dependencies with minor/major updates, major GitHub Actions updates) are labeled `ready-to-merge` by Claude but NOT auto-merged immediately.
+
+**What happens when you approve:**
+
+1. You approve the PR using GitHub's review feature
+2. `auto-merge-on-approval.yml` workflow triggers
+3. **Security checks**:
+   - ✅ Verifies PR has `ready-to-merge` + `dependabot-approved` labels
+   - ✅ Verifies you are a trusted contributor (previous commits to repo)
+   - ✅ Checks CI status (no failures)
+4. If all checks pass: Auto-merge enabled automatically
+5. PR merges after CI completes
+
+**Benefits:**
+
+- No manual merge needed - just approve and walk away
+- Same security verification as fix commits
+- Ensures only trusted contributors can trigger auto-merge
+
+**Security failures:**
+
+- Untrusted reviewer: Warning comment posted, manual merge still required
+- CI failing: Auto-merge not enabled until CI passes
+- Missing required labels: Workflow skips
 
 #### New Feature Opportunities
 
@@ -404,6 +433,7 @@ chore(deps)(npm): bump typescript from 5.7.0 to 5.8.0 (#45)
 
 - `dependabot-claude-review.yml`: Claude review for **single-dependency** Dependabot PRs
 - `dependabot-claude-review-grouped.yml`: Claude review for **grouped** Dependabot PRs (multiple dependencies)
+- `auto-merge-on-approval.yml`: Auto-enables merge when trusted contributor approves `ready-to-merge` PRs
 - `claude-code-review.yml`: Claude review for human PRs
 - `ci.yml`: Continuous integration tests
 
