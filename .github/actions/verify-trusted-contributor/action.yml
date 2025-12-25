@@ -1,0 +1,200 @@
+name: Verify Trusted Contributor
+description: Verifies if a contributor is trusted based on commit history and allowlist/denylist
+
+inputs:
+  username:
+    description: GitHub username to verify
+    required: true
+  repository:
+    description: Repository in format owner/repo (defaults to current repo)
+    required: false
+    default: ${{ github.repository }}
+  github-token:
+    description: GitHub token for API access
+    required: true
+  min-commits:
+    description: Minimum number of commits required to be considered trusted
+    required: false
+    default: '2'
+  lookback-days:
+    description: Number of days to look back for commit history (0 = all time)
+    required: false
+    default: '0'
+  allowlist:
+    description: Comma-separated list of usernames that are always trusted
+    required: false
+    default: ''
+  denylist:
+    description: Comma-separated list of usernames that are never trusted
+    required: false
+    default: ''
+  check-teams:
+    description: Comma-separated list of team slugs (org/team-slug) to check membership
+    required: false
+    default: ''
+
+outputs:
+  is-trusted:
+    description: 'true if contributor is trusted, false otherwise'
+    value: ${{ steps.verify.outputs.is_trusted }}
+  reason:
+    description: Reason for trust decision
+    value: ${{ steps.verify.outputs.reason }}
+  commit-count:
+    description: Number of commits found for this contributor
+    value: ${{ steps.verify.outputs.commit_count }}
+  first-commit-date:
+    description: Date of first commit (ISO 8601 format)
+    value: ${{ steps.verify.outputs.first_commit_date }}
+  latest-commit-date:
+    description: Date of latest commit (ISO 8601 format)
+    value: ${{ steps.verify.outputs.latest_commit_date }}
+
+runs:
+  using: composite
+  steps:
+    - name: Verify trusted contributor
+      id: verify
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        USERNAME: ${{ inputs.username }}
+        REPOSITORY: ${{ inputs.repository }}
+        MIN_COMMITS: ${{ inputs.min-commits }}
+        LOOKBACK_DAYS: ${{ inputs.lookback-days }}
+        ALLOWLIST: ${{ inputs.allowlist }}
+        DENYLIST: ${{ inputs.denylist }}
+        CHECK_TEAMS: ${{ inputs.check-teams }}
+      run: |
+        echo "🔍 Verifying contributor: $USERNAME"
+
+        # Initialize outputs
+        is_trusted=false
+        reason=""
+        commit_count=0
+        first_commit_date=""
+        latest_commit_date=""
+
+        # Check denylist first (highest priority)
+        if [ -n "$DENYLIST" ]; then
+          IFS=',' read -ra DENY_USERS <<< "$DENYLIST"
+          for user in "${DENY_USERS[@]}"; do
+            user=$(echo "$user" | xargs) # trim whitespace
+            if [ "$user" = "$USERNAME" ]; then
+              echo "❌ User $USERNAME is in denylist"
+              is_trusted=false
+              reason="User is in denylist"
+              echo "is_trusted=$is_trusted" >> $GITHUB_OUTPUT
+              echo "reason=$reason" >> $GITHUB_OUTPUT
+              echo "commit_count=0" >> $GITHUB_OUTPUT
+              echo "first_commit_date=" >> $GITHUB_OUTPUT
+              echo "latest_commit_date=" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          done
+        fi
+
+        # Check allowlist (second priority)
+        if [ -n "$ALLOWLIST" ]; then
+          IFS=',' read -ra ALLOW_USERS <<< "$ALLOWLIST"
+          for user in "${ALLOW_USERS[@]}"; do
+            user=$(echo "$user" | xargs) # trim whitespace
+            if [ "$user" = "$USERNAME" ]; then
+              echo "✅ User $USERNAME is in allowlist"
+              is_trusted=true
+              reason="User is in allowlist"
+              echo "is_trusted=$is_trusted" >> $GITHUB_OUTPUT
+              echo "reason=$reason" >> $GITHUB_OUTPUT
+              echo "commit_count=N/A" >> $GITHUB_OUTPUT
+              echo "first_commit_date=" >> $GITHUB_OUTPUT
+              echo "latest_commit_date=" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          done
+        fi
+
+        # Check team membership (third priority)
+        if [ -n "$CHECK_TEAMS" ]; then
+          IFS=',' read -ra TEAMS <<< "$CHECK_TEAMS"
+          for team_slug in "${TEAMS[@]}"; do
+            team_slug=$(echo "$team_slug" | xargs) # trim whitespace
+
+            # Extract org and team from org/team-slug format
+            if [[ "$team_slug" =~ ^([^/]+)/(.+)$ ]]; then
+              org="${BASH_REMATCH[1]}"
+              team="${BASH_REMATCH[2]}"
+
+              echo "Checking team membership: $org/$team"
+
+              # Check if user is a member of this team
+              if gh api "/orgs/$org/teams/$team/memberships/$USERNAME" --silent 2>/dev/null; then
+                echo "✅ User $USERNAME is a member of team $org/$team"
+                is_trusted=true
+                reason="User is a member of team $org/$team"
+                echo "is_trusted=$is_trusted" >> $GITHUB_OUTPUT
+                echo "reason=$reason" >> $GITHUB_OUTPUT
+                echo "commit_count=N/A" >> $GITHUB_OUTPUT
+                echo "first_commit_date=" >> $GITHUB_OUTPUT
+                echo "latest_commit_date=" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+            else
+              echo "⚠️  Warning: Invalid team slug format: $team_slug (expected: org/team-slug)"
+            fi
+          done
+        fi
+
+        # Check commit history (fourth priority - fallback)
+        echo "Checking commit history for $USERNAME in $REPOSITORY"
+
+        # Build date filter if lookback-days is set
+        date_filter=""
+        if [ "$LOOKBACK_DAYS" -gt 0 ]; then
+          since_date=$(date -u -d "$LOOKBACK_DAYS days ago" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -v-${LOOKBACK_DAYS}d +"%Y-%m-%dT%H:%M:%SZ")
+          date_filter="&since=$since_date"
+          echo "Looking back $LOOKBACK_DAYS days (since $since_date)"
+        fi
+
+        # Fetch commits from this author
+        # Using REST API: GET /repos/{owner}/{repo}/commits
+        commits_json=$(gh api "/repos/$REPOSITORY/commits?author=$USERNAME&per_page=100${date_filter}" --paginate 2>/dev/null || echo "[]")
+
+        # Count commits
+        commit_count=$(echo "$commits_json" | jq '. | length')
+
+        echo "Found $commit_count commit(s) from $USERNAME"
+
+        if [ "$commit_count" -eq 0 ]; then
+          echo "❌ No commits found for $USERNAME"
+          is_trusted=false
+          reason="No commits found in repository"
+        elif [ "$commit_count" -lt "$MIN_COMMITS" ]; then
+          echo "❌ Insufficient commits: $commit_count < $MIN_COMMITS required"
+          is_trusted=false
+          reason="Only $commit_count commit(s), minimum $MIN_COMMITS required"
+        else
+          echo "✅ Sufficient commits: $commit_count >= $MIN_COMMITS required"
+          is_trusted=true
+          reason="Has $commit_count commit(s) in repository (minimum $MIN_COMMITS)"
+
+          # Extract first and latest commit dates
+          first_commit_date=$(echo "$commits_json" | jq -r '.[0].commit.author.date' 2>/dev/null || echo "")
+          latest_commit_date=$(echo "$commits_json" | jq -r '.[-1].commit.author.date' 2>/dev/null || echo "")
+        fi
+
+        # Output results
+        echo "is_trusted=$is_trusted" >> $GITHUB_OUTPUT
+        echo "reason=$reason" >> $GITHUB_OUTPUT
+        echo "commit_count=$commit_count" >> $GITHUB_OUTPUT
+        echo "first_commit_date=$first_commit_date" >> $GITHUB_OUTPUT
+        echo "latest_commit_date=$latest_commit_date" >> $GITHUB_OUTPUT
+
+        echo ""
+        echo "📊 Verification Result:"
+        echo "  Trusted: $is_trusted"
+        echo "  Reason: $reason"
+        echo "  Commits: $commit_count"
+        if [ -n "$first_commit_date" ]; then
+          echo "  First commit: $first_commit_date"
+          echo "  Latest commit: $latest_commit_date"
+        fi

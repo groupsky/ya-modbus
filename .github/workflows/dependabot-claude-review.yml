@@ -383,12 +383,19 @@ jobs:
        needs.claude-review-major.result == 'skipped')
 
     steps:
+      # Checkout repository for local actions
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            .github/actions
+          sparse-checkout-cone-mode: false
+
       - name: Check if this is a fix commit
         id: check-fix-commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-          REPO: ${{ github.repository }}
         run: |
           # Get latest commit message and author
           latest_commit_msg=$(gh pr view "$PR_URL" --json commits --jq '.commits[-1].messageHeadline')
@@ -399,7 +406,6 @@ jobs:
 
           # Initialize outputs
           is_fix_commit=false
-          is_trusted_contributor=false
 
           # Check if this commit is from applying suggestions
           # GitHub uses specific commit messages for applied suggestions
@@ -414,38 +420,28 @@ jobs:
             echo "ℹ️  Not a fix commit"
           fi
 
-          # If this is a fix commit from a human, verify they are a trusted contributor
-          if [ "$is_fix_commit" = "true" ] && [ "$latest_commit_author" != "dependabot[bot]" ] && [ "$latest_commit_author" != "app/dependabot" ]; then
-            echo "Verifying contributor: $latest_commit_author"
-
-            # Get commit count for this author in the repository
-            # Using commits API with author filter
-            commit_count=$(gh api "/repos/$REPO/commits?author=$latest_commit_author&per_page=100" --paginate | jq '. | length')
-
-            echo "Commit count for $latest_commit_author: $commit_count"
-
-            # Consider them trusted if they have more than 1 commit (this one + at least one previous)
-            if [ "$commit_count" -gt 1 ]; then
-              is_trusted_contributor=true
-              echo "✅ Verified: $latest_commit_author is a trusted contributor ($commit_count commits)"
-            else
-              is_trusted_contributor=false
-              echo "⚠️  Warning: $latest_commit_author is NOT a previous contributor (only $commit_count commit(s))"
-            fi
-          fi
-
           # Set outputs
           echo "is_fix_commit=$is_fix_commit" >> $GITHUB_OUTPUT
-          echo "is_trusted_contributor=$is_trusted_contributor" >> $GITHUB_OUTPUT
           echo "fix_author=$latest_commit_author" >> $GITHUB_OUTPUT
+
+      # Verify contributor trust using reusable action
+      - name: Verify contributor trust
+        if: steps.check-fix-commit.outputs.is_fix_commit == 'true'
+        id: verify-contributor
+        uses: ./.github/actions/verify-trusted-contributor
+        with:
+          username: ${{ steps.check-fix-commit.outputs.fix_author }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          min-commits: 2
       - name: Check Claude approval
         id: check-approval
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           IS_FIX_COMMIT: ${{ steps.check-fix-commit.outputs.is_fix_commit }}
-          IS_TRUSTED: ${{ steps.check-fix-commit.outputs.is_trusted_contributor }}
+          IS_TRUSTED: ${{ steps.verify-contributor.outputs.is-trusted }}
           FIX_AUTHOR: ${{ steps.check-fix-commit.outputs.fix_author }}
+          TRUST_REASON: ${{ steps.verify-contributor.outputs.reason }}
         run: |
           # Get the latest comment from claude[bot]
           latest_comment=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | last | .body')
@@ -469,7 +465,12 @@ jobs:
               echo "approved=false" >> $GITHUB_OUTPUT
               echo "needs_verification=false" >> $GITHUB_OUTPUT
               echo "⚠️  Fix commit from untrusted contributor ($FIX_AUTHOR) - blocking auto-merge"
-              gh pr comment "$PR_URL" --body "⚠️ **SECURITY BLOCK** - Fix commit from @$FIX_AUTHOR who is not a previous contributor. Manual review required."
+              echo "Reason: $TRUST_REASON"
+              gh pr comment "$PR_URL" --body "⚠️ **SECURITY BLOCK** - Fix commit from @$FIX_AUTHOR who is not a trusted contributor.
+
+              **Reason:** $TRUST_REASON
+
+              A repository maintainer must manually review and approve this PR."
             fi
           else
             echo "approved=false" >> $GITHUB_OUTPUT

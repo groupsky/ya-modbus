@@ -276,6 +276,14 @@ jobs:
             fi
           fi
 
+      # Checkout repository for local actions
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            .github/actions
+          sparse-checkout-cone-mode: false
+
       # Check if there are fix commits that need final verification
       - name: Check for fix commits
         id: check-fix-commit
@@ -312,21 +320,55 @@ jobs:
             echo "ℹ️  Only one commit (Dependabot's initial commit)"
           fi
 
+      # Verify contributor trust if fix commits detected
+      - name: Verify contributor trust
+        if: steps.check-fix-commit.outputs.has_fix_commits == 'true'
+        id: verify-contributor
+        uses: ./.github/actions/verify-trusted-contributor
+        with:
+          username: ${{ steps.check-fix-commit.outputs.fix_author }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          min-commits: 2
+
+      # Block if untrusted contributor
+      - name: Block untrusted contributor
+        if: |
+          steps.check-fix-commit.outputs.has_fix_commits == 'true' &&
+          steps.verify-contributor.outputs.is-trusted != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          AUTHOR: ${{ steps.check-fix-commit.outputs.fix_author }}
+          REASON: ${{ steps.verify-contributor.outputs.reason }}
+        run: |
+          echo "❌ Security block: Untrusted contributor"
+          echo "Author: $AUTHOR"
+          echo "Reason: $REASON"
+
+          gh pr comment "$PR_URL" --body "⚠️ **SECURITY BLOCK** - Fix commit from @$AUTHOR who is not a trusted contributor.
+
+          **Reason:** $REASON
+
+          A repository maintainer must manually review and approve this PR."
+
+          exit 1
+
       # Determine if final verification is needed
       - name: Check if verification needed
+        if: |
+          steps.check-fix-commit.outputs.has_fix_commits != 'true' ||
+          steps.verify-contributor.outputs.is-trusted == 'true'
         id: check-verification-needed
         run: |
-          # Final verification needed if:
-          # 1. PR was marked as FIXABLE (not APPROVED)
-          # 2. Fix commits exist
-          # 3. Now being approved for merge
+          # Final verification is needed if:
+          # 1. Fix commits exist from a trusted contributor
+          # 2. The contributor passed the trust check earlier
 
-          was_fixable="${{ contains(steps.check-approval.outputs.*, 'FIXABLE') }}"
           has_fixes="${{ steps.check-fix-commit.outputs.has_fix_commits }}"
 
           if [ "$has_fixes" = "true" ]; then
             echo "needs_verification=true" >> $GITHUB_OUTPUT
-            echo "✅ Final verification needed - fix commits detected"
+            echo "✅ Final verification needed - fix commits detected from trusted contributor"
           else
             echo "needs_verification=false" >> $GITHUB_OUTPUT
             echo "ℹ️  No verification needed - no fix commits"
