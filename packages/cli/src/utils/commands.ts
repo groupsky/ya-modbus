@@ -259,7 +259,7 @@ export async function withTransport<T>(
     : {
         // RTU configuration
         port: (options.port as string | undefined) ?? DEFAULT_RTU_CONFIG.port,
-        baudRate: (options.baudRate ?? DEFAULT_RTU_CONFIG.baudRate),
+        baudRate: options.baudRate ?? DEFAULT_RTU_CONFIG.baudRate,
         dataBits: (options.dataBits ?? DEFAULT_RTU_CONFIG.dataBits) as DataBits,
         parity: (options.parity ?? DEFAULT_RTU_CONFIG.parity) as Parity,
         stopBits: (options.stopBits ?? DEFAULT_RTU_CONFIG.stopBits) as StopBits,

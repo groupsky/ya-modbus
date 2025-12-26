@@ -3,6 +3,8 @@ import { join } from 'path'
 
 import type { CreateDriverFunction, DefaultConfig, SupportedConfig } from '@ya-modbus/driver-types'
 
+import { validateDefaultConfig, validateSupportedConfig } from './config-validator.js'
+
 /**
  * Loaded driver module with configuration metadata
  */
@@ -172,107 +174,13 @@ export async function loadDriver(options: LoadDriverOptions): Promise<LoadedDriv
     }
 
     // Validate and add DEFAULT_CONFIG if present
-    if (
-      DEFAULT_CONFIG !== null &&
-      DEFAULT_CONFIG !== undefined &&
-      typeof DEFAULT_CONFIG === 'object'
-    ) {
-      // Runtime validation for third-party drivers
-      const config = DEFAULT_CONFIG as Record<string, unknown>
-
-      // Check if it's a serial config (has baudRate)
-      if ('baudRate' in config) {
-        if (typeof config['baudRate'] !== 'number') {
-          throw new Error(
-            `Invalid DEFAULT_CONFIG: baudRate must be a number, got ${typeof config['baudRate']}.\n` +
-              'Fix: export const DEFAULT_CONFIG = { baudRate: 9600, ... } // number, not string'
-          )
-        }
-        if ('parity' in config && typeof config['parity'] !== 'string') {
-          throw new Error(
-            `Invalid DEFAULT_CONFIG: parity must be a string, got ${typeof config['parity']}.\n` +
-              'Fix: export const DEFAULT_CONFIG = { parity: "even", ... } // string: "none", "even", or "odd"'
-          )
-        }
-        if ('dataBits' in config && typeof config['dataBits'] !== 'number') {
-          throw new Error(
-            `Invalid DEFAULT_CONFIG: dataBits must be a number, got ${typeof config['dataBits']}.\n` +
-              'Fix: export const DEFAULT_CONFIG = { dataBits: 8, ... } // number: 7 or 8'
-          )
-        }
-        if ('stopBits' in config && typeof config['stopBits'] !== 'number') {
-          throw new Error(
-            `Invalid DEFAULT_CONFIG: stopBits must be a number, got ${typeof config['stopBits']}.\n` +
-              'Fix: export const DEFAULT_CONFIG = { stopBits: 1, ... } // number: 1 or 2'
-          )
-        }
-        if ('defaultAddress' in config && typeof config['defaultAddress'] !== 'number') {
-          throw new Error(
-            `Invalid DEFAULT_CONFIG: defaultAddress must be a number, got ${typeof config['defaultAddress']}.\n` +
-              'Fix: export const DEFAULT_CONFIG = { defaultAddress: 1, ... } // number: 1-247'
-          )
-        }
-      }
-      // Check if it's a TCP config (has defaultPort but not baudRate)
-      else if ('defaultPort' in config) {
-        if (typeof config['defaultPort'] !== 'number') {
-          throw new Error(
-            `Invalid DEFAULT_CONFIG: defaultPort must be a number, got ${typeof config['defaultPort']}.\n` +
-              'Fix: export const DEFAULT_CONFIG = { defaultPort: 502, ... } // number'
-          )
-        }
-        if ('defaultAddress' in config && typeof config['defaultAddress'] !== 'number') {
-          throw new Error(
-            `Invalid DEFAULT_CONFIG: defaultAddress must be a number, got ${typeof config['defaultAddress']}.\n` +
-              'Fix: export const DEFAULT_CONFIG = { defaultAddress: 1, ... } // number: 1-247'
-          )
-        }
-      }
-
-      result.defaultConfig = DEFAULT_CONFIG as DefaultConfig
+    if (DEFAULT_CONFIG !== null && DEFAULT_CONFIG !== undefined) {
+      result.defaultConfig = validateDefaultConfig(DEFAULT_CONFIG)
     }
 
     // Validate and add SUPPORTED_CONFIG if present
-    if (
-      SUPPORTED_CONFIG !== null &&
-      SUPPORTED_CONFIG !== undefined &&
-      typeof SUPPORTED_CONFIG === 'object'
-    ) {
-      // Runtime validation for third-party drivers
-      const config = SUPPORTED_CONFIG as Record<string, unknown>
-
-      if ('validBaudRates' in config && !Array.isArray(config['validBaudRates'])) {
-        throw new Error(
-          `Invalid SUPPORTED_CONFIG: validBaudRates must be an array, got ${typeof config['validBaudRates']}.\n` +
-            'Fix: export const SUPPORTED_CONFIG = { validBaudRates: [9600, 19200], ... }'
-        )
-      }
-      if ('validParity' in config && !Array.isArray(config['validParity'])) {
-        throw new Error(
-          `Invalid SUPPORTED_CONFIG: validParity must be an array, got ${typeof config['validParity']}.\n` +
-            'Fix: export const SUPPORTED_CONFIG = { validParity: ["none", "even", "odd"], ... }'
-        )
-      }
-      if ('validDataBits' in config && !Array.isArray(config['validDataBits'])) {
-        throw new Error(
-          `Invalid SUPPORTED_CONFIG: validDataBits must be an array, got ${typeof config['validDataBits']}.\n` +
-            'Fix: export const SUPPORTED_CONFIG = { validDataBits: [7, 8], ... }'
-        )
-      }
-      if ('validStopBits' in config && !Array.isArray(config['validStopBits'])) {
-        throw new Error(
-          `Invalid SUPPORTED_CONFIG: validStopBits must be an array, got ${typeof config['validStopBits']}.\n` +
-            'Fix: export const SUPPORTED_CONFIG = { validStopBits: [1, 2], ... }'
-        )
-      }
-      if ('validAddressRange' in config && !Array.isArray(config['validAddressRange'])) {
-        throw new Error(
-          `Invalid SUPPORTED_CONFIG: validAddressRange must be an array, got ${typeof config['validAddressRange']}.\n` +
-            'Fix: export const SUPPORTED_CONFIG = { validAddressRange: [1, 247], ... }'
-        )
-      }
-
-      result.supportedConfig = SUPPORTED_CONFIG as SupportedConfig
+    if (SUPPORTED_CONFIG !== null && SUPPORTED_CONFIG !== undefined) {
+      result.supportedConfig = validateSupportedConfig(SUPPORTED_CONFIG)
     }
 
     return result
