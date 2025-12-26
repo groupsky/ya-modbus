@@ -39,22 +39,22 @@ Eliminates duplicate Claude approval checking logic across workflows by providin
     echo "author=someuser" >> $GITHUB_OUTPUT
 
 - name: Verify contributor trust
-  id: verify-trust
+  id: verify-contributor
   uses: ./.github/actions/verify-trusted-contributor
   with:
-    username: ${{ steps.check-fix.outputs.author }}
+    username: ${{ steps.check-fix-commit.outputs.fix_author }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
 
 - name: Check Claude approval
-  id: approval
+  id: check-approval
   uses: ./.github/actions/extract-claude-approval
   with:
     pr-url: ${{ github.event.pull_request.html_url }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
-    is-fix-commit: ${{ steps.check-fix.outputs.is_fix }}
-    is-trusted-contributor: ${{ steps.verify-trust.outputs.is_trusted }}
-    fix-author: ${{ steps.check-fix.outputs.author }}
-    trust-reason: ${{ steps.verify-trust.outputs.reason }}
+    is-fix-commit: ${{ steps.check-fix-commit.outputs.is_fix_commit }}
+    is-trusted-contributor: ${{ steps.verify-contributor.outputs.is_trusted }}
+    fix-author: ${{ steps.check-fix-commit.outputs.fix_author }}
+    trust-reason: ${{ steps.verify-contributor.outputs.reason }}
 ```
 
 ## Inputs

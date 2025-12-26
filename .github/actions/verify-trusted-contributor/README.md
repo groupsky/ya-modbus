@@ -171,18 +171,18 @@ Team membership checking requires organization-level API access. Ensure:
 ### Dependabot PR Verification
 
 ```yaml
-- name: Verify fix commit author
-  if: steps.detect-fix.outputs.has_fix == 'true'
-  id: verify-author
+- name: Verify contributor trust
+  if: steps.check-fix-commit.outputs.is_fix_commit == 'true'
+  id: verify-contributor
   uses: ./.github/actions/verify-trusted-contributor
   with:
-    username: ${{ steps.detect-fix.outputs.author }}
+    username: ${{ steps.check-fix-commit.outputs.fix_author }}
     github-token: ${{ secrets.GITHUB_TOKEN }}
 
 - name: Block untrusted contributor
-  if: steps.verify-author.outputs.is-trusted != 'true'
+  if: steps.verify-contributor.outputs.is-trusted != 'true'
   run: |
-    gh pr comment "${{ github.event.pull_request.html_url }}" --body "⚠️ **SECURITY BLOCK** - Fix commit from @${{ steps.detect-fix.outputs.author }} who is not a trusted contributor. Reason: ${{ steps.verify-author.outputs.reason }}"
+    gh pr comment "${{ github.event.pull_request.html_url }}" --body "⚠️ **SECURITY BLOCK** - Fix commit from @${{ steps.check-fix-commit.outputs.fix_author }} who is not a trusted contributor. Reason: ${{ steps.verify-contributor.outputs.reason }}"
     exit 1
   env:
     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
