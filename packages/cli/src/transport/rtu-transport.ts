@@ -1,4 +1,4 @@
-import type { Transport } from '@ya-modbus/driver-types'
+import type { BaudRate, DataBits, Parity, StopBits, Transport } from '@ya-modbus/driver-types'
 import ModbusRTU from 'modbus-serial'
 
 import { createModbusTransport } from './create-modbus-transport.js'
@@ -10,13 +10,13 @@ export interface RTUConfig {
   /** Serial port path (e.g., /dev/ttyUSB0, COM1) */
   port: string
   /** Baud rate */
-  baudRate: 2400 | 4800 | 9600 | 14400 | 19200 | 38400 | 115200
+  baudRate: BaudRate
   /** Data bits */
-  dataBits: 7 | 8
+  dataBits: DataBits
   /** Parity */
-  parity: 'none' | 'even' | 'odd'
+  parity: Parity
   /** Stop bits */
-  stopBits: 1 | 2
+  stopBits: StopBits
   /** Modbus slave ID (1-247) */
   slaveId: number
   /** Response timeout in milliseconds (default: 1000) */

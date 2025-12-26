@@ -1,9 +1,13 @@
 import readline from 'readline/promises'
 
 import type {
+  BaudRate,
+  DataBits,
   DataPoint,
   DefaultSerialConfig,
   DeviceDriver,
+  Parity,
+  StopBits,
   Transport,
 } from '@ya-modbus/driver-types'
 
@@ -17,10 +21,10 @@ import { validateSerialOptions } from './validation.js'
  */
 export const DEFAULT_RTU_CONFIG = {
   port: '/dev/ttyUSB0',
-  baudRate: 9600 as const,
-  dataBits: 8 as const,
-  parity: 'even' as const,
-  stopBits: 1 as const,
+  baudRate: 9600 as BaudRate,
+  dataBits: 8 as DataBits,
+  parity: 'even' as Parity,
+  stopBits: 1 as StopBits,
 } as const
 
 /**
@@ -255,10 +259,10 @@ export async function withTransport<T>(
     : {
         // RTU configuration
         port: (options.port as string | undefined) ?? DEFAULT_RTU_CONFIG.port,
-        baudRate: (options.baudRate ?? DEFAULT_RTU_CONFIG.baudRate) as 9600,
-        dataBits: (options.dataBits ?? DEFAULT_RTU_CONFIG.dataBits) as 8,
-        parity: (options.parity ?? DEFAULT_RTU_CONFIG.parity) as 'even',
-        stopBits: (options.stopBits ?? DEFAULT_RTU_CONFIG.stopBits) as 1,
+        baudRate: options.baudRate ?? DEFAULT_RTU_CONFIG.baudRate,
+        dataBits: options.dataBits ?? DEFAULT_RTU_CONFIG.dataBits,
+        parity: options.parity ?? DEFAULT_RTU_CONFIG.parity,
+        stopBits: options.stopBits ?? DEFAULT_RTU_CONFIG.stopBits,
         slaveId: options.slaveId,
         timeout: options.timeout,
       }

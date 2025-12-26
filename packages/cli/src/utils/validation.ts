@@ -2,7 +2,7 @@
  * Validation utilities for CLI options using driver SUPPORTED_CONFIG
  */
 
-import type { SupportedSerialConfig } from '@ya-modbus/driver-types'
+import type { DataBits, Parity, StopBits, SupportedSerialConfig } from '@ya-modbus/driver-types'
 
 import type { LoadedDriver } from '../driver-loader/loader.js'
 
@@ -64,7 +64,7 @@ export function validateBaudRate(
       `Invalid baud rate ${baudRate}. This driver supports: ${rateList}${defaultRate ? ` (default: ${defaultRate})` : ''}`,
       'baudRate',
       baudRate,
-      validRates as readonly unknown[]
+      validRates
     )
   }
 }
@@ -87,7 +87,7 @@ export function validateParity(parity: string | undefined, driverMetadata?: Load
   }
 
   const validParity = supportedConfig.validParity
-  if (!validParity.includes(parity as 'none' | 'even' | 'odd')) {
+  if (!validParity.includes(parity as Parity)) {
     const parityList = validParity.join(', ')
     const defaultConfig = driverMetadata?.defaultConfig
     const defaultParity =
@@ -97,7 +97,7 @@ export function validateParity(parity: string | undefined, driverMetadata?: Load
       `Invalid parity '${parity}'. This driver supports: ${parityList}${defaultParity ? ` (default: ${defaultParity})` : ''}`,
       'parity',
       parity,
-      validParity as readonly unknown[]
+      validParity
     )
   }
 }
@@ -123,7 +123,7 @@ export function validateDataBits(
   }
 
   const validDataBits = supportedConfig.validDataBits
-  if (!validDataBits.includes(dataBits as 7 | 8)) {
+  if (!validDataBits.includes(dataBits as DataBits)) {
     const bitsList = validDataBits.join(', ')
     const defaultConfig = driverMetadata?.defaultConfig
     const defaultBits =
@@ -133,7 +133,7 @@ export function validateDataBits(
       `Invalid data bits ${dataBits}. This driver supports: ${bitsList}${defaultBits ? ` (default: ${defaultBits})` : ''}`,
       'dataBits',
       dataBits,
-      validDataBits as readonly unknown[]
+      validDataBits
     )
   }
 }
@@ -159,7 +159,7 @@ export function validateStopBits(
   }
 
   const validStopBits = supportedConfig.validStopBits
-  if (!validStopBits.includes(stopBits as 1 | 2)) {
+  if (!validStopBits.includes(stopBits as StopBits)) {
     const bitsList = validStopBits.join(', ')
     const defaultConfig = driverMetadata?.defaultConfig
     const defaultBits =
@@ -169,7 +169,7 @@ export function validateStopBits(
       `Invalid stop bits ${stopBits}. This driver supports: ${bitsList}${defaultBits ? ` (default: ${defaultBits})` : ''}`,
       'stopBits',
       stopBits,
-      validStopBits as readonly unknown[]
+      validStopBits
     )
   }
 }
@@ -201,7 +201,7 @@ export function validateSlaveId(slaveId: number | undefined, driverMetadata?: Lo
       `Invalid slave ID ${slaveId}. This driver supports: ${min}-${max}${defaultAddress ? ` (default: ${defaultAddress})` : ''}`,
       'slaveId',
       slaveId,
-      [min, max] as readonly unknown[]
+      [min, max]
     )
   }
 }
