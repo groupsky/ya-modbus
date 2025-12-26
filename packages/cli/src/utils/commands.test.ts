@@ -10,7 +10,7 @@ import {
   isWritable,
   parseValue,
   validateValue,
-} from './utils.js'
+} from './commands.js'
 
 // Mock readline/promises for confirm tests
 jest.mock('readline/promises')

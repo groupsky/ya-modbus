@@ -1,19 +1,31 @@
 import readline from 'readline/promises'
 
-import type { DataPoint, DeviceDriver, Transport } from '@ya-modbus/driver-types'
+import type {
+  BaudRate,
+  DataBits,
+  DataPoint,
+  DefaultSerialConfig,
+  DeviceDriver,
+  Parity,
+  StopBits,
+  Transport,
+} from '@ya-modbus/driver-types'
 
-import { loadDriver } from '../driver-loader/loader.js'
+import { loadDriver, type LoadedDriver } from '../driver-loader/loader.js'
 import { createTransport, type TransportConfig } from '../transport/factory.js'
+
+import { omitUndefined } from './object-utils.js'
+import { validateSerialOptions } from './validation.js'
 
 /**
  * Default RTU transport configuration values
  */
 export const DEFAULT_RTU_CONFIG = {
   port: '/dev/ttyUSB0',
-  baudRate: 9600 as const,
-  dataBits: 8 as const,
-  parity: 'even' as const,
-  stopBits: 1 as const,
+  baudRate: 9600 as BaudRate,
+  dataBits: 8 as DataBits,
+  parity: 'even' as Parity,
+  stopBits: 1 as StopBits,
 } as const
 
 /**
@@ -248,10 +260,10 @@ export async function withTransport<T>(
     : {
         // RTU configuration
         port: (options.port as string | undefined) ?? DEFAULT_RTU_CONFIG.port,
-        baudRate: (options.baudRate ?? DEFAULT_RTU_CONFIG.baudRate) as 9600,
-        dataBits: (options.dataBits ?? DEFAULT_RTU_CONFIG.dataBits) as 8,
-        parity: (options.parity ?? DEFAULT_RTU_CONFIG.parity) as 'even',
-        stopBits: (options.stopBits ?? DEFAULT_RTU_CONFIG.stopBits) as 1,
+        baudRate: options.baudRate ?? DEFAULT_RTU_CONFIG.baudRate,
+        dataBits: (options.dataBits ?? DEFAULT_RTU_CONFIG.dataBits) as DataBits,
+        parity: (options.parity ?? DEFAULT_RTU_CONFIG.parity) as Parity,
+        stopBits: (options.stopBits ?? DEFAULT_RTU_CONFIG.stopBits) as StopBits,
         slaveId: options.slaveId,
         timeout: options.timeout,
       }
@@ -268,28 +280,144 @@ export async function withTransport<T>(
 }
 
 /**
+ * Load driver metadata without creating an instance
+ *
+ * @param driverName - Optional driver package name
+ * @returns Loaded driver metadata
+ */
+export async function loadDriverMetadata(driverName?: string): Promise<LoadedDriver> {
+  return await loadDriver(driverName ? { driverPackage: driverName } : { localPackage: true })
+}
+
+/**
+ * Apply driver defaults to transport options
+ *
+ * @param options - Transport options (may be incomplete)
+ * @param driverMetadata - Loaded driver metadata with defaults
+ * @returns Transport options with defaults applied
+ */
+export function applyDriverDefaults(
+  options: TransportOptions,
+  driverMetadata?: LoadedDriver
+): TransportOptions {
+  // For TCP connections, no serial defaults apply
+  if (options.host) {
+    return options
+  }
+
+  // Extract serial defaults if available
+  const defaultConfig = driverMetadata?.defaultConfig
+  const isSerialConfig = (config: unknown): config is DefaultSerialConfig => {
+    return (
+      config !== null && config !== undefined && typeof config === 'object' && 'baudRate' in config
+    )
+  }
+
+  if (!isSerialConfig(defaultConfig)) {
+    return options
+  }
+
+  // Apply defaults for unspecified options
+  return {
+    ...options,
+    baudRate: options.baudRate ?? defaultConfig.baudRate,
+    dataBits: options.dataBits ?? defaultConfig.dataBits,
+    stopBits: options.stopBits ?? defaultConfig.stopBits,
+    parity: options.parity ?? defaultConfig.parity,
+    slaveId: options.slaveId ?? defaultConfig.defaultAddress,
+  }
+}
+
+/**
  * Execute a function with a driver instance, ensuring cleanup
  *
  * @param transport - Transport to use for driver communication
- * @param options - Driver loading options
+ * @param driverMetadata - Loaded driver metadata
+ * @param slaveId - Modbus slave ID
  * @param fn - Function to execute with the driver
  * @returns Result of the function
  */
-export async function withDriver<T>(
+export async function withDriverInstance<T>(
   transport: Transport,
-  options: DriverOptions,
+  driverMetadata: LoadedDriver,
+  slaveId: number,
   fn: (driver: DeviceDriver) => Promise<T>
 ): Promise<T> {
-  // Load driver
-  const createDriver = await loadDriver(
-    options.driver ? { driverPackage: options.driver } : { localPackage: true }
-  )
-
   // Create driver instance
-  const driver = await createDriver({
+  const driver = await driverMetadata.createDriver({
     transport,
-    slaveId: options.slaveId,
+    slaveId,
   })
 
   return await fn(driver)
+}
+
+/**
+ * Execute a function with a driver instance, handling the complete workflow
+ *
+ * This is a convenience function that:
+ * 1. Loads driver metadata (DEFAULT_CONFIG, SUPPORTED_CONFIG)
+ * 2. Validates user options against driver constraints (SUPPORTED_CONFIG)
+ * 3. Applies driver defaults to user options
+ * 4. Validates merged options (catches invalid third-party driver defaults)
+ * 5. Creates transport with merged configuration
+ * 6. Creates driver instance
+ * 7. Executes callback with driver and merged options
+ * 8. Ensures cleanup (closes transport)
+ *
+ * @param options - Combined transport and driver options
+ * @param fn - Function to execute with the driver (and optionally merged config)
+ * @returns Result of the function
+ * @throws ValidationError if user options or driver defaults violate constraints
+ */
+export async function withDriver<T>(
+  options: TransportOptions & { driver?: string },
+  fn: (driver: DeviceDriver, mergedOptions: TransportOptions) => Promise<T>
+): Promise<T> {
+  // Load driver metadata first
+  const driverMetadata = await loadDriverMetadata(options.driver)
+
+  // Validate user-specified options against driver constraints (only for RTU connections)
+  if (!options.host) {
+    const validationOptions = omitUndefined({
+      baudRate: options.baudRate,
+      parity: options.parity,
+      dataBits: options.dataBits,
+      stopBits: options.stopBits,
+      slaveId: options.slaveId,
+    })
+
+    validateSerialOptions(validationOptions, driverMetadata)
+  }
+
+  // Apply driver defaults to options
+  const mergedOptions = applyDriverDefaults(options, driverMetadata)
+
+  // Validate merged options to catch invalid defaults from third-party drivers
+  // This ensures driver DEFAULT_CONFIG values are valid according to SUPPORTED_CONFIG
+  if (!mergedOptions.host) {
+    const mergedValidationOptions = omitUndefined({
+      baudRate: mergedOptions.baudRate,
+      parity: mergedOptions.parity,
+      dataBits: mergedOptions.dataBits,
+      stopBits: mergedOptions.stopBits,
+      slaveId: mergedOptions.slaveId,
+    })
+
+    validateSerialOptions(mergedValidationOptions, driverMetadata)
+  }
+
+  // Create transport with merged options
+  return await withTransport(mergedOptions, async (transport) => {
+    // Create driver instance
+    return await withDriverInstance(
+      transport,
+      driverMetadata,
+      mergedOptions.slaveId,
+      async (driver) => {
+        // Execute callback with driver and merged options
+        return await fn(driver, mergedOptions)
+      }
+    )
+  })
 }

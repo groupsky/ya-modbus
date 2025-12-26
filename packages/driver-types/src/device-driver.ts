@@ -6,6 +6,13 @@ import type { DataPoint } from './data-types.js'
 import type { Transport } from './transport.js'
 
 /**
+ * Modbus slave/device ID
+ *
+ * Valid range: 1-247 (0 is broadcast, 248-255 reserved)
+ */
+export type SlaveId = number
+
+/**
  * Device driver factory function configuration
  */
 export interface DriverConfig {
@@ -16,7 +23,7 @@ export interface DriverConfig {
   transport: Transport
 
   /** Modbus slave ID (1-247) */
-  slaveId: number
+  slaveId: SlaveId
 
   /** Optional custom poll interval in milliseconds */
   pollInterval?: number
@@ -84,6 +91,28 @@ export interface DeviceDriver {
 export type CreateDriverFunction = (config: DriverConfig) => Promise<DeviceDriver>
 
 /**
+ * Serial port parity setting
+ */
+export type Parity = 'none' | 'even' | 'odd'
+
+/**
+ * Serial port data bits
+ */
+export type DataBits = 7 | 8
+
+/**
+ * Serial port stop bits
+ */
+export type StopBits = 1 | 2
+
+/**
+ * Serial port baud rate
+ *
+ * Common values: 2400, 4800, 9600, 14400, 19200, 38400, 57600, 115200
+ */
+export type BaudRate = number
+
+/**
  * Factory-default serial port configuration for RTU devices
  *
  * Driver packages should export a DEFAULT_CONFIG constant implementing this interface
@@ -102,19 +131,19 @@ export type CreateDriverFunction = (config: DriverConfig) => Promise<DeviceDrive
  */
 export interface DefaultSerialConfig {
   /** Default baud rate (e.g., 9600, 19200) */
-  readonly baudRate: number
+  readonly baudRate: BaudRate
 
   /** Default parity setting */
-  readonly parity: 'none' | 'even' | 'odd'
+  readonly parity: Parity
 
   /** Default data bits (7 or 8) */
-  readonly dataBits: 7 | 8
+  readonly dataBits: DataBits
 
   /** Default stop bits (1 or 2) */
-  readonly stopBits: 1 | 2
+  readonly stopBits: StopBits
 
   /** Default Modbus slave address (1-247) */
-  readonly defaultAddress: number
+  readonly defaultAddress: SlaveId
 }
 
 /**
@@ -130,7 +159,7 @@ export interface DefaultSerialConfig {
  */
 export interface DefaultTCPConfig {
   /** Default Modbus unit ID (1-247) */
-  readonly defaultAddress: number
+  readonly defaultAddress: SlaveId
 
   /** Default TCP port (typically 502) */
   readonly defaultPort: number
@@ -171,25 +200,25 @@ export interface SupportedSerialConfig {
    * Supported baud rates
    * Common values: 2400, 4800, 9600, 14400, 19200, 38400, 57600, 115200
    */
-  readonly validBaudRates?: readonly number[]
+  readonly validBaudRates?: readonly BaudRate[]
 
   /**
    * Supported parity settings
    * Values: 'none', 'even', 'odd'
    */
-  readonly validParity?: readonly ('none' | 'even' | 'odd')[]
+  readonly validParity?: readonly Parity[]
 
   /**
    * Supported data bits
    * Common values: 7, 8
    */
-  readonly validDataBits?: readonly (7 | 8)[]
+  readonly validDataBits?: readonly DataBits[]
 
   /**
    * Supported stop bits
    * Common values: 1, 2
    */
-  readonly validStopBits?: readonly (1 | 2)[]
+  readonly validStopBits?: readonly StopBits[]
 
   /**
    * Supported slave address range

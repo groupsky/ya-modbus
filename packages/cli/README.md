@@ -36,10 +36,10 @@ npm install --save-dev @ya-modbus/cli
 **Read single data point:**
 
 ```bash
-# RTU (serial)
+# RTU (serial) - uses driver defaults for baud rate, parity, etc.
 ya-modbus read \
+  --driver ya-modbus-driver-xymd1 \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --data-point temperature
 
 # TCP
@@ -52,27 +52,30 @@ ya-modbus read \
 **Read multiple data points:**
 
 ```bash
+# Uses driver defaults
 ya-modbus read \
+  --driver ya-modbus-driver-xymd1 \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --data-point temperature humidity
 ```
 
 **Read all readable data points:**
 
 ```bash
+# Uses driver defaults
 ya-modbus read \
+  --driver ya-modbus-driver-xymd1 \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --all
 ```
 
 **JSON output:**
 
 ```bash
+# Uses driver defaults
 ya-modbus read \
+  --driver ya-modbus-driver-xymd1 \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --data-point temperature \
   --format json
 ```
@@ -82,9 +85,10 @@ ya-modbus read \
 **Write with confirmation:**
 
 ```bash
+# Uses driver defaults
 ya-modbus write \
+  --driver ya-modbus-driver-xymd1 \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --data-point setpoint \
   --value 25.5
 ```
@@ -92,9 +96,10 @@ ya-modbus write \
 **Write without confirmation:**
 
 ```bash
+# Uses driver defaults
 ya-modbus write \
+  --driver ya-modbus-driver-xymd1 \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --data-point setpoint \
   --value 25.5 \
   --yes
@@ -103,9 +108,10 @@ ya-modbus write \
 **Write with verification:**
 
 ```bash
+# Uses driver defaults
 ya-modbus write \
+  --driver ya-modbus-driver-xymd1 \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --data-point setpoint \
   --value 25.5 \
   --yes \
@@ -154,16 +160,156 @@ ya-modbus read \
   --data-point temperature
 ```
 
+### Driver Defaults and Validation
+
+The CLI automatically uses configuration defaults from driver packages, reducing the number of required options.
+
+**Driver-provided defaults:**
+
+Drivers export `DEFAULT_CONFIG` and `SUPPORTED_CONFIG` constants that the CLI uses to:
+
+- Apply sensible defaults for connection parameters (baud rate, parity, data bits, stop bits, slave ID)
+- Validate user input against device-specific constraints
+- Show helpful error messages with valid values and defaults
+
+**Before (manual configuration):**
+
+```bash
+ya-modbus read \
+  --driver ya-modbus-driver-xymd1 \
+  --port /dev/ttyUSB0 \
+  --baud-rate 9600 \
+  --parity even \
+  --data-bits 8 \
+  --stop-bits 1 \
+  --slave-id 1 \
+  --data-point temperature
+```
+
+**After (using driver defaults):**
+
+```bash
+# CLI uses driver defaults - just specify port and data point
+ya-modbus read \
+  --driver ya-modbus-driver-xymd1 \
+  --port /dev/ttyUSB0 \
+  --data-point temperature
+```
+
+**Overriding defaults:**
+
+User-specified values always take precedence over driver defaults:
+
+```bash
+# Use driver defaults but override baud rate and slave ID
+ya-modbus read \
+  --driver ya-modbus-driver-xymd1 \
+  --port /dev/ttyUSB0 \
+  --baud-rate 19200 \
+  --slave-id 5 \
+  --data-point temperature
+```
+
+**Validation:**
+
+The CLI validates user input against driver constraints. Invalid values trigger helpful error messages:
+
+```bash
+$ ya-modbus read --driver ya-modbus-driver-xymd1 --port /dev/ttyUSB0 --baud-rate 115200
+Error: Invalid baud rate 115200. This driver supports: 9600, 14400, 19200 (default: 9600)
+```
+
+**Backward compatibility:**
+
+- Drivers without `DEFAULT_CONFIG` work as before (all parameters required)
+- User-specified values always override defaults
+- TCP connections ignore serial-specific defaults
+
+### Working with Third-Party and Development Drivers
+
+**⚠️ Important Safety Notes:**
+
+The CLI supports loading drivers from:
+
+- **First-party drivers** (official `ya-modbus-driver-*` packages)
+- **Third-party drivers** (community/vendor packages)
+- **Development drivers** (local packages under development)
+
+When using third-party or development drivers, be aware:
+
+1. **Runtime Validation**: The CLI validates driver exports at load time and provides helpful error messages:
+
+   ```bash
+   $ ya-modbus read --driver broken-driver --port /dev/ttyUSB0
+   Error: Invalid DEFAULT_CONFIG: baudRate must be a number, got string.
+   Fix: export const DEFAULT_CONFIG = { baudRate: 9600, ... } // number, not string
+   ```
+
+2. **Development Mode Hints**: When loading local drivers with `--local` or auto-detection, invalid configurations trigger detailed fix instructions to help driver developers.
+
+3. **Configuration Safety**: Both `DEFAULT_CONFIG` and `SUPPORTED_CONFIG` are validated:
+   - Type checking (baudRate must be number, not string)
+   - Array validation (validBaudRates must be an array)
+   - Range validation (validAddressRange must be [min, max])
+
+4. **Merged Validation**: After applying defaults, the CLI validates that `DEFAULT_CONFIG` values comply with `SUPPORTED_CONFIG` constraints. This catches broken third-party driver defaults:
+   ```bash
+   Error: Invalid baud rate 38400. This driver supports: 9600, 14400, 19200 (default: 9600)
+   ```
+
+**Show Driver Defaults:**
+
+Use the `show-defaults` command to inspect driver configuration before use:
+
+```bash
+# Show defaults from installed driver
+ya-modbus show-defaults --driver ya-modbus-driver-xymd1
+
+# Show defaults from local development driver
+cd packages/my-driver
+ya-modbus show-defaults --local
+
+# JSON output for tooling
+ya-modbus show-defaults --driver ya-modbus-driver-xymd1 --format json
+```
+
+Output:
+
+```
+Driver Defaults
+===============
+
+DEFAULT_CONFIG:
+  baudRate: 9600
+  parity: "even"
+  dataBits: 8
+  stopBits: 1
+  defaultAddress: 1
+
+SUPPORTED_CONFIG:
+  validBaudRates: [9600,14400,19200]
+  validParity: ["even","none"]
+  validDataBits: [8]
+  validStopBits: [1]
+  validAddressRange: [1,247]
+```
+
+**Best Practices:**
+
+1. **Test with `show-defaults`**: Before using a third-party driver, inspect its configuration
+2. **Validate in development**: Run `ya-modbus show-defaults --local` when developing drivers
+3. **Read error messages**: The CLI provides specific fix instructions for configuration errors
+4. **Use first-party drivers**: Official drivers undergo rigorous validation
+
 ## Examples
 
 ### Read temperature from XY-MD1 sensor
 
 ```bash
-# Auto-detect driver (from driver package directory)
+# Auto-detect driver (from driver package directory) - uses driver defaults
 cd packages/ya-modbus-driver-xymd1
 npx ya-modbus read \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --data-point temperature humidity \
   --format table
 ```
@@ -185,9 +331,10 @@ Performance:
 ### Write and verify setpoint
 
 ```bash
+# Uses driver defaults for baud rate, parity, etc.
 ya-modbus write \
+  --driver ya-modbus-driver-xymd1 \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --data-point device_address \
   --value 5 \
   --yes \
