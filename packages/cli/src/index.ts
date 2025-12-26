@@ -3,6 +3,7 @@
 import { Command } from 'commander'
 
 import { readCommand, type ReadOptions } from './commands/read.js'
+import { showDefaultsCommand, type ShowDefaultsOptions } from './commands/show-defaults.js'
 import { writeCommand, type WriteOptions } from './commands/write.js'
 
 /**
@@ -59,6 +60,22 @@ addConnectionOptions(program.command('write').description('Write data point to d
       // Conditionally include port (don't set to undefined due to exactOptionalPropertyTypes)
       const { tcpPort: _tcpPort, ...commandOptions } = options
       await writeCommand(commandOptions)
+    } catch (error) {
+      console.error(`Error: ${(error as Error).message}`)
+      process.exit(1)
+    }
+  })
+
+// Show defaults command
+program
+  .command('show-defaults')
+  .description('Show driver DEFAULT_CONFIG and SUPPORTED_CONFIG')
+  .option('-d, --driver <package>', 'Driver package name')
+  .option('--local', 'Load from local package (cwd)')
+  .option('-f, --format <type>', 'Output format: table or json (default: table)', 'table')
+  .action(async (options: ShowDefaultsOptions) => {
+    try {
+      await showDefaultsCommand(options)
     } catch (error) {
       console.error(`Error: ${(error as Error).message}`)
       process.exit(1)
