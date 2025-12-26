@@ -14,6 +14,7 @@ import type {
 import { loadDriver, type LoadedDriver } from '../driver-loader/loader.js'
 import { createTransport, type TransportConfig } from '../transport/factory.js'
 
+import { omitUndefined } from './object-utils.js'
 import { validateSerialOptions } from './validation.js'
 
 /**
@@ -307,7 +308,9 @@ export function applyDriverDefaults(
   // Extract serial defaults if available
   const defaultConfig = driverMetadata?.defaultConfig
   const isSerialConfig = (config: unknown): config is DefaultSerialConfig => {
-    return config !== undefined && 'baudRate' in (config as object)
+    return (
+      config !== null && config !== undefined && typeof config === 'object' && 'baudRate' in config
+    )
   }
 
   if (!isSerialConfig(defaultConfig)) {
@@ -376,20 +379,13 @@ export async function withDriver<T>(
 
   // Validate user-specified options against driver constraints (only for RTU connections)
   if (!options.host) {
-    // Build validation options conditionally to satisfy exactOptionalPropertyTypes
-    const validationOptions: {
-      baudRate?: number
-      parity?: string
-      dataBits?: number
-      stopBits?: number
-      slaveId?: number
-    } = {}
-
-    if (options.baudRate !== undefined) validationOptions.baudRate = options.baudRate
-    if (options.parity !== undefined) validationOptions.parity = options.parity
-    if (options.dataBits !== undefined) validationOptions.dataBits = options.dataBits
-    if (options.stopBits !== undefined) validationOptions.stopBits = options.stopBits
-    if (options.slaveId !== undefined) validationOptions.slaveId = options.slaveId
+    const validationOptions = omitUndefined({
+      baudRate: options.baudRate,
+      parity: options.parity,
+      dataBits: options.dataBits,
+      stopBits: options.stopBits,
+      slaveId: options.slaveId,
+    })
 
     validateSerialOptions(validationOptions, driverMetadata)
   }
@@ -400,22 +396,13 @@ export async function withDriver<T>(
   // Validate merged options to catch invalid defaults from third-party drivers
   // This ensures driver DEFAULT_CONFIG values are valid according to SUPPORTED_CONFIG
   if (!mergedOptions.host) {
-    const mergedValidationOptions: {
-      baudRate?: number
-      parity?: string
-      dataBits?: number
-      stopBits?: number
-      slaveId?: number
-    } = {}
-
-    if (mergedOptions.baudRate !== undefined)
-      mergedValidationOptions.baudRate = mergedOptions.baudRate
-    if (mergedOptions.parity !== undefined) mergedValidationOptions.parity = mergedOptions.parity
-    if (mergedOptions.dataBits !== undefined)
-      mergedValidationOptions.dataBits = mergedOptions.dataBits
-    if (mergedOptions.stopBits !== undefined)
-      mergedValidationOptions.stopBits = mergedOptions.stopBits
-    if (mergedOptions.slaveId !== undefined) mergedValidationOptions.slaveId = mergedOptions.slaveId
+    const mergedValidationOptions = omitUndefined({
+      baudRate: mergedOptions.baudRate,
+      parity: mergedOptions.parity,
+      dataBits: mergedOptions.dataBits,
+      stopBits: mergedOptions.stopBits,
+      slaveId: mergedOptions.slaveId,
+    })
 
     validateSerialOptions(mergedValidationOptions, driverMetadata)
   }

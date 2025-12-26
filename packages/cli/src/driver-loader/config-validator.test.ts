@@ -265,6 +265,24 @@ describe('validateSupportedConfig', () => {
       )
     })
 
+    test('should reject validAddressRange with wrong length', () => {
+      const configWithOneElement = {
+        validAddressRange: [1], // should be [min, max]
+      }
+
+      expect(() => validateSupportedConfig(configWithOneElement)).toThrow(
+        'Invalid SUPPORTED_CONFIG: validAddressRange must be a 2-element array [min, max]'
+      )
+
+      const configWithThreeElements = {
+        validAddressRange: [1, 100, 247], // should be [min, max]
+      }
+
+      expect(() => validateSupportedConfig(configWithThreeElements)).toThrow(
+        'Invalid SUPPORTED_CONFIG: validAddressRange must be a 2-element array [min, max]'
+      )
+    })
+
     test('should reject non-array validPorts', () => {
       const config = {
         validPorts: 502, // number instead of array

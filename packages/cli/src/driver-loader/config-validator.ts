@@ -146,11 +146,21 @@ export function validateSupportedConfig(config: unknown): SupportedConfig {
     )
   }
 
-  if ('validAddressRange' in configObj && !Array.isArray(configObj['validAddressRange'])) {
-    throw new Error(
-      `Invalid SUPPORTED_CONFIG: validAddressRange must be an array, got ${typeof configObj['validAddressRange']}.\n` +
-        'Fix: export const SUPPORTED_CONFIG = { validAddressRange: [1, 247], ... }'
-    )
+  if ('validAddressRange' in configObj) {
+    if (!Array.isArray(configObj['validAddressRange'])) {
+      throw new Error(
+        `Invalid SUPPORTED_CONFIG: validAddressRange must be an array, got ${typeof configObj['validAddressRange']}.\n` +
+          'Fix: export const SUPPORTED_CONFIG = { validAddressRange: [1, 247], ... }'
+      )
+    }
+
+    const range = configObj['validAddressRange'] as unknown[]
+    if (range.length !== 2) {
+      throw new Error(
+        `Invalid SUPPORTED_CONFIG: validAddressRange must be a 2-element array [min, max], got ${range.length} elements.\n` +
+          'Fix: export const SUPPORTED_CONFIG = { validAddressRange: [1, 247], ... }'
+      )
+    }
   }
 
   if ('validPorts' in configObj && !Array.isArray(configObj['validPorts'])) {

@@ -46,6 +46,23 @@ describe('applyDriverDefaults', () => {
       expect(result).toBe(options)
     })
 
+    test('should return options unchanged when defaultConfig is null', () => {
+      const options: TransportOptions = {
+        port: '/dev/ttyUSB0',
+        slaveId: 1,
+      }
+
+      const driverMetadata: LoadedDriver = {
+        createDriver: jest.fn(),
+        defaultConfig: null as unknown as undefined, // Simulating broken third-party driver
+      }
+
+      const result = applyDriverDefaults(options, driverMetadata)
+
+      expect(result).toEqual(options)
+      expect(result).toBe(options)
+    })
+
     test('should return options unchanged when defaultConfig is undefined', () => {
       const options: TransportOptions = {
         port: '/dev/ttyUSB0',
