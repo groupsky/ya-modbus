@@ -450,5 +450,81 @@ describe('Validation', () => {
         validateBaudRate(115200, metadata)
       }).not.toThrow(/default:/)
     })
+
+    test('should not include default for parity when not available', () => {
+      const metadata: LoadedDriver = {
+        createDriver: jest.fn(),
+        supportedConfig: {
+          validBaudRates: [9600],
+          validParity: ['even', 'none'],
+        } as SupportedSerialConfig,
+        // No defaultConfig
+      }
+
+      expect(() => {
+        validateParity('odd', metadata)
+      }).toThrow(ValidationError)
+
+      expect(() => {
+        validateParity('odd', metadata)
+      }).not.toThrow(/default:/)
+    })
+
+    test('should not include default for dataBits when not available', () => {
+      const metadata: LoadedDriver = {
+        createDriver: jest.fn(),
+        supportedConfig: {
+          validBaudRates: [9600],
+          validDataBits: [8],
+        } as SupportedSerialConfig,
+        // No defaultConfig
+      }
+
+      expect(() => {
+        validateDataBits(7, metadata)
+      }).toThrow(ValidationError)
+
+      expect(() => {
+        validateDataBits(7, metadata)
+      }).not.toThrow(/default:/)
+    })
+
+    test('should not include default for stopBits when not available', () => {
+      const metadata: LoadedDriver = {
+        createDriver: jest.fn(),
+        supportedConfig: {
+          validBaudRates: [9600],
+          validStopBits: [1],
+        } as SupportedSerialConfig,
+        // No defaultConfig
+      }
+
+      expect(() => {
+        validateStopBits(2, metadata)
+      }).toThrow(ValidationError)
+
+      expect(() => {
+        validateStopBits(2, metadata)
+      }).not.toThrow(/default:/)
+    })
+
+    test('should not include default for slaveId when not available', () => {
+      const metadata: LoadedDriver = {
+        createDriver: jest.fn(),
+        supportedConfig: {
+          validBaudRates: [9600],
+          validAddressRange: [1, 247],
+        } as SupportedSerialConfig,
+        // No defaultConfig
+      }
+
+      expect(() => {
+        validateSlaveId(0, metadata)
+      }).toThrow(ValidationError)
+
+      expect(() => {
+        validateSlaveId(0, metadata)
+      }).not.toThrow(/default:/)
+    })
   })
 })

@@ -317,7 +317,7 @@ export function applyDriverDefaults(
     dataBits: options.dataBits ?? defaultConfig.dataBits,
     stopBits: options.stopBits ?? defaultConfig.stopBits,
     parity: options.parity ?? defaultConfig.parity,
-    slaveId: options.slaveId || defaultConfig.defaultAddress,
+    slaveId: options.slaveId ?? defaultConfig.defaultAddress,
   }
 }
 

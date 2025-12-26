@@ -87,7 +87,7 @@ export function validateParity(parity: string | undefined, driverMetadata?: Load
   }
 
   const validParity = supportedConfig.validParity
-  if (!validParity.includes(parity as 'none' | 'even' | 'odd')) {
+  if (!validParity.includes(parity)) {
     const parityList = validParity.join(', ')
     const defaultConfig = driverMetadata?.defaultConfig
     const defaultParity =
@@ -123,7 +123,7 @@ export function validateDataBits(
   }
 
   const validDataBits = supportedConfig.validDataBits
-  if (!validDataBits.includes(dataBits as 7 | 8)) {
+  if (!validDataBits.includes(dataBits)) {
     const bitsList = validDataBits.join(', ')
     const defaultConfig = driverMetadata?.defaultConfig
     const defaultBits =
@@ -159,7 +159,7 @@ export function validateStopBits(
   }
 
   const validStopBits = supportedConfig.validStopBits
-  if (!validStopBits.includes(stopBits as 1 | 2)) {
+  if (!validStopBits.includes(stopBits)) {
     const bitsList = validStopBits.join(', ')
     const defaultConfig = driverMetadata?.defaultConfig
     const defaultBits =

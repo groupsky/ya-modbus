@@ -118,10 +118,10 @@ describe('applyDriverDefaults', () => {
       expect(result).not.toBe(options) // New object created
     })
 
-    test('should use driver default for slaveId when user provides 0', () => {
+    test('should preserve slaveId 0 (broadcast address)', () => {
       const options: TransportOptions = {
         port: '/dev/ttyUSB0',
-        slaveId: 0, // Falsy value
+        slaveId: 0, // Valid Modbus broadcast address
       }
 
       const driverMetadata: LoadedDriver = {
@@ -131,8 +131,8 @@ describe('applyDriverDefaults', () => {
 
       const result = applyDriverDefaults(options, driverMetadata)
 
-      // slaveId uses || operator, so 0 will be replaced with default
-      expect(result.slaveId).toBe(1)
+      // slaveId uses ?? operator, so 0 is preserved (valid broadcast address)
+      expect(result.slaveId).toBe(0)
     })
 
     test('should preserve all user values when all are specified', () => {
@@ -201,10 +201,10 @@ describe('applyDriverDefaults', () => {
       expect(result.baudRate).toBe(9600) // Default applied
     })
 
-    test('should use slaveId from driver default when not specified', () => {
+    test('should use slaveId from driver default when undefined', () => {
       const options: TransportOptions = {
         port: '/dev/ttyUSB0',
-        slaveId: 0, // Will use default
+        slaveId: undefined, // Not specified, will use default
       }
 
       const driverMetadata: LoadedDriver = {
@@ -217,6 +217,7 @@ describe('applyDriverDefaults', () => {
 
       const result = applyDriverDefaults(options, driverMetadata)
 
+      // Should use driver default when slaveId is undefined
       expect(result.slaveId).toBe(10)
     })
   })
