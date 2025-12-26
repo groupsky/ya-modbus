@@ -344,23 +344,41 @@ export async function withDriverInstance<T>(
 }
 
 /**
- * Execute a function with a driver instance, ensuring cleanup
+ * Execute a function with a driver instance, handling the complete workflow
  *
- * @deprecated Use loadDriverMetadata + applyDriverDefaults + withDriverInstance instead
- * @param transport - Transport to use for driver communication
- * @param options - Driver loading options
- * @param fn - Function to execute with the driver
+ * This is a convenience function that:
+ * 1. Loads driver metadata (DEFAULT_CONFIG, SUPPORTED_CONFIG)
+ * 2. Applies driver defaults to user options
+ * 3. Creates transport with merged configuration
+ * 4. Creates driver instance
+ * 5. Executes callback with driver and merged options
+ * 6. Ensures cleanup (closes transport)
+ *
+ * @param options - Combined transport and driver options
+ * @param fn - Function to execute with the driver (and optionally merged config)
  * @returns Result of the function
  */
 export async function withDriver<T>(
-  transport: Transport,
-  options: DriverOptions,
-  fn: (driver: DeviceDriver) => Promise<T>
+  options: TransportOptions & { driver?: string },
+  fn: (driver: DeviceDriver, mergedOptions: TransportOptions) => Promise<T>
 ): Promise<T> {
-  // Load driver
-  const driverMetadata = await loadDriver(
-    options.driver ? { driverPackage: options.driver } : { localPackage: true }
-  )
+  // Load driver metadata first
+  const driverMetadata = await loadDriverMetadata(options.driver)
 
-  return await withDriverInstance(transport, driverMetadata, options.slaveId, fn)
+  // Apply driver defaults to options
+  const mergedOptions = applyDriverDefaults(options, driverMetadata)
+
+  // Create transport with merged options
+  return await withTransport(mergedOptions, async (transport) => {
+    // Create driver instance
+    return await withDriverInstance(
+      transport,
+      driverMetadata,
+      mergedOptions.slaveId,
+      async (driver) => {
+        // Execute callback with driver and merged options
+        return await fn(driver, mergedOptions)
+      }
+    )
+  })
 }
