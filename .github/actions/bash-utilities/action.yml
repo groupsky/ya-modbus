@@ -26,9 +26,11 @@ runs:
         # Environment variables:
         #   ATTEMPTS (default: 5) - Maximum retry attempts
         #   TIMEOUT (default: 2) - Initial timeout in seconds
+        #   MAX_TIMEOUT (default: 300) - Maximum timeout cap in seconds (5 minutes)
         function retry_backoff() {
           local max_attempts=${ATTEMPTS:-5}
           local timeout=${TIMEOUT:-2}
+          local max_timeout=${MAX_TIMEOUT:-300}
           local attempts=0
           local exitCode=1
 
@@ -43,7 +45,12 @@ runs:
             echo "⚠️  Attempt $((attempts + 1))/$max_attempts failed. Retrying in ${timeout}s..." >&2
             sleep $timeout
             attempts=$((attempts + 1))
+
+            # Double timeout with maximum cap
             timeout=$((timeout * 2))
+            if [ $timeout -gt $max_timeout ]; then
+              timeout=$max_timeout
+            fi
           done
 
           if [ $exitCode -ne 0 ]; then

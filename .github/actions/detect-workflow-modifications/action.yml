@@ -1,0 +1,74 @@
+name: Detect Workflow Modifications
+description: Detects if any workflow files were modified in a PR to prevent untrusted code execution
+
+inputs:
+  pr-url:
+    description: Pull request URL
+    required: true
+  github-token:
+    description: GitHub token for API access
+    required: true
+
+outputs:
+  has-workflow-changes:
+    description: 'true if workflow files were modified, false otherwise'
+    value: ${{ steps.check.outputs.has_workflow_changes }}
+  workflow-files:
+    description: 'List of modified workflow files (comma-separated)'
+    value: ${{ steps.check.outputs.workflow_files }}
+
+runs:
+  using: composite
+  steps:
+    - name: Validate PR URL
+      shell: bash
+      run: |
+        # Validate PR URL format
+        if ! echo "${{ inputs.pr-url }}" | grep -qE '^https://github\.com/[^/]+/[^/]+/pull/[0-9]+$'; then
+          echo "❌ Invalid PR URL format: ${{ inputs.pr-url }}"
+          exit 1
+        fi
+        echo "✅ PR URL validated"
+
+    - name: Check for workflow file modifications
+      id: check
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR_URL: ${{ inputs.pr-url }}
+      run: |
+        set -euo pipefail
+
+        # Enable debug mode if ACTIONS_STEP_DEBUG is set
+        if [ "${ACTIONS_STEP_DEBUG:-false}" = "true" ]; then
+          set -x
+          echo "🐛 Debug mode enabled"
+        fi
+
+        # Get list of modified files in the PR
+        modified_files=$(gh pr view "$PR_URL" --json files --jq '.files[].path')
+
+        # Check if any workflow files were modified
+        workflow_files=""
+        has_workflow_changes=false
+
+        while IFS= read -r file; do
+          # Check if file is in .github/workflows/ or .github/actions/
+          if echo "$file" | grep -qE '^\.github/(workflows|actions)/'; then
+            if [ -z "$workflow_files" ]; then
+              workflow_files="$file"
+            else
+              workflow_files="$workflow_files,$file"
+            fi
+            has_workflow_changes=true
+          fi
+        done <<< "$modified_files"
+
+        echo "has_workflow_changes=$has_workflow_changes" >> $GITHUB_OUTPUT
+        echo "workflow_files=$workflow_files" >> $GITHUB_OUTPUT
+
+        if [ "$has_workflow_changes" = "true" ]; then
+          echo "⚠️  Workflow files modified: $workflow_files"
+        else
+          echo "✅ No workflow files modified"
+        fi

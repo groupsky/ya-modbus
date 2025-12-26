@@ -53,6 +53,35 @@ runs:
         FIX_AUTHOR: ${{ inputs.fix-author }}
         TRUST_REASON: ${{ inputs.trust-reason }}
       run: |
+        set -euo pipefail
+
+        # Validate PR URL format
+        if ! echo "$PR_URL" | grep -qE '^https://github\.com/[^/]+/[^/]+/pull/[0-9]+$'; then
+          echo "❌ Invalid PR URL format: $PR_URL"
+          echo "approved=false" >> $GITHUB_OUTPUT
+          echo "decision=NONE" >> $GITHUB_OUTPUT
+          echo "needs_verification=false" >> $GITHUB_OUTPUT
+          echo "latest_comment=" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+        # Validate boolean inputs
+        if ! echo "$IS_FIX_COMMIT" | grep -qE '^(true|false)$'; then
+          echo "❌ Invalid is-fix-commit value: $IS_FIX_COMMIT (expected: true or false)"
+          exit 1
+        fi
+
+        if ! echo "$IS_TRUSTED" | grep -qE '^(true|false)$'; then
+          echo "❌ Invalid is-trusted-contributor value: $IS_TRUSTED (expected: true or false)"
+          exit 1
+        fi
+
+        # Validate fix-author if provided (allow empty for non-fix commits)
+        if [ -n "$FIX_AUTHOR" ] && ! echo "$FIX_AUTHOR" | grep -qE '^[a-zA-Z0-9][a-zA-Z0-9-]{0,38}(\[bot\])?$'; then
+          echo "❌ Invalid fix-author format: $FIX_AUTHOR"
+          exit 1
+        fi
+
         # Get the latest comment from claude[bot]
         latest_comment=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | last | .body')
 

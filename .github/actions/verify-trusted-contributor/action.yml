@@ -66,6 +66,30 @@ runs:
         DENYLIST: ${{ inputs.denylist }}
         CHECK_TEAMS: ${{ inputs.check-teams }}
       run: |
+        set -euo pipefail
+
+        # Validate username (alphanumeric, hyphens, underscores, up to 39 chars, plus [bot] suffix)
+        if ! echo "$USERNAME" | grep -qE '^[a-zA-Z0-9][a-zA-Z0-9-]{0,38}(\[bot\])?$'; then
+          echo "❌ Invalid username format: $USERNAME"
+          echo "is_trusted=false" >> $GITHUB_OUTPUT
+          echo "reason=Invalid username format" >> $GITHUB_OUTPUT
+          echo "commit_count=0" >> $GITHUB_OUTPUT
+          echo "first_commit_date=" >> $GITHUB_OUTPUT
+          echo "latest_commit_date=" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+        # Validate repository format (owner/repo)
+        if ! echo "$REPOSITORY" | grep -qE '^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$'; then
+          echo "❌ Invalid repository format: $REPOSITORY (expected: owner/repo)"
+          echo "is_trusted=false" >> $GITHUB_OUTPUT
+          echo "reason=Invalid repository format" >> $GITHUB_OUTPUT
+          echo "commit_count=0" >> $GITHUB_OUTPUT
+          echo "first_commit_date=" >> $GITHUB_OUTPUT
+          echo "latest_commit_date=" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
         echo "🔍 Verifying contributor: $USERNAME"
 
         # Initialize outputs

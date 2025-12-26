@@ -30,10 +30,21 @@ runs:
         GH_TOKEN: ${{ inputs.github-token }}
         PR_URL: ${{ inputs.pr-url }}
       run: |
+        set -euo pipefail
+
         # Enable debug mode if ACTIONS_STEP_DEBUG is set
-        if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+        if [ "${ACTIONS_STEP_DEBUG:-false}" = "true" ]; then
           set -x
           echo "🐛 Debug mode enabled"
+        fi
+
+        # Validate PR URL format
+        if ! echo "$PR_URL" | grep -qE '^https://github\.com/[^/]+/[^/]+/pull/[0-9]+$'; then
+          echo "❌ Invalid PR URL format: $PR_URL"
+          echo "is_dependabot_pr=false" >> $GITHUB_OUTPUT
+          echo "commit_count=0" >> $GITHUB_OUTPUT
+          echo "first_commit_author=" >> $GITHUB_OUTPUT
+          exit 1
         fi
 
         # Get commits and validate array is not empty

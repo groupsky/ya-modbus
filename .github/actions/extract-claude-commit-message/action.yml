@@ -40,6 +40,17 @@ runs:
         FALLBACK_SUBJECT: ${{ inputs.fallback-subject }}
         FALLBACK_BODY: ${{ inputs.fallback-body }}
       run: |
+        set -euo pipefail
+
+        # Validate PR URL format
+        if ! echo "$PR_URL" | grep -qE '^https://github\.com/[^/]+/[^/]+/pull/[0-9]+$'; then
+          echo "❌ Invalid PR URL format: $PR_URL"
+          echo "commit_subject=" >> $GITHUB_OUTPUT
+          echo "commit_body=" >> $GITHUB_OUTPUT
+          echo "found=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
         # Get all comments from claude[bot], newest first
         comments=$(gh pr view "$PR_URL" --json comments --jq '.comments | map(select(.author.login == "claude[bot]")) | reverse | .[].body')
 
@@ -57,21 +68,51 @@ runs:
 
         if [ -n "$commit_message" ]; then
           # Extract subject (first line) and body (rest)
-          commit_subject=$(echo "$commit_message" | head -n 1)
+          commit_subject=$(echo "$commit_message" | head -n 1 | xargs)
           commit_body=$(echo "$commit_message" | tail -n +2 | sed '/^$/d')
 
-          echo "✅ Found Claude-suggested commit message (using latest)"
-          echo "Subject: $commit_subject"
-          echo "Body: $commit_body"
+          # Validate that commit subject is not empty after extraction
+          if [ -z "$commit_subject" ]; then
+            echo "⚠️  Commit message marker found but subject is empty"
 
-          # Output for next step (escape newlines for GitHub Actions)
-          {
-            echo "commit_subject=$commit_subject"
-            echo "commit_body<<EOF"
-            echo "$commit_body"
-            echo "EOF"
-            echo "found=true"
-          } >> $GITHUB_OUTPUT
+            if [ -n "$FALLBACK_SUBJECT" ]; then
+              echo "Using provided fallback"
+              {
+                echo "commit_subject=$FALLBACK_SUBJECT"
+                echo "commit_body<<EOF"
+                echo "$FALLBACK_BODY"
+                echo "EOF"
+                echo "found=false"
+              } >> $GITHUB_OUTPUT
+            else
+              echo "❌ No fallback provided - commit subject is required"
+              {
+                echo "commit_subject="
+                echo "commit_body="
+                echo "found=false"
+              } >> $GITHUB_OUTPUT
+            fi
+          else
+            # Validate commit subject format (basic sanity check)
+            if [ ${#commit_subject} -gt 200 ]; then
+              echo "⚠️  Commit subject is too long (${#commit_subject} chars, max 200)"
+              echo "Subject will be truncated"
+              commit_subject="${commit_subject:0:200}"
+            fi
+
+            echo "✅ Found Claude-suggested commit message (using latest)"
+            echo "Subject: $commit_subject"
+            echo "Body: $commit_body"
+
+            # Output for next step (escape newlines for GitHub Actions)
+            {
+              echo "commit_subject=$commit_subject"
+              echo "commit_body<<EOF"
+              echo "$commit_body"
+              echo "EOF"
+              echo "found=true"
+            } >> $GITHUB_OUTPUT
+          fi
         else
           echo "⚠️  No commit message found in Claude's comments"
 
@@ -85,7 +126,7 @@ runs:
               echo "found=false"
             } >> $GITHUB_OUTPUT
           else
-            echo "No fallback provided"
+            echo "⚠️  No fallback provided"
             {
               echo "commit_subject="
               echo "commit_body="

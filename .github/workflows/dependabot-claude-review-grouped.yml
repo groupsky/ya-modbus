@@ -108,6 +108,45 @@ jobs:
             echo "✅ Claude already approved and no new user commits - skipping redundant review"
           fi
 
+      - name: Detect workflow file modifications
+        id: detect-workflow-mods
+        if: steps.verify-dependabot.outputs.is_dependabot_pr == 'true'
+        uses: ./.github/actions/detect-workflow-modifications
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Block if workflow files modified
+        if: |
+          steps.verify-dependabot.outputs.is_dependabot_pr == 'true' &&
+          steps.detect-workflow-mods.outputs.has-workflow-changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          WORKFLOW_FILES: ${{ steps.detect-workflow-mods.outputs.workflow-files }}
+        run: |
+          gh pr comment "$PR_URL" --body "🔒 **SECURITY BLOCK** - Workflow file modifications detected
+
+          This Dependabot PR modifies workflow files, which poses a security risk:
+          \`\`\`
+          $WORKFLOW_FILES
+          \`\`\`
+
+          **Why this is blocked:**
+          - Workflow files can execute arbitrary code
+          - Dependabot should only update dependencies, not workflows
+          - This could be a supply chain attack attempt
+
+          **To proceed:**
+          1. Verify these changes are legitimate
+          2. Manually review and merge if safe
+          3. Do not enable auto-merge
+
+          This PR will not be automatically reviewed or merged."
+
+          echo "❌ Workflow file modifications detected - blocking review"
+          exit 1
+
       - name: Determine if grouped
         id: analyze
         if: steps.verify-dependabot.outputs.is_dependabot_pr == 'true'
@@ -132,6 +171,7 @@ jobs:
             echo "ℹ️  Single dependency PR (will be handled by main workflow)"
           fi
           echo "ℹ️  Skip re-review: ${{ steps.check-rereviewed.outputs.skip_review }}"
+          echo "ℹ️  Workflow modifications: ${{ steps.detect-workflow-mods.outputs.has-workflow-changes }}"
 
   # Claude review for GROUPED Dependabot PRs
   claude-review-grouped:

@@ -113,28 +113,58 @@ jobs:
           steps.check-pr.outputs.is_ready == 'true' &&
           steps.verify-reviewer.outputs.is_trusted == 'true'
         id: check-ci
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
+          set -euo pipefail
+
           # Enable debug mode if ACTIONS_STEP_DEBUG is set
-          if [ "$ACTIONS_STEP_DEBUG" = "true" ]; then
+          if [ "${ACTIONS_STEP_DEBUG:-false}" = "true" ]; then
             set -x
             echo "🐛 Debug mode enabled"
           fi
 
-          # Get CI status for the PR
-          status=$(gh pr view "$PR_URL" --json statusCheckRollup --jq '.statusCheckRollup[].state' | sort -u | tr '\n' ',')
+          # Get all CI check states
+          checks=$(gh pr view "$PR_URL" --json statusCheckRollup --jq '.statusCheckRollup[]')
 
-          echo "ℹ️  CI status: $status"
-
-          # Check if all checks are passing or pending (no failures)
-          if echo "$status" | grep -qE "(FAILURE|ERROR)"; then
-            echo "ci_ready=false" >> $GITHUB_OUTPUT
-            echo "❌ CI checks have failures"
-          else
+          if [ -z "$checks" ] || [ "$checks" = "null" ]; then
+            echo "⚠️  No CI checks found - proceeding"
             echo "ci_ready=true" >> $GITHUB_OUTPUT
-            echo "✅ CI checks are passing or pending"
+            exit 0
+          fi
+
+          # Count checks by state
+          total=$(echo "$checks" | jq -s 'length')
+          success=$(echo "$checks" | jq -s '[.[] | select(.state == "SUCCESS")] | length')
+          pending=$(echo "$checks" | jq -s '[.[] | select(.state == "PENDING")] | length')
+          failure=$(echo "$checks" | jq -s '[.[] | select(.state == "FAILURE")] | length')
+          error=$(echo "$checks" | jq -s '[.[] | select(.state == "ERROR")] | length')
+          cancelled=$(echo "$checks" | jq -s '[.[] | select(.state == "CANCELLED")] | length')
+
+          echo "ℹ️  CI checks summary:"
+          echo "  • Total: $total"
+          echo "  • Success: $success"
+          echo "  • Pending: $pending"
+          echo "  • Failure: $failure"
+          echo "  • Error: $error"
+          echo "  • Cancelled: $cancelled"
+
+          # Check for any failing/error/cancelled states
+          if [ "$failure" -gt 0 ] || [ "$error" -gt 0 ] || [ "$cancelled" -gt 0 ]; then
+            echo "ci_ready=false" >> $GITHUB_OUTPUT
+            echo "❌ CI checks have failures ($failure), errors ($error), or cancelled ($cancelled)"
+            exit 0
+          fi
+
+          # All checks must be either SUCCESS or PENDING
+          if [ "$((success + pending))" -eq "$total" ]; then
+            echo "ci_ready=true" >> $GITHUB_OUTPUT
+            echo "✅ All CI checks are passing ($success) or pending ($pending)"
+          else
+            echo "ci_ready=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Unexpected check states detected"
           fi
 
       - name: Extract commit message from Claude's comment
