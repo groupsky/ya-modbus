@@ -1,8 +1,13 @@
 import readline from 'readline/promises'
 
-import type { DataPoint, DeviceDriver, Transport } from '@ya-modbus/driver-types'
+import type {
+  DataPoint,
+  DefaultSerialConfig,
+  DeviceDriver,
+  Transport,
+} from '@ya-modbus/driver-types'
 
-import { loadDriver } from '../driver-loader/loader.js'
+import { loadDriver, type LoadedDriver } from '../driver-loader/loader.js'
 import { createTransport, type TransportConfig } from '../transport/factory.js'
 
 /**
@@ -268,8 +273,80 @@ export async function withTransport<T>(
 }
 
 /**
+ * Load driver metadata without creating an instance
+ *
+ * @param driverName - Optional driver package name
+ * @returns Loaded driver metadata
+ */
+export async function loadDriverMetadata(driverName?: string): Promise<LoadedDriver> {
+  return await loadDriver(driverName ? { driverPackage: driverName } : { localPackage: true })
+}
+
+/**
+ * Apply driver defaults to transport options
+ *
+ * @param options - Transport options (may be incomplete)
+ * @param driverMetadata - Loaded driver metadata with defaults
+ * @returns Transport options with defaults applied
+ */
+export function applyDriverDefaults(
+  options: TransportOptions,
+  driverMetadata?: LoadedDriver
+): TransportOptions {
+  // For TCP connections, no serial defaults apply
+  if (options.host) {
+    return options
+  }
+
+  // Extract serial defaults if available
+  const defaultConfig = driverMetadata?.defaultConfig
+  const isSerialConfig = (config: unknown): config is DefaultSerialConfig => {
+    return config !== undefined && 'baudRate' in (config as object)
+  }
+
+  if (!isSerialConfig(defaultConfig)) {
+    return options
+  }
+
+  // Apply defaults for unspecified options
+  return {
+    ...options,
+    baudRate: options.baudRate ?? defaultConfig.baudRate,
+    dataBits: options.dataBits ?? defaultConfig.dataBits,
+    stopBits: options.stopBits ?? defaultConfig.stopBits,
+    parity: options.parity ?? defaultConfig.parity,
+    slaveId: options.slaveId || defaultConfig.defaultAddress,
+  }
+}
+
+/**
  * Execute a function with a driver instance, ensuring cleanup
  *
+ * @param transport - Transport to use for driver communication
+ * @param driverMetadata - Loaded driver metadata
+ * @param slaveId - Modbus slave ID
+ * @param fn - Function to execute with the driver
+ * @returns Result of the function
+ */
+export async function withDriverInstance<T>(
+  transport: Transport,
+  driverMetadata: LoadedDriver,
+  slaveId: number,
+  fn: (driver: DeviceDriver) => Promise<T>
+): Promise<T> {
+  // Create driver instance
+  const driver = await driverMetadata.createDriver({
+    transport,
+    slaveId,
+  })
+
+  return await fn(driver)
+}
+
+/**
+ * Execute a function with a driver instance, ensuring cleanup
+ *
+ * @deprecated Use loadDriverMetadata + applyDriverDefaults + withDriverInstance instead
  * @param transport - Transport to use for driver communication
  * @param options - Driver loading options
  * @param fn - Function to execute with the driver
@@ -281,15 +358,9 @@ export async function withDriver<T>(
   fn: (driver: DeviceDriver) => Promise<T>
 ): Promise<T> {
   // Load driver
-  const createDriver = await loadDriver(
+  const driverMetadata = await loadDriver(
     options.driver ? { driverPackage: options.driver } : { localPackage: true }
   )
 
-  // Create driver instance
-  const driver = await createDriver({
-    transport,
-    slaveId: options.slaveId,
-  })
-
-  return await fn(driver)
+  return await withDriverInstance(transport, driverMetadata, options.slaveId, fn)
 }
