@@ -187,18 +187,55 @@ Device driver packages should follow naming: `ya-modbus-driver-<device>`
 **Recommended exports**:
 
 1. **DEFAULT_CONFIG constant**: Factory-default device configuration
+
    ```typescript
+   import type { DefaultSerialConfig } from '@ya-modbus/driver-types'
+
    export const DEFAULT_CONFIG = {
      baudRate: 9600,
-     parity: 'even' as const,
+     parity: 'even',
      dataBits: 8,
      stopBits: 1,
      defaultAddress: 1,
-   } as const
+   } as const satisfies DefaultSerialConfig
    ```
-2. **Valid configuration constants**: Export validation constants to enable DRY testing
+
+   For Modbus TCP devices, use `DefaultTCPConfig`:
+
    ```typescript
-   export const VALID_BAUD_RATES = [9600, 14400, 19200] as const
+   import type { DefaultTCPConfig } from '@ya-modbus/driver-types'
+
+   export const DEFAULT_CONFIG = {
+     defaultAddress: 1,
+     defaultPort: 502,
+   } as const satisfies DefaultTCPConfig
+   ```
+
+2. **Supported configuration values**: Export device-specific supported configuration values
+
+   ```typescript
+   import type { SupportedSerialConfig } from '@ya-modbus/driver-types'
+
+   export const SUPPORTED_CONFIG = {
+     validBaudRates: [9600, 14400, 19200],
+     validParity: ['even', 'none'],
+     validDataBits: [8],
+     validStopBits: [1],
+     validAddressRange: [1, 247],
+   } as const satisfies SupportedSerialConfig
+   ```
+
+   Only include the properties that are device-specific. Omit properties if your device supports standard values (e.g., omit `validParity` if supporting all standard parity settings).
+
+   For Modbus TCP devices, use `SupportedTCPConfig`:
+
+   ```typescript
+   import type { SupportedTCPConfig } from '@ya-modbus/driver-types'
+
+   export const SUPPORTED_CONFIG = {
+     validPorts: [502],
+     validAddressRange: [1, 247],
+   } as const satisfies SupportedTCPConfig
    ```
 
 **Benefits**:
@@ -214,6 +251,30 @@ Device driver packages should follow naming: `ya-modbus-driver-<device>`
 - File header comment should reference DEFAULT_CONFIG instead of duplicating values
 - README should include example using DEFAULT_CONFIG
 - Add JSDoc with usage example on DEFAULT_CONFIG constant
+
+**Testing recommendations** (if implementing both DEFAULT_CONFIG and SUPPORTED_CONFIG):
+
+Add cross-validation tests to ensure DEFAULT_CONFIG values are within SUPPORTED_CONFIG constraints:
+
+```typescript
+describe('Configuration consistency', () => {
+  it('should include DEFAULT_CONFIG baud rate in valid baud rates', () => {
+    expect(SUPPORTED_CONFIG.validBaudRates).toContain(DEFAULT_CONFIG.baudRate)
+  })
+
+  it('should include DEFAULT_CONFIG parity in valid parity options', () => {
+    expect(SUPPORTED_CONFIG.validParity).toContain(DEFAULT_CONFIG.parity)
+  })
+
+  it('should include DEFAULT_CONFIG address in valid address range', () => {
+    const [min, max] = SUPPORTED_CONFIG.validAddressRange
+    expect(DEFAULT_CONFIG.defaultAddress).toBeGreaterThanOrEqual(min)
+    expect(DEFAULT_CONFIG.defaultAddress).toBeLessThanOrEqual(max)
+  })
+})
+```
+
+This pattern ensures the factory defaults are always valid according to the device's supported values.
 
 See `packages/ya-modbus-driver-xymd1` for reference implementation.
 
