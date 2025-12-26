@@ -2,7 +2,6 @@
 
 import { Command } from 'commander'
 
-import { completionCommand, type CompletionOptions } from './commands/completion.js'
 import { readCommand, type ReadOptions } from './commands/read.js'
 import { showDefaultsCommand, type ShowDefaultsOptions } from './commands/show-defaults.js'
 import { writeCommand, type WriteOptions } from './commands/write.js'
@@ -99,20 +98,6 @@ program
   .action(async (options: ShowDefaultsOptions) => {
     try {
       await showDefaultsCommand(options)
-    } catch (error) {
-      console.error(`Error: ${(error as Error).message}`)
-      process.exit(1)
-    }
-  })
-
-// Completion command
-program
-  .command('completion')
-  .description('Generate shell completion script')
-  .option('--shell <type>', 'Shell type: bash, zsh, or fish (default: bash)', 'bash')
-  .action((options: CompletionOptions) => {
-    try {
-      completionCommand(options)
     } catch (error) {
       console.error(`Error: ${(error as Error).message}`)
       process.exit(1)
