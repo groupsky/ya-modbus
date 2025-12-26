@@ -259,10 +259,10 @@ export async function withTransport<T>(
     : {
         // RTU configuration
         port: (options.port as string | undefined) ?? DEFAULT_RTU_CONFIG.port,
-        baudRate: options.baudRate ?? DEFAULT_RTU_CONFIG.baudRate,
-        dataBits: options.dataBits ?? DEFAULT_RTU_CONFIG.dataBits,
-        parity: options.parity ?? DEFAULT_RTU_CONFIG.parity,
-        stopBits: options.stopBits ?? DEFAULT_RTU_CONFIG.stopBits,
+        baudRate: (options.baudRate ?? DEFAULT_RTU_CONFIG.baudRate),
+        dataBits: (options.dataBits ?? DEFAULT_RTU_CONFIG.dataBits) as DataBits,
+        parity: (options.parity ?? DEFAULT_RTU_CONFIG.parity) as Parity,
+        stopBits: (options.stopBits ?? DEFAULT_RTU_CONFIG.stopBits) as StopBits,
         slaveId: options.slaveId,
         timeout: options.timeout,
       }
@@ -356,15 +356,16 @@ export async function withDriverInstance<T>(
  * 1. Loads driver metadata (DEFAULT_CONFIG, SUPPORTED_CONFIG)
  * 2. Validates user options against driver constraints (SUPPORTED_CONFIG)
  * 3. Applies driver defaults to user options
- * 4. Creates transport with merged configuration
- * 5. Creates driver instance
- * 6. Executes callback with driver and merged options
- * 7. Ensures cleanup (closes transport)
+ * 4. Validates merged options (catches invalid third-party driver defaults)
+ * 5. Creates transport with merged configuration
+ * 6. Creates driver instance
+ * 7. Executes callback with driver and merged options
+ * 8. Ensures cleanup (closes transport)
  *
  * @param options - Combined transport and driver options
  * @param fn - Function to execute with the driver (and optionally merged config)
  * @returns Result of the function
- * @throws ValidationError if user options violate driver constraints
+ * @throws ValidationError if user options or driver defaults violate constraints
  */
 export async function withDriver<T>(
   options: TransportOptions & { driver?: string },
@@ -395,6 +396,29 @@ export async function withDriver<T>(
 
   // Apply driver defaults to options
   const mergedOptions = applyDriverDefaults(options, driverMetadata)
+
+  // Validate merged options to catch invalid defaults from third-party drivers
+  // This ensures driver DEFAULT_CONFIG values are valid according to SUPPORTED_CONFIG
+  if (!mergedOptions.host) {
+    const mergedValidationOptions: {
+      baudRate?: number
+      parity?: string
+      dataBits?: number
+      stopBits?: number
+      slaveId?: number
+    } = {}
+
+    if (mergedOptions.baudRate !== undefined)
+      mergedValidationOptions.baudRate = mergedOptions.baudRate
+    if (mergedOptions.parity !== undefined) mergedValidationOptions.parity = mergedOptions.parity
+    if (mergedOptions.dataBits !== undefined)
+      mergedValidationOptions.dataBits = mergedOptions.dataBits
+    if (mergedOptions.stopBits !== undefined)
+      mergedValidationOptions.stopBits = mergedOptions.stopBits
+    if (mergedOptions.slaveId !== undefined) mergedValidationOptions.slaveId = mergedOptions.slaveId
+
+    validateSerialOptions(mergedValidationOptions, driverMetadata)
+  }
 
   // Create transport with merged options
   return await withTransport(mergedOptions, async (transport) => {
