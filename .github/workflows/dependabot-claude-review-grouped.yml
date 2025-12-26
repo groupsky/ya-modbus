@@ -33,6 +33,7 @@ jobs:
       is-grouped: ${{ steps.check.outputs.is_grouped }}
       dependency-count: ${{ steps.check.outputs.dependency_count }}
       is-dependabot-pr: ${{ steps.verify-dependabot.outputs.is_dependabot_pr }}
+      skip-review: ${{ steps.check-rereviewed.outputs.skip_review }}
 
     steps:
       # Checkout repository for reusable actions
@@ -75,6 +76,38 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Check if re-review needed
+        id: check-rereviewed
+        if: steps.verify-dependabot.outputs.is-dependabot-pr == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          # Check if Claude already approved and no new non-Dependabot commits exist
+          # This prevents redundant re-reviews when Dependabot rebases or updates
+
+          # Look for Claude's approval comment
+          approval_found=$(gh pr view "$PR_URL" --json comments \
+            --jq '.comments | map(select(.author.login == "claude[bot]" and (.body | contains("✅ **APPROVED**")))) | length')
+
+          if [ "$approval_found" -eq 0 ]; then
+            echo "skip_review=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No previous Claude approval found - full review needed"
+            exit 0
+          fi
+
+          # Check for non-Dependabot commits since last approval
+          non_dependabot_commits=$(gh pr view "$PR_URL" --json commits \
+            --jq '[.commits[] | select(.authors[0].login != "dependabot[bot]" and .authors[0].login != "app/dependabot")] | length')
+
+          if [ "$non_dependabot_commits" -gt 0 ]; then
+            echo "skip_review=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Found $non_dependabot_commits non-Dependabot commits - re-review needed"
+          else
+            echo "skip_review=true" >> $GITHUB_OUTPUT
+            echo "✅ Claude already approved and no new user commits - skipping redundant review"
+          fi
+
       - name: Determine if grouped
         id: analyze
         if: steps.verify-dependabot.outputs.is_dependabot_pr == 'true'
@@ -98,6 +131,7 @@ jobs:
             echo "is_grouped=false" >> $GITHUB_OUTPUT
             echo "ℹ️  Single dependency PR (will be handled by main workflow)"
           fi
+          echo "ℹ️  Skip re-review: ${{ steps.check-rereviewed.outputs.skip_review }}"
 
   # Claude review for GROUPED Dependabot PRs
   claude-review-grouped:
@@ -107,7 +141,8 @@ jobs:
     if: |
       github.actor == 'dependabot[bot]' &&
       needs.detect-group.outputs.is-dependabot-pr == 'true' &&
-      needs.detect-group.outputs.is-grouped == 'true'
+      needs.detect-group.outputs.is-grouped == 'true' &&
+      needs.detect-group.outputs.skip-review != 'true'
 
     steps:
       - name: Checkout repository

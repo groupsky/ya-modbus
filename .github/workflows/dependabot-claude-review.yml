@@ -38,6 +38,7 @@ jobs:
       new-version: ${{ steps.metadata.outputs.new-version }}
       is-single: ${{ steps.check-single.outputs.is_single }}
       is-dependabot-pr: ${{ steps.verify-dependabot.outputs.is_dependabot_pr }}
+      skip-review: ${{ steps.check-rereviewed.outputs.skip_review }}
 
     steps:
       # Checkout repository for reusable actions
@@ -94,6 +95,38 @@ jobs:
             echo "ℹ️  Grouped PR detected ($count dependencies) - will be handled by dependabot-claude-review-grouped.yml"
           fi
 
+      - name: Check if re-review needed
+        id: check-rereviewed
+        if: steps.verify-dependabot.outputs.is-dependabot-pr == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          # Check if Claude already approved and no new non-Dependabot commits exist
+          # This prevents redundant re-reviews when Dependabot rebases or updates
+
+          # Look for Claude's approval comment
+          approval_found=$(gh pr view "$PR_URL" --json comments \
+            --jq '.comments | map(select(.author.login == "claude[bot]" and (.body | contains("✅ **APPROVED**")))) | length')
+
+          if [ "$approval_found" -eq 0 ]; then
+            echo "skip_review=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No previous Claude approval found - full review needed"
+            exit 0
+          fi
+
+          # Check for non-Dependabot commits since last approval
+          non_dependabot_commits=$(gh pr view "$PR_URL" --json commits \
+            --jq '[.commits[] | select(.authors[0].login != "dependabot[bot]" and .authors[0].login != "app/dependabot")] | length')
+
+          if [ "$non_dependabot_commits" -gt 0 ]; then
+            echo "skip_review=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Found $non_dependabot_commits non-Dependabot commits - re-review needed"
+          else
+            echo "skip_review=true" >> $GITHUB_OUTPUT
+            echo "✅ Claude already approved and no new user commits - skipping redundant review"
+          fi
+
       - name: Display metadata
         run: |
           # Enable debug mode if ACTIONS_STEP_DEBUG is set
@@ -109,6 +142,7 @@ jobs:
           echo "ℹ️  Previous version: ${{ steps.metadata.outputs.previous-version }}"
           echo "ℹ️  New version: ${{ steps.metadata.outputs.new-version }}"
           echo "ℹ️  Is single dependency: ${{ steps.check-single.outputs.is_single }}"
+          echo "ℹ️  Skip re-review: ${{ steps.check-rereviewed.outputs.skip_review }}"
 
   # Claude review for patch updates (quick check)
   claude-review-patch:
@@ -119,6 +153,7 @@ jobs:
       github.actor == 'dependabot[bot]' &&
       needs.metadata.outputs.is-dependabot-pr == 'true' &&
       needs.metadata.outputs.is-single == 'true' &&
+      needs.metadata.outputs.skip-review != 'true' &&
       needs.metadata.outputs.update-type == 'version-update:semver-patch'
 
     steps:
@@ -184,6 +219,7 @@ jobs:
       github.actor == 'dependabot[bot]' &&
       needs.metadata.outputs.is-dependabot-pr == 'true' &&
       needs.metadata.outputs.is-single == 'true' &&
+      needs.metadata.outputs.skip-review != 'true' &&
       needs.metadata.outputs.update-type == 'version-update:semver-minor'
 
     steps:
@@ -251,6 +287,7 @@ jobs:
       github.actor == 'dependabot[bot]' &&
       needs.metadata.outputs.is-dependabot-pr == 'true' &&
       needs.metadata.outputs.is-single == 'true' &&
+      needs.metadata.outputs.skip-review != 'true' &&
       needs.metadata.outputs.update-type == 'version-update:semver-major'
 
     steps:
