@@ -2,6 +2,7 @@
 
 import { Command } from 'commander'
 
+import { completionCommand, type CompletionOptions } from './commands/completion.js'
 import { readCommand, type ReadOptions } from './commands/read.js'
 import { showDefaultsCommand, type ShowDefaultsOptions } from './commands/show-defaults.js'
 import { writeCommand, type WriteOptions } from './commands/write.js'
@@ -14,15 +15,37 @@ import { writeCommand, type WriteOptions } from './commands/write.js'
  */
 function addConnectionOptions(command: Command): Command {
   return command
-    .option('-d, --driver <package>', 'Driver package name (e.g., ya-modbus-driver-xymd1)')
+    .option(
+      '-d, --driver <package>',
+      'Driver package name (e.g., ya-modbus-driver-xymd1). Use "show-defaults" to see driver config'
+    )
     .option('-p, --port <path>', 'Serial port for RTU (e.g., /dev/ttyUSB0, COM3)')
     .option('-h, --host <host>', 'TCP host for Modbus TCP (e.g., 192.168.1.100)')
     .option('--tcp-port <port>', 'TCP port (default: 502)', parseInt)
-    .requiredOption('-s, --slave-id <id>', 'Modbus slave ID (1-247)', parseInt)
-    .option('-b, --baud-rate <rate>', 'Baud rate (RTU only)', parseInt)
-    .option('--parity <type>', 'Parity: none, even, odd (RTU only, default: even)')
-    .option('--data-bits <bits>', 'Data bits: 7 or 8 (RTU only, default: 8)', parseInt)
-    .option('--stop-bits <bits>', 'Stop bits: 1 or 2 (RTU only, default: 1)', parseInt)
+    .requiredOption(
+      '-s, --slave-id <id>',
+      'Modbus slave ID (1-247). May use driver default if available',
+      parseInt
+    )
+    .option(
+      '-b, --baud-rate <rate>',
+      'Baud rate (RTU only). Uses driver default if not specified',
+      parseInt
+    )
+    .option(
+      '--parity <type>',
+      'Parity: none, even, odd (RTU only). Uses driver default if not specified'
+    )
+    .option(
+      '--data-bits <bits>',
+      'Data bits: 7 or 8 (RTU only). Uses driver default if not specified',
+      parseInt
+    )
+    .option(
+      '--stop-bits <bits>',
+      'Stop bits: 1 or 2 (RTU only). Uses driver default if not specified',
+      parseInt
+    )
     .option('--timeout <ms>', 'Response timeout in milliseconds (default: 1000)', parseInt)
 }
 
@@ -76,6 +99,20 @@ program
   .action(async (options: ShowDefaultsOptions) => {
     try {
       await showDefaultsCommand(options)
+    } catch (error) {
+      console.error(`Error: ${(error as Error).message}`)
+      process.exit(1)
+    }
+  })
+
+// Completion command
+program
+  .command('completion')
+  .description('Generate shell completion script')
+  .option('--shell <type>', 'Shell type: bash, zsh, or fish (default: bash)', 'bash')
+  .action((options: CompletionOptions) => {
+    try {
+      completionCommand(options)
     } catch (error) {
       console.error(`Error: ${(error as Error).message}`)
       process.exit(1)
