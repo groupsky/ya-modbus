@@ -10,6 +10,8 @@ import type {
 import { loadDriver, type LoadedDriver } from '../driver-loader/loader.js'
 import { createTransport, type TransportConfig } from '../transport/factory.js'
 
+import { validateSerialOptions } from './validation.js'
+
 /**
  * Default RTU transport configuration values
  */
@@ -348,15 +350,17 @@ export async function withDriverInstance<T>(
  *
  * This is a convenience function that:
  * 1. Loads driver metadata (DEFAULT_CONFIG, SUPPORTED_CONFIG)
- * 2. Applies driver defaults to user options
- * 3. Creates transport with merged configuration
- * 4. Creates driver instance
- * 5. Executes callback with driver and merged options
- * 6. Ensures cleanup (closes transport)
+ * 2. Validates user options against driver constraints (SUPPORTED_CONFIG)
+ * 3. Applies driver defaults to user options
+ * 4. Creates transport with merged configuration
+ * 5. Creates driver instance
+ * 6. Executes callback with driver and merged options
+ * 7. Ensures cleanup (closes transport)
  *
  * @param options - Combined transport and driver options
  * @param fn - Function to execute with the driver (and optionally merged config)
  * @returns Result of the function
+ * @throws ValidationError if user options violate driver constraints
  */
 export async function withDriver<T>(
   options: TransportOptions & { driver?: string },
@@ -364,6 +368,20 @@ export async function withDriver<T>(
 ): Promise<T> {
   // Load driver metadata first
   const driverMetadata = await loadDriverMetadata(options.driver)
+
+  // Validate user-specified options against driver constraints (only for RTU connections)
+  if (!options.host) {
+    validateSerialOptions(
+      {
+        baudRate: options.baudRate,
+        parity: options.parity,
+        dataBits: options.dataBits,
+        stopBits: options.stopBits,
+        slaveId: options.slaveId,
+      },
+      driverMetadata
+    )
+  }
 
   // Apply driver defaults to options
   const mergedOptions = applyDriverDefaults(options, driverMetadata)
