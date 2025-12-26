@@ -13,6 +13,12 @@ permissions:
   contents: write
   pull-requests: write
 
+# Prevent concurrent workflow runs for the same PR
+# This prevents race conditions when multiple approvals happen rapidly
+concurrency:
+  group: auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: false # Let current run finish, queue new runs
+
 jobs:
   auto-merge-on-approval:
     name: Enable Auto-Merge on Approval

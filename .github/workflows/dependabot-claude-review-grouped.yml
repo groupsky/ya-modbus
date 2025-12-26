@@ -17,6 +17,12 @@ permissions:
   issues: write
   actions: read
 
+# Prevent concurrent workflow runs for the same PR
+# This prevents race conditions when multiple commits are pushed rapidly
+concurrency:
+  group: dependabot-review-grouped-${{ github.event.pull_request.number }}
+  cancel-in-progress: false # Let current run finish, queue new runs
+
 jobs:
   # Detect if this is a grouped PR
   detect-group:
