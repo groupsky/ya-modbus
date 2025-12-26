@@ -1,7 +1,23 @@
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 
-import type { CreateDriverFunction } from '@ya-modbus/driver-types'
+import type { CreateDriverFunction, DefaultConfig, SupportedConfig } from '@ya-modbus/driver-types'
+
+import { validateDefaultConfig, validateSupportedConfig } from './config-validator.js'
+
+/**
+ * Loaded driver module with configuration metadata
+ */
+export interface LoadedDriver {
+  /** Driver factory function */
+  createDriver: CreateDriverFunction
+
+  /** Factory-default device configuration (if provided by driver) */
+  defaultConfig?: DefaultConfig
+
+  /** Supported configuration constraints (if provided by driver) */
+  supportedConfig?: SupportedConfig
+}
 
 /**
  * Driver loading options
@@ -90,10 +106,10 @@ async function tryImport(paths: string[]): Promise<unknown> {
  * 2. Auto-detect local: `loadDriver({ localPackage: true })` - reads from cwd package.json
  *
  * @param options - Loading options
- * @returns CreateDriver function from the driver package
+ * @returns Loaded driver with createDriver function and optional configuration metadata
  * @throws Error if driver cannot be loaded or is invalid
  */
-export async function loadDriver(options: LoadDriverOptions): Promise<CreateDriverFunction> {
+export async function loadDriver(options: LoadDriverOptions): Promise<LoadedDriver> {
   const { driverPackage, localPackage } = options
 
   // Validate that exactly one option is provided
@@ -138,7 +154,11 @@ export async function loadDriver(options: LoadDriverOptions): Promise<CreateDriv
       throw new Error('Driver package must export a createDriver function')
     }
 
-    const { createDriver } = driverModule as { createDriver?: unknown }
+    const { createDriver, DEFAULT_CONFIG, SUPPORTED_CONFIG } = driverModule as {
+      createDriver?: unknown
+      DEFAULT_CONFIG?: unknown
+      SUPPORTED_CONFIG?: unknown
+    }
 
     if (!createDriver) {
       throw new Error('Driver package must export a createDriver function')
@@ -148,7 +168,22 @@ export async function loadDriver(options: LoadDriverOptions): Promise<CreateDriv
       throw new Error('createDriver must be a function')
     }
 
-    return createDriver as CreateDriverFunction
+    // Build result object conditionally to satisfy exactOptionalPropertyTypes
+    const result: LoadedDriver = {
+      createDriver: createDriver as CreateDriverFunction,
+    }
+
+    // Validate and add DEFAULT_CONFIG if present
+    if (DEFAULT_CONFIG !== null && DEFAULT_CONFIG !== undefined) {
+      result.defaultConfig = validateDefaultConfig(DEFAULT_CONFIG)
+    }
+
+    // Validate and add SUPPORTED_CONFIG if present
+    if (SUPPORTED_CONFIG !== null && SUPPORTED_CONFIG !== undefined) {
+      result.supportedConfig = validateSupportedConfig(SUPPORTED_CONFIG)
+    }
+
+    return result
   } catch (error) {
     // Re-throw our custom errors
     if (error instanceof Error && error.message.startsWith('Driver package')) {

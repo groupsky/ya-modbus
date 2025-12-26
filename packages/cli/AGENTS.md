@@ -8,9 +8,10 @@ Interactive CLI tool for testing and developing Modbus device drivers. Supports 
 
 ```
 src/
-├── commands/          # Command implementations
+├── commands/          # Command implementations ONLY (no utils/validation)
 │   ├── read.ts        # Read data points
 │   └── write.ts       # Write data points
+├── utils/             # Shared utilities (commands.ts, validation.ts)
 ├── transport/         # Transport layer (Modbus RTU/TCP)
 │   ├── factory.ts     # Auto-detect RTU vs TCP
 │   ├── rtu-transport.ts
@@ -23,6 +24,12 @@ src/
 │   └── performance.ts # Performance metrics
 └── index.ts           # CLI entry (Commander.js)
 ```
+
+## Directory Organization
+
+**Commands directory**: Contains ONLY command implementations and their tests - no utilities, validation, or helpers.
+
+See: `docs/commands-organization.md` for detailed guidance
 
 ## Key Architectural Decisions
 

@@ -79,7 +79,11 @@ describe('Write Command', () => {
     mockCreateDriver = jest.fn().mockResolvedValue(mockDriver)
 
     jest.spyOn(transportFactory, 'createTransport').mockResolvedValue(mockTransport)
-    jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue(mockCreateDriver)
+    jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue({
+      createDriver: mockCreateDriver,
+      defaultConfig: undefined,
+      supportedConfig: undefined,
+    })
   })
 
   afterEach(() => {

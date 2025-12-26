@@ -63,10 +63,14 @@ describe('Driver Loader', () => {
 
   test('should load driver from explicit package name', async () => {
     // Use real package that exists in node_modules
-    const createDriver = await loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' })
+    const driverMetadata = await loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' })
 
-    expect(createDriver).toBeDefined()
-    expect(typeof createDriver).toBe('function')
+    expect(driverMetadata).toBeDefined()
+    expect(driverMetadata.createDriver).toBeDefined()
+    expect(typeof driverMetadata.createDriver).toBe('function')
+    // XYMD1 should export DEFAULT_CONFIG and SUPPORTED_CONFIG
+    expect(driverMetadata.defaultConfig).toBeDefined()
+    expect(driverMetadata.supportedConfig).toBeDefined()
   })
 
   test('should throw error if explicit package does not exist', async () => {

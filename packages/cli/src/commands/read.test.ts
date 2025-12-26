@@ -65,7 +65,11 @@ describe('Read Command', () => {
 
     // Mock factory functions
     jest.spyOn(transportFactory, 'createTransport').mockResolvedValue(mockTransport)
-    jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue(mockCreateDriver)
+    jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue({
+      createDriver: mockCreateDriver,
+      defaultConfig: undefined,
+      supportedConfig: undefined,
+    })
   })
 
   afterEach(() => {
