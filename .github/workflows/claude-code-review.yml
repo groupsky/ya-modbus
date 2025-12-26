@@ -1,7 +1,7 @@
 name: Claude Code Review
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize]
     # Optional: Only run on specific file changes
     # paths:
@@ -24,11 +24,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 1
+      # Note: No checkout needed - Claude uses GitHub API to access PR code
+      # This is safer as it prevents execution of untrusted code from fork PRs
 
       - name: Run Claude Code Review
         id: claude-review
