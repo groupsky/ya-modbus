@@ -17,15 +17,29 @@ import type {
   DataPoint,
   CreateDriverFunction,
   DriverConfig,
+  DefaultSerialConfig,
+  SupportedSerialConfig,
 } from '@ya-modbus/driver-types'
 
 /**
- * Valid baud rates for XYMD1
+ * Supported configuration values for XYMD1
  *
- * The device supports these three baud rates for serial communication.
- * The default is 9600 bps (see DEFAULT_CONFIG).
+ * The device supports:
+ * - Baud rates: 9600, 14400, 19200 bps
+ * - Parity: even, none
+ * - Data bits: 8 only
+ * - Stop bits: 1 only
+ * - Slave address: 1-247 (standard Modbus range)
+ *
+ * See DEFAULT_CONFIG for factory defaults.
  */
-export const VALID_BAUD_RATES = [9600, 14400, 19200] as const
+export const SUPPORTED_CONFIG = {
+  validBaudRates: [9600, 14400, 19200],
+  validParity: ['even', 'none'],
+  validDataBits: [8],
+  validStopBits: [1],
+  validAddressRange: [1, 247],
+} as const satisfies SupportedSerialConfig
 
 /**
  * Default XYMD1 device configuration
@@ -48,17 +62,12 @@ export const VALID_BAUD_RATES = [9600, 14400, 19200] as const
  * ```
  */
 export const DEFAULT_CONFIG = {
-  /** Default baud rate (9600 bps) */
   baudRate: 9600,
-  /** Default parity (even) */
-  parity: 'even' as const,
-  /** Default data bits (8) */
+  parity: 'even',
   dataBits: 8,
-  /** Default stop bits (1) */
   stopBits: 1,
-  /** Default Modbus slave address (1) */
   defaultAddress: 1,
-} as const
+} as const satisfies DefaultSerialConfig
 
 /**
  * Data point definitions for XYMD1
@@ -159,20 +168,40 @@ function decodeDataPoint(id: string, rawValue: Buffer): unknown {
 }
 
 /**
+ * Valid baud rate type extracted from SUPPORTED_CONFIG
+ */
+type ValidBaudRate = (typeof SUPPORTED_CONFIG.validBaudRates)[number]
+
+/**
+ * Validate that a value is one of the supported baud rates
+ *
+ * This pattern extracts the literal type from the config array and uses it
+ * in the type guard, providing more specific type narrowing than just 'number'.
+ */
+function isValidBaudRate(value: unknown): value is ValidBaudRate {
+  return (
+    typeof value === 'number' && SUPPORTED_CONFIG.validBaudRates.includes(value as ValidBaudRate)
+  )
+}
+
+/**
  * Encode data point value to Modbus register value(s)
  */
 function encodeDataPoint(id: string, value: unknown): Buffer {
   if (id === 'device_address') {
-    if (typeof value !== 'number' || value < 1 || value > 247) {
-      throw new Error('Invalid device address: must be between 1 and 247')
+    const [min, max] = SUPPORTED_CONFIG.validAddressRange
+    if (typeof value !== 'number' || value < min || value > max) {
+      throw new Error(`Invalid device address: must be between ${min} and ${max}`)
     }
     const buffer = Buffer.allocUnsafe(2)
     buffer.writeUInt16BE(value, 0)
     return buffer
   }
   if (id === 'baud_rate') {
-    if (typeof value !== 'number' || !(VALID_BAUD_RATES as readonly number[]).includes(value)) {
-      throw new Error(`Invalid baud rate: must be one of ${VALID_BAUD_RATES.join(', ')}`)
+    if (!isValidBaudRate(value)) {
+      throw new Error(
+        `Invalid baud rate: must be one of ${SUPPORTED_CONFIG.validBaudRates.join(', ')}`
+      )
     }
     const buffer = Buffer.allocUnsafe(2)
     buffer.writeUInt16BE(value, 0)
