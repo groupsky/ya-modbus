@@ -513,9 +513,47 @@ Provides reusable bash functions for workflows.
 - [GitHub API rate limits](https://docs.github.com/en/rest/rate-limit/rate-limit)
 - [Managing rate limits guide](https://www.lunar.dev/post/a-developers-guide-managing-rate-limits-for-the-github-api)
 
+## Circuit Breaker Pattern
+
+All Claude API invocations are wrapped with a circuit breaker pattern for graceful failure handling.
+
+### Pre-flight Checks
+
+Before each Claude invocation:
+
+- Validates Claude OAuth token presence and format
+- Checks GitHub API rate limit status
+- Fails fast with clear error messages
+
+### Failure Handling
+
+When Claude API fails:
+
+- Posts informative comment to PR explaining the failure
+- Adds appropriate labels (`claude-failed`, `manual-review-required`, etc.)
+- Distinguishes transient (retryable) from permanent (manual) failures
+- Blocks auto-merge and requires manual review
+
+### Failure Types
+
+- **Authentication errors** (`auth`, `token-missing`, `token-invalid`) - Not retryable
+- **Rate limiting** (`rate-limit`) - Retryable after cooldown
+- **Timeouts** (`timeout`) - Retryable
+- **Cancellations** (`cancelled`) - Retryable
+- **Unknown errors** (`unknown`) - Retryable once
+
+### See Also
+
+For complete circuit breaker documentation:
+
+- **Circuit Breaker Guide**: `docs/CIRCUIT-BREAKER.md`
+- **Pre-flight Check Action**: `.github/actions/claude-preflight-check/README.md`
+- **Failure Handler Action**: `.github/actions/claude-failure-handler/README.md`
+
 ## References
 
 - **Complete merge rules**: `docs/PR-MERGE-RULES.md`
+- **Circuit breaker pattern**: `docs/CIRCUIT-BREAKER.md`
 - **Dependabot config**: `.github/dependabot.yml`
 - **Workflow guide**: `.github/workflows/AGENTS.md`
 - **Dependabot PR verification action**: `.github/actions/verify-dependabot-pr/README.md`
@@ -523,3 +561,5 @@ Provides reusable bash functions for workflows.
 - **Claude approval action**: `.github/actions/extract-claude-approval/README.md`
 - **Commit message action**: `.github/actions/extract-claude-commit-message/README.md`
 - **Bash utilities action**: `.github/actions/bash-utilities/README.md`
+- **Claude pre-flight check**: `.github/actions/claude-preflight-check/README.md`
+- **Claude failure handler**: `.github/actions/claude-failure-handler/README.md`

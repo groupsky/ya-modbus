@@ -187,7 +187,29 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      # Circuit Breaker: Pre-flight check
+      - name: Claude pre-flight check
+        id: preflight
+        uses: ./.github/actions/claude-preflight-check
+        with:
+          claude-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      # Circuit Breaker: Handle pre-flight failure
+      - name: Handle pre-flight failure
+        if: steps.preflight.outputs.ready != 'true'
+        uses: ./.github/actions/claude-failure-handler
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          claude-step-outcome: 'failure'
+          context-description: 'grouped dependency review'
+          failure-type: ${{ steps.preflight.outputs.failure-reason }}
+
       - name: Run Claude Review
+        id: claude-review
+        if: steps.preflight.outputs.ready == 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -326,6 +348,17 @@ jobs:
             - ⚠️ **MIGRATION REQUIRED** - Created migration issues, manual work needed
 
           claude_args: '--allowed-tools "Edit,Write,Bash(npm *),Bash(git *),Bash(reviewdog *),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue create:*),WebFetch,WebSearch,Read,Grep,Glob"'
+        continue-on-error: true
+
+      # Circuit Breaker: Handle Claude failure
+      - name: Handle Claude review failure
+        if: always()
+        uses: ./.github/actions/claude-failure-handler
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          claude-step-outcome: ${{ steps.claude-review.outcome }}
+          context-description: 'grouped dependency review'
 
   # Auto-merge decision for grouped PRs
   auto-merge-grouped:
@@ -497,9 +530,34 @@ jobs:
         if: steps.check-verification-needed.outputs.needs_verification == 'true'
         run: npm ci
 
+      # Circuit Breaker: Pre-flight check before final verification
+      - name: Claude pre-flight check (final verification)
+        if: steps.check-verification-needed.outputs.needs_verification == 'true'
+        id: preflight-final
+        uses: ./.github/actions/claude-preflight-check
+        with:
+          claude-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      # Circuit Breaker: Handle pre-flight failure
+      - name: Handle pre-flight failure (final verification)
+        if: |
+          steps.check-verification-needed.outputs.needs_verification == 'true' &&
+          steps.preflight-final.outputs.ready != 'true'
+        uses: ./.github/actions/claude-failure-handler
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          claude-step-outcome: 'failure'
+          context-description: 'final verification for grouped PR'
+          failure-type: ${{ steps.preflight-final.outputs.failure-reason }}
+
       # Final Claude verification for fix commits
       - name: Final Claude verification before merge
-        if: steps.check-verification-needed.outputs.needs_verification == 'true'
+        if: |
+          steps.check-verification-needed.outputs.needs_verification == 'true' &&
+          steps.preflight-final.outputs.ready == 'true'
         id: final-verification
         uses: anthropics/claude-code-action@v1
         with:
@@ -563,6 +621,19 @@ jobs:
 
             Use `gh pr comment` to post your verification result.
           claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Grep,Glob"'
+        continue-on-error: true
+
+      # Circuit Breaker: Handle final verification failure
+      - name: Handle final verification failure
+        if: |
+          steps.check-verification-needed.outputs.needs_verification == 'true' &&
+          always()
+        uses: ./.github/actions/claude-failure-handler
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          claude-step-outcome: ${{ steps.final-verification.outcome }}
+          context-description: 'final verification for grouped PR'
 
       - name: Wait for and check final verification result
         if: steps.check-verification-needed.outputs.needs_verification == 'true'

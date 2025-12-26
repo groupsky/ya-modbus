@@ -1,0 +1,173 @@
+name: Claude Failure Handler
+description: Handles Claude API failures gracefully with informative comments and fallback actions
+
+inputs:
+  pr-url:
+    description: Pull request URL for posting failure comments
+    required: true
+  github-token:
+    description: GitHub token for API access
+    required: true
+  claude-step-outcome:
+    description: 'Outcome of the Claude step: success, failure, cancelled, or skipped'
+    required: true
+  context-description:
+    description: 'Description of what Claude was doing (e.g., "patch update review")'
+    required: true
+  failure-type:
+    description: 'Optional failure type hint: timeout, auth, rate-limit, or unknown'
+    required: false
+    default: 'unknown'
+
+outputs:
+  handled:
+    description: 'true if failure was handled, false if no failure occurred'
+    value: ${{ steps.handle.outputs.handled }}
+  fallback-to-manual:
+    description: 'true if manual review is required as fallback'
+    value: ${{ steps.handle.outputs.fallback_to_manual }}
+  should-retry:
+    description: 'true if this was a transient failure that could be retried'
+    value: ${{ steps.handle.outputs.should_retry }}
+
+runs:
+  using: composite
+  steps:
+    - name: Load bash utilities
+      uses: ./.github/actions/bash-utilities
+      with:
+        github-token: ${{ inputs.github-token }}
+
+    - name: Handle failure
+      id: handle
+      if: inputs.claude-step-outcome != 'success'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR_URL: ${{ inputs.pr-url }}
+        OUTCOME: ${{ inputs.claude-step-outcome }}
+        CONTEXT: ${{ inputs.context-description }}
+        FAILURE_TYPE: ${{ inputs.failure-type }}
+      run: |
+        source /tmp/gh-utilities.sh
+
+        handled="true"
+        fallback_to_manual="true"
+        should_retry="false"
+
+        error_msg "Claude step failed: $OUTCOME (context: $CONTEXT, type: $FAILURE_TYPE)"
+
+        # Determine failure message based on failure type
+        case "$FAILURE_TYPE" in
+          auth|token-missing|token-invalid)
+            title="🔐 Authentication Error"
+            message="The Claude Code OAuth token is invalid or missing."
+            action_items="
+        **Action required** - Repository maintainer should:
+        1. Verify \`CLAUDE_CODE_OAUTH_TOKEN\` secret is configured in repository settings
+        2. Check if the token has expired and regenerate if needed
+        3. Ensure the token has appropriate scopes
+        4. Re-run this workflow after fixing authentication"
+            labels="claude-failed manual-review-required security"
+            should_retry="false"
+            ;;
+
+          rate-limit)
+            title="⏱️ Rate Limit Reached"
+            message="Claude API rate limit has been reached."
+            action_items="
+        **This is usually temporary**:
+        1. Wait for rate limit to reset (typically 1 hour)
+        2. Re-run this workflow
+        3. If persistent, contact repository maintainer to review API usage"
+            labels="claude-failed rate-limit"
+            should_retry="true"
+            ;;
+
+          timeout)
+            title="⏰ Timeout"
+            message="Claude did not respond within the expected timeframe."
+            action_items="
+        **This may be transient**:
+        1. Re-run this workflow to retry
+        2. If persistent, this may indicate a complex dependency requiring more analysis time
+        3. Consider manual review if timeout persists"
+            labels="claude-failed timeout"
+            should_retry="true"
+            ;;
+
+          cancelled)
+            title="🚫 Cancelled"
+            message="The Claude review was cancelled."
+            action_items="
+        **Workflow was cancelled**:
+        1. Re-run this workflow if cancellation was accidental
+        2. Review workflow logs to understand cancellation reason"
+            labels="claude-cancelled"
+            should_retry="true"
+            fallback_to_manual="false"
+            ;;
+
+          *)
+            title="❌ Unknown Error"
+            message="Claude encountered an unexpected error during $CONTEXT."
+            action_items="
+        **Action required**:
+        1. Check workflow logs for detailed error messages
+        2. Re-run this workflow to retry
+        3. If error persists, manual review is required
+        4. Consider reporting issue if this appears to be a bug"
+            labels="claude-failed manual-review-required"
+            should_retry="true"
+            ;;
+        esac
+
+        # Post informative comment
+        info_msg "Posting failure comment to PR..."
+        gh pr comment "$PR_URL" --body "## $title - Claude Review Failed
+
+        **Context**: $CONTEXT
+        **Status**: $OUTCOME
+        **Failure Type**: $FAILURE_TYPE
+
+        $message
+
+        $action_items
+
+        ---
+        **Circuit Breaker Status**: 🔴 Open (blocking auto-merge)
+        **Manual Review Required**: Yes
+        **Can Retry**: $([ "$should_retry" = "true" ] && echo "Yes" || echo "No")
+
+        For more details, check the [workflow run logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})."
+
+        # Add labels
+        info_msg "Adding labels: $labels"
+        for label in $labels; do
+          gh pr edit "$PR_URL" --add-label "$label" 2>/dev/null || warn_msg "Failed to add label: $label"
+        done
+
+        # Output results
+        {
+          echo "handled=$handled"
+          echo "fallback_to_manual=$fallback_to_manual"
+          echo "should_retry=$should_retry"
+        } >> $GITHUB_OUTPUT
+
+        if [ "$should_retry" = "true" ]; then
+          warn_msg "Transient failure detected - workflow can be retried"
+        else
+          error_msg "Permanent failure detected - manual intervention required"
+        fi
+
+    - name: No failure detected
+      id: no-failure
+      if: inputs.claude-step-outcome == 'success'
+      shell: bash
+      run: |
+        echo "✅ Claude completed successfully - no failure handling needed"
+        {
+          echo "handled=false"
+          echo "fallback_to_manual=false"
+          echo "should_retry=false"
+        } >> $GITHUB_OUTPUT

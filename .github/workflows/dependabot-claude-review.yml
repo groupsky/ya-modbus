@@ -163,7 +163,29 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
+      # Circuit Breaker: Pre-flight check
+      - name: Claude pre-flight check
+        id: preflight
+        uses: ./.github/actions/claude-preflight-check
+        with:
+          claude-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      # Circuit Breaker: Handle pre-flight failure
+      - name: Handle pre-flight failure
+        if: steps.preflight.outputs.ready != 'true'
+        uses: ./.github/actions/claude-failure-handler
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          claude-step-outcome: 'failure'
+          context-description: 'patch update review'
+          failure-type: ${{ steps.preflight.outputs.failure-reason }}
+
       - name: Run Claude Review
+        id: claude-review
+        if: steps.preflight.outputs.ready == 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -209,6 +231,17 @@ jobs:
 
             Use `gh pr comment` with your Bash tool to leave your review.
           claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"'
+        continue-on-error: true
+
+      # Circuit Breaker: Handle Claude failure
+      - name: Handle Claude review failure
+        if: always()
+        uses: ./.github/actions/claude-failure-handler
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          claude-step-outcome: ${{ steps.claude-review.outcome }}
+          context-description: 'patch update review'
 
   # Claude review for minor updates (moderate check + feature inspection)
   claude-review-minor:
@@ -229,7 +262,29 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
+      # Circuit Breaker: Pre-flight check
+      - name: Claude pre-flight check
+        id: preflight
+        uses: ./.github/actions/claude-preflight-check
+        with:
+          claude-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      # Circuit Breaker: Handle pre-flight failure
+      - name: Handle pre-flight failure
+        if: steps.preflight.outputs.ready != 'true'
+        uses: ./.github/actions/claude-failure-handler
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          claude-step-outcome: 'failure'
+          context-description: 'minor update review'
+          failure-type: ${{ steps.preflight.outputs.failure-reason }}
+
       - name: Run Claude Review
+        id: claude-review
+        if: steps.preflight.outputs.ready == 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -277,6 +332,17 @@ jobs:
 
             Use `gh issue create` and `gh pr comment` with your Bash tool.
           claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue create:*),WebFetch,WebSearch"'
+        continue-on-error: true
+
+      # Circuit Breaker: Handle Claude failure
+      - name: Handle Claude review failure
+        if: always()
+        uses: ./.github/actions/claude-failure-handler
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          claude-step-outcome: ${{ steps.claude-review.outcome }}
+          context-description: 'minor update review'
 
   # Claude review for major updates (thorough check + breaking change analysis)
   claude-review-major:
@@ -327,7 +393,29 @@ jobs:
           echo "✅ reviewdog is available"
           reviewdog -version
 
+      # Circuit Breaker: Pre-flight check
+      - name: Claude pre-flight check
+        id: preflight
+        uses: ./.github/actions/claude-preflight-check
+        with:
+          claude-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      # Circuit Breaker: Handle pre-flight failure
+      - name: Handle pre-flight failure
+        if: steps.preflight.outputs.ready != 'true'
+        uses: ./.github/actions/claude-failure-handler
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          claude-step-outcome: 'failure'
+          context-description: 'major update breaking change analysis'
+          failure-type: ${{ steps.preflight.outputs.failure-reason }}
+
       - name: Run Claude Review
+        id: claude-review
+        if: steps.preflight.outputs.ready == 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -443,6 +531,17 @@ jobs:
             - `WebFetch`, `WebSearch`: Find changelogs and migration guides
             - `Read`, `Grep`, `Glob`: Analyze codebase impact
           claude_args: '--allowed-tools "Edit,Write,Bash(npm *),Bash(git *),Bash(reviewdog *),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue create:*),Bash(gh pr close:*),WebFetch,WebSearch,Read,Grep,Glob"'
+        continue-on-error: true
+
+      # Circuit Breaker: Handle Claude failure
+      - name: Handle Claude review failure
+        if: always()
+        uses: ./.github/actions/claude-failure-handler
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          claude-step-outcome: ${{ steps.claude-review.outcome }}
+          context-description: 'major update breaking change analysis'
 
   # Wait for all reviews and CI to complete before auto-merge decision
   auto-merge-decision:
@@ -549,8 +648,33 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
-      - name: Final Claude verification before merge
+      # Circuit Breaker: Pre-flight check before final verification
+      - name: Claude pre-flight check (final verification)
         if: steps.check-approval.outputs.needs_verification == 'true'
+        id: preflight-final
+        uses: ./.github/actions/claude-preflight-check
+        with:
+          claude-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      # Circuit Breaker: Handle pre-flight failure
+      - name: Handle pre-flight failure (final verification)
+        if: |
+          steps.check-approval.outputs.needs_verification == 'true' &&
+          steps.preflight-final.outputs.ready != 'true'
+        uses: ./.github/actions/claude-failure-handler
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          claude-step-outcome: 'failure'
+          context-description: 'final verification before auto-merge'
+          failure-type: ${{ steps.preflight-final.outputs.failure-reason }}
+
+      - name: Final Claude verification before merge
+        if: |
+          steps.check-approval.outputs.needs_verification == 'true' &&
+          steps.preflight-final.outputs.ready == 'true'
         id: final-verification
         uses: anthropics/claude-code-action@v1
         with:
@@ -613,6 +737,19 @@ jobs:
 
             Use `gh pr comment` to post your verification result.
           claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Grep,Glob"'
+        continue-on-error: true
+
+      # Circuit Breaker: Handle final verification failure
+      - name: Handle final verification failure
+        if: |
+          steps.check-approval.outputs.needs_verification == 'true' &&
+          always()
+        uses: ./.github/actions/claude-failure-handler
+        with:
+          pr-url: ${{ github.event.pull_request.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          claude-step-outcome: ${{ steps.final-verification.outcome }}
+          context-description: 'final verification before auto-merge'
 
       - name: Check final verification result
         if: steps.check-approval.outputs.needs_verification == 'true'

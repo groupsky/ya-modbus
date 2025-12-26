@@ -30,8 +30,29 @@ jobs:
         with:
           fetch-depth: 1
 
+      # Circuit Breaker: Pre-flight check
+      - name: Claude pre-flight check
+        id: preflight
+        uses: ./.github/actions/claude-preflight-check
+        with:
+          claude-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      # Circuit Breaker: Handle pre-flight failure
+      - name: Handle pre-flight failure
+        if: steps.preflight.outputs.ready != 'true'
+        uses: ./.github/actions/claude-failure-handler
+        with:
+          pr-url: ${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          claude-step-outcome: 'failure'
+          context-description: 'interactive comment-triggered request'
+          failure-type: ${{ steps.preflight.outputs.failure-reason }}
+
       - name: Run Claude Code
         id: claude
+        if: steps.preflight.outputs.ready == 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -47,3 +68,14 @@ jobs:
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
           # claude_args: '--allowed-tools Bash(gh pr:*)'
+        continue-on-error: true
+
+      # Circuit Breaker: Handle Claude failure
+      - name: Handle Claude failure
+        if: always()
+        uses: ./.github/actions/claude-failure-handler
+        with:
+          pr-url: ${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          claude-step-outcome: ${{ steps.claude.outcome }}
+          context-description: 'interactive comment-triggered request'

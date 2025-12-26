@@ -1,0 +1,88 @@
+name: Claude Pre-flight Check
+description: Validates prerequisites before Claude API invocation to fail fast on auth/rate limit issues
+
+inputs:
+  claude-oauth-token:
+    description: Claude Code OAuth token to validate
+    required: true
+  github-token:
+    description: GitHub token for rate limit checks
+    required: true
+  min-github-rate-limit:
+    description: Minimum GitHub API rate limit required
+    required: false
+    default: '200'
+
+outputs:
+  ready:
+    description: 'true if all checks passed and Claude can be invoked, false otherwise'
+    value: ${{ steps.validate.outputs.ready }}
+  failure-reason:
+    description: 'Reason for failure: token-missing, token-invalid, rate-limit, or none'
+    value: ${{ steps.validate.outputs.failure_reason }}
+  rate-limit-remaining:
+    description: 'Current GitHub API rate limit remaining'
+    value: ${{ steps.validate.outputs.rate_limit_remaining }}
+
+runs:
+  using: composite
+  steps:
+    - name: Load bash utilities
+      uses: ./.github/actions/bash-utilities
+      with:
+        github-token: ${{ inputs.github-token }}
+
+    - name: Validate prerequisites
+      id: validate
+      shell: bash
+      env:
+        CLAUDE_TOKEN: ${{ inputs.claude-oauth-token }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        MIN_RATE_LIMIT: ${{ inputs.min-github-rate-limit }}
+      run: |
+        source /tmp/gh-utilities.sh
+
+        ready="true"
+        failure_reason="none"
+
+        info_msg "Running Claude pre-flight checks..."
+
+        # 1. Validate Claude OAuth token presence
+        if [ -z "$CLAUDE_TOKEN" ]; then
+          error_msg "Claude OAuth token is missing"
+          ready="false"
+          failure_reason="token-missing"
+        elif [ ${#CLAUDE_TOKEN} -lt 20 ]; then
+          error_msg "Claude OAuth token appears invalid (too short)"
+          ready="false"
+          failure_reason="token-invalid"
+        else
+          success_msg "Claude OAuth token present and well-formed"
+        fi
+
+        # 2. Check GitHub API rate limit
+        if check_rate_limit "$MIN_RATE_LIMIT"; then
+          rate_remaining=$(gh api rate_limit --jq '.resources.core.remaining' 2>/dev/null || echo "unknown")
+          success_msg "GitHub API rate limit sufficient: $rate_remaining remaining"
+        else
+          rate_remaining=$(gh api rate_limit --jq '.resources.core.remaining' 2>/dev/null || echo "0")
+          warn_msg "GitHub API rate limit low: $rate_remaining remaining (threshold: $MIN_RATE_LIMIT)"
+
+          # This is a warning, not a blocker - Claude uses its own API
+          # But low GitHub rate limit may affect workflow's ability to post comments
+          info_msg "Proceeding despite low GitHub API rate limit"
+        fi
+
+        # 3. Output results
+        {
+          echo "ready=$ready"
+          echo "failure_reason=$failure_reason"
+          echo "rate_limit_remaining=$rate_remaining"
+        } >> $GITHUB_OUTPUT
+
+        if [ "$ready" = "true" ]; then
+          success_msg "Pre-flight checks passed - ready for Claude invocation"
+        else
+          error_msg "Pre-flight checks failed: $failure_reason"
+          exit 1
+        fi
