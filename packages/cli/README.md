@@ -36,10 +36,10 @@ npm install --save-dev @ya-modbus/cli
 **Read single data point:**
 
 ```bash
-# RTU (serial)
+# RTU (serial) - uses driver defaults for baud rate, parity, etc.
 ya-modbus read \
+  --driver ya-modbus-driver-xymd1 \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --data-point temperature
 
 # TCP
@@ -52,27 +52,30 @@ ya-modbus read \
 **Read multiple data points:**
 
 ```bash
+# Uses driver defaults
 ya-modbus read \
+  --driver ya-modbus-driver-xymd1 \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --data-point temperature humidity
 ```
 
 **Read all readable data points:**
 
 ```bash
+# Uses driver defaults
 ya-modbus read \
+  --driver ya-modbus-driver-xymd1 \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --all
 ```
 
 **JSON output:**
 
 ```bash
+# Uses driver defaults
 ya-modbus read \
+  --driver ya-modbus-driver-xymd1 \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --data-point temperature \
   --format json
 ```
@@ -82,9 +85,10 @@ ya-modbus read \
 **Write with confirmation:**
 
 ```bash
+# Uses driver defaults
 ya-modbus write \
+  --driver ya-modbus-driver-xymd1 \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --data-point setpoint \
   --value 25.5
 ```
@@ -92,9 +96,10 @@ ya-modbus write \
 **Write without confirmation:**
 
 ```bash
+# Uses driver defaults
 ya-modbus write \
+  --driver ya-modbus-driver-xymd1 \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --data-point setpoint \
   --value 25.5 \
   --yes
@@ -103,9 +108,10 @@ ya-modbus write \
 **Write with verification:**
 
 ```bash
+# Uses driver defaults
 ya-modbus write \
+  --driver ya-modbus-driver-xymd1 \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --data-point setpoint \
   --value 25.5 \
   --yes \
@@ -154,16 +160,80 @@ ya-modbus read \
   --data-point temperature
 ```
 
+### Driver Defaults and Validation
+
+The CLI automatically uses configuration defaults from driver packages, reducing the number of required options.
+
+**Driver-provided defaults:**
+
+Drivers export `DEFAULT_CONFIG` and `SUPPORTED_CONFIG` constants that the CLI uses to:
+
+- Apply sensible defaults for connection parameters (baud rate, parity, data bits, stop bits, slave ID)
+- Validate user input against device-specific constraints
+- Show helpful error messages with valid values and defaults
+
+**Before (manual configuration):**
+
+```bash
+ya-modbus read \
+  --driver ya-modbus-driver-xymd1 \
+  --port /dev/ttyUSB0 \
+  --baud-rate 9600 \
+  --parity even \
+  --data-bits 8 \
+  --stop-bits 1 \
+  --slave-id 1 \
+  --data-point temperature
+```
+
+**After (using driver defaults):**
+
+```bash
+# CLI uses driver defaults - just specify port and data point
+ya-modbus read \
+  --driver ya-modbus-driver-xymd1 \
+  --port /dev/ttyUSB0 \
+  --data-point temperature
+```
+
+**Overriding defaults:**
+
+User-specified values always take precedence over driver defaults:
+
+```bash
+# Use driver defaults but override baud rate and slave ID
+ya-modbus read \
+  --driver ya-modbus-driver-xymd1 \
+  --port /dev/ttyUSB0 \
+  --baud-rate 19200 \
+  --slave-id 5 \
+  --data-point temperature
+```
+
+**Validation:**
+
+The CLI validates user input against driver constraints. Invalid values trigger helpful error messages:
+
+```bash
+$ ya-modbus read --driver ya-modbus-driver-xymd1 --port /dev/ttyUSB0 --baud-rate 115200
+Error: Invalid baud rate 115200. This driver supports: 9600, 14400, 19200 (default: 9600)
+```
+
+**Backward compatibility:**
+
+- Drivers without `DEFAULT_CONFIG` work as before (all parameters required)
+- User-specified values always override defaults
+- TCP connections ignore serial-specific defaults
+
 ## Examples
 
 ### Read temperature from XY-MD1 sensor
 
 ```bash
-# Auto-detect driver (from driver package directory)
+# Auto-detect driver (from driver package directory) - uses driver defaults
 cd packages/ya-modbus-driver-xymd1
 npx ya-modbus read \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --data-point temperature humidity \
   --format table
 ```
@@ -185,9 +255,10 @@ Performance:
 ### Write and verify setpoint
 
 ```bash
+# Uses driver defaults for baud rate, parity, etc.
 ya-modbus write \
+  --driver ya-modbus-driver-xymd1 \
   --port /dev/ttyUSB0 \
-  --slave-id 1 \
   --data-point device_address \
   --value 5 \
   --yes \
