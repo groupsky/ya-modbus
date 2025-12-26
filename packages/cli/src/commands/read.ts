@@ -1,8 +1,7 @@
 import { formatJSON } from '../formatters/json.js'
 import { formatPerformance, type PerformanceMetrics } from '../formatters/performance.js'
 import { formatTable } from '../formatters/table.js'
-
-import { isReadable, withDriver } from './utils.js'
+import { isReadable, withDriver } from '../utils/commands.js'
 
 /**
  * Read command options

@@ -8,7 +8,7 @@ import {
   parseValue,
   validateValue,
   withDriver,
-} from './utils.js'
+} from '../utils/commands.js'
 
 /**
  * Write command options

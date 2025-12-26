@@ -2,7 +2,7 @@ import type { DefaultSerialConfig, DefaultTCPConfig } from '@ya-modbus/driver-ty
 
 import type { LoadedDriver } from '../driver-loader/loader.js'
 
-import { applyDriverDefaults, type TransportOptions } from './utils.js'
+import { applyDriverDefaults, type TransportOptions } from './commands.js'
 
 describe('applyDriverDefaults', () => {
   describe('TCP connections', () => {
