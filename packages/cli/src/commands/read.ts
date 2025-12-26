@@ -96,7 +96,7 @@ export async function readCommand(options: ReadOptions): Promise<void> {
           driver: options.driver,
           connection: options.host
             ? { host: options.host, slaveId: mergedOptions.slaveId }
-            : mergedOptions.port
+            : mergedOptions.port && typeof mergedOptions.port === 'string'
               ? { port: mergedOptions.port, slaveId: mergedOptions.slaveId }
               : undefined,
           performance: metrics,

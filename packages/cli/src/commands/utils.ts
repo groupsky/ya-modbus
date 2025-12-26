@@ -371,16 +371,22 @@ export async function withDriver<T>(
 
   // Validate user-specified options against driver constraints (only for RTU connections)
   if (!options.host) {
-    validateSerialOptions(
-      {
-        baudRate: options.baudRate,
-        parity: options.parity,
-        dataBits: options.dataBits,
-        stopBits: options.stopBits,
-        slaveId: options.slaveId,
-      },
-      driverMetadata
-    )
+    // Build validation options conditionally to satisfy exactOptionalPropertyTypes
+    const validationOptions: {
+      baudRate?: number
+      parity?: string
+      dataBits?: number
+      stopBits?: number
+      slaveId?: number
+    } = {}
+
+    if (options.baudRate !== undefined) validationOptions.baudRate = options.baudRate
+    if (options.parity !== undefined) validationOptions.parity = options.parity
+    if (options.dataBits !== undefined) validationOptions.dataBits = options.dataBits
+    if (options.stopBits !== undefined) validationOptions.stopBits = options.stopBits
+    if (options.slaveId !== undefined) validationOptions.slaveId = options.slaveId
+
+    validateSerialOptions(validationOptions, driverMetadata)
   }
 
   // Apply driver defaults to options

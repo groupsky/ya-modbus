@@ -166,25 +166,30 @@ export async function loadDriver(options: LoadDriverOptions): Promise<LoadedDriv
       throw new Error('createDriver must be a function')
     }
 
-    // Build result with optional configuration metadata
+    // Build result object conditionally to satisfy exactOptionalPropertyTypes
     // Type assertions are safe - we trust the driver package exports
-    const defaultConfig: DefaultConfig | undefined =
-      DEFAULT_CONFIG !== null && DEFAULT_CONFIG !== undefined && typeof DEFAULT_CONFIG === 'object'
-        ? (DEFAULT_CONFIG as DefaultConfig)
-        : undefined
+    const result: LoadedDriver = {
+      createDriver: createDriver as CreateDriverFunction,
+    }
 
-    const supportedConfig: SupportedConfig | undefined =
+    // Only add properties if they exist (don't assign undefined)
+    if (
+      DEFAULT_CONFIG !== null &&
+      DEFAULT_CONFIG !== undefined &&
+      typeof DEFAULT_CONFIG === 'object'
+    ) {
+      result.defaultConfig = DEFAULT_CONFIG as DefaultConfig
+    }
+
+    if (
       SUPPORTED_CONFIG !== null &&
       SUPPORTED_CONFIG !== undefined &&
       typeof SUPPORTED_CONFIG === 'object'
-        ? (SUPPORTED_CONFIG as SupportedConfig)
-        : undefined
-
-    return {
-      createDriver: createDriver as CreateDriverFunction,
-      defaultConfig,
-      supportedConfig,
+    ) {
+      result.supportedConfig = SUPPORTED_CONFIG as SupportedConfig
     }
+
+    return result
   } catch (error) {
     // Re-throw our custom errors
     if (error instanceof Error && error.message.startsWith('Driver package')) {
