@@ -121,6 +121,7 @@ program
   .option('--delay <ms>', 'Delay between attempts in milliseconds (default: 100)', parseInt)
   .option('--stop-after-first', 'Stop scanning after first device found')
   .option('--verbose', 'Show detailed progress with current parameters being tested')
+  .option('--silent', 'Suppress all output except final result (useful for scripts)')
   .option('-f, --format <type>', 'Output format: table or json (default: table)', 'table')
   .action(async (options: DiscoverOptions) => {
     try {

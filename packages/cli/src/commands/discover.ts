@@ -19,6 +19,7 @@ export interface DiscoverOptions {
   delay?: number
   stopAfterFirst?: boolean
   verbose?: boolean
+  silent?: boolean
 
   // Output options
   format: 'table' | 'json'
@@ -39,17 +40,20 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
   const format = options.format ?? 'table'
   const stopAfterFirst = options.stopAfterFirst ?? false
   const verbose = options.verbose ?? false
+  const silent = options.silent ?? false
 
-  console.log(`Starting Modbus device discovery on ${options.port}...`)
-  console.log(`Strategy: ${strategy}`)
-  console.log(`Timeout: ${timeout}ms, Delay: ${delay}ms`)
-  if (stopAfterFirst) {
-    console.log('Mode: Stop after first device found')
+  if (!silent) {
+    console.log(`Starting Modbus device discovery on ${options.port}...`)
+    console.log(`Strategy: ${strategy}`)
+    console.log(`Timeout: ${timeout}ms, Delay: ${delay}ms`)
+    if (stopAfterFirst) {
+      console.log('Mode: Stop after first device found')
+    }
+    if (verbose) {
+      console.log('Verbose: Enabled')
+    }
+    console.log('')
   }
-  if (verbose) {
-    console.log('Verbose: Enabled')
-  }
-  console.log('')
 
   // Load driver metadata if specified
   let driverMetadata
@@ -59,27 +63,35 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
         driverMetadata = await loadDriver({
           localPackage: true,
         })
-        console.log('Using local driver package')
+        if (!silent) {
+          console.log('Using local driver package')
+        }
       } else if (options.driver) {
         driverMetadata = await loadDriver({
           driverPackage: options.driver,
         })
-        console.log(`Using driver: ${options.driver}`)
+        if (!silent) {
+          console.log(`Using driver: ${options.driver}`)
+        }
       }
 
-      if (driverMetadata?.defaultConfig) {
-        console.log('Using driver DEFAULT_CONFIG for parameter prioritization')
+      if (!silent) {
+        if (driverMetadata?.defaultConfig) {
+          console.log('Using driver DEFAULT_CONFIG for parameter prioritization')
+        }
+        if (driverMetadata?.supportedConfig) {
+          console.log('Using driver SUPPORTED_CONFIG to limit parameter combinations')
+        }
+        console.log('')
       }
-      if (driverMetadata?.supportedConfig) {
-        console.log('Using driver SUPPORTED_CONFIG to limit parameter combinations')
-      }
-      console.log('')
     } catch (error) {
-      console.error(
-        `Warning: Failed to load driver ${options.driver ?? 'from local package'}: ${(error as Error).message}`
-      )
-      console.error('Continuing with generic Modbus parameters...')
-      console.log('')
+      if (!silent) {
+        console.error(
+          `Warning: Failed to load driver ${options.driver ?? 'from local package'}: ${(error as Error).message}`
+        )
+        console.error('Continuing with generic Modbus parameters...')
+        console.log('')
+      }
     }
   }
 
@@ -103,8 +115,10 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
 
   const progress = new ProgressTracker(combinations.length)
 
-  console.log(`Testing ${combinations.length} parameter combinations...`)
-  console.log('')
+  if (!silent) {
+    console.log(`Testing ${combinations.length} parameter combinations...`)
+    console.log('')
+  }
 
   // Build scan options conditionally
   const scanOptions: Parameters<typeof scanForDevices>[1] = {
@@ -114,8 +128,8 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
     stopAfterFirst,
     verbose,
     onProgress: (current, _total, devicesFound) => {
-      // Only show progress bar if not in verbose mode
-      if (!verbose) {
+      // Only show progress bar if not in verbose mode, silent mode, or json format
+      if (!verbose && !silent) {
         const progressText = progress.update(current, devicesFound)
         if (progressText && format !== 'json') {
           // Clear line and write progress
@@ -126,7 +140,7 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
       }
     },
     onDeviceFound: (device) => {
-      if (format !== 'json') {
+      if (!silent && format !== 'json') {
         // Clear progress line (if not verbose)
         if (!verbose) {
           process.stdout.clearLine?.(0)
@@ -140,8 +154,8 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
     },
   }
 
-  // Add verbose callback if verbose mode is enabled
-  if (verbose) {
+  // Add verbose callback if verbose mode is enabled (and not silent)
+  if (verbose && !silent) {
     scanOptions.onTestAttempt = (params, result) => {
       if (format !== 'json') {
         const parityChar = params.parity === 'none' ? 'N' : params.parity === 'even' ? 'E' : 'O'
@@ -172,17 +186,19 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
   // Scan for devices
   const devices = await scanForDevices(generatorOptions, scanOptions)
 
-  // Clear progress line
-  if (format !== 'json') {
+  // Clear progress line (if not silent)
+  if (!silent && format !== 'json') {
     process.stdout.clearLine?.(0)
     process.stdout.cursorTo?.(0)
   }
 
-  console.log('')
-  console.log(`Discovery complete! Found ${devices.length} device(s).`)
-  console.log('')
+  if (!silent) {
+    console.log('')
+    console.log(`Discovery complete! Found ${devices.length} device(s).`)
+    console.log('')
+  }
 
-  // Format and display results
+  // Format and display results (always show, even in silent mode)
   if (devices.length > 0) {
     if (format === 'json') {
       console.log(formatDiscoveryJSON(devices))
