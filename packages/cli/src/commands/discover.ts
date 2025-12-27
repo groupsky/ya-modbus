@@ -17,7 +17,7 @@ export interface DiscoverOptions {
   local?: boolean
   timeout?: number
   delay?: number
-  stopAfterFirst?: boolean
+  maxDevices?: number
   verbose?: boolean
   silent?: boolean
 
@@ -38,7 +38,7 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
   const timeout = options.timeout ?? 1000 // Device response timeout
   const delay = options.delay ?? 100 // Inter-command delay for bus recovery
   const format = options.format ?? 'table'
-  const stopAfterFirst = options.stopAfterFirst ?? false
+  const maxDevices = options.maxDevices ?? 1 // Default: stop after finding 1 device
   const verbose = options.verbose ?? false
   const silent = options.silent ?? false
 
@@ -46,8 +46,10 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
     console.log(`Starting Modbus device discovery on ${options.port}...`)
     console.log(`Strategy: ${strategy}`)
     console.log(`Timeout: ${timeout}ms, Delay: ${delay}ms`)
-    if (stopAfterFirst) {
-      console.log('Mode: Stop after first device found')
+    if (maxDevices === 0) {
+      console.log('Mode: Find all devices')
+    } else {
+      console.log(`Mode: Find up to ${maxDevices} device(s)`)
     }
     if (verbose) {
       console.log('Verbose: Enabled')
@@ -125,7 +127,7 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
     port: options.port,
     timeout,
     delayMs: delay,
-    stopAfterFirst,
+    maxDevices,
     verbose,
     onProgress: (current, _total, devicesFound) => {
       // Only show progress bar if not in verbose mode, silent mode, or json format

@@ -33,8 +33,8 @@ export interface ScanOptions {
   /** Optional loaded driver for driver-based detection */
   driverMetadata?: LoadedDriver
 
-  /** Stop scanning after first device found */
-  stopAfterFirst?: boolean
+  /** Maximum number of devices to find (0 for unlimited, default: 1) */
+  maxDevices?: number
 
   /** Verbose progress - show current parameters being tested */
   verbose?: boolean
@@ -89,7 +89,7 @@ export async function scanForDevices(
     timeout,
     delayMs,
     driverMetadata,
-    stopAfterFirst,
+    maxDevices = 1,
     onProgress,
     onDeviceFound,
     onTestAttempt,
@@ -107,8 +107,8 @@ export async function scanForDevices(
 
   // Test each serial parameter group
   for (const [_serialKey, groupCombinations] of groups) {
-    // Stop if we found device and stopAfterFirst is enabled
-    if (stopAfterFirst && discovered.length > 0) {
+    // Stop if we've found enough devices
+    if (maxDevices > 0 && discovered.length >= maxDevices) {
       break
     }
 
@@ -135,8 +135,8 @@ export async function scanForDevices(
 
       // Test all slave IDs with this serial configuration
       for (const combination of groupCombinations) {
-        // Stop if we found device and stopAfterFirst is enabled
-        if (stopAfterFirst && discovered.length > 0) {
+        // Stop if we've found enough devices
+        if (maxDevices > 0 && discovered.length >= maxDevices) {
           break
         }
 
@@ -164,8 +164,9 @@ export async function scanForDevices(
             onDeviceFound?.(device)
 
             // Only wait for bus recovery if we're continuing the scan
-            // If stopAfterFirst is true, we're done - no delay needed
-            if (delayMs > 0 && !stopAfterFirst) {
+            // If we've reached maxDevices, we're done - no delay needed
+            const reachedLimit = maxDevices > 0 && discovered.length >= maxDevices
+            if (delayMs > 0 && !reachedLimit) {
               await new Promise((resolve) => setTimeout(resolve, delayMs))
             }
           } else {

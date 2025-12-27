@@ -37,7 +37,6 @@ describe('Discover Command', () => {
       identification: {
         present: true,
         responseTimeMs: 45.67,
-        supportsFC04: true,
       },
     },
   ]

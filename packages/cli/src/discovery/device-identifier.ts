@@ -31,12 +31,6 @@ export interface DeviceIdentificationResult {
   /** Whether device supports FC43 (Read Device Identification) */
   supportsFC43?: boolean
 
-  /** Whether device supports FC03 (Read Holding Registers) */
-  supportsFC03?: boolean
-
-  /** Whether device supports FC04 (Read Input Registers) */
-  supportsFC04?: boolean
-
   // Error classification
   /** Device present but returned Modbus exception code */
   exceptionCode?: number
@@ -214,7 +208,6 @@ async function tryFC04(client: ModbusRTU): Promise<Partial<DeviceIdentificationR
 
     return {
       present: true,
-      supportsFC04: true,
     }
   } catch (error) {
     const exceptionCode = isModbusException(error)
@@ -225,7 +218,6 @@ async function tryFC04(client: ModbusRTU): Promise<Partial<DeviceIdentificationR
 
         return {
           present: true,
-          supportsFC04: true,
         }
       } catch (error2) {
         const exceptionCode2 = isModbusException(error2)
@@ -233,7 +225,6 @@ async function tryFC04(client: ModbusRTU): Promise<Partial<DeviceIdentificationR
           // Device present but no input registers at 0 or 1
           return {
             present: true,
-            supportsFC04: false,
             exceptionCode: exceptionCode2,
           }
         }
@@ -260,7 +251,6 @@ async function tryFC03(client: ModbusRTU): Promise<Partial<DeviceIdentificationR
 
     return {
       present: true,
-      supportsFC03: true,
     }
   } catch (error) {
     const exceptionCode = isModbusException(error)
@@ -268,7 +258,6 @@ async function tryFC03(client: ModbusRTU): Promise<Partial<DeviceIdentificationR
       // Exception means device is present but register 0 not available
       return {
         present: true,
-        supportsFC03: false,
         exceptionCode,
       }
     }
@@ -428,9 +417,6 @@ export async function identifyDevice(
       responseTimeMs: responseTime,
     }
 
-    if (fc04Result.supportsFC04 !== undefined) {
-      result.supportsFC04 = fc04Result.supportsFC04
-    }
     if (fc04Result.exceptionCode !== undefined) {
       result.exceptionCode = fc04Result.exceptionCode
     }
@@ -468,9 +454,6 @@ export async function identifyDevice(
       responseTimeMs: responseTime,
     }
 
-    if (fc03Result.supportsFC03 !== undefined) {
-      result.supportsFC03 = fc03Result.supportsFC03
-    }
     if (fc03Result.exceptionCode !== undefined) {
       result.exceptionCode = fc03Result.exceptionCode
     }

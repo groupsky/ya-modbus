@@ -60,7 +60,6 @@ export function formatDiscoveryJSON(devices: DiscoveredDevice[]): string {
       productCode: device.identification.productCode,
       modelName: device.identification.modelName,
       revision: device.identification.revision,
-      supportsFC03: device.identification.supportsFC03,
       supportsFC43: device.identification.supportsFC43,
     },
   }))

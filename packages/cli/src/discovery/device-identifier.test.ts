@@ -57,7 +57,6 @@ describe('identifyDevice', () => {
       const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
 
       expect(result.present).toBe(true)
-      expect(result.supportsFC03).toBe(true)
       expect(result.supportsFC43).toBeUndefined()
       expect(result.vendorName).toBeUndefined()
       expect(result.responseTimeMs).toBeGreaterThan(0)
@@ -77,7 +76,6 @@ describe('identifyDevice', () => {
       // Exception code means device is present and responding
       expect(result.present).toBe(true)
       expect(result.exceptionCode).toBe(2)
-      expect(result.supportsFC03).toBe(false)
       expect(result.responseTimeMs).toBeGreaterThan(0)
     })
   })
@@ -137,31 +135,6 @@ describe('identifyDevice', () => {
       const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
 
       expect(result.supportsFC43).toBe(true)
-    })
-
-    test('sets supportsFC03=true when FC03 succeeds', async () => {
-      mockClient.readDeviceIdentification = undefined
-      mockClient.readHoldingRegisters = jest.fn().mockResolvedValue({
-        data: [42],
-        buffer: Buffer.from([0, 42]),
-      })
-
-      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
-
-      expect(result.supportsFC03).toBe(true)
-    })
-
-    test('sets supportsFC03=false when FC03 returns exception', async () => {
-      mockClient.readDeviceIdentification = undefined
-      mockClient.readHoldingRegisters = jest.fn().mockRejectedValue({
-        message: 'Modbus exception 1',
-        modbusCode: 1,
-      })
-
-      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
-
-      expect(result.supportsFC03).toBe(false)
-      expect(result.present).toBe(true) // Still present due to exception response
     })
   })
 
