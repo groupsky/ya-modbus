@@ -5,7 +5,7 @@ import type { LoadedDriver } from '../driver-loader/loader.js'
 import { identifyDevice, type DeviceIdentificationResult } from './device-identifier.js'
 import { countParameterCombinations } from './parameter-generator-utils.js'
 import {
-  generateParameterCombinations,
+  generateParameterGroups,
   type GeneratorOptions,
   type ParameterCombination,
 } from './parameter-generator.js'
@@ -51,31 +51,14 @@ export interface ScanOptions {
 }
 
 /**
- * Group parameter combinations by serial configuration
- * This allows us to reuse the serial connection for all slave IDs
- */
-function groupBySerialParams(
-  combinations: ParameterCombination[]
-): Map<string, ParameterCombination[]> {
-  const groups = new Map<string, ParameterCombination[]>()
-
-  for (const combo of combinations) {
-    // Create key from serial parameters (excluding slaveId)
-    const key = `${combo.baudRate}-${combo.parity}-${combo.dataBits}-${combo.stopBits}`
-
-    const group = groups.get(key) ?? []
-    group.push(combo)
-    groups.set(key, group)
-  }
-
-  return groups
-}
-
-/**
  * Scan for Modbus devices using given parameter combinations
  *
- * **Performance Optimization**: Groups combinations by serial parameters
- * to reuse connections, reducing overhead from ~600ms to ~100ms per test.
+ * **Performance Optimization**: Uses grouped generator to avoid materializing
+ * all combinations. Groups by serial parameters to reuse connections,
+ * reducing overhead from ~600ms to ~100ms per test.
+ *
+ * **Memory Efficiency**: Only materializes one group (~247 combinations) at a time
+ * instead of all ~1500+ combinations.
  *
  * @param generatorOptions - Options for parameter combination generation
  * @param scanOptions - Scanning options
@@ -96,36 +79,23 @@ export async function scanForDevices(
     onTestAttempt,
   } = scanOptions
 
-  // Calculate total combinations efficiently
+  // Calculate total combinations efficiently (no materialization)
   const total = countParameterCombinations(generatorOptions)
-
-  // Generate all parameter combinations
-  // Note: We still materialize for grouping optimization, but at least we don't
-  // double-materialize (once for count, once for use) like before
-  const combinations = Array.from(generateParameterCombinations(generatorOptions))
-
-  // Group by serial parameters to reuse connections (HUGE speed improvement)
-  const groups = groupBySerialParams(combinations)
 
   const discovered: DiscoveredDevice[] = []
   let currentIndex = 0
 
   // Test each serial parameter group
-  for (const [_serialKey, groupCombinations] of groups) {
+  // Generator yields groups without materializing all combinations
+  for (const group of generateParameterGroups(generatorOptions)) {
+    const { serialParams, combinations: groupCombinations } = group
     // Stop if we've found enough devices
     if (maxDevices > 0 && discovered.length >= maxDevices) {
       break
     }
 
-    // Skip empty groups (shouldn't happen, but be defensive)
-    if (groupCombinations.length === 0) {
-      continue
-    }
-
-    // Get serial params from first combination in group (all have same serial params)
-    // Length check above guarantees at least one element exists
-    const firstCombo = groupCombinations[0] as ParameterCombination
-    const { baudRate, parity, dataBits, stopBits } = firstCombo
+    // Get serial params from group
+    const { baudRate, parity, dataBits, stopBits } = serialParams
 
     let client: ModbusRTU | undefined
     try {

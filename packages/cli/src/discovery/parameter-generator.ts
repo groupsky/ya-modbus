@@ -201,6 +201,92 @@ function prioritizeDefaults<T>(array: readonly T[], defaultValue: T | undefined)
 }
 
 /**
+ * Group of parameter combinations that share the same serial configuration
+ */
+export interface ParameterGroup {
+  /** Serial parameters shared by all combinations in this group */
+  serialParams: {
+    baudRate: BaudRate
+    parity: Parity
+    dataBits: DataBits
+    stopBits: StopBits
+  }
+  /** All parameter combinations for this serial configuration (different slave IDs) */
+  combinations: ParameterCombination[]
+}
+
+/**
+ * Generate parameter combinations grouped by serial configuration
+ *
+ * This is a memory-efficient alternative to materializing all combinations.
+ * Instead of creating all ~1500+ combinations at once, this generator yields
+ * groups of ~247 combinations at a time (one per serial config).
+ *
+ * Each group shares the same serial parameters (baud, parity, data bits, stop bits)
+ * but has different slave IDs. This matches how the scanner works - it creates
+ * one connection per serial config and tests all slave IDs with that connection.
+ *
+ * @param options - Generation options
+ * @yields Parameter groups to test
+ *
+ * @example Iterate over groups without materializing all combinations
+ * ```typescript
+ * for (const group of generateParameterGroups(options)) {
+ *   // Only this group's ~247 combinations are in memory
+ *   const { serialParams, combinations } = group
+ *   // ... use combinations ...
+ * }
+ * ```
+ */
+export function* generateParameterGroups(options: GeneratorOptions): Generator<ParameterGroup> {
+  const { strategy, defaultConfig, supportedConfig } = options
+
+  // Get parameter arrays
+  let { baudRates, parities, dataBits, stopBits } = getParameterArrays(strategy, supportedConfig)
+  const { addressRange } = getParameterArrays(strategy, supportedConfig)
+
+  // Prioritize default values to test them first
+  if (defaultConfig) {
+    baudRates = prioritizeDefaults(baudRates, defaultConfig.baudRate)
+    parities = prioritizeDefaults(parities, defaultConfig.parity)
+    dataBits = prioritizeDefaults(dataBits, defaultConfig.dataBits)
+    stopBits = prioritizeDefaults(stopBits, defaultConfig.stopBits)
+  }
+
+  // Generate slave IDs once (reused for each serial config)
+  const slaveIds = Array.from(generateSlaveIds(addressRange, defaultConfig?.defaultAddress))
+
+  // Generate groups: iterate serial params (baud × parity × data × stop)
+  // For each serial config, create a group with all slave IDs
+  for (const baudRate of baudRates) {
+    for (const parity of parities) {
+      for (const dataBits_ of dataBits) {
+        for (const stopBits_ of stopBits) {
+          // Build combinations for this serial config
+          const combinations: ParameterCombination[] = slaveIds.map((slaveId) => ({
+            slaveId,
+            baudRate,
+            parity,
+            dataBits: dataBits_,
+            stopBits: stopBits_,
+          }))
+
+          yield {
+            serialParams: {
+              baudRate,
+              parity,
+              dataBits: dataBits_,
+              stopBits: stopBits_,
+            },
+            combinations,
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
  * Generate all parameter combinations for Modbus device discovery
  *
  * Produces combinations in priority order:

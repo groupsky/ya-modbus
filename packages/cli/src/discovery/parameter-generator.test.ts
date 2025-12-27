@@ -310,3 +310,259 @@ describe('generateParameterCombinations', () => {
     })
   })
 })
+
+describe('generateParameterGroups', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { generateParameterGroups } = require('./parameter-generator.js')
+
+  describe('basic grouping', () => {
+    test('groups combinations by serial parameters', () => {
+      const options: GeneratorOptions = {
+        strategy: 'quick',
+        supportedConfig: {
+          validBaudRates: [9600, 19200],
+          validParity: ['none', 'even'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 3],
+        },
+      }
+
+      const groups = Array.from(generateParameterGroups(options))
+
+      // Should have 4 groups: 2 baud rates × 2 parity × 1 data × 1 stop = 4
+      expect(groups).toHaveLength(4)
+
+      // Each group should have 3 combinations (slave IDs 1-3)
+      for (const group of groups) {
+        expect(group.combinations).toHaveLength(3)
+      }
+
+      // Verify first group has correct structure
+      const firstGroup = groups[0]
+      expect(firstGroup).toHaveProperty('serialParams')
+      expect(firstGroup.serialParams).toHaveProperty('baudRate')
+      expect(firstGroup.serialParams).toHaveProperty('parity')
+      expect(firstGroup.serialParams).toHaveProperty('dataBits')
+      expect(firstGroup.serialParams).toHaveProperty('stopBits')
+
+      // All combinations in a group should have same serial params
+      const { baudRate, parity, dataBits, stopBits } = firstGroup.serialParams
+      for (const combo of firstGroup.combinations) {
+        expect(combo.baudRate).toBe(baudRate)
+        expect(combo.parity).toBe(parity)
+        expect(combo.dataBits).toBe(dataBits)
+        expect(combo.stopBits).toBe(stopBits)
+      }
+
+      // All combinations in a group should have different slave IDs
+      const slaveIds = firstGroup.combinations.map((c) => c.slaveId)
+      expect(new Set(slaveIds).size).toBe(slaveIds.length)
+    })
+
+    test('preserves priority order from original generator', () => {
+      const defaultConfig: DefaultSerialConfig = {
+        baudRate: 19200,
+        parity: 'even',
+        dataBits: 8,
+        stopBits: 1,
+        defaultAddress: 52,
+      }
+
+      const options: GeneratorOptions = {
+        strategy: 'quick',
+        defaultConfig,
+        supportedConfig: {
+          validBaudRates: [9600, 19200],
+          validParity: ['none', 'even'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 3],
+        },
+      }
+
+      const groups = Array.from(generateParameterGroups(options))
+
+      // First group should have default serial params (prioritized)
+      const firstGroup = groups[0]
+      expect(firstGroup.serialParams).toMatchObject({
+        baudRate: 19200, // Default
+        parity: 'even', // Default
+        dataBits: 8,
+        stopBits: 1,
+      })
+
+      // With range [1,3], defaultAddress 52 is out of range
+      // Order should be: 1, 2, 3 (common addresses)
+      const firstCombo = firstGroup.combinations[0]
+      expect(firstCombo.slaveId).toBe(1)
+    })
+  })
+
+  describe('count equivalence', () => {
+    test('total combinations equals ungrouped generator', () => {
+      const options: GeneratorOptions = {
+        strategy: 'quick',
+        supportedConfig: {
+          validBaudRates: [9600, 19200],
+          validParity: ['none', 'even'],
+          validDataBits: [8, 7],
+          validStopBits: [1, 2],
+          validAddressRange: [1, 10],
+        },
+      }
+
+      const groups = Array.from(generateParameterGroups(options))
+      const totalCombinations = groups.reduce((sum: number, g) => sum + g.combinations.length, 0)
+
+      // 2 baud × 2 parity × 2 data × 2 stop × 10 addresses = 160
+      expect(totalCombinations).toBe(160)
+    })
+
+    test('contains same combinations as original generator', () => {
+      const options: GeneratorOptions = {
+        strategy: 'quick',
+        supportedConfig: {
+          validBaudRates: [9600, 19200],
+          validParity: ['none'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 5],
+        },
+      }
+
+      // Get all combinations from grouped generator
+      const groups = Array.from(generateParameterGroups(options))
+      const groupedCombos = groups.flatMap((g) => g.combinations)
+
+      // Get all combinations from original generator
+      const originalCombos = Array.from(generateParameterCombinations(options))
+
+      // Should have same count
+      expect(groupedCombos.length).toBe(originalCombos.length)
+
+      // Should contain the same combinations (order may differ due to grouping)
+      const groupedSet = new Set(groupedCombos.map((c) => JSON.stringify(c)))
+      const originalSet = new Set(originalCombos.map((c) => JSON.stringify(c)))
+
+      expect(groupedSet.size).toBe(originalSet.size)
+      expect(groupedSet).toEqual(originalSet)
+
+      // Verify slave ID order is preserved within each group
+      for (const group of groups) {
+        const slaveIds = group.combinations.map((c) => c.slaveId)
+        // Slave IDs should be in priority order (default, 1, 2, then sequential)
+        // For range [1,5] without default: [1, 2, 3, 4, 5]
+        expect(slaveIds).toEqual([1, 2, 3, 4, 5])
+      }
+    })
+  })
+
+  describe('edge cases', () => {
+    test('handles single group', () => {
+      const options: GeneratorOptions = {
+        strategy: 'quick',
+        supportedConfig: {
+          validBaudRates: [9600],
+          validParity: ['none'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 5],
+        },
+      }
+
+      const groups = Array.from(generateParameterGroups(options))
+
+      // 1 baud × 1 parity × 1 data × 1 stop = 1 group
+      expect(groups).toHaveLength(1)
+      expect(groups[0].combinations).toHaveLength(5) // 5 slave IDs
+    })
+
+    test('handles single combination', () => {
+      const options: GeneratorOptions = {
+        strategy: 'quick',
+        supportedConfig: {
+          validBaudRates: [9600],
+          validParity: ['none'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [52, 52],
+        },
+      }
+
+      const groups = Array.from(generateParameterGroups(options))
+
+      expect(groups).toHaveLength(1)
+      expect(groups[0].combinations).toHaveLength(1)
+      expect(groups[0].combinations[0]).toMatchObject({
+        slaveId: 52,
+        baudRate: 9600,
+        parity: 'none',
+        dataBits: 8,
+        stopBits: 1,
+      })
+    })
+
+    test('handles thorough strategy', () => {
+      const options: GeneratorOptions = {
+        strategy: 'thorough',
+        supportedConfig: {
+          validBaudRates: [9600, 19200, 38400],
+          validParity: ['none', 'even', 'odd'],
+          validDataBits: [8, 7],
+          validStopBits: [1, 2],
+          validAddressRange: [1, 10],
+        },
+      }
+
+      const groups = Array.from(generateParameterGroups(options))
+
+      // 3 baud × 3 parity × 2 data × 2 stop = 36 groups
+      expect(groups).toHaveLength(36)
+
+      // Each group should have 10 combinations (slave IDs 1-10)
+      for (const group of groups) {
+        expect(group.combinations).toHaveLength(10)
+      }
+    })
+  })
+
+  describe('memory efficiency', () => {
+    test('does not materialize all combinations at once', () => {
+      const options: GeneratorOptions = {
+        strategy: 'quick',
+        supportedConfig: {
+          validBaudRates: [9600, 19200],
+          validParity: ['none', 'even'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 247], // Large address range
+        },
+      }
+
+      const generator = generateParameterGroups(options)
+
+      // Get first group
+      const firstResult = generator.next()
+      expect(firstResult.done).toBe(false)
+      expect(firstResult.value?.combinations).toHaveLength(247)
+
+      // At this point, we should NOT have all ~1000 combinations in memory
+      // Only the first group's 247 combinations should be materialized
+      // This is hard to test directly, but we verify the generator pattern works
+
+      // Get second group
+      const secondResult = generator.next()
+      expect(secondResult.done).toBe(false)
+      expect(secondResult.value?.combinations).toHaveLength(247)
+
+      // Verify we can iterate lazily
+      let groupCount = 2 // Already consumed 2 groups above
+      for (const _group of generator) {
+        groupCount++
+      }
+
+      expect(groupCount).toBe(4) // 2 baud × 2 parity = 4 groups total
+    })
+  })
+})
