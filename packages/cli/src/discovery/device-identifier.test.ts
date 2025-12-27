@@ -21,10 +21,12 @@ describe('identifyDevice', () => {
   describe('successful device identification', () => {
     test('identifies device using FC43 when available', async () => {
       const mockDeviceId = {
-        vendorName: 'Acme Corp',
-        productCode: 'AC-100',
-        modelName: 'Temperature Sensor',
-        revision: 'v1.2.3',
+        data: {
+          0: 'Acme Corp', // VendorName
+          1: 'AC-100', // ProductCode
+          2: 'v1.2.3', // MajorMinorRevision
+        },
+        conformityLevel: 0x01,
       }
 
       mockClient.readDeviceIdentification = jest.fn().mockResolvedValue(mockDeviceId)
@@ -36,13 +38,13 @@ describe('identifyDevice', () => {
       expect(result.present).toBe(true)
       expect(result.vendorName).toBe('Acme Corp')
       expect(result.productCode).toBe('AC-100')
-      expect(result.modelName).toBe('Temperature Sensor')
+      expect(result.modelName).toBeUndefined() // modelName (object ID 7) not fetched
       expect(result.revision).toBe('v1.2.3')
       expect(result.supportsFC43).toBe(true)
       expect(result.responseTimeMs).toBeGreaterThan(0)
       expect(result.responseTimeMs).toBeLessThanOrEqual(endTime - startTime + 5)
 
-      expect(mockClient.readDeviceIdentification).toHaveBeenCalledWith(1)
+      expect(mockClient.readDeviceIdentification).toHaveBeenCalledWith(1, 0)
     })
 
     test('falls back to FC03 when FC43 not available', async () => {
@@ -127,7 +129,9 @@ describe('identifyDevice', () => {
   describe('function code support detection', () => {
     test('sets supportsFC43=true when FC43 succeeds', async () => {
       mockClient.readDeviceIdentification = jest.fn().mockResolvedValue({
-        vendorName: 'Test',
+        data: {
+          0: 'Test',
+        },
       })
 
       const result = await identifyDevice(mockClient as ModbusRTU, 1000)
@@ -188,7 +192,7 @@ describe('identifyDevice', () => {
     test('measures accurate response time for fast responses', async () => {
       mockClient.readDeviceIdentification = jest.fn().mockImplementation(async () => {
         await new Promise((resolve) => setTimeout(resolve, 50))
-        return { vendorName: 'Fast Device' }
+        return { data: { 0: 'Fast Device' } }
       })
 
       const result = await identifyDevice(mockClient as ModbusRTU, 1000)
@@ -215,8 +219,10 @@ describe('identifyDevice', () => {
   describe('partial device identification data', () => {
     test('handles FC43 with minimal data', async () => {
       mockClient.readDeviceIdentification = jest.fn().mockResolvedValue({
-        vendorName: 'Only Vendor',
-        // Missing other fields
+        data: {
+          0: 'Only Vendor',
+          // Missing other fields (1, 2)
+        },
       })
 
       const result = await identifyDevice(mockClient as ModbusRTU, 1000)
@@ -229,7 +235,9 @@ describe('identifyDevice', () => {
     })
 
     test('handles empty FC43 response as success', async () => {
-      mockClient.readDeviceIdentification = jest.fn().mockResolvedValue({})
+      mockClient.readDeviceIdentification = jest.fn().mockResolvedValue({
+        data: {},
+      })
 
       const result = await identifyDevice(mockClient as ModbusRTU, 1000)
 

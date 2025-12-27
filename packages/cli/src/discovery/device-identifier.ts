@@ -98,16 +98,7 @@ async function tryFC43(client: ModbusRTU): Promise<Partial<DeviceIdentificationR
   }
 
   try {
-    const deviceId = await (
-      client as ModbusRTU & {
-        readDeviceIdentification: (readDeviceIdCode: number) => Promise<{
-          vendorName?: string
-          productCode?: string
-          modelName?: string
-          revision?: string
-        }>
-      }
-    ).readDeviceIdentification(1) // Read basic identification
+    const response = await client.readDeviceIdentification(1, 0) // Read basic identification, start from object 0
 
     // Build result object conditionally
     const result: Partial<DeviceIdentificationResult> = {
@@ -115,17 +106,24 @@ async function tryFC43(client: ModbusRTU): Promise<Partial<DeviceIdentificationR
       supportsFC43: true,
     }
 
-    if (deviceId.vendorName) {
-      result.vendorName = deviceId.vendorName
-    }
-    if (deviceId.productCode) {
-      result.productCode = deviceId.productCode
-    }
-    if (deviceId.modelName) {
-      result.modelName = deviceId.modelName
-    }
-    if (deviceId.revision) {
-      result.revision = deviceId.revision
+    // modbus-serial returns { data: { 0: "vendor", 1: "product", 2: "revision" }, conformityLevel }
+    // where keys are object IDs: 0=VendorName, 1=ProductCode, 2=MajorMinorRevision
+    if (response.data && typeof response.data === 'object') {
+      const data = response.data as unknown as Record<number, string>
+
+      // Object ID 0 = VendorName
+      if (data[0]) {
+        result.vendorName = data[0]
+      }
+      // Object ID 1 = ProductCode
+      if (data[1]) {
+        result.productCode = data[1]
+      }
+      // Object ID 2 = MajorMinorRevision
+      if (data[2]) {
+        result.revision = data[2]
+      }
+      // Note: modelName (object ID 7) requires a separate request with objectId=7
     }
 
     return result
