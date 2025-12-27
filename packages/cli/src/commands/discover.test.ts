@@ -203,4 +203,237 @@ describe('Discover Command', () => {
       expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('✓ Found device:'))
     })
   })
+
+  describe('maxDevices parameter', () => {
+    beforeEach(() => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+    })
+
+    test('should show "Find all devices" when maxDevices = 0', async () => {
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        maxDevices: 0,
+        format: 'table',
+      })
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('Mode: Find all devices')
+    })
+
+    test('should show "Find up to N device(s)" when maxDevices > 0', async () => {
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        maxDevices: 3,
+        format: 'table',
+      })
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('Mode: Find up to 3 device(s)')
+    })
+  })
+
+  describe('driver loading', () => {
+    test('should show local driver message', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+      jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue({
+        createDriver: jest.fn(),
+        defaultConfig: undefined,
+        supportedConfig: undefined,
+      })
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        local: true,
+        format: 'table',
+      })
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('Using local driver package')
+    })
+
+    test('should show driver name when using specific driver', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+      jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue({
+        createDriver: jest.fn(),
+        defaultConfig: undefined,
+        supportedConfig: undefined,
+      })
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        driver: 'ya-modbus-driver-test',
+        format: 'table',
+      })
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('Using driver: ya-modbus-driver-test')
+    })
+
+    test('should show DEFAULT_CONFIG message when driver provides it', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+      jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue({
+        createDriver: jest.fn(),
+        defaultConfig: {
+          baudRate: 9600,
+          parity: 'none',
+          dataBits: 8,
+          stopBits: 1,
+          defaultAddress: 52,
+        },
+        supportedConfig: undefined,
+      })
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        driver: 'ya-modbus-driver-test',
+        format: 'table',
+      })
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'Using driver DEFAULT_CONFIG for parameter prioritization'
+      )
+    })
+
+    test('should show SUPPORTED_CONFIG message when driver provides it', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+      jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue({
+        createDriver: jest.fn(),
+        defaultConfig: undefined,
+        supportedConfig: {
+          validBaudRates: [9600, 19200],
+          validParity: ['none', 'even'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 247],
+        },
+      })
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        driver: 'ya-modbus-driver-test',
+        format: 'table',
+      })
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'Using driver SUPPORTED_CONFIG to limit parameter combinations'
+      )
+    })
+
+    test('should show warning when driver fails to load', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+      jest.spyOn(driverLoader, 'loadDriver').mockRejectedValue(new Error('Driver not found'))
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        driver: 'nonexistent-driver',
+        format: 'table',
+      })
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Warning: Failed to load driver nonexistent-driver')
+      )
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Continuing with generic Modbus parameters...')
+    })
+  })
+
+  describe('verbose mode', () => {
+    beforeEach(() => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+    })
+
+    test('should show verbose message when enabled', async () => {
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        verbose: true,
+        format: 'table',
+      })
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('Verbose: Enabled')
+    })
+
+    test('should call onTestAttempt callback in verbose mode', async () => {
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        verbose: true,
+        format: 'table',
+      })
+
+      const scanCall = (scanner.scanForDevices as jest.Mock).mock.calls[0]
+      const scanOptions = scanCall[1]
+
+      expect(scanOptions.onTestAttempt).toBeDefined()
+    })
+
+    test('should write testing status to stdout in verbose mode', async () => {
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        verbose: true,
+        format: 'table',
+      })
+
+      const scanCall = (scanner.scanForDevices as jest.Mock).mock.calls[0]
+      const scanOptions = scanCall[1]
+
+      // Simulate testing callback
+      scanOptions.onTestAttempt(
+        {
+          slaveId: 52,
+          baudRate: 9600,
+          parity: 'none',
+          dataBits: 8,
+          stopBits: 1,
+        },
+        'testing'
+      )
+
+      expect(stdoutWriteSpy).toHaveBeenCalledWith(expect.stringContaining('· Testing: 52@9600'))
+    })
+
+    test('should write found status to stdout in verbose mode', async () => {
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        verbose: true,
+        format: 'table',
+      })
+
+      const scanCall = (scanner.scanForDevices as jest.Mock).mock.calls[0]
+      const scanOptions = scanCall[1]
+
+      // Simulate found callback
+      scanOptions.onTestAttempt(
+        {
+          slaveId: 52,
+          baudRate: 9600,
+          parity: 'none',
+          dataBits: 8,
+          stopBits: 1,
+        },
+        'found'
+      )
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('✓ Found:   52@9600'))
+    })
+
+    test('should not show verbose output in JSON format', async () => {
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        verbose: true,
+        format: 'json',
+      })
+
+      const scanCall = (scanner.scanForDevices as jest.Mock).mock.calls[0]
+      const scanOptions = scanCall[1]
+
+      // Simulate testing callback
+      scanOptions.onTestAttempt(
+        {
+          slaveId: 52,
+          baudRate: 9600,
+          parity: 'none',
+          dataBits: 8,
+          stopBits: 1,
+        },
+        'testing'
+      )
+
+      // Should not write to stdout in JSON format
+      expect(stdoutWriteSpy).not.toHaveBeenCalled()
+    })
+  })
 })
