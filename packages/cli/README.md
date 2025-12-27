@@ -230,14 +230,16 @@ Discovery complete! Found 1 device(s).
 
 **Discovery Time Estimates:**
 
-- **Quick with driver**: 4-8 minutes (~1,500 combinations)
-- **Quick without driver**: 8-15 minutes (~3,000 combinations)
-- **Thorough**: 30-60 minutes (~24,000 combinations)
+Based on real-world testing (~0.6s per combination):
+
+- **Quick with driver**: ~15 minutes (1,482 combinations typical)
+- **Quick without driver**: ~30 minutes (2,964 combinations)
+- **Thorough**: ~4 hours (23,712 combinations)
 
 **Performance Tips:**
 
-- Use `--driver` to prioritize likely parameters
-- Use `--stop-after-first` if you know there's only one device
+- Use `--driver` to prioritize likely parameters and reduce search space
+- Use `--max-devices 1` (default) to stop after finding first device
 - Reduce `--timeout` if your devices respond quickly (e.g., `--timeout 100`)
 - Increase `--delay` if you experience bus contention
 
