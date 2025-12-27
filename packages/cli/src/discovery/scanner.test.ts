@@ -276,6 +276,48 @@ describe('scanForDevices', () => {
       expect(devices).toHaveLength(5) // Found all 5
       expect(mockClient.setID).toHaveBeenCalledTimes(5)
     })
+
+    test('stops between parameter groups when maxDevices reached', async () => {
+      const mockIdentify = identifyDevice as jest.MockedFunction<typeof identifyDevice>
+
+      // All devices present
+      mockIdentify.mockResolvedValue({
+        present: true,
+        responseTimeMs: 45.67,
+      })
+
+      const generatorOptions: GeneratorOptions = {
+        strategy: 'quick',
+        supportedConfig: {
+          validBaudRates: [9600, 19200], // Two baud rates = two parameter groups
+          validParity: ['none'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 5], // 5 slave IDs per group
+        },
+      }
+
+      const scanOptions: ScanOptions = {
+        port: '/dev/ttyUSB0',
+        timeout: 1000,
+        delayMs: 0,
+        maxDevices: 3, // Stop after finding 3 devices
+      }
+
+      const devices = await scanForDevices(generatorOptions, scanOptions)
+
+      expect(devices).toHaveLength(3)
+      // Should have tested 3 slave IDs in first group only
+      expect(mockClient.setID).toHaveBeenCalledTimes(3)
+      // connectRTUBuffered should be called only once (for first group at 9600 baud)
+      expect(mockClient.connectRTUBuffered).toHaveBeenCalledTimes(1)
+      expect(mockClient.connectRTUBuffered).toHaveBeenCalledWith('/dev/ttyUSB0', {
+        baudRate: 9600,
+        parity: 'none',
+        dataBits: 8,
+        stopBits: 1,
+      })
+    })
   })
 
   describe('progress callbacks', () => {
@@ -598,6 +640,38 @@ describe('scanForDevices', () => {
       const elapsed = Date.now() - start
 
       // Should have waited at least (50ms - 10ms) × 2 tests = 80ms
+      expect(elapsed).toBeGreaterThanOrEqual(80)
+    })
+
+    test('waits remainder of delay when identifyDevice throws error and delay > timeout', async () => {
+      const mockIdentify = identifyDevice as jest.MockedFunction<typeof identifyDevice>
+
+      // Simulate identification error (exception thrown)
+      mockIdentify.mockRejectedValue(new Error('Identification failed'))
+
+      const generatorOptions: GeneratorOptions = {
+        strategy: 'quick',
+        supportedConfig: {
+          validBaudRates: [9600],
+          validParity: ['none'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 2],
+        },
+      }
+
+      const scanOptions: ScanOptions = {
+        port: '/dev/ttyUSB0',
+        timeout: 10, // Very short timeout
+        delayMs: 50, // Delay > timeout
+      }
+
+      const start = Date.now()
+      await scanForDevices(generatorOptions, scanOptions)
+      const elapsed = Date.now() - start
+
+      // Should have waited at least (50ms - 10ms) × 2 tests = 80ms
+      // Even though identifyDevice throws error, we still wait the remainder
       expect(elapsed).toBeGreaterThanOrEqual(80)
     })
   })
