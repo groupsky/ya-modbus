@@ -1,5 +1,7 @@
 import ModbusRTU from 'modbus-serial'
 
+import type { LoadedDriver } from '../driver-loader/loader.js'
+
 import { identifyDevice, type DeviceIdentificationResult } from './device-identifier.js'
 import {
   generateParameterCombinations,
@@ -28,6 +30,9 @@ export interface ScanOptions {
   /** Delay between attempts in milliseconds */
   delayMs: number
 
+  /** Optional loaded driver for driver-based detection */
+  driverMetadata?: LoadedDriver
+
   /** Progress callback (current index, total combinations, devices found) */
   onProgress?: (current: number, total: number, devicesFound: number) => void
 
@@ -46,7 +51,7 @@ export async function scanForDevices(
   generatorOptions: GeneratorOptions,
   scanOptions: ScanOptions
 ): Promise<DiscoveredDevice[]> {
-  const { port, timeout, delayMs, onProgress, onDeviceFound } = scanOptions
+  const { port, timeout, delayMs, driverMetadata, onProgress, onDeviceFound } = scanOptions
 
   // Generate all parameter combinations
   const combinations = Array.from(generateParameterCombinations(generatorOptions))
@@ -75,7 +80,7 @@ export async function scanForDevices(
       client.setID(slaveId)
 
       // Try to identify device
-      const identification = await identifyDevice(client, timeout)
+      const identification = await identifyDevice(client, timeout, slaveId, driverMetadata)
 
       // Close connection
       await new Promise<void>((resolve) => client.close(resolve))

@@ -96,8 +96,8 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
   console.log(`Testing ${combinations.length} parameter combinations...`)
   console.log('')
 
-  // Scan for devices
-  const devices = await scanForDevices(generatorOptions, {
+  // Build scan options conditionally
+  const scanOptions: Parameters<typeof scanForDevices>[1] = {
     port: options.port,
     timeout,
     delayMs: delay,
@@ -121,7 +121,15 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
         )
       }
     },
-  })
+  }
+
+  // Add driverMetadata if available
+  if (driverMetadata) {
+    scanOptions.driverMetadata = driverMetadata
+  }
+
+  // Scan for devices
+  const devices = await scanForDevices(generatorOptions, scanOptions)
 
   // Clear progress line
   if (format !== 'json') {

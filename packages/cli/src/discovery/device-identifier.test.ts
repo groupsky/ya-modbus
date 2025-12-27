@@ -32,7 +32,7 @@ describe('identifyDevice', () => {
       mockClient.readDeviceIdentification = jest.fn().mockResolvedValue(mockDeviceId)
 
       const startTime = performance.now()
-      const result = await identifyDevice(mockClient as ModbusRTU, 1000)
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
       const endTime = performance.now()
 
       expect(result.present).toBe(true)
@@ -54,7 +54,7 @@ describe('identifyDevice', () => {
         buffer: Buffer.from([0, 123, 1, 200]),
       })
 
-      const result = await identifyDevice(mockClient as ModbusRTU, 1000)
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
 
       expect(result.present).toBe(true)
       expect(result.supportsFC03).toBe(true)
@@ -72,7 +72,7 @@ describe('identifyDevice', () => {
         modbusCode: 2,
       })
 
-      const result = await identifyDevice(mockClient as ModbusRTU, 1000)
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
 
       // Exception code means device is present and responding
       expect(result.present).toBe(true)
@@ -90,7 +90,7 @@ describe('identifyDevice', () => {
         errno: 'ETIMEDOUT',
       })
 
-      const result = await identifyDevice(mockClient as ModbusRTU, 1000)
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
 
       expect(result.present).toBe(false)
       expect(result.timeout).toBe(true)
@@ -104,7 +104,7 @@ describe('identifyDevice', () => {
         errno: 'CRC',
       })
 
-      const result = await identifyDevice(mockClient as ModbusRTU, 1000)
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
 
       expect(result.present).toBe(false)
       expect(result.crcError).toBe(true)
@@ -120,7 +120,7 @@ describe('identifyDevice', () => {
         buffer: Buffer.from([0, 100]),
       })
 
-      await identifyDevice(mockClient as ModbusRTU, 2500)
+      await identifyDevice(mockClient as ModbusRTU, 2500, 1)
 
       expect(mockClient.setTimeout).toHaveBeenCalledWith(2500)
     })
@@ -134,7 +134,7 @@ describe('identifyDevice', () => {
         },
       })
 
-      const result = await identifyDevice(mockClient as ModbusRTU, 1000)
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
 
       expect(result.supportsFC43).toBe(true)
     })
@@ -146,7 +146,7 @@ describe('identifyDevice', () => {
         buffer: Buffer.from([0, 42]),
       })
 
-      const result = await identifyDevice(mockClient as ModbusRTU, 1000)
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
 
       expect(result.supportsFC03).toBe(true)
     })
@@ -158,7 +158,7 @@ describe('identifyDevice', () => {
         modbusCode: 1,
       })
 
-      const result = await identifyDevice(mockClient as ModbusRTU, 1000)
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
 
       expect(result.supportsFC03).toBe(false)
       expect(result.present).toBe(true) // Still present due to exception response
@@ -173,7 +173,7 @@ describe('identifyDevice', () => {
         code: 'ECONNREFUSED',
       })
 
-      const result = await identifyDevice(mockClient as ModbusRTU, 1000)
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
 
       expect(result.present).toBe(false)
     })
@@ -182,7 +182,7 @@ describe('identifyDevice', () => {
       mockClient.readDeviceIdentification = undefined
       mockClient.readHoldingRegisters = jest.fn().mockRejectedValue(new Error('Generic error'))
 
-      const result = await identifyDevice(mockClient as ModbusRTU, 1000)
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
 
       expect(result.present).toBe(false)
     })
@@ -195,7 +195,7 @@ describe('identifyDevice', () => {
         return { data: { 0: 'Fast Device' } }
       })
 
-      const result = await identifyDevice(mockClient as ModbusRTU, 1000)
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
 
       // Allow for timing precision variations (±1ms)
       expect(result.responseTimeMs).toBeGreaterThanOrEqual(49)
@@ -209,7 +209,7 @@ describe('identifyDevice', () => {
         return { data: [1], buffer: Buffer.from([0, 1]) }
       })
 
-      const result = await identifyDevice(mockClient as ModbusRTU, 1000)
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
 
       expect(result.responseTimeMs).toBeGreaterThanOrEqual(100)
       expect(result.responseTimeMs).toBeLessThan(200)
@@ -225,7 +225,7 @@ describe('identifyDevice', () => {
         },
       })
 
-      const result = await identifyDevice(mockClient as ModbusRTU, 1000)
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
 
       expect(result.present).toBe(true)
       expect(result.vendorName).toBe('Only Vendor')
@@ -239,7 +239,7 @@ describe('identifyDevice', () => {
         data: {},
       })
 
-      const result = await identifyDevice(mockClient as ModbusRTU, 1000)
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
 
       // Empty response still means device is present and supports FC43
       expect(result.present).toBe(true)
