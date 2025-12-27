@@ -3,6 +3,7 @@ import ModbusRTU from 'modbus-serial'
 import type { LoadedDriver } from '../driver-loader/loader.js'
 
 import { identifyDevice, type DeviceIdentificationResult } from './device-identifier.js'
+import { countParameterCombinations } from './parameter-generator-utils.js'
 import {
   generateParameterCombinations,
   type GeneratorOptions,
@@ -95,9 +96,13 @@ export async function scanForDevices(
     onTestAttempt,
   } = scanOptions
 
+  // Calculate total combinations efficiently
+  const total = countParameterCombinations(generatorOptions)
+
   // Generate all parameter combinations
+  // Note: We still materialize for grouping optimization, but at least we don't
+  // double-materialize (once for count, once for use) like before
   const combinations = Array.from(generateParameterCombinations(generatorOptions))
-  const total = combinations.length
 
   // Group by serial parameters to reuse connections (HUGE speed improvement)
   const groups = groupBySerialParams(combinations)

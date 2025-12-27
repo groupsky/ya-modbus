@@ -97,11 +97,11 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
     }
   }
 
-  // Create progress tracker (calculate total combinations first)
-  const { generateParameterCombinations } = await import('../discovery/parameter-generator.js')
+  // Create progress tracker (calculate total combinations without materializing)
+  const { countParameterCombinations } = await import('../discovery/parameter-generator-utils.js')
 
   // Build generator options conditionally to avoid passing undefined
-  const generatorOptions: Parameters<typeof generateParameterCombinations>[0] = {
+  const generatorOptions: Parameters<typeof countParameterCombinations>[0] = {
     strategy,
   }
 
@@ -113,12 +113,12 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
     generatorOptions.supportedConfig = driverMetadata.supportedConfig
   }
 
-  const combinations = Array.from(generateParameterCombinations(generatorOptions))
+  const totalCombinations = countParameterCombinations(generatorOptions)
 
-  const progress = new ProgressTracker(combinations.length)
+  const progress = new ProgressTracker(totalCombinations)
 
   if (!silent) {
-    console.log(`Testing ${combinations.length} parameter combinations...`)
+    console.log(`Testing ${totalCombinations} parameter combinations...`)
     console.log('')
   }
 
