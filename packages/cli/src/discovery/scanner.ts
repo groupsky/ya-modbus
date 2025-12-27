@@ -149,8 +149,14 @@ export async function scanForDevices(
           // Set slave ID (reusing same connection)
           client.setID(slaveId)
 
+          // Measure actual time taken for this test
+          const testStartTime = performance.now()
+
           // Try to identify device
           const identification = await identifyDevice(client, timeout, slaveId, driverMetadata)
+
+          // Calculate how long the test actually took
+          const actualTestTime = performance.now() - testStartTime
 
           // If device found, add to results
           if (identification.present) {
@@ -166,13 +172,19 @@ export async function scanForDevices(
             onTestAttempt?.(combination, 'not-found')
           }
 
-          // Wait before next attempt to avoid bus contention
+          // Only wait if we haven't already waited long enough
+          // The delay is for bus recovery - if the test already took longer than
+          // the delay (e.g., due to timeout), we don't need additional waiting
           if (delayMs > 0) {
-            await new Promise((resolve) => setTimeout(resolve, delayMs))
+            const remainingDelay = Math.max(0, delayMs - actualTestTime)
+            if (remainingDelay > 0) {
+              await new Promise((resolve) => setTimeout(resolve, remainingDelay))
+            }
           }
         } catch {
           // Device identification error - skip this slave ID
           onTestAttempt?.(combination, 'not-found')
+          // Note: Error case also consumed time, no additional delay needed
         }
 
         // Update progress
