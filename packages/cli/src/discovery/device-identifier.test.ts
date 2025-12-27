@@ -5,6 +5,14 @@ import { identifyDevice } from './device-identifier.js'
 // Mock modbus-serial
 jest.mock('modbus-serial')
 
+// Mock createModbusTransport
+jest.mock('../transport/create-modbus-transport.js', () => ({
+  createModbusTransport: jest.fn((_client) => ({
+    readHoldingRegisters: jest.fn(),
+    readInputRegisters: jest.fn(),
+  })),
+}))
+
 describe('identifyDevice', () => {
   let mockClient: jest.Mocked<Partial<ModbusRTU>>
 
@@ -341,6 +349,159 @@ describe('identifyDevice', () => {
 
       expect(result.present).toBe(false)
       expect(result.timeout).toBe(true)
+    })
+  })
+
+  describe('driver-based detection', () => {
+    const mockDriver = {
+      dataPoints: [
+        { id: 'temperature', access: 'r' as const },
+        { id: 'setpoint', access: 'rw' as const },
+      ],
+      readDataPoint: jest.fn(),
+    }
+
+    const mockDriverMetadata = {
+      createDriver: jest.fn().mockResolvedValue(mockDriver),
+      defaultConfig: undefined,
+      supportedConfig: undefined,
+    }
+
+    beforeEach(() => {
+      jest.clearAllMocks()
+      mockDriver.readDataPoint.mockClear()
+      mockDriverMetadata.createDriver.mockClear()
+    })
+
+    test('uses driver detection when driver provided', async () => {
+      mockDriver.readDataPoint.mockResolvedValue({ value: 25.5, unit: '°C' })
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1, mockDriverMetadata)
+
+      expect(result.present).toBe(true)
+      expect(mockDriverMetadata.createDriver).toHaveBeenCalled()
+      expect(mockDriver.readDataPoint).toHaveBeenCalledWith('temperature')
+    })
+
+    test('returns exception code when driver read throws modbus exception', async () => {
+      mockDriver.readDataPoint.mockRejectedValue({ modbusCode: 2 })
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1, mockDriverMetadata)
+
+      expect(result.present).toBe(true)
+      expect(result.exceptionCode).toBe(2)
+    })
+
+    test('returns timeout when driver detection times out', async () => {
+      mockDriver.readDataPoint.mockRejectedValue({ errno: 'ETIMEDOUT' })
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1, mockDriverMetadata)
+
+      expect(result.present).toBe(false)
+      expect(result.timeout).toBe(true)
+    })
+
+    test('returns CRC error when driver detection has CRC error', async () => {
+      mockDriver.readDataPoint.mockRejectedValue({ message: 'CRC check failed' })
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1, mockDriverMetadata)
+
+      expect(result.present).toBe(false)
+      expect(result.crcError).toBe(true)
+    })
+
+    test('falls back to FC43 when driver detection has other error', async () => {
+      mockDriver.readDataPoint.mockRejectedValue(new Error('Some other error'))
+      mockClient.readDeviceIdentification = jest.fn().mockResolvedValue({
+        data: { 0: 'Vendor' },
+      })
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1, mockDriverMetadata)
+
+      expect(result.present).toBe(true)
+      expect(result.supportsFC43).toBe(true)
+      expect(mockClient.readDeviceIdentification).toHaveBeenCalled()
+    })
+
+    test('falls back to FC43 when driver has no readable data points', async () => {
+      const writeOnlyDriver = {
+        dataPoints: [{ id: 'setpoint', access: 'w' as const }],
+        readDataPoint: jest.fn(),
+      }
+
+      const writeOnlyMetadata = {
+        createDriver: jest.fn().mockResolvedValue(writeOnlyDriver),
+        defaultConfig: undefined,
+        supportedConfig: undefined,
+      }
+
+      mockClient.readDeviceIdentification = jest.fn().mockResolvedValue({
+        data: { 0: 'Vendor' },
+      })
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1, writeOnlyMetadata)
+
+      expect(result.present).toBe(true)
+      expect(result.supportsFC43).toBe(true)
+      expect(mockClient.readDeviceIdentification).toHaveBeenCalled()
+    })
+  })
+
+  describe('error type guards with non-object errors', () => {
+    test('handles non-object error in timeout detection', async () => {
+      mockClient.readDeviceIdentification = undefined
+      mockClient.readInputRegisters = jest.fn().mockRejectedValue('string error')
+      mockClient.readHoldingRegisters = jest.fn().mockRejectedValue('string error')
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
+
+      // String errors should not be detected as timeout/CRC, so device is marked not present
+      expect(result.present).toBe(false)
+      expect(result.timeout).toBeUndefined()
+      expect(result.crcError).toBeUndefined()
+    })
+
+    test('handles null error in timeout detection', async () => {
+      mockClient.readDeviceIdentification = undefined
+      mockClient.readInputRegisters = jest.fn().mockRejectedValue(null)
+      mockClient.readHoldingRegisters = jest.fn().mockRejectedValue(null)
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
+
+      expect(result.present).toBe(false)
+      expect(result.timeout).toBeUndefined()
+      expect(result.crcError).toBeUndefined()
+    })
+  })
+
+  describe('FC04 CRC error handling', () => {
+    test('returns CRC error when FC04 fails with CRC error', async () => {
+      delete (mockClient as { readDeviceIdentification?: unknown }).readDeviceIdentification
+      mockClient.readInputRegisters = jest.fn().mockRejectedValue({
+        message: 'CRC check failed',
+        errno: 'CRC',
+      })
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
+
+      expect(result.present).toBe(false)
+      expect(result.crcError).toBe(true)
+    })
+  })
+
+  describe('FC04 register 1 success', () => {
+    test('returns present when FC04 register 1 read succeeds', async () => {
+      delete (mockClient as { readDeviceIdentification?: unknown }).readDeviceIdentification
+      mockClient.readInputRegisters = jest.fn().mockResolvedValue({
+        data: [100],
+        buffer: Buffer.from([0, 100]),
+      })
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
+
+      expect(result.present).toBe(true)
+      expect(mockClient.readInputRegisters).toHaveBeenCalledWith(1, 1)
+      expect(mockClient.readInputRegisters).toHaveBeenCalledTimes(1) // Should not try register 0
     })
   })
 })

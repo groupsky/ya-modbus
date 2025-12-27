@@ -202,6 +202,46 @@ describe('Discover Command', () => {
 
       expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('✓ Found device:'))
     })
+
+    test('should show progress bar in normal mode', async () => {
+      // Mock clearLine and cursorTo before running command
+      const mockClearLine = jest.fn()
+      const mockCursorTo = jest.fn()
+      process.stdout.clearLine = mockClearLine
+      process.stdout.cursorTo = mockCursorTo
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        format: 'table',
+      })
+
+      const scanCall = (scanner.scanForDevices as jest.Mock).mock.calls[0]
+      const scanOptions = scanCall[1]
+
+      // Call onProgress callback
+      scanOptions.onProgress(10, 100, 1)
+
+      // Should write progress to stdout
+      expect(stdoutWriteSpy).toHaveBeenCalled()
+      expect(mockClearLine).toHaveBeenCalledWith(0)
+      expect(mockCursorTo).toHaveBeenCalledWith(0)
+    })
+
+    test('should not show progress bar in json format', async () => {
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        format: 'json',
+      })
+
+      const scanCall = (scanner.scanForDevices as jest.Mock).mock.calls[0]
+      const scanOptions = scanCall[1]
+
+      // Call onProgress callback
+      scanOptions.onProgress(10, 100, 1)
+
+      // Should not write to stdout in JSON format
+      expect(stdoutWriteSpy).not.toHaveBeenCalled()
+    })
   })
 
   describe('maxDevices parameter', () => {
