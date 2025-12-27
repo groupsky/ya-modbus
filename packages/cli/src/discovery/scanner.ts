@@ -170,12 +170,19 @@ export async function scanForDevices(
             }
           } else {
             onTestAttempt?.(combination, 'not-found')
-            // No device - timeout already provided sufficient bus recovery time
+            // No device - we timed out. If delay is longer than timeout,
+            // we need to wait the remainder to meet the delay requirement
+            if (delayMs > timeout) {
+              await new Promise((resolve) => setTimeout(resolve, delayMs - timeout))
+            }
           }
         } catch {
           // Device identification error - skip this slave ID
           onTestAttempt?.(combination, 'not-found')
-          // Error/timeout cases already provide sufficient bus recovery time
+          // Error case - also need to wait remainder if delay > timeout
+          if (delayMs > timeout) {
+            await new Promise((resolve) => setTimeout(resolve, delayMs - timeout))
+          }
         }
 
         // Update progress
