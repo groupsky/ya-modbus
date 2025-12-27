@@ -17,6 +17,8 @@ export interface DiscoverOptions {
   local?: boolean
   timeout?: number
   delay?: number
+  stopAfterFirst?: boolean
+  verbose?: boolean
 
   // Output options
   format: 'table' | 'json'
@@ -32,13 +34,21 @@ export interface DiscoverOptions {
  */
 export async function discoverCommand(options: DiscoverOptions): Promise<void> {
   const strategy = options.strategy ?? 'quick'
-  const timeout = options.timeout ?? 1000
-  const delay = options.delay ?? 100
+  const timeout = options.timeout ?? 50 // Reduced from 1000ms for speed
+  const delay = options.delay ?? 50 // Reduced from 100ms for speed
   const format = options.format ?? 'table'
+  const stopAfterFirst = options.stopAfterFirst ?? false
+  const verbose = options.verbose ?? false
 
   console.log(`Starting Modbus device discovery on ${options.port}...`)
   console.log(`Strategy: ${strategy}`)
   console.log(`Timeout: ${timeout}ms, Delay: ${delay}ms`)
+  if (stopAfterFirst) {
+    console.log('Mode: Stop after first device found')
+  }
+  if (verbose) {
+    console.log('Verbose: Enabled')
+  }
   console.log('')
 
   // Load driver metadata if specified
@@ -101,26 +111,57 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
     port: options.port,
     timeout,
     delayMs: delay,
+    stopAfterFirst,
+    verbose,
     onProgress: (current, _total, devicesFound) => {
-      const progressText = progress.update(current, devicesFound)
-      if (progressText && format !== 'json') {
-        // Clear line and write progress
-        process.stdout.clearLine?.(0)
-        process.stdout.cursorTo?.(0)
-        process.stdout.write(progressText)
+      // Only show progress bar if not in verbose mode
+      if (!verbose) {
+        const progressText = progress.update(current, devicesFound)
+        if (progressText && format !== 'json') {
+          // Clear line and write progress
+          process.stdout.clearLine?.(0)
+          process.stdout.cursorTo?.(0)
+          process.stdout.write(progressText)
+        }
       }
     },
     onDeviceFound: (device) => {
       if (format !== 'json') {
-        // Clear progress line
-        process.stdout.clearLine?.(0)
-        process.stdout.cursorTo?.(0)
+        // Clear progress line (if not verbose)
+        if (!verbose) {
+          process.stdout.clearLine?.(0)
+          process.stdout.cursorTo?.(0)
+        }
         // Show found device
         console.log(
           `✓ Found device: Slave ID ${device.slaveId} @ ${device.baudRate},${device.parity === 'none' ? 'N' : device.parity === 'even' ? 'E' : 'O'},${device.dataBits},${device.stopBits}`
         )
       }
     },
+  }
+
+  // Add verbose callback if verbose mode is enabled
+  if (verbose) {
+    scanOptions.onTestAttempt = (params, result) => {
+      if (format !== 'json') {
+        const parityChar = params.parity === 'none' ? 'N' : params.parity === 'even' ? 'E' : 'O'
+        const status = result === 'found' ? '✓' : result === 'testing' ? '·' : '✗'
+        const paramStr = `${params.slaveId}@${params.baudRate},${parityChar},${params.dataBits},${params.stopBits}`
+
+        if (result === 'testing') {
+          // Show what we're testing
+          process.stdout.clearLine?.(0)
+          process.stdout.cursorTo?.(0)
+          process.stdout.write(`${status} Testing: ${paramStr}`)
+        } else if (result === 'found') {
+          // Device found - print on new line
+          process.stdout.clearLine?.(0)
+          process.stdout.cursorTo?.(0)
+          console.log(`${status} Found:   ${paramStr}`)
+        }
+        // Don't print anything for 'not-found' - just move to next test
+      }
+    }
   }
 
   // Add driverMetadata if available
