@@ -8,6 +8,7 @@ CLI tool for testing and developing Modbus device drivers.
 
 ## Features
 
+- **Discover devices** automatically by scanning serial ports for Modbus RTU devices
 - **Read data points** from Modbus devices (RTU/TCP)
 - **Write data points** to Modbus devices with confirmation
 - **Auto-detect drivers** from current package during development
@@ -117,6 +118,128 @@ ya-modbus write \
   --yes \
   --verify
 ```
+
+### Discover Devices
+
+**Automatic device discovery** scans a serial port to find Modbus RTU devices by testing different slave IDs and connection parameters.
+
+**Quick discovery (uses driver configuration):**
+
+```bash
+# Discover using driver SUPPORTED_CONFIG to limit parameter combinations
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --driver ya-modbus-driver-xymd1
+```
+
+**Discovery without driver (tests common parameters):**
+
+```bash
+# Tests standard baud rates (9600, 19200) and common parameters
+ya-modbus discover --port /dev/ttyUSB0
+```
+
+**Thorough discovery (tests all parameters):**
+
+```bash
+# Tests all standard Modbus parameters (slower but comprehensive)
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --strategy thorough
+```
+
+**Stop after first device:**
+
+```bash
+# Stop scanning immediately when a device is found
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --driver ya-modbus-driver-xymd1 \
+  --stop-after-first
+```
+
+**Silent mode (for scripts):**
+
+```bash
+# Suppress all progress messages, output only results
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --silent \
+  --format json
+
+# Example: Extract slave IDs with jq
+devices=$(ya-modbus discover -p /dev/ttyUSB0 --silent -f json | jq '.[].slaveId')
+```
+
+**Verbose progress:**
+
+```bash
+# Show each parameter combination being tested
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --verbose
+```
+
+**Custom timing:**
+
+```bash
+# Adjust timeout and delay for specific bus conditions
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --timeout 100 \
+  --delay 50
+```
+
+**Discovery Options:**
+
+- `--strategy <type>` - Discovery strategy: `quick` (default) or `thorough`
+  - **Quick**: Tests SUPPORTED_CONFIG params or common Modbus parameters
+  - **Thorough**: Tests all standard Modbus parameters (8 baud rates, 3 parity modes, 247 addresses)
+- `--driver <package>` - Driver package to use for parameter prioritization
+- `--local` - Load driver from local package (cwd)
+- `--timeout <ms>` - Response timeout in milliseconds (default: 1000)
+- `--delay <ms>` - Delay between attempts in milliseconds (default: 100)
+- `--stop-after-first` - Stop scanning after first device found
+- `--verbose` - Show detailed progress with current parameters being tested
+- `--silent` - Suppress all output except final result (useful for scripts)
+- `--format <type>` - Output format: `table` (default) or `json`
+
+**Output Example:**
+
+```
+Starting Modbus device discovery on /dev/ttyUSB0...
+Strategy: quick
+Timeout: 1000ms, Delay: 100ms
+
+Using driver: ya-modbus-driver-xymd1
+Using driver SUPPORTED_CONFIG to limit parameter combinations
+
+Testing 1482 parameter combinations...
+
+✓ Found device: Slave ID 52 @ 9600,N,8,1
+
+Discovery complete! Found 1 device(s).
+
+┌──────────┬───────────┬────────┬──────────┬──────────┬────────────┬──────────────┐
+│ Slave ID │ Baud Rate │ Parity │ Data Bits│ Stop Bits│ Response   │ Supports     │
+│          │           │        │          │          │ Time (ms)  │              │
+├──────────┼───────────┼────────┼──────────┼──────────┼────────────┼──────────────┤
+│ 52       │ 9600      │ none   │ 8        │ 1        │ 45.67      │ FC04         │
+└──────────┴───────────┴────────┴──────────┴──────────┴────────────┴──────────────┘
+```
+
+**Discovery Time Estimates:**
+
+- **Quick with driver**: 4-8 minutes (~1,500 combinations)
+- **Quick without driver**: 8-15 minutes (~3,000 combinations)
+- **Thorough**: 30-60 minutes (~24,000 combinations)
+
+**Performance Tips:**
+
+- Use `--driver` to prioritize likely parameters
+- Use `--stop-after-first` if you know there's only one device
+- Reduce `--timeout` if your devices respond quickly (e.g., `--timeout 100`)
+- Increase `--delay` if you experience bus contention
 
 ### Connection Options
 
