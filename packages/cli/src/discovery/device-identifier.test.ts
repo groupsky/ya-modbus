@@ -219,4 +219,128 @@ describe('identifyDevice', () => {
       expect(result.supportsFC43).toBe(true)
     })
   })
+
+  describe('error detection helpers', () => {
+    test('detects timeout via errno ETIMEDOUT', async () => {
+      mockClient.readDeviceIdentification = jest.fn().mockRejectedValue({
+        errno: 'ETIMEDOUT',
+      })
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
+
+      expect(result.present).toBe(false)
+      expect(result.timeout).toBe(true)
+    })
+
+    test('detects timeout via code ETIMEDOUT', async () => {
+      mockClient.readDeviceIdentification = jest.fn().mockRejectedValue({
+        code: 'ETIMEDOUT',
+      })
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
+
+      expect(result.present).toBe(false)
+      expect(result.timeout).toBe(true)
+    })
+
+    test('detects CRC error via errno', async () => {
+      mockClient.readDeviceIdentification = jest.fn().mockRejectedValue({
+        errno: 'CRC',
+      })
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
+
+      expect(result.present).toBe(false)
+      expect(result.crcError).toBe(true)
+    })
+
+    test('detects CRC error via message', async () => {
+      mockClient.readDeviceIdentification = jest.fn().mockRejectedValue({
+        message: 'CRC check failed',
+      })
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
+
+      expect(result.present).toBe(false)
+      expect(result.crcError).toBe(true)
+    })
+  })
+
+  describe('FC43 exception handling', () => {
+    test('handles FC43 exception as present but unsupported', async () => {
+      mockClient.readDeviceIdentification = jest.fn().mockRejectedValue({
+        modbusCode: 1, // Illegal function
+      })
+      mockClient.readHoldingRegisters = jest.fn().mockResolvedValue({
+        data: [0],
+      })
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
+
+      expect(result.present).toBe(true)
+      expect(result.supportsFC43).toBe(false)
+      expect(result.exceptionCode).toBe(1)
+    })
+  })
+
+  describe('FC04 fallback logic', () => {
+    test('tries register 0 when register 1 throws exception', async () => {
+      delete (mockClient as { readDeviceIdentification?: unknown }).readDeviceIdentification
+
+      // FC04 register 1 throws exception
+      mockClient.readInputRegisters = jest
+        .fn()
+        .mockRejectedValueOnce({ modbusCode: 2 }) // First call (register 1) - exception
+        .mockResolvedValue({ data: [100] }) // Second call (register 0) - success
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
+
+      expect(result.present).toBe(true)
+      expect(mockClient.readInputRegisters).toHaveBeenCalledTimes(2)
+      expect(mockClient.readInputRegisters).toHaveBeenNthCalledWith(1, 1, 1) // Try register 1 first
+      expect(mockClient.readInputRegisters).toHaveBeenNthCalledWith(2, 0, 1) // Fall back to register 0
+    })
+
+    test('returns present when both registers throw exceptions', async () => {
+      delete (mockClient as { readDeviceIdentification?: unknown }).readDeviceIdentification
+
+      mockClient.readInputRegisters = jest
+        .fn()
+        .mockRejectedValueOnce({ modbusCode: 2 }) // Register 1 exception
+        .mockRejectedValue({ modbusCode: 2 }) // Register 0 exception
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
+
+      expect(result.present).toBe(true)
+      expect(result.exceptionCode).toBe(2)
+    })
+
+    test('returns not present when register 0 times out', async () => {
+      delete (mockClient as { readDeviceIdentification?: unknown }).readDeviceIdentification
+
+      mockClient.readInputRegisters = jest
+        .fn()
+        .mockRejectedValueOnce({ modbusCode: 2 }) // Register 1 exception
+        .mockRejectedValue({ message: 'timeout' }) // Register 0 timeout
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
+
+      expect(result.present).toBe(false)
+      expect(result.timeout).toBe(true)
+    })
+  })
+
+  describe('FC03 final fallback', () => {
+    test('returns not present when all function codes fail with timeout', async () => {
+      delete (mockClient as { readDeviceIdentification?: unknown }).readDeviceIdentification
+
+      mockClient.readInputRegisters = jest.fn().mockRejectedValue({ message: 'timeout' })
+      mockClient.readHoldingRegisters = jest.fn().mockRejectedValue({ message: 'timeout' })
+
+      const result = await identifyDevice(mockClient as ModbusRTU, 1000, 1)
+
+      expect(result.present).toBe(false)
+      expect(result.timeout).toBe(true)
+    })
+  })
 })
