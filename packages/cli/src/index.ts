@@ -117,8 +117,8 @@ program
     'Discovery strategy: quick (driver params) or thorough (all params)',
     'quick'
   )
-  .option('--timeout <ms>', 'Response timeout in milliseconds (default: 50)', parseInt)
-  .option('--delay <ms>', 'Delay between attempts in milliseconds (default: 50)', parseInt)
+  .option('--timeout <ms>', 'Response timeout in milliseconds (default: 1000)', parseInt)
+  .option('--delay <ms>', 'Delay between attempts in milliseconds (default: 100)', parseInt)
   .option('--stop-after-first', 'Stop scanning after first device found')
   .option('--verbose', 'Show detailed progress with current parameters being tested')
   .option('-f, --format <type>', 'Output format: table or json (default: table)', 'table')

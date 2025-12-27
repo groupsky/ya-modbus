@@ -34,8 +34,8 @@ export interface DiscoverOptions {
  */
 export async function discoverCommand(options: DiscoverOptions): Promise<void> {
   const strategy = options.strategy ?? 'quick'
-  const timeout = options.timeout ?? 50 // Reduced from 1000ms for speed
-  const delay = options.delay ?? 50 // Reduced from 100ms for speed
+  const timeout = options.timeout ?? 1000 // Device response timeout
+  const delay = options.delay ?? 100 // Inter-command delay for bus recovery
   const format = options.format ?? 'table'
   const stopAfterFirst = options.stopAfterFirst ?? false
   const verbose = options.verbose ?? false
