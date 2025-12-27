@@ -162,7 +162,8 @@ async function tryDriverDataPoint(
 ): Promise<Partial<DeviceIdentificationResult>> {
   try {
     // Create transport wrapper around the ModbusRTU client
-    const transport = createModbusTransport(client)
+    // Use maxRetries=1 for discovery (no retries) to avoid 200ms retry delays
+    const transport = createModbusTransport(client, 1)
 
     // Create driver instance
     const driver = await driverMetadata.createDriver({ transport, slaveId })
