@@ -149,14 +149,8 @@ export async function scanForDevices(
           // Set slave ID (reusing same connection)
           client.setID(slaveId)
 
-          // Measure actual time taken for this test
-          const testStartTime = performance.now()
-
           // Try to identify device
           const identification = await identifyDevice(client, timeout, slaveId, driverMetadata)
-
-          // Calculate how long the test actually took
-          const actualTestTime = performance.now() - testStartTime
 
           // If device found, add to results
           if (identification.present) {
@@ -168,23 +162,20 @@ export async function scanForDevices(
             discovered.push(device)
             onTestAttempt?.(combination, 'found')
             onDeviceFound?.(device)
+
+            // Only wait for bus recovery if we're continuing the scan
+            // If stopAfterFirst is true, we're done - no delay needed
+            if (delayMs > 0 && !stopAfterFirst) {
+              await new Promise((resolve) => setTimeout(resolve, delayMs))
+            }
           } else {
             onTestAttempt?.(combination, 'not-found')
-          }
-
-          // Only wait if we haven't already waited long enough
-          // The delay is for bus recovery - if the test already took longer than
-          // the delay (e.g., due to timeout), we don't need additional waiting
-          if (delayMs > 0) {
-            const remainingDelay = Math.max(0, delayMs - actualTestTime)
-            if (remainingDelay > 0) {
-              await new Promise((resolve) => setTimeout(resolve, remainingDelay))
-            }
+            // No device - timeout already provided sufficient bus recovery time
           }
         } catch {
           // Device identification error - skip this slave ID
           onTestAttempt?.(combination, 'not-found')
-          // Note: Error case also consumed time, no additional delay needed
+          // Error/timeout cases already provide sufficient bus recovery time
         }
 
         // Update progress
