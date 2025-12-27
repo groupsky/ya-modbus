@@ -14,6 +14,7 @@ export interface DiscoverOptions {
   // Discovery options
   strategy?: DiscoveryStrategy
   driver?: string
+  local?: boolean
   timeout?: number
   delay?: number
 
@@ -42,21 +43,31 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
 
   // Load driver metadata if specified
   let driverMetadata
-  if (options.driver) {
+  if (options.driver || options.local) {
     try {
-      driverMetadata = await loadDriver({
-        driverPackage: options.driver,
-      })
-      console.log(`Using driver: ${options.driver}`)
-      if (driverMetadata.defaultConfig) {
+      if (options.local) {
+        driverMetadata = await loadDriver({
+          localPackage: true,
+        })
+        console.log('Using local driver package')
+      } else if (options.driver) {
+        driverMetadata = await loadDriver({
+          driverPackage: options.driver,
+        })
+        console.log(`Using driver: ${options.driver}`)
+      }
+
+      if (driverMetadata?.defaultConfig) {
         console.log('Using driver DEFAULT_CONFIG for parameter prioritization')
       }
-      if (driverMetadata.supportedConfig) {
+      if (driverMetadata?.supportedConfig) {
         console.log('Using driver SUPPORTED_CONFIG to limit parameter combinations')
       }
       console.log('')
     } catch (error) {
-      console.error(`Warning: Failed to load driver ${options.driver}: ${(error as Error).message}`)
+      console.error(
+        `Warning: Failed to load driver ${options.driver ?? 'from local package'}: ${(error as Error).message}`
+      )
       console.error('Continuing with generic Modbus parameters...')
       console.log('')
     }
@@ -93,14 +104,18 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
     onProgress: (current, _total, devicesFound) => {
       const progressText = progress.update(current, devicesFound)
       if (progressText && format !== 'json') {
-        // Overwrite previous line
-        process.stdout.write(`\r${progressText}`)
+        // Clear line and write progress
+        process.stdout.clearLine?.(0)
+        process.stdout.cursorTo?.(0)
+        process.stdout.write(progressText)
       }
     },
     onDeviceFound: (device) => {
       if (format !== 'json') {
-        // Clear progress line and show found device
-        process.stdout.write('\r' + ' '.repeat(100) + '\r')
+        // Clear progress line
+        process.stdout.clearLine?.(0)
+        process.stdout.cursorTo?.(0)
+        // Show found device
         console.log(
           `✓ Found device: Slave ID ${device.slaveId} @ ${device.baudRate},${device.parity === 'none' ? 'N' : device.parity === 'even' ? 'E' : 'O'},${device.dataBits},${device.stopBits}`
         )
@@ -110,7 +125,8 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
 
   // Clear progress line
   if (format !== 'json') {
-    process.stdout.write('\r' + ' '.repeat(100) + '\r')
+    process.stdout.clearLine?.(0)
+    process.stdout.cursorTo?.(0)
   }
 
   console.log('')

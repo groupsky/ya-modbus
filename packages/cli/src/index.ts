@@ -111,6 +111,7 @@ program
   .description('Discover Modbus devices on serial port by scanning slave IDs and parameters')
   .requiredOption('-p, --port <path>', 'Serial port for RTU (e.g., /dev/ttyUSB0, COM3)')
   .option('-d, --driver <package>', 'Driver package (uses SUPPORTED_CONFIG to limit scan)')
+  .option('--local', 'Load driver from local package (cwd)')
   .option(
     '--strategy <type>',
     'Discovery strategy: quick (driver params) or thorough (all params)',
