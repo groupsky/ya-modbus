@@ -1,7 +1,6 @@
 import { countParameterCombinations } from './parameter-generator-utils.js'
 import type { GeneratorOptions } from './parameter-generator.js'
 
-
 describe('countParameterCombinations', () => {
   describe('quick strategy without driver', () => {
     test('calculates correct count for common parameters', () => {
