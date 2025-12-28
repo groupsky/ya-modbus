@@ -8,10 +8,10 @@ describe('countParameterCombinations', () => {
         strategy: 'quick',
       }
 
-      // Quick without driver: 2 baud rates × 2 parity × 2 data bits × 2 stop bits × 247 addresses
-      // = 2 × 2 × 2 × 2 × 247 = 3,952
+      // Quick without driver: 2 baud rates × 3 parity × 1 data bits × 1 stop bits × 247 addresses
+      // = 2 × 3 × 1 × 1 × 247 = 1,482
       const count = countParameterCombinations(options)
-      expect(count).toBe(3952)
+      expect(count).toBe(1482)
     })
   })
 
@@ -42,10 +42,11 @@ describe('countParameterCombinations', () => {
         },
       }
 
-      // Quick defaults: 2 baud × 2 parity × 2 data × 2 stop × 6 addresses (50-55)
-      // = 2 × 2 × 2 × 2 × 6 = 96
+      // Quick with driver config: 2 baud × 3 parity × 2 data × 2 stop × 6 addresses (50-55)
+      // Falls back to STANDARD_DATA_BITS and STANDARD_STOP_BITS when supportedConfig exists
+      // = 2 × 3 × 2 × 2 × 6 = 144
       const count = countParameterCombinations(options)
-      expect(count).toBe(96)
+      expect(count).toBe(144)
     })
   })
 
@@ -89,10 +90,11 @@ describe('countParameterCombinations', () => {
         },
       }
 
-      // 2 baud × 2 parity × 2 data × 2 stop × 1 address
-      // = 2 × 2 × 2 × 2 × 1 = 16
+      // 2 baud × 3 parity × 2 data × 2 stop × 1 address
+      // Falls back to STANDARD_DATA_BITS and STANDARD_STOP_BITS when supportedConfig exists
+      // = 2 × 3 × 2 × 2 × 1 = 24
       const count = countParameterCombinations(options)
-      expect(count).toBe(16)
+      expect(count).toBe(24)
     })
 
     test('handles minimal parameter set', () => {
@@ -142,7 +144,9 @@ describe('countParameterCombinations', () => {
       const count1 = countParameterCombinations(withoutDefault)
       const count2 = countParameterCombinations(withDefault)
       expect(count1).toBe(count2)
-      expect(count1).toBe(160) // 2 baud × 2 parity × 2 data × 2 stop × 10 addresses
+      // 2 baud × 3 parity × 2 data × 2 stop × 10 addresses
+      // Falls back to STANDARD_DATA_BITS and STANDARD_STOP_BITS when supportedConfig exists
+      expect(count1).toBe(240)
     })
   })
 })

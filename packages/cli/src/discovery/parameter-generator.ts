@@ -68,19 +68,24 @@ const COMMON_BAUD_RATES: readonly BaudRate[] = [9600, 19200] as const
 const STANDARD_PARITY: readonly Parity[] = ['none', 'even', 'odd'] as const
 
 /**
- * Common parity settings for quick scanning
- */
-const COMMON_PARITY: readonly Parity[] = ['none', 'even'] as const
-
-/**
  * Standard data bits options
  */
 const STANDARD_DATA_BITS: readonly DataBits[] = [8, 7] as const
 
 /**
+ * Common data bits for quick scanning
+ */
+const COMMON_DATA_BITS: readonly DataBits[] = [8] as const
+
+/**
  * Standard stop bits options
  */
 const STANDARD_STOP_BITS: readonly StopBits[] = [1, 2] as const
+
+/**
+ * Common stop bits for quick scanning
+ */
+const COMMON_STOP_BITS: readonly StopBits[] = [1] as const
 
 /**
  * Valid Modbus slave address range (0 is broadcast, 248-255 reserved)
@@ -158,7 +163,7 @@ function getParameterArrays(
     // Quick mode with driver config: use supported values or fall back to common
     return {
       baudRates: supportedConfig.validBaudRates ?? COMMON_BAUD_RATES,
-      parities: supportedConfig.validParity ?? COMMON_PARITY,
+      parities: supportedConfig.validParity ?? STANDARD_PARITY,
       dataBits: supportedConfig.validDataBits ?? STANDARD_DATA_BITS,
       stopBits: supportedConfig.validStopBits ?? STANDARD_STOP_BITS,
       addressRange: supportedConfig.validAddressRange ?? [MIN_SLAVE_ID, MAX_SLAVE_ID],
@@ -179,9 +184,9 @@ function getParameterArrays(
   // Quick mode without driver config: use common parameters
   return {
     baudRates: COMMON_BAUD_RATES,
-    parities: COMMON_PARITY,
-    dataBits: STANDARD_DATA_BITS,
-    stopBits: STANDARD_STOP_BITS,
+    parities: STANDARD_PARITY,
+    dataBits: COMMON_DATA_BITS,
+    stopBits: COMMON_STOP_BITS,
     addressRange: [MIN_SLAVE_ID, MAX_SLAVE_ID],
   }
 }
