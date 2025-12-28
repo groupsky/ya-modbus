@@ -7,6 +7,18 @@ import type {
   SupportedSerialConfig,
 } from '@ya-modbus/driver-types'
 
+import {
+  COMMON_BAUD_RATES,
+  COMMON_DATA_BITS,
+  COMMON_STOP_BITS,
+  MAX_SLAVE_ID,
+  MIN_SLAVE_ID,
+  STANDARD_BAUD_RATES,
+  STANDARD_DATA_BITS,
+  STANDARD_PARITY,
+  STANDARD_STOP_BITS,
+} from './constants.js'
+
 /**
  * Parameter combination for discovery testing
  * Represents a complete set of Modbus RTU serial parameters
@@ -40,58 +52,6 @@ export interface GeneratorOptions {
   /** Driver-provided supported configuration constraints */
   supportedConfig?: SupportedSerialConfig
 }
-
-/**
- * Standard Modbus baud rates for thorough scanning
- * Ordered by commonality (most common first)
- */
-const STANDARD_BAUD_RATES: readonly BaudRate[] = [
-  9600, // Most common
-  19200, // Modbus spec default
-  14400,
-  38400,
-  57600,
-  115200,
-  4800, // Less common
-  2400, // Legacy
-] as const
-
-/**
- * Common baud rates for quick scanning
- */
-const COMMON_BAUD_RATES: readonly BaudRate[] = [9600, 19200] as const
-
-/**
- * Standard Modbus parity settings
- * Ordered by commonality
- */
-const STANDARD_PARITY: readonly Parity[] = ['none', 'even', 'odd'] as const
-
-/**
- * Standard data bits options
- */
-const STANDARD_DATA_BITS: readonly DataBits[] = [8, 7] as const
-
-/**
- * Common data bits for quick scanning
- */
-const COMMON_DATA_BITS: readonly DataBits[] = [8] as const
-
-/**
- * Standard stop bits options
- */
-const STANDARD_STOP_BITS: readonly StopBits[] = [1, 2] as const
-
-/**
- * Common stop bits for quick scanning
- */
-const COMMON_STOP_BITS: readonly StopBits[] = [1] as const
-
-/**
- * Valid Modbus slave address range (0 is broadcast, 248-255 reserved)
- */
-const MIN_SLAVE_ID = 1
-const MAX_SLAVE_ID = 247
 
 /**
  * Clamp slave ID to valid Modbus range [1, 247]

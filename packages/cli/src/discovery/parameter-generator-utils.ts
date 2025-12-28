@@ -6,50 +6,18 @@ import type {
   SupportedSerialConfig,
 } from '@ya-modbus/driver-types'
 
+import {
+  COMMON_BAUD_RATES,
+  COMMON_DATA_BITS,
+  COMMON_STOP_BITS,
+  MAX_SLAVE_ID,
+  MIN_SLAVE_ID,
+  STANDARD_BAUD_RATES,
+  STANDARD_DATA_BITS,
+  STANDARD_PARITY,
+  STANDARD_STOP_BITS,
+} from './constants.js'
 import type { DiscoveryStrategy, GeneratorOptions } from './parameter-generator.js'
-
-/**
- * Standard Modbus baud rates for thorough scanning
- */
-const STANDARD_BAUD_RATES: readonly BaudRate[] = [
-  9600, 19200, 14400, 38400, 57600, 115200, 4800, 2400,
-] as const
-
-/**
- * Common baud rates for quick scanning
- */
-const COMMON_BAUD_RATES: readonly BaudRate[] = [9600, 19200] as const
-
-/**
- * Standard Modbus parity settings
- */
-const STANDARD_PARITY: readonly Parity[] = ['none', 'even', 'odd'] as const
-
-/**
- * Standard data bits options
- */
-const STANDARD_DATA_BITS: readonly DataBits[] = [8, 7] as const
-
-/**
- * Common data bits for quick scanning
- */
-const COMMON_DATA_BITS: readonly DataBits[] = [8] as const
-
-/**
- * Standard stop bits options
- */
-const STANDARD_STOP_BITS: readonly StopBits[] = [1, 2] as const
-
-/**
- * Common stop bits for quick scanning
- */
-const COMMON_STOP_BITS: readonly StopBits[] = [1] as const
-
-/**
- * Valid Modbus slave address range
- */
-const MIN_SLAVE_ID = 1
-const MAX_SLAVE_ID = 247
 
 /**
  * Get parameter arrays based on strategy and configuration
