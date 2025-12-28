@@ -259,6 +259,58 @@ describe('CLI Entry Point - Integration Tests', () => {
         })
       )
     })
+
+    it('should accept both RTU and TCP parameters (transport layer decides)', async () => {
+      const mockReadCommand = jest.mocked(readModule.readCommand)
+      mockReadCommand.mockResolvedValue()
+
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'read',
+        '--port',
+        '/dev/ttyUSB0',
+        '--host',
+        '192.168.1.100',
+        '-s',
+        '1',
+        '--all',
+      ])
+
+      expect(mockReadCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          port: '/dev/ttyUSB0',
+          host: '192.168.1.100',
+          slaveId: 1,
+        })
+      )
+    })
+
+    it('should accept RTU-specific options without port', async () => {
+      const mockReadCommand = jest.mocked(readModule.readCommand)
+      mockReadCommand.mockResolvedValue()
+
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'read',
+        '-s',
+        '1',
+        '--baud-rate',
+        '9600',
+        '--parity',
+        'even',
+        '--all',
+      ])
+
+      expect(mockReadCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slaveId: 1,
+          baudRate: 9600,
+          parity: 'even',
+        })
+      )
+    })
   })
 
   describe('Write Command', () => {
