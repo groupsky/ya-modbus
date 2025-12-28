@@ -148,14 +148,19 @@ ya-modbus discover \
   --strategy thorough
 ```
 
-**Stop after first device:**
+**Control number of devices to find:**
 
 ```bash
-# Stop scanning immediately when a device is found
+# Stop after finding one device (default behavior)
 ya-modbus discover \
   --port /dev/ttyUSB0 \
   --driver ya-modbus-driver-xymd1 \
-  --stop-after-first
+  --max-devices 1
+
+# Find unlimited devices
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --max-devices 0
 ```
 
 **Silent mode (for scripts):**
@@ -199,7 +204,7 @@ ya-modbus discover \
 - `--local` - Load driver from local package (cwd)
 - `--timeout <ms>` - Response timeout in milliseconds (default: 1000)
 - `--delay <ms>` - Delay between attempts in milliseconds (default: 100)
-- `--stop-after-first` - Stop scanning after first device found
+- `--max-devices <count>` - Maximum number of devices to find (default: 1, use 0 for unlimited)
 - `--verbose` - Show detailed progress with current parameters being tested
 - `--silent` - Suppress all output except final result (useful for scripts)
 - `--format <type>` - Output format: `table` (default) or `json`
