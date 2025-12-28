@@ -126,6 +126,7 @@ async function tryFC43(client: ModbusRTU, startTime: number): Promise<DeviceIden
 
     return result
   } catch (error) {
+    const responseTime = Math.round((performance.now() - startTime) * 100) / 100
     const exceptionCode = isModbusException(error)
 
     if (exceptionCode !== undefined) {
@@ -133,7 +134,7 @@ async function tryFC43(client: ModbusRTU, startTime: number): Promise<DeviceIden
       // This is still a successful device detection - we found a device, just don't know what it is
       return {
         present: true,
-        responseTimeMs: Math.round((performance.now() - startTime) * 100) / 100,
+        responseTimeMs: responseTime,
         supportsFC43: false,
         exceptionCode,
       }
