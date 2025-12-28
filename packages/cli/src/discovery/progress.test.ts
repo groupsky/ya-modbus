@@ -65,6 +65,18 @@ describe('ProgressTracker', () => {
       expect(result).not.toMatch(/ETA/)
     })
 
+    test('does not include ETA when elapsed time is 0 (prevents division by zero)', () => {
+      const tracker = new ProgressTracker(1000)
+
+      // Don't advance time - elapsed is 0
+      const result = tracker.update(100, 0)
+
+      // Should not attempt to calculate ETA when elapsed is 0 (would cause division by zero)
+      expect(result).not.toMatch(/ETA/)
+      expect(result).toMatch(/Progress: 10%/)
+      expect(result).toMatch(/Elapsed: 0s/)
+    })
+
     test('does not include ETA when at 100% progress', () => {
       const tracker = new ProgressTracker(1000)
 

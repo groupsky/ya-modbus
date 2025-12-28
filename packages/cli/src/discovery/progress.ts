@@ -33,7 +33,7 @@ export class ProgressTracker {
 
     // Calculate ETA
     let eta = ''
-    if (current > 0 && current < this.totalCombinations) {
+    if (current > 0 && current < this.totalCombinations && elapsed > 0) {
       const rate = current / elapsed
       const remaining = this.totalCombinations - current
       const etaSeconds = Math.round(remaining / rate)
