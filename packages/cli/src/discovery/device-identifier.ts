@@ -80,17 +80,9 @@ function isCRCError(error: unknown): boolean {
 }
 
 /**
- * Result from FC43 attempt - always indicates device present
- * (or throws for timeout/CRC errors)
+ * Result from FC43 - subset of DeviceIdentificationResult with present guaranteed true
  */
-interface FC43Result {
-  present: true
-  supportsFC43?: boolean
-  vendorName?: string
-  productCode?: string
-  revision?: string
-  exceptionCode?: number
-}
+type FC43Result = Omit<DeviceIdentificationResult, 'responseTimeMs'> & { present: true }
 
 /**
  * Try to identify device using FC43 (Read Device Identification)
@@ -102,6 +94,7 @@ interface FC43Result {
  * Only timeouts and CRC errors mean no device with these parameters.
  *
  * @throws Error with timeout/CRC properties if device not responding
+ * @returns Subset of DeviceIdentificationResult with present: true guaranteed
  */
 async function tryFC43(client: ModbusRTU): Promise<FC43Result> {
   try {
