@@ -41,6 +41,42 @@ describe('CLI Entry Point - Integration Tests', () => {
     it('should have correct version', () => {
       expect(program.version()).toBe('0.0.0')
     })
+
+    it('should display help information with --help', async () => {
+      // Capture stdout for help output
+      const stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation()
+
+      // Help output triggers process.exit(0), which our mock throws
+      await expect(program.parseAsync(['node', 'ya-modbus', '--help'])).rejects.toThrow(
+        'process.exit called'
+      )
+
+      // Verify exit was called with success code (0) for help
+      expect(processExitSpy).toHaveBeenCalledWith(0)
+
+      // Capture and verify help output
+      const helpOutput = stdoutWriteSpy.mock.calls.map((call) => call[0]).join('')
+      expect(helpOutput).toMatchInlineSnapshot(`
+        "Usage: ya-modbus [options] [command]
+
+        CLI tool for testing and developing Modbus device drivers
+
+        Options:
+          -V, --version            output the version number
+          -h, --help               display help for command
+
+        Commands:
+          read [options]           Read data points from device
+          write [options]          Write data point to device
+          show-defaults [options]  Show driver DEFAULT_CONFIG and SUPPORTED_CONFIG
+          discover [options]       Discover Modbus devices on serial port by scanning
+                                   slave IDs and parameters
+          help [command]           display help for command
+        "
+      `)
+
+      stdoutWriteSpy.mockRestore()
+    })
   })
 
   describe('Read Command', () => {
