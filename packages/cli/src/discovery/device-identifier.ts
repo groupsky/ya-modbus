@@ -1,6 +1,42 @@
 import type ModbusRTU from 'modbus-serial'
 
 /**
+ * FC43 Read Device ID Code values (MEI type)
+ * See Modbus specification 6.21 - Read Device Identification (FC43/0x2B)
+ */
+const FC43_READ_DEVICE_ID_CODE = {
+  /** Basic device identification (VendorName, ProductCode, Revision) */
+  BASIC: 1,
+  /** Regular device identification (adds additional standard objects) */
+  REGULAR: 2,
+  /** Extended device identification (includes vendor-specific objects) */
+  EXTENDED: 3,
+  /** Specific individual object request */
+  SPECIFIC: 4,
+} as const
+
+/**
+ * FC43 Object ID values for device identification
+ * See Modbus specification 6.21 - Read Device Identification object IDs
+ */
+const FC43_OBJECT_ID = {
+  /** Vendor/manufacturer name */
+  VENDOR_NAME: 0,
+  /** Product code/identifier */
+  PRODUCT_CODE: 1,
+  /** Major/minor revision number */
+  MAJOR_MINOR_REVISION: 2,
+  /** Vendor URL */
+  VENDOR_URL: 3,
+  /** Product name/model */
+  PRODUCT_NAME: 4,
+  /** Model name */
+  MODEL_NAME: 5,
+  /** User application name */
+  USER_APPLICATION_NAME: 6,
+} as const
+
+/**
  * Device identification result from discovery attempt
  * Provides comprehensive information about device presence and capabilities
  */
@@ -109,7 +145,10 @@ function isCRCError(error: unknown): boolean {
  */
 async function tryFC43(client: ModbusRTU, startTime: number): Promise<DeviceIdentificationResult> {
   try {
-    const response = await client.readDeviceIdentification(1, 0) // Read basic identification, start from object 0
+    const response = await client.readDeviceIdentification(
+      FC43_READ_DEVICE_ID_CODE.BASIC,
+      FC43_OBJECT_ID.VENDOR_NAME
+    )
 
     // Build result object with response time
     const result: DeviceIdentificationResult = {
@@ -119,23 +158,19 @@ async function tryFC43(client: ModbusRTU, startTime: number): Promise<DeviceIden
     }
 
     // modbus-serial returns { data: { 0: "vendor", 1: "product", 2: "revision" }, conformityLevel }
-    // where keys are object IDs: 0=VendorName, 1=ProductCode, 2=MajorMinorRevision
     if (response.data && typeof response.data === 'object') {
       const data = response.data as unknown as Record<number, string>
 
-      // Object ID 0 = VendorName
-      if (data[0]) {
-        result.vendorName = data[0]
+      if (data[FC43_OBJECT_ID.VENDOR_NAME]) {
+        result.vendorName = data[FC43_OBJECT_ID.VENDOR_NAME]
       }
-      // Object ID 1 = ProductCode
-      if (data[1]) {
-        result.productCode = data[1]
+      if (data[FC43_OBJECT_ID.PRODUCT_CODE]) {
+        result.productCode = data[FC43_OBJECT_ID.PRODUCT_CODE]
       }
-      // Object ID 2 = MajorMinorRevision
-      if (data[2]) {
-        result.revision = data[2]
+      if (data[FC43_OBJECT_ID.MAJOR_MINOR_REVISION]) {
+        result.revision = data[FC43_OBJECT_ID.MAJOR_MINOR_REVISION]
       }
-      // Note: modelName (object ID 7) requires a separate request with objectId=7
+      // Note: modelName requires requesting FC43_OBJECT_ID.MODEL_NAME specifically
     }
 
     return result
