@@ -68,6 +68,7 @@ export async function scanForDevices(
     timeout,
     delayMs,
     maxDevices = 1,
+    verbose = false,
     onProgress,
     onDeviceFound,
     onTestAttempt,
@@ -168,9 +169,17 @@ export async function scanForDevices(
         const clientToClose = client
         await new Promise<void>((resolve) => clientToClose.close(resolve))
       }
-    } catch {
+    } catch (error) {
       // Connection error for this serial parameter set - skip entire group
       // This can happen if port is busy, doesn't exist, or serial params are invalid
+
+      // Log connection error in verbose mode to help debug hardware issues
+      if (verbose) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        console.warn(
+          `Connection failed for ${baudRate}/${parity}/${dataBits}/${stopBits}: ${errorMessage}`
+        )
+      }
 
       // Still update progress for skipped combinations
       currentIndex += groupCombinations.length
