@@ -85,17 +85,19 @@ async function detectLocalPackage(): Promise<string> {
  * @throws Error if all paths fail
  */
 async function tryImport(paths: string[]): Promise<unknown> {
-  let lastError: Error | undefined
+  const errors: Error[] = []
 
   for (const path of paths) {
     try {
       return await import(path)
     } catch (error) {
-      lastError = error as Error
+      errors.push(error as Error)
     }
   }
 
-  throw lastError ?? new Error('Failed to import module from any path')
+  throw new Error(
+    `Failed to import module from any path. Tried: ${paths.join(', ')}\nLast error: ${errors[errors.length - 1]?.message}`
+  )
 }
 
 /**
@@ -185,21 +187,22 @@ export async function loadDriver(options: LoadDriverOptions): Promise<LoadedDriv
 
     return result
   } catch (error) {
-    // Re-throw our custom errors
-    if (error instanceof Error && error.message.startsWith('Driver package')) {
-      throw error
-    }
-    if (error instanceof Error && error.message.includes('ya-modbus driver')) {
-      throw error
-    }
-    if (error instanceof Error && error.message.includes('package.json')) {
-      throw error
-    }
-    if (error instanceof Error && error.message.includes('createDriver')) {
-      throw error
+    // Re-throw our custom errors (they already have helpful messages)
+    if (error instanceof Error) {
+      const isCustomError =
+        error.message.startsWith('Driver package') ||
+        error.message.includes('ya-modbus driver') ||
+        error.message.includes('package.json') ||
+        error.message.includes('createDriver')
+
+      if (isCustomError) {
+        throw error
+      }
+
+      // Wrap unexpected errors
+      throw new Error(`Failed to load driver: ${error.message}`)
     }
 
-    // Wrap unexpected errors
-    throw new Error(`Failed to load driver: ${(error as Error).message}`)
+    throw new Error('Failed to load driver: Unknown error')
   }
 }

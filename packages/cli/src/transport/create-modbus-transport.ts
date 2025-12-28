@@ -10,54 +10,55 @@ import { withRetry } from './retry.js'
  * and converts them to the Transport interface expected by device drivers.
  *
  * @param client - Configured ModbusRTU client instance
+ * @param maxRetries - Maximum retry attempts (default: 3, use 1 for discovery to disable retries)
  * @returns Transport implementation
  */
-export function createModbusTransport(client: ModbusRTU): Transport {
+export function createModbusTransport(client: ModbusRTU, maxRetries: number = 3): Transport {
   return {
     async readHoldingRegisters(address: number, count: number): Promise<Buffer> {
       return withRetry(async () => {
         const result = await client.readHoldingRegisters(address, count)
         return result.buffer
-      })
+      }, maxRetries)
     },
 
     async readInputRegisters(address: number, count: number): Promise<Buffer> {
       return withRetry(async () => {
         const result = await client.readInputRegisters(address, count)
         return result.buffer
-      })
+      }, maxRetries)
     },
 
     async readCoils(address: number, count: number): Promise<Buffer> {
       return withRetry(async () => {
         const result = await client.readCoils(address, count)
         return result.buffer
-      })
+      }, maxRetries)
     },
 
     async readDiscreteInputs(address: number, count: number): Promise<Buffer> {
       return withRetry(async () => {
         const result = await client.readDiscreteInputs(address, count)
         return result.buffer
-      })
+      }, maxRetries)
     },
 
     async writeSingleRegister(address: number, value: number): Promise<void> {
       return withRetry(async () => {
         await client.writeRegister(address, value)
-      })
+      }, maxRetries)
     },
 
     async writeMultipleRegisters(address: number, values: Buffer): Promise<void> {
       return withRetry(async () => {
         await client.writeRegisters(address, values)
-      })
+      }, maxRetries)
     },
 
     async writeSingleCoil(address: number, value: boolean): Promise<void> {
       return withRetry(async () => {
         await client.writeCoil(address, value)
-      })
+      }, maxRetries)
     },
 
     async writeMultipleCoils(address: number, values: Buffer): Promise<void> {
@@ -71,7 +72,7 @@ export function createModbusTransport(client: ModbusRTU): Transport {
           bools.push((byte & (1 << bitIndex)) !== 0)
         }
         await client.writeCoils(address, bools)
-      })
+      }, maxRetries)
     },
 
     async close(): Promise<void> {

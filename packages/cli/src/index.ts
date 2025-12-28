@@ -2,6 +2,7 @@
 
 import { Command } from 'commander'
 
+import { discoverCommand, type DiscoverOptions } from './commands/discover.js'
 import { readCommand, type ReadOptions } from './commands/read.js'
 import { showDefaultsCommand, type ShowDefaultsOptions } from './commands/show-defaults.js'
 import { writeCommand, type WriteOptions } from './commands/write.js'
@@ -98,6 +99,37 @@ program
   .action(async (options: ShowDefaultsOptions) => {
     try {
       await showDefaultsCommand(options)
+    } catch (error) {
+      console.error(`Error: ${(error as Error).message}`)
+      process.exit(1)
+    }
+  })
+
+// Discover command
+program
+  .command('discover')
+  .description('Discover Modbus devices on serial port by scanning slave IDs and parameters')
+  .requiredOption('-p, --port <path>', 'Serial port for RTU (e.g., /dev/ttyUSB0, COM3)')
+  .option('-d, --driver <package>', 'Driver package (uses SUPPORTED_CONFIG to limit scan)')
+  .option('--local', 'Load driver from local package (cwd)')
+  .option(
+    '--strategy <type>',
+    'Discovery strategy: quick (driver params) or thorough (all params)',
+    'quick'
+  )
+  .option('--timeout <ms>', 'Response timeout in milliseconds (default: 1000)', parseInt)
+  .option('--delay <ms>', 'Delay between attempts in milliseconds (default: 100)', parseInt)
+  .option(
+    '--max-devices <count>',
+    'Maximum number of devices to find (default: 1, use 0 for unlimited)',
+    parseInt
+  )
+  .option('--verbose', 'Show detailed progress with current parameters being tested')
+  .option('--silent', 'Suppress all output except final result (useful for scripts)')
+  .option('-f, --format <type>', 'Output format: table or json (default: table)', 'table')
+  .action(async (options: DiscoverOptions) => {
+    try {
+      await discoverCommand(options)
     } catch (error) {
       console.error(`Error: ${(error as Error).message}`)
       process.exit(1)

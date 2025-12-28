@@ -11,7 +11,7 @@ describe('Performance Formatter', () => {
     const result = formatPerformance(metrics)
 
     expect(result).toContain('Performance:')
-    expect(result).toContain('Response time: 45ms')
+    expect(result).toContain('Response time: 45.0ms')
     expect(result).toContain('Operations: 1')
     expect(result).toContain('Errors: 0')
   })
@@ -37,7 +37,7 @@ describe('Performance Formatter', () => {
 
     const result = formatPerformance(metrics)
 
-    expect(result).toContain('Response time: 1234ms')
+    expect(result).toContain('Response time: 1234.0ms')
   })
 
   test('should format sub-millisecond times', () => {
@@ -94,7 +94,7 @@ Performance:
     expect(result).toMatchInlineSnapshot(`
 "
 Performance:
-  Response time: 120ms
+  Response time: 120.0ms
   Operations: 5
   Errors: 2"
 `)
