@@ -4,15 +4,20 @@ XYMD1 Temperature and Humidity Sensor driver for ya-modbus-mqtt-bridge.
 
 ## Device Information
 
-- **Model**: XY-MD1
+- **Models**: XY-MD01, XY-MD02
 - **Type**: Temperature and Humidity Sensor
 - **Communication**: Modbus RTU
-- **Default Settings**:
-  - Address: 1
-  - Baud rate: 9600
-  - Parity: Even
-  - Stop bits: 1
-  - Data bits: 8
+
+### Device Variants
+
+This driver supports both XY-MD01 and XY-MD02 devices. They are **identical from a Modbus perspective** and use the same register layout. They cannot be distinguished programmatically, only by physical appearance.
+
+| Model   | Typical Parity | Description                       |
+| ------- | -------------- | --------------------------------- |
+| XY-MD01 | None           | Often configured with no parity   |
+| XY-MD02 | Even           | Often configured with even parity |
+
+**Note:** Both devices support all parity settings (none, even, odd). The typical parity shown above is the most common factory configuration, but either device can work with any parity setting.
 
 ## Installation
 
@@ -60,30 +65,55 @@ await driver.writeDataPoint('temperature_correction', -1.5)
 await driver.writeDataPoint('humidity_correction', 2.0)
 ```
 
-### Using Default Configuration
+### Device Selection
 
-The driver exports a `DEFAULT_CONFIG` constant with factory-default device settings:
+For multi-device drivers, you can optionally specify which device variant to use via the `deviceType` parameter. If omitted, the driver defaults to `md01`.
 
 ```typescript
-import { createDriver, DEFAULT_CONFIG } from 'ya-modbus-driver-xymd1'
-import { ModbusRTU } from '@ya-modbus/transport-rtu'
+import { createDriver, DEVICE_METADATA } from 'ya-modbus-driver-xymd1'
 
-// Use default configuration for connecting to factory-default device
+// Explicit device selection - use XY-MD02 configuration
+const driver = await createDriver({
+  transport,
+  slaveId: 1,
+  deviceType: 'md02', // Select XY-MD02 variant
+})
+
+console.log(driver.name) // 'XY-MD02'
+```
+
+### Accessing Device Configuration
+
+The driver exports `DEVICE_METADATA` containing configuration for each device variant:
+
+```typescript
+import { DEVICE_METADATA } from 'ya-modbus-driver-xymd1'
+
+// List available devices (iterate to avoid hardcoding keys)
+for (const [deviceId, metadata] of Object.entries(DEVICE_METADATA)) {
+  console.log(`${deviceId}: ${metadata.name}`)
+  console.log(`  Default parity: ${metadata.defaultConfig.parity}`)
+  console.log(`  Supported baud rates: ${metadata.supportedConfig.validBaudRates}`)
+}
+
+// Access specific device configuration
+const md02Config = DEVICE_METADATA.md02.defaultConfig
 const transport = new ModbusRTU({
   path: '/dev/ttyUSB0',
-  baudRate: DEFAULT_CONFIG.baudRate, // 9600
-  parity: DEFAULT_CONFIG.parity, // 'even'
-  dataBits: DEFAULT_CONFIG.dataBits, // 8
-  stopBits: DEFAULT_CONFIG.stopBits, // 1
+  baudRate: md02Config.baudRate, // 9600
+  parity: md02Config.parity, // 'even'
+  dataBits: md02Config.dataBits, // 8
+  stopBits: md02Config.stopBits, // 1
 })
 
 const driver = await createDriver({
   transport,
-  slaveId: DEFAULT_CONFIG.defaultAddress, // 1
+  slaveId: md02Config.defaultAddress, // 1
+  deviceType: 'md02',
 })
 ```
 
-This ensures your code always uses the correct factory defaults and makes it easier to update if device specifications change.
+This ensures your code uses the correct factory defaults for the specific device variant.
 
 ## Data Points
 
@@ -131,6 +161,19 @@ await driver.writeDataPoint('humidity_correction', 1.5)
 ### Using the CLI
 
 ```bash
+# Read all values (uses default md01 device)
+ya-modbus read \
+  --port /dev/ttyUSB0 \
+  --slave-id 1 \
+  --all
+
+# Read from XY-MD02 device with explicit device selection
+ya-modbus read \
+  --port /dev/ttyUSB0 \
+  --slave-id 1 \
+  --device md02 \
+  --all
+
 # Set temperature correction
 ya-modbus write \
   --port /dev/ttyUSB0 \
@@ -140,20 +183,15 @@ ya-modbus write \
   --yes \
   --verify
 
-# Set humidity correction
+# Set humidity correction on XY-MD02
 ya-modbus write \
   --port /dev/ttyUSB0 \
   --slave-id 1 \
+  --device md02 \
   --data-point humidity_correction \
   --value 1.5 \
   --yes \
   --verify
-
-# Read all values including corrections
-ya-modbus read \
-  --port /dev/ttyUSB0 \
-  --slave-id 1 \
-  --all
 ```
 
 ### Notes
