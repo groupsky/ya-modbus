@@ -59,17 +59,6 @@ describe('identifyDevice', () => {
       expect(result.exceptionCode).toBe(1)
       expect(result.responseTimeMs).toBeGreaterThan(0)
     })
-
-    test('returns not present when FC43 not available', async () => {
-      mockClient.readDeviceIdentification = undefined // Not implemented
-
-      const result = await identifyDevice(mockClient as ModbusRTU)
-
-      expect(result.present).toBe(false)
-      expect(result.supportsFC43).toBeUndefined()
-      expect(result.vendorName).toBeUndefined()
-      expect(result.responseTimeMs).toBeGreaterThan(0)
-    })
   })
 
   describe('device not present', () => {

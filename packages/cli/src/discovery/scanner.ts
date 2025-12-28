@@ -102,9 +102,7 @@ export async function scanForDevices(
       })
 
       // Set timeout once for this connection
-      if (typeof client.setTimeout === 'function') {
-        client.setTimeout(timeout)
-      }
+      client.setTimeout(timeout)
 
       try {
         // Test all slave IDs with this serial configuration

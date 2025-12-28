@@ -80,30 +80,35 @@ function isCRCError(error: unknown): boolean {
 }
 
 /**
+ * Result from FC43 attempt - always indicates device present
+ * (or throws for timeout/CRC errors)
+ */
+interface FC43Result {
+  present: true
+  supportsFC43?: boolean
+  vendorName?: string
+  productCode?: string
+  revision?: string
+  exceptionCode?: number
+}
+
+/**
  * Try to identify device using FC43 (Read Device Identification)
  *
  * FC43/14 is the standard MEI (Modbus Encapsulated Interface) for device identification.
- * Not all devices or modbus-serial versions support this.
+ * Not all devices support this - device-level support is handled via exception codes.
  *
  * Any Modbus response (including exceptions) indicates a device is present.
  * Only timeouts and CRC errors mean no device with these parameters.
+ *
+ * @throws Error with timeout/CRC properties if device not responding
  */
-async function tryFC43(client: ModbusRTU): Promise<Partial<DeviceIdentificationResult>> {
-  // Check if client supports readDeviceIdentification
-  if (
-    typeof (client as { readDeviceIdentification?: unknown }).readDeviceIdentification !==
-    'function'
-  ) {
-    // Client doesn't support FC43 - treat as device not present
-    // (caller should handle this as timeout/not found)
-    return {}
-  }
-
+async function tryFC43(client: ModbusRTU): Promise<FC43Result> {
   try {
     const response = await client.readDeviceIdentification(1, 0) // Read basic identification, start from object 0
 
     // Build result object conditionally
-    const result: Partial<DeviceIdentificationResult> = {
+    const result: FC43Result = {
       present: true,
       supportsFC43: true,
     }
@@ -175,45 +180,33 @@ export async function identifyDevice(client: ModbusRTU): Promise<DeviceIdentific
   try {
     // Try FC43 (provides device identification)
     const fc43Result = await tryFC43(client)
-
-    // If FC43 succeeded (device present), return result
-    if (fc43Result.present) {
-      const responseTime = Math.round((performance.now() - startTime) * 100) / 100
-
-      // Build complete result with all required properties
-      const result: DeviceIdentificationResult = {
-        present: fc43Result.present,
-        responseTimeMs: responseTime,
-      }
-
-      // Add optional properties only if they exist
-      if (fc43Result.supportsFC43 !== undefined) {
-        result.supportsFC43 = fc43Result.supportsFC43
-      }
-      if (fc43Result.vendorName) {
-        result.vendorName = fc43Result.vendorName
-      }
-      if (fc43Result.productCode) {
-        result.productCode = fc43Result.productCode
-      }
-      // Note: modelName (object ID 7) not currently fetched - would require separate FC43 request
-      if (fc43Result.revision) {
-        result.revision = fc43Result.revision
-      }
-      if (fc43Result.exceptionCode !== undefined) {
-        result.exceptionCode = fc43Result.exceptionCode
-      }
-
-      return result
-    }
-
-    // FC43 returned empty result (client doesn't support readDeviceIdentification)
-    // This means no device was detected
     const responseTime = Math.round((performance.now() - startTime) * 100) / 100
-    return {
-      present: false,
+
+    // Build complete result with all required properties
+    const result: DeviceIdentificationResult = {
+      present: fc43Result.present,
       responseTimeMs: responseTime,
     }
+
+    // Add optional properties only if they exist
+    if (fc43Result.supportsFC43 !== undefined) {
+      result.supportsFC43 = fc43Result.supportsFC43
+    }
+    if (fc43Result.vendorName) {
+      result.vendorName = fc43Result.vendorName
+    }
+    if (fc43Result.productCode) {
+      result.productCode = fc43Result.productCode
+    }
+    // Note: modelName (object ID 7) not currently fetched - would require separate FC43 request
+    if (fc43Result.revision) {
+      result.revision = fc43Result.revision
+    }
+    if (fc43Result.exceptionCode !== undefined) {
+      result.exceptionCode = fc43Result.exceptionCode
+    }
+
+    return result
   } catch (error) {
     // FC43 failed with error, check error type
     const responseTime = Math.round((performance.now() - startTime) * 100) / 100
