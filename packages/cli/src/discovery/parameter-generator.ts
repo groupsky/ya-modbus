@@ -7,17 +7,8 @@ import type {
   SupportedSerialConfig,
 } from '@ya-modbus/driver-types'
 
-import {
-  COMMON_BAUD_RATES,
-  COMMON_DATA_BITS,
-  COMMON_STOP_BITS,
-  MAX_SLAVE_ID,
-  MIN_SLAVE_ID,
-  STANDARD_BAUD_RATES,
-  STANDARD_DATA_BITS,
-  STANDARD_PARITY,
-  STANDARD_STOP_BITS,
-} from './constants.js'
+import { MAX_SLAVE_ID, MIN_SLAVE_ID } from './constants.js'
+import { getParameterArrays } from './parameter-generator-utils.js'
 
 /**
  * Parameter combination for discovery testing
@@ -103,51 +94,6 @@ function* generateSlaveIds(
       yielded.add(id)
       yield id
     }
-  }
-}
-
-/**
- * Get parameter arrays based on strategy and configuration
- */
-function getParameterArrays(
-  strategy: DiscoveryStrategy,
-  supportedConfig?: SupportedSerialConfig
-): {
-  baudRates: readonly BaudRate[]
-  parities: readonly Parity[]
-  dataBits: readonly DataBits[]
-  stopBits: readonly StopBits[]
-  addressRange: readonly [number, number]
-} {
-  if (strategy === 'quick' && supportedConfig) {
-    // Quick mode with driver config: use supported values or fall back to common
-    return {
-      baudRates: supportedConfig.validBaudRates ?? COMMON_BAUD_RATES,
-      parities: supportedConfig.validParity ?? STANDARD_PARITY,
-      dataBits: supportedConfig.validDataBits ?? STANDARD_DATA_BITS,
-      stopBits: supportedConfig.validStopBits ?? STANDARD_STOP_BITS,
-      addressRange: supportedConfig.validAddressRange ?? [MIN_SLAVE_ID, MAX_SLAVE_ID],
-    }
-  }
-
-  if (strategy === 'thorough') {
-    // Thorough mode: use supported config if provided, otherwise standard Modbus
-    return {
-      baudRates: supportedConfig?.validBaudRates ?? STANDARD_BAUD_RATES,
-      parities: supportedConfig?.validParity ?? STANDARD_PARITY,
-      dataBits: supportedConfig?.validDataBits ?? STANDARD_DATA_BITS,
-      stopBits: supportedConfig?.validStopBits ?? STANDARD_STOP_BITS,
-      addressRange: supportedConfig?.validAddressRange ?? [MIN_SLAVE_ID, MAX_SLAVE_ID],
-    }
-  }
-
-  // Quick mode without driver config: use common parameters
-  return {
-    baudRates: COMMON_BAUD_RATES,
-    parities: STANDARD_PARITY,
-    dataBits: COMMON_DATA_BITS,
-    stopBits: COMMON_STOP_BITS,
-    addressRange: [MIN_SLAVE_ID, MAX_SLAVE_ID],
   }
 }
 

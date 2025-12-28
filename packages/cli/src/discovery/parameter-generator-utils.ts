@@ -21,9 +21,8 @@ import type { DiscoveryStrategy, GeneratorOptions } from './parameter-generator.
 
 /**
  * Get parameter arrays based on strategy and configuration
- * (Same logic as in parameter-generator.ts but for counting)
  */
-function getParameterArraysForCount(
+export function getParameterArrays(
   strategy: DiscoveryStrategy,
   supportedConfig?: SupportedSerialConfig
 ): {
@@ -34,6 +33,7 @@ function getParameterArraysForCount(
   addressRange: readonly [number, number]
 } {
   if (strategy === 'quick' && supportedConfig) {
+    // Quick mode with driver config: use supported values or fall back to common
     return {
       baudRates: supportedConfig.validBaudRates ?? COMMON_BAUD_RATES,
       parities: supportedConfig.validParity ?? STANDARD_PARITY,
@@ -44,6 +44,7 @@ function getParameterArraysForCount(
   }
 
   if (strategy === 'thorough') {
+    // Thorough mode: use supported config if provided, otherwise standard Modbus
     return {
       baudRates: supportedConfig?.validBaudRates ?? STANDARD_BAUD_RATES,
       parities: supportedConfig?.validParity ?? STANDARD_PARITY,
@@ -53,7 +54,7 @@ function getParameterArraysForCount(
     }
   }
 
-  // Quick mode without driver config
+  // Quick mode without driver config: use common parameters
   return {
     baudRates: COMMON_BAUD_RATES,
     parities: STANDARD_PARITY,
@@ -81,7 +82,7 @@ function getParameterArraysForCount(
 export function countParameterCombinations(options: GeneratorOptions): number {
   const { strategy, supportedConfig } = options
 
-  const { baudRates, parities, dataBits, stopBits, addressRange } = getParameterArraysForCount(
+  const { baudRates, parities, dataBits, stopBits, addressRange } = getParameterArrays(
     strategy,
     supportedConfig
   )
