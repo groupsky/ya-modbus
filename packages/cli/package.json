@@ -27,7 +27,7 @@
     "dev": "tsc --watch"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "@ya-modbus/driver-types": "^0.0.0",
