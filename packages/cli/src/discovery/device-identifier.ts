@@ -86,14 +86,14 @@ function isCRCError(error: unknown): boolean {
  * Not all devices support this - device-level support is handled via exception codes.
  *
  * Any Modbus response (including exceptions) indicates a device is present.
- * Only timeouts and CRC errors mean no device with these parameters.
+ * Throws for timeout/CRC errors which indicate no device with these parameters.
  *
  * @param client - Configured ModbusRTU client
- * @returns Complete DeviceIdentificationResult
+ * @param startTime - Start time for response time calculation
+ * @throws Error for timeout, CRC, or other communication failures
+ * @returns DeviceIdentificationResult with present: true guaranteed
  */
-async function tryFC43(client: ModbusRTU): Promise<DeviceIdentificationResult> {
-  const startTime = performance.now()
-
+async function tryFC43(client: ModbusRTU, startTime: number): Promise<DeviceIdentificationResult> {
   try {
     const response = await client.readDeviceIdentification(1, 0) // Read basic identification, start from object 0
 
@@ -126,7 +126,6 @@ async function tryFC43(client: ModbusRTU): Promise<DeviceIdentificationResult> {
 
     return result
   } catch (error) {
-    const responseTime = Math.round((performance.now() - startTime) * 100) / 100
     const exceptionCode = isModbusException(error)
 
     if (exceptionCode !== undefined) {
@@ -134,34 +133,14 @@ async function tryFC43(client: ModbusRTU): Promise<DeviceIdentificationResult> {
       // This is still a successful device detection - we found a device, just don't know what it is
       return {
         present: true,
-        responseTimeMs: responseTime,
+        responseTimeMs: Math.round((performance.now() - startTime) * 100) / 100,
         supportsFC43: false,
         exceptionCode,
       }
     }
 
-    // Check for timeout or CRC errors (no device present)
-    if (isTimeout(error)) {
-      return {
-        present: false,
-        timeout: true,
-        responseTimeMs: responseTime,
-      }
-    }
-
-    if (isCRCError(error)) {
-      return {
-        present: false,
-        crcError: true,
-        responseTimeMs: responseTime,
-      }
-    }
-
-    // Other error (network, etc.) - treat as not present
-    return {
-      present: false,
-      responseTimeMs: responseTime,
-    }
+    // Timeout, CRC, or other communication error - let caller handle it
+    throw error
   }
 }
 
@@ -189,5 +168,35 @@ async function tryFC43(client: ModbusRTU): Promise<DeviceIdentificationResult> {
  * ```
  */
 export async function identifyDevice(client: ModbusRTU): Promise<DeviceIdentificationResult> {
-  return await tryFC43(client)
+  const startTime = performance.now()
+
+  try {
+    // Try FC43 (provides device identification)
+    return await tryFC43(client, startTime)
+  } catch (error) {
+    // Communication error - classify and return appropriate result
+    const responseTime = Math.round((performance.now() - startTime) * 100) / 100
+
+    if (isTimeout(error)) {
+      return {
+        present: false,
+        timeout: true,
+        responseTimeMs: responseTime,
+      }
+    }
+
+    if (isCRCError(error)) {
+      return {
+        present: false,
+        crcError: true,
+        responseTimeMs: responseTime,
+      }
+    }
+
+    // Other error (network, etc.) - treat as not present
+    return {
+      present: false,
+      responseTimeMs: responseTime,
+    }
+  }
 }
