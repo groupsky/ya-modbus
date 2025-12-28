@@ -65,13 +65,26 @@ describe('CLI Entry Point - Integration Tests', () => {
           -V, --version            output the version number
           -h, --help               display help for command
 
-        Commands:
+        Device Operations:
           read [options]           Read data points from device
           write [options]          Write data point to device
-          show-defaults [options]  Show driver DEFAULT_CONFIG and SUPPORTED_CONFIG
+
+        Device Discovery:
           discover [options]       Discover Modbus devices on serial port by scanning
                                    slave IDs and parameters
+
+        Driver Utilities:
+          show-defaults [options]  Show driver DEFAULT_CONFIG and SUPPORTED_CONFIG
+
+        Commands:
           help [command]           display help for command
+
+        Examples:
+          $ ya-modbus read --port /dev/ttyUSB0 --slave-id 1 --driver ya-modbus-driver-xymd1 --all
+          $ ya-modbus write --host 192.168.1.100 --slave-id 1 --data-point voltage --value 220
+          $ ya-modbus discover --port /dev/ttyUSB0 --strategy quick
+          $ ya-modbus show-defaults --driver ya-modbus-driver-xymd1
+            
         "
       `)
 
