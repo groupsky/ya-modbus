@@ -51,6 +51,13 @@ function isModbusException(error: unknown): number | undefined {
 
 /**
  * Check if error is a timeout (device not responding)
+ *
+ * The modbus-serial library can return timeout errors in different formats:
+ * - Error with message containing "timeout" (most common)
+ * - Error with errno='ETIMEDOUT' (serial port timeout)
+ * - Error with code='ETIMEDOUT' (TCP socket timeout)
+ *
+ * We check all three formats to handle different error sources reliably.
  */
 function isTimeout(error: unknown): boolean {
   if (!error || typeof error !== 'object') {
@@ -68,6 +75,13 @@ function isTimeout(error: unknown): boolean {
 
 /**
  * Check if error is a CRC error (wrong serial parameters)
+ *
+ * The modbus-serial library can return CRC errors in different formats:
+ * - Error with message containing "crc" (most common, e.g., "CRC error")
+ * - Error with errno='CRC' (serial port CRC validation failure)
+ *
+ * CRC errors indicate wrong serial parameters (baud rate, parity, etc.)
+ * and are distinguished from timeouts to guide parameter tuning.
  */
 function isCRCError(error: unknown): boolean {
   if (!error || typeof error !== 'object') {
