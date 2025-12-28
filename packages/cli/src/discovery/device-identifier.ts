@@ -80,11 +80,6 @@ function isCRCError(error: unknown): boolean {
 }
 
 /**
- * Result from FC43 - subset of DeviceIdentificationResult with present guaranteed true
- */
-type FC43Result = Omit<DeviceIdentificationResult, 'responseTimeMs'> & { present: true }
-
-/**
  * Try to identify device using FC43 (Read Device Identification)
  *
  * FC43/14 is the standard MEI (Modbus Encapsulated Interface) for device identification.
@@ -93,16 +88,19 @@ type FC43Result = Omit<DeviceIdentificationResult, 'responseTimeMs'> & { present
  * Any Modbus response (including exceptions) indicates a device is present.
  * Only timeouts and CRC errors mean no device with these parameters.
  *
- * @throws Error with timeout/CRC properties if device not responding
- * @returns Subset of DeviceIdentificationResult with present: true guaranteed
+ * @param client - Configured ModbusRTU client
+ * @returns Complete DeviceIdentificationResult
  */
-async function tryFC43(client: ModbusRTU): Promise<FC43Result> {
+async function tryFC43(client: ModbusRTU): Promise<DeviceIdentificationResult> {
+  const startTime = performance.now()
+
   try {
     const response = await client.readDeviceIdentification(1, 0) // Read basic identification, start from object 0
 
-    // Build result object conditionally
-    const result: FC43Result = {
+    // Build result object with response time
+    const result: DeviceIdentificationResult = {
       present: true,
+      responseTimeMs: Math.round((performance.now() - startTime) * 100) / 100,
       supportsFC43: true,
     }
 
@@ -128,19 +126,42 @@ async function tryFC43(client: ModbusRTU): Promise<FC43Result> {
 
     return result
   } catch (error) {
+    const responseTime = Math.round((performance.now() - startTime) * 100) / 100
     const exceptionCode = isModbusException(error)
+
     if (exceptionCode !== undefined) {
       // Exception means device is present but doesn't support FC43 or the specific registers
       // This is still a successful device detection - we found a device, just don't know what it is
       return {
         present: true,
+        responseTimeMs: responseTime,
         supportsFC43: false,
         exceptionCode,
       }
     }
 
-    // Other errors (timeout, CRC) will be handled by caller
-    throw error
+    // Check for timeout or CRC errors (no device present)
+    if (isTimeout(error)) {
+      return {
+        present: false,
+        timeout: true,
+        responseTimeMs: responseTime,
+      }
+    }
+
+    if (isCRCError(error)) {
+      return {
+        present: false,
+        crcError: true,
+        responseTimeMs: responseTime,
+      }
+    }
+
+    // Other error (network, etc.) - treat as not present
+    return {
+      present: false,
+      responseTimeMs: responseTime,
+    }
   }
 }
 
@@ -168,62 +189,5 @@ async function tryFC43(client: ModbusRTU): Promise<FC43Result> {
  * ```
  */
 export async function identifyDevice(client: ModbusRTU): Promise<DeviceIdentificationResult> {
-  const startTime = performance.now()
-
-  try {
-    // Try FC43 (provides device identification)
-    const fc43Result = await tryFC43(client)
-    const responseTime = Math.round((performance.now() - startTime) * 100) / 100
-
-    // Build complete result with all required properties
-    const result: DeviceIdentificationResult = {
-      present: fc43Result.present,
-      responseTimeMs: responseTime,
-    }
-
-    // Add optional properties only if they exist
-    if (fc43Result.supportsFC43 !== undefined) {
-      result.supportsFC43 = fc43Result.supportsFC43
-    }
-    if (fc43Result.vendorName) {
-      result.vendorName = fc43Result.vendorName
-    }
-    if (fc43Result.productCode) {
-      result.productCode = fc43Result.productCode
-    }
-    // Note: modelName (object ID 7) not currently fetched - would require separate FC43 request
-    if (fc43Result.revision) {
-      result.revision = fc43Result.revision
-    }
-    if (fc43Result.exceptionCode !== undefined) {
-      result.exceptionCode = fc43Result.exceptionCode
-    }
-
-    return result
-  } catch (error) {
-    // FC43 failed with error, check error type
-    const responseTime = Math.round((performance.now() - startTime) * 100) / 100
-
-    if (isTimeout(error)) {
-      return {
-        present: false,
-        timeout: true,
-        responseTimeMs: responseTime,
-      }
-    }
-
-    if (isCRCError(error)) {
-      return {
-        present: false,
-        crcError: true,
-        responseTimeMs: responseTime,
-      }
-    }
-
-    // Other error (network, etc.) - treat as not present
-    return {
-      present: false,
-      responseTimeMs: responseTime,
-    }
-  }
+  return await tryFC43(client)
 }
