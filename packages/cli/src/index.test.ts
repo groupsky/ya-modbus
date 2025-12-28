@@ -44,679 +44,671 @@ describe('CLI Entry Point - Integration Tests', () => {
   })
 
   describe('Read Command', () => {
-    describe('Command-Line Integration', () => {
-      it('should execute read command with all RTU connection parameters', async () => {
-        const mockReadCommand = jest.mocked(readModule.readCommand)
-        mockReadCommand.mockResolvedValue()
+    it('should execute read command with all RTU connection parameters', async () => {
+      const mockReadCommand = jest.mocked(readModule.readCommand)
+      mockReadCommand.mockResolvedValue()
 
-        await program.parseAsync([
-          'node',
-          'ya-modbus',
-          'read',
-          '--driver',
-          'test-driver',
-          '--port',
-          '/dev/ttyUSB0',
-          '--slave-id',
-          '1',
-          '--baud-rate',
-          '9600',
-          '--parity',
-          'none',
-          '--data-bits',
-          '8',
-          '--stop-bits',
-          '1',
-          '--timeout',
-          '2000',
-          '--data-point',
-          'temperature',
-          'humidity',
-          '--format',
-          'json',
-        ])
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'read',
+        '--driver',
+        'test-driver',
+        '--port',
+        '/dev/ttyUSB0',
+        '--slave-id',
+        '1',
+        '--baud-rate',
+        '9600',
+        '--parity',
+        'none',
+        '--data-bits',
+        '8',
+        '--stop-bits',
+        '1',
+        '--timeout',
+        '2000',
+        '--data-point',
+        'temperature',
+        'humidity',
+        '--format',
+        'json',
+      ])
 
-        expect(mockReadCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            driver: 'test-driver',
-            port: '/dev/ttyUSB0',
-            slaveId: 1,
-            baudRate: 9600,
-            parity: 'none',
-            dataBits: 8,
-            stopBits: 1,
-            timeout: 2000,
-            dataPoint: ['temperature', 'humidity'],
-            format: 'json',
-          })
-        )
-        expect(mockReadCommand).toHaveBeenCalledTimes(1)
-      })
+      expect(mockReadCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          driver: 'test-driver',
+          port: '/dev/ttyUSB0',
+          slaveId: 1,
+          baudRate: 9600,
+          parity: 'none',
+          dataBits: 8,
+          stopBits: 1,
+          timeout: 2000,
+          dataPoint: ['temperature', 'humidity'],
+          format: 'json',
+        })
+      )
+      expect(mockReadCommand).toHaveBeenCalledTimes(1)
+    })
 
-      it('should execute read command with TCP connection parameters', async () => {
-        const mockReadCommand = jest.mocked(readModule.readCommand)
-        mockReadCommand.mockResolvedValue()
+    it('should execute read command with TCP connection parameters', async () => {
+      const mockReadCommand = jest.mocked(readModule.readCommand)
+      mockReadCommand.mockResolvedValue()
 
-        await program.parseAsync([
-          'node',
-          'ya-modbus',
-          'read',
-          '--host',
-          '192.168.1.100',
-          '--tcp-port',
-          '502',
-          '--slave-id',
-          '1',
-          '--all',
-        ])
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'read',
+        '--host',
+        '192.168.1.100',
+        '--tcp-port',
+        '502',
+        '--slave-id',
+        '1',
+        '--all',
+      ])
 
-        expect(mockReadCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            host: '192.168.1.100',
-            slaveId: 1,
-            all: true,
-          })
-        )
-        // Should not include tcpPort in options (handled internally)
-        expect(mockReadCommand).toHaveBeenCalledWith(
-          expect.not.objectContaining({
-            tcpPort: expect.anything(),
-          })
-        )
-      })
+      expect(mockReadCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          host: '192.168.1.100',
+          slaveId: 1,
+          all: true,
+        })
+      )
+      // Should not include tcpPort in options (handled internally)
+      expect(mockReadCommand).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          tcpPort: expect.anything(),
+        })
+      )
+    })
 
-      it('should execute read command with minimal parameters', async () => {
-        const mockReadCommand = jest.mocked(readModule.readCommand)
-        mockReadCommand.mockResolvedValue()
+    it('should execute read command with minimal parameters', async () => {
+      const mockReadCommand = jest.mocked(readModule.readCommand)
+      mockReadCommand.mockResolvedValue()
 
-        await program.parseAsync(['node', 'ya-modbus', 'read', '--slave-id', '1', '--all'])
+      await program.parseAsync(['node', 'ya-modbus', 'read', '--slave-id', '1', '--all'])
 
-        expect(mockReadCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            slaveId: 1,
-            all: true,
-          })
-        )
-      })
+      expect(mockReadCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slaveId: 1,
+          all: true,
+        })
+      )
+    })
 
-      it('should handle command errors and display error message', async () => {
-        const mockReadCommand = jest.mocked(readModule.readCommand)
-        mockReadCommand.mockRejectedValue(new Error('Failed to connect to device'))
+    it('should handle command errors and display error message', async () => {
+      const mockReadCommand = jest.mocked(readModule.readCommand)
+      mockReadCommand.mockRejectedValue(new Error('Failed to connect to device'))
 
-        await expect(
-          program.parseAsync(['node', 'ya-modbus', 'read', '--slave-id', '1', '--all'])
-        ).rejects.toThrow('process.exit called')
+      await expect(
+        program.parseAsync(['node', 'ya-modbus', 'read', '--slave-id', '1', '--all'])
+      ).rejects.toThrow('process.exit called')
 
-        expect(consoleErrorSpy).toHaveBeenCalledWith('Error: Failed to connect to device')
-        expect(processExitSpy).toHaveBeenCalledWith(1)
-      })
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error: Failed to connect to device')
+      expect(processExitSpy).toHaveBeenCalledWith(1)
+    })
 
-      it('should fail when required slave-id is missing', async () => {
-        await expect(program.parseAsync(['node', 'ya-modbus', 'read', '--all'])).rejects.toThrow(
-          'process.exit called'
-        )
+    it('should fail when required slave-id is missing', async () => {
+      await expect(program.parseAsync(['node', 'ya-modbus', 'read', '--all'])).rejects.toThrow(
+        'process.exit called'
+      )
 
-        expect(processExitSpy).toHaveBeenCalledWith(1)
-      })
+      expect(processExitSpy).toHaveBeenCalledWith(1)
+    })
 
-      it('should parse short option flags correctly', async () => {
-        const mockReadCommand = jest.mocked(readModule.readCommand)
-        mockReadCommand.mockResolvedValue()
+    it('should parse short option flags correctly', async () => {
+      const mockReadCommand = jest.mocked(readModule.readCommand)
+      mockReadCommand.mockResolvedValue()
 
-        await program.parseAsync([
-          'node',
-          'ya-modbus',
-          'read',
-          '-d',
-          'test-driver',
-          '-p',
-          '/dev/ttyUSB0',
-          '-s',
-          '1',
-          '-b',
-          '19200',
-          '-f',
-          'json',
-          '--all',
-        ])
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'read',
+        '-d',
+        'test-driver',
+        '-p',
+        '/dev/ttyUSB0',
+        '-s',
+        '1',
+        '-b',
+        '19200',
+        '-f',
+        'json',
+        '--all',
+      ])
 
-        expect(mockReadCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            driver: 'test-driver',
-            port: '/dev/ttyUSB0',
-            slaveId: 1,
-            baudRate: 19200,
-            format: 'json',
-            all: true,
-          })
-        )
-      })
+      expect(mockReadCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          driver: 'test-driver',
+          port: '/dev/ttyUSB0',
+          slaveId: 1,
+          baudRate: 19200,
+          format: 'json',
+          all: true,
+        })
+      )
+    })
 
-      it('should handle multiple data points', async () => {
-        const mockReadCommand = jest.mocked(readModule.readCommand)
-        mockReadCommand.mockResolvedValue()
+    it('should handle multiple data points', async () => {
+      const mockReadCommand = jest.mocked(readModule.readCommand)
+      mockReadCommand.mockResolvedValue()
 
-        await program.parseAsync([
-          'node',
-          'ya-modbus',
-          'read',
-          '-s',
-          '1',
-          '--data-point',
-          'temp',
-          'humidity',
-          'pressure',
-        ])
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'read',
+        '-s',
+        '1',
+        '--data-point',
+        'temp',
+        'humidity',
+        'pressure',
+      ])
 
-        expect(mockReadCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            dataPoint: ['temp', 'humidity', 'pressure'],
-          })
-        )
-      })
+      expect(mockReadCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dataPoint: ['temp', 'humidity', 'pressure'],
+        })
+      )
+    })
 
-      it('should parse integer options correctly', async () => {
-        const mockReadCommand = jest.mocked(readModule.readCommand)
-        mockReadCommand.mockResolvedValue()
+    it('should parse integer options correctly', async () => {
+      const mockReadCommand = jest.mocked(readModule.readCommand)
+      mockReadCommand.mockResolvedValue()
 
-        await program.parseAsync([
-          'node',
-          'ya-modbus',
-          'read',
-          '-s',
-          '247',
-          '--baud-rate',
-          '115200',
-          '--data-bits',
-          '7',
-          '--stop-bits',
-          '2',
-          '--timeout',
-          '5000',
-          '--all',
-        ])
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'read',
+        '-s',
+        '247',
+        '--baud-rate',
+        '115200',
+        '--data-bits',
+        '7',
+        '--stop-bits',
+        '2',
+        '--timeout',
+        '5000',
+        '--all',
+      ])
 
-        expect(mockReadCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            slaveId: 247,
-            baudRate: 115200,
-            dataBits: 7,
-            stopBits: 2,
-            timeout: 5000,
-          })
-        )
-      })
+      expect(mockReadCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slaveId: 247,
+          baudRate: 115200,
+          dataBits: 7,
+          stopBits: 2,
+          timeout: 5000,
+        })
+      )
+    })
 
-      it('should use default format when not specified', async () => {
-        const mockReadCommand = jest.mocked(readModule.readCommand)
-        mockReadCommand.mockResolvedValue()
+    it('should use default format when not specified', async () => {
+      const mockReadCommand = jest.mocked(readModule.readCommand)
+      mockReadCommand.mockResolvedValue()
 
-        await program.parseAsync(['node', 'ya-modbus', 'read', '-s', '1', '--all'])
+      await program.parseAsync(['node', 'ya-modbus', 'read', '-s', '1', '--all'])
 
-        expect(mockReadCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            format: 'table',
-          })
-        )
-      })
+      expect(mockReadCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          format: 'table',
+        })
+      )
     })
   })
 
   describe('Write Command', () => {
-    describe('Command-Line Integration', () => {
-      it('should execute write command with all parameters', async () => {
-        const mockWriteCommand = jest.mocked(writeModule.writeCommand)
-        mockWriteCommand.mockResolvedValue()
+    it('should execute write command with all parameters', async () => {
+      const mockWriteCommand = jest.mocked(writeModule.writeCommand)
+      mockWriteCommand.mockResolvedValue()
 
-        await program.parseAsync([
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'write',
+        '--driver',
+        'test-driver',
+        '--port',
+        '/dev/ttyUSB0',
+        '--slave-id',
+        '1',
+        '--data-point',
+        'setpoint',
+        '--value',
+        '25.5',
+        '--yes',
+        '--verify',
+      ])
+
+      expect(mockWriteCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          driver: 'test-driver',
+          port: '/dev/ttyUSB0',
+          slaveId: 1,
+          dataPoint: 'setpoint',
+          value: '25.5',
+          yes: true,
+          verify: true,
+        })
+      )
+      expect(mockWriteCommand).toHaveBeenCalledTimes(1)
+    })
+
+    it('should execute write command without confirmation flag', async () => {
+      const mockWriteCommand = jest.mocked(writeModule.writeCommand)
+      mockWriteCommand.mockResolvedValue()
+
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'write',
+        '--slave-id',
+        '1',
+        '--data-point',
+        'output',
+        '--value',
+        '100',
+      ])
+
+      expect(mockWriteCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slaveId: 1,
+          dataPoint: 'output',
+          value: '100',
+        })
+      )
+      // yes flag should not be present
+      expect(mockWriteCommand).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          yes: expect.anything(),
+        })
+      )
+    })
+
+    it('should handle write errors and display error message', async () => {
+      const mockWriteCommand = jest.mocked(writeModule.writeCommand)
+      mockWriteCommand.mockRejectedValue(new Error('Permission denied'))
+
+      await expect(
+        program.parseAsync([
           'node',
           'ya-modbus',
           'write',
-          '--driver',
-          'test-driver',
-          '--port',
-          '/dev/ttyUSB0',
           '--slave-id',
-          '1',
-          '--data-point',
-          'setpoint',
-          '--value',
-          '25.5',
-          '--yes',
-          '--verify',
-        ])
-
-        expect(mockWriteCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            driver: 'test-driver',
-            port: '/dev/ttyUSB0',
-            slaveId: 1,
-            dataPoint: 'setpoint',
-            value: '25.5',
-            yes: true,
-            verify: true,
-          })
-        )
-        expect(mockWriteCommand).toHaveBeenCalledTimes(1)
-      })
-
-      it('should execute write command without confirmation flag', async () => {
-        const mockWriteCommand = jest.mocked(writeModule.writeCommand)
-        mockWriteCommand.mockResolvedValue()
-
-        await program.parseAsync([
-          'node',
-          'ya-modbus',
-          'write',
-          '--slave-id',
-          '1',
-          '--data-point',
-          'output',
-          '--value',
-          '100',
-        ])
-
-        expect(mockWriteCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            slaveId: 1,
-            dataPoint: 'output',
-            value: '100',
-          })
-        )
-        // yes flag should not be present
-        expect(mockWriteCommand).toHaveBeenCalledWith(
-          expect.not.objectContaining({
-            yes: expect.anything(),
-          })
-        )
-      })
-
-      it('should handle write errors and display error message', async () => {
-        const mockWriteCommand = jest.mocked(writeModule.writeCommand)
-        mockWriteCommand.mockRejectedValue(new Error('Permission denied'))
-
-        await expect(
-          program.parseAsync([
-            'node',
-            'ya-modbus',
-            'write',
-            '--slave-id',
-            '1',
-            '--data-point',
-            'test',
-            '--value',
-            '10',
-          ])
-        ).rejects.toThrow('process.exit called')
-
-        expect(consoleErrorSpy).toHaveBeenCalledWith('Error: Permission denied')
-        expect(processExitSpy).toHaveBeenCalledWith(1)
-      })
-
-      it('should fail when required data-point is missing', async () => {
-        await expect(
-          program.parseAsync(['node', 'ya-modbus', 'write', '-s', '1', '--value', '100'])
-        ).rejects.toThrow('process.exit called')
-
-        expect(processExitSpy).toHaveBeenCalledWith(1)
-      })
-
-      it('should fail when required value is missing', async () => {
-        await expect(
-          program.parseAsync(['node', 'ya-modbus', 'write', '-s', '1', '--data-point', 'temp'])
-        ).rejects.toThrow('process.exit called')
-
-        expect(processExitSpy).toHaveBeenCalledWith(1)
-      })
-
-      it('should parse short option flags correctly', async () => {
-        const mockWriteCommand = jest.mocked(writeModule.writeCommand)
-        mockWriteCommand.mockResolvedValue()
-
-        await program.parseAsync([
-          'node',
-          'ya-modbus',
-          'write',
-          '-s',
-          '1',
-          '--data-point',
-          'output',
-          '--value',
-          '50',
-          '-y',
-        ])
-
-        expect(mockWriteCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            slaveId: 1,
-            dataPoint: 'output',
-            value: '50',
-            yes: true,
-          })
-        )
-      })
-
-      it('should handle boolean flags correctly', async () => {
-        const mockWriteCommand = jest.mocked(writeModule.writeCommand)
-        mockWriteCommand.mockResolvedValue()
-
-        await program.parseAsync([
-          'node',
-          'ya-modbus',
-          'write',
-          '-s',
           '1',
           '--data-point',
           'test',
           '--value',
-          '1',
-          '--yes',
-          '--verify',
+          '10',
         ])
+      ).rejects.toThrow('process.exit called')
 
-        expect(mockWriteCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            yes: true,
-            verify: true,
-          })
-        )
-      })
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error: Permission denied')
+      expect(processExitSpy).toHaveBeenCalledWith(1)
+    })
+
+    it('should fail when required data-point is missing', async () => {
+      await expect(
+        program.parseAsync(['node', 'ya-modbus', 'write', '-s', '1', '--value', '100'])
+      ).rejects.toThrow('process.exit called')
+
+      expect(processExitSpy).toHaveBeenCalledWith(1)
+    })
+
+    it('should fail when required value is missing', async () => {
+      await expect(
+        program.parseAsync(['node', 'ya-modbus', 'write', '-s', '1', '--data-point', 'temp'])
+      ).rejects.toThrow('process.exit called')
+
+      expect(processExitSpy).toHaveBeenCalledWith(1)
+    })
+
+    it('should parse short option flags correctly', async () => {
+      const mockWriteCommand = jest.mocked(writeModule.writeCommand)
+      mockWriteCommand.mockResolvedValue()
+
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'write',
+        '-s',
+        '1',
+        '--data-point',
+        'output',
+        '--value',
+        '50',
+        '-y',
+      ])
+
+      expect(mockWriteCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slaveId: 1,
+          dataPoint: 'output',
+          value: '50',
+          yes: true,
+        })
+      )
+    })
+
+    it('should handle boolean flags correctly', async () => {
+      const mockWriteCommand = jest.mocked(writeModule.writeCommand)
+      mockWriteCommand.mockResolvedValue()
+
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'write',
+        '-s',
+        '1',
+        '--data-point',
+        'test',
+        '--value',
+        '1',
+        '--yes',
+        '--verify',
+      ])
+
+      expect(mockWriteCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          yes: true,
+          verify: true,
+        })
+      )
     })
   })
 
   describe('Show Defaults Command', () => {
-    describe('Command-Line Integration', () => {
-      it('should execute show-defaults with driver package', async () => {
-        const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
-        mockShowDefaultsCommand.mockResolvedValue()
+    it('should execute show-defaults with driver package', async () => {
+      const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
+      mockShowDefaultsCommand.mockResolvedValue()
 
-        await program.parseAsync([
-          'node',
-          'ya-modbus',
-          'show-defaults',
-          '--driver',
-          'ya-modbus-driver-xymd1',
-          '--format',
-          'json',
-        ])
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'show-defaults',
+        '--driver',
+        'ya-modbus-driver-xymd1',
+        '--format',
+        'json',
+      ])
 
-        expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            driver: 'ya-modbus-driver-xymd1',
-            format: 'json',
-          })
-        )
-        expect(mockShowDefaultsCommand).toHaveBeenCalledTimes(1)
-      })
+      expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          driver: 'ya-modbus-driver-xymd1',
+          format: 'json',
+        })
+      )
+      expect(mockShowDefaultsCommand).toHaveBeenCalledTimes(1)
+    })
 
-      it('should execute show-defaults with local driver', async () => {
-        const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
-        mockShowDefaultsCommand.mockResolvedValue()
+    it('should execute show-defaults with local driver', async () => {
+      const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
+      mockShowDefaultsCommand.mockResolvedValue()
 
-        await program.parseAsync([
-          'node',
-          'ya-modbus',
-          'show-defaults',
-          '--local',
-          '--format',
-          'table',
-        ])
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'show-defaults',
+        '--local',
+        '--format',
+        'table',
+      ])
 
-        expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            local: true,
-            format: 'table',
-          })
-        )
-      })
+      expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          local: true,
+          format: 'table',
+        })
+      )
+    })
 
-      it('should execute show-defaults with default format', async () => {
-        const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
-        mockShowDefaultsCommand.mockResolvedValue()
+    it('should execute show-defaults with default format', async () => {
+      const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
+      mockShowDefaultsCommand.mockResolvedValue()
 
-        await program.parseAsync(['node', 'ya-modbus', 'show-defaults', '--driver', 'test-driver'])
+      await program.parseAsync(['node', 'ya-modbus', 'show-defaults', '--driver', 'test-driver'])
 
-        expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            driver: 'test-driver',
-            format: 'table', // default value
-          })
-        )
-      })
+      expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          driver: 'test-driver',
+          format: 'table', // default value
+        })
+      )
+    })
 
-      it('should handle driver loading errors', async () => {
-        const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
-        mockShowDefaultsCommand.mockRejectedValue(new Error('Driver package not found'))
+    it('should handle driver loading errors', async () => {
+      const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
+      mockShowDefaultsCommand.mockRejectedValue(new Error('Driver package not found'))
 
-        await expect(
-          program.parseAsync(['node', 'ya-modbus', 'show-defaults', '--driver', 'invalid-driver'])
-        ).rejects.toThrow('process.exit called')
+      await expect(
+        program.parseAsync(['node', 'ya-modbus', 'show-defaults', '--driver', 'invalid-driver'])
+      ).rejects.toThrow('process.exit called')
 
-        expect(consoleErrorSpy).toHaveBeenCalledWith('Error: Driver package not found')
-        expect(processExitSpy).toHaveBeenCalledWith(1)
-      })
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error: Driver package not found')
+      expect(processExitSpy).toHaveBeenCalledWith(1)
+    })
 
-      it('should parse short option flags correctly', async () => {
-        const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
-        mockShowDefaultsCommand.mockResolvedValue()
+    it('should parse short option flags correctly', async () => {
+      const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
+      mockShowDefaultsCommand.mockResolvedValue()
 
-        await program.parseAsync([
-          'node',
-          'ya-modbus',
-          'show-defaults',
-          '-d',
-          'test-driver',
-          '-f',
-          'json',
-        ])
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'show-defaults',
+        '-d',
+        'test-driver',
+        '-f',
+        'json',
+      ])
 
-        expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            driver: 'test-driver',
-            format: 'json',
-          })
-        )
-      })
+      expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          driver: 'test-driver',
+          format: 'json',
+        })
+      )
+    })
 
-      it('should work without any options', async () => {
-        const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
-        mockShowDefaultsCommand.mockResolvedValue()
+    it('should work without any options', async () => {
+      const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
+      mockShowDefaultsCommand.mockResolvedValue()
 
-        await program.parseAsync(['node', 'ya-modbus', 'show-defaults'])
+      await program.parseAsync(['node', 'ya-modbus', 'show-defaults'])
 
-        expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            format: 'table',
-          })
-        )
-      })
+      expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          format: 'table',
+        })
+      )
     })
   })
 
   describe('Discover Command', () => {
-    describe('Command-Line Integration', () => {
-      it('should execute discover with all parameters', async () => {
-        const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
-        mockDiscoverCommand.mockResolvedValue()
+    it('should execute discover with all parameters', async () => {
+      const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
+      mockDiscoverCommand.mockResolvedValue()
 
-        await program.parseAsync([
-          'node',
-          'ya-modbus',
-          'discover',
-          '--port',
-          '/dev/ttyUSB0',
-          '--driver',
-          'test-driver',
-          '--local',
-          '--strategy',
-          'thorough',
-          '--timeout',
-          '500',
-          '--delay',
-          '50',
-          '--max-devices',
-          '5',
-          '--verbose',
-          '--format',
-          'json',
-        ])
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'discover',
+        '--port',
+        '/dev/ttyUSB0',
+        '--driver',
+        'test-driver',
+        '--local',
+        '--strategy',
+        'thorough',
+        '--timeout',
+        '500',
+        '--delay',
+        '50',
+        '--max-devices',
+        '5',
+        '--verbose',
+        '--format',
+        'json',
+      ])
 
-        expect(mockDiscoverCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            port: '/dev/ttyUSB0',
-            driver: 'test-driver',
-            local: true,
-            strategy: 'thorough',
-            timeout: 500,
-            delay: 50,
-            maxDevices: 5,
-            verbose: true,
-            format: 'json',
-          })
-        )
-        expect(mockDiscoverCommand).toHaveBeenCalledTimes(1)
-      })
+      expect(mockDiscoverCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          port: '/dev/ttyUSB0',
+          driver: 'test-driver',
+          local: true,
+          strategy: 'thorough',
+          timeout: 500,
+          delay: 50,
+          maxDevices: 5,
+          verbose: true,
+          format: 'json',
+        })
+      )
+      expect(mockDiscoverCommand).toHaveBeenCalledTimes(1)
+    })
 
-      it('should execute discover with minimal parameters', async () => {
-        const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
-        mockDiscoverCommand.mockResolvedValue()
+    it('should execute discover with minimal parameters', async () => {
+      const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
+      mockDiscoverCommand.mockResolvedValue()
 
-        await program.parseAsync(['node', 'ya-modbus', 'discover', '--port', '/dev/ttyUSB0'])
+      await program.parseAsync(['node', 'ya-modbus', 'discover', '--port', '/dev/ttyUSB0'])
 
-        expect(mockDiscoverCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            port: '/dev/ttyUSB0',
-            strategy: 'quick', // default
-          })
-        )
-      })
+      expect(mockDiscoverCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          port: '/dev/ttyUSB0',
+          strategy: 'quick', // default
+        })
+      )
+    })
 
-      it('should execute discover in silent mode', async () => {
-        const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
-        mockDiscoverCommand.mockResolvedValue()
+    it('should execute discover in silent mode', async () => {
+      const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
+      mockDiscoverCommand.mockResolvedValue()
 
-        await program.parseAsync([
-          'node',
-          'ya-modbus',
-          'discover',
-          '--port',
-          '/dev/ttyUSB0',
-          '--silent',
-        ])
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'discover',
+        '--port',
+        '/dev/ttyUSB0',
+        '--silent',
+      ])
 
-        expect(mockDiscoverCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            port: '/dev/ttyUSB0',
-            silent: true,
-          })
-        )
-      })
+      expect(mockDiscoverCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          port: '/dev/ttyUSB0',
+          silent: true,
+        })
+      )
+    })
 
-      it('should handle port access errors', async () => {
-        const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
-        mockDiscoverCommand.mockRejectedValue(new Error('Cannot open port: Permission denied'))
+    it('should handle port access errors', async () => {
+      const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
+      mockDiscoverCommand.mockRejectedValue(new Error('Cannot open port: Permission denied'))
 
-        await expect(
-          program.parseAsync(['node', 'ya-modbus', 'discover', '--port', '/dev/ttyUSB0'])
-        ).rejects.toThrow('process.exit called')
+      await expect(
+        program.parseAsync(['node', 'ya-modbus', 'discover', '--port', '/dev/ttyUSB0'])
+      ).rejects.toThrow('process.exit called')
 
-        expect(consoleErrorSpy).toHaveBeenCalledWith('Error: Cannot open port: Permission denied')
-        expect(processExitSpy).toHaveBeenCalledWith(1)
-      })
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error: Cannot open port: Permission denied')
+      expect(processExitSpy).toHaveBeenCalledWith(1)
+    })
 
-      it('should fail when required port is missing', async () => {
-        await expect(program.parseAsync(['node', 'ya-modbus', 'discover'])).rejects.toThrow(
-          'process.exit called'
-        )
+    it('should fail when required port is missing', async () => {
+      await expect(program.parseAsync(['node', 'ya-modbus', 'discover'])).rejects.toThrow(
+        'process.exit called'
+      )
 
-        expect(processExitSpy).toHaveBeenCalledWith(1)
-      })
+      expect(processExitSpy).toHaveBeenCalledWith(1)
+    })
 
-      it('should parse short option flags correctly', async () => {
-        const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
-        mockDiscoverCommand.mockResolvedValue()
+    it('should parse short option flags correctly', async () => {
+      const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
+      mockDiscoverCommand.mockResolvedValue()
 
-        await program.parseAsync([
-          'node',
-          'ya-modbus',
-          'discover',
-          '-p',
-          '/dev/ttyUSB0',
-          '-d',
-          'test-driver',
-          '-f',
-          'json',
-        ])
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'discover',
+        '-p',
+        '/dev/ttyUSB0',
+        '-d',
+        'test-driver',
+        '-f',
+        'json',
+      ])
 
-        expect(mockDiscoverCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            port: '/dev/ttyUSB0',
-            driver: 'test-driver',
-            format: 'json',
-          })
-        )
-      })
+      expect(mockDiscoverCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          port: '/dev/ttyUSB0',
+          driver: 'test-driver',
+          format: 'json',
+        })
+      )
+    })
 
-      it('should parse integer options correctly', async () => {
-        const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
-        mockDiscoverCommand.mockResolvedValue()
+    it('should parse integer options correctly', async () => {
+      const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
+      mockDiscoverCommand.mockResolvedValue()
 
-        await program.parseAsync([
-          'node',
-          'ya-modbus',
-          'discover',
-          '-p',
-          '/dev/ttyUSB0',
-          '--timeout',
-          '2000',
-          '--delay',
-          '200',
-          '--max-devices',
-          '10',
-        ])
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'discover',
+        '-p',
+        '/dev/ttyUSB0',
+        '--timeout',
+        '2000',
+        '--delay',
+        '200',
+        '--max-devices',
+        '10',
+      ])
 
-        expect(mockDiscoverCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            timeout: 2000,
-            delay: 200,
-            maxDevices: 10,
-          })
-        )
-      })
+      expect(mockDiscoverCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timeout: 2000,
+          delay: 200,
+          maxDevices: 10,
+        })
+      )
+    })
 
-      it('should handle strategy option correctly', async () => {
-        const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
-        mockDiscoverCommand.mockResolvedValue()
+    it('should handle strategy option correctly', async () => {
+      const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
+      mockDiscoverCommand.mockResolvedValue()
 
-        await program.parseAsync([
-          'node',
-          'ya-modbus',
-          'discover',
-          '-p',
-          '/dev/ttyUSB0',
-          '--strategy',
-          'thorough',
-        ])
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'discover',
+        '-p',
+        '/dev/ttyUSB0',
+        '--strategy',
+        'thorough',
+      ])
 
-        expect(mockDiscoverCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            strategy: 'thorough',
-          })
-        )
-      })
+      expect(mockDiscoverCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          strategy: 'thorough',
+        })
+      )
+    })
 
-      it('should use default strategy when not specified', async () => {
-        const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
-        mockDiscoverCommand.mockResolvedValue()
+    it('should use default strategy when not specified', async () => {
+      const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
+      mockDiscoverCommand.mockResolvedValue()
 
-        await program.parseAsync(['node', 'ya-modbus', 'discover', '-p', '/dev/ttyUSB0'])
+      await program.parseAsync(['node', 'ya-modbus', 'discover', '-p', '/dev/ttyUSB0'])
 
-        expect(mockDiscoverCommand).toHaveBeenCalledWith(
-          expect.objectContaining({
-            strategy: 'quick',
-          })
-        )
-      })
+      expect(mockDiscoverCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          strategy: 'quick',
+        })
+      )
     })
   })
 })
