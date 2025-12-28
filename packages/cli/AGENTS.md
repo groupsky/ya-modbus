@@ -168,7 +168,7 @@ See existing commands: `src/commands/read.ts`, `src/commands/write.ts`
 src/
 ├── discovery/
 │   ├── parameter-generator.ts  # Generate serial parameter combinations
-│   ├── device-identifier.ts    # Try FC43/FC17/FC03 to identify devices
+│   ├── device-identifier.ts    # Try FC43 to identify devices
 │   ├── scanner.ts              # Core scanning loop
 │   ├── progress.ts             # Progress tracking with ETA
 │   └── (tests for all above)
@@ -187,8 +187,7 @@ src/
    - Respects SUPPORTED_CONFIG to limit scan space
 
 2. **Device Identifier**
-   - Tries FC43 (Read Device Identification) first for vendor/model info
-   - Falls back to FC03 (Read Holding Registers) as universal detection
+   - Uses FC43 (Read Device Identification) to probe for device presence and gather vendor/model info
    - Distinguishes timeout (no device) vs exception (device present but unsupported function) vs CRC error (wrong serial params)
    - Measures response time for each device
 
@@ -219,7 +218,7 @@ src/
 **Testing Approach**:
 
 - `parameter-generator.test.ts`: Verifies combination generation, prioritization, DEFAULT_CONFIG handling
-- `device-identifier.test.ts`: Mocks ModbusRTU client, tests FC43/FC03 fallback, error classification
+- `device-identifier.test.ts`: Mocks ModbusRTU client, tests FC43 device identification, error classification
 
 **User Documentation**: `docs/discover-command.md`
 
