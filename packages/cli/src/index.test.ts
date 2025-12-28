@@ -48,6 +48,28 @@ describe('CLI Entry Point - Integration Tests', () => {
     processExitSpy.mockRestore()
   })
 
+  /**
+   * Helper to capture and verify help output for commands
+   * @param args - Command-line arguments to pass to program.parseAsync()
+   * @returns The captured help output text
+   */
+  async function captureHelpOutput(args: string[]): Promise<string> {
+    const stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation()
+
+    try {
+      // Help output triggers process.exit(0), which our mock throws
+      await expect(program.parseAsync(args)).rejects.toThrow('process.exit called')
+
+      // Verify exit was called with success code (0) for help
+      expect(processExitSpy).toHaveBeenCalledWith(0)
+
+      // Capture and return help output
+      return stdoutWriteSpy.mock.calls.map((call) => call[0]).join('')
+    } finally {
+      stdoutWriteSpy.mockRestore()
+    }
+  }
+
   describe('Program Configuration', () => {
     it('should have correct name', () => {
       expect(program.name()).toBe('ya-modbus')
@@ -64,19 +86,7 @@ describe('CLI Entry Point - Integration Tests', () => {
     })
 
     it('should display help information with --help', async () => {
-      // Capture stdout for help output
-      const stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation()
-
-      // Help output triggers process.exit(0), which our mock throws
-      await expect(program.parseAsync(['node', 'ya-modbus', '--help'])).rejects.toThrow(
-        'process.exit called'
-      )
-
-      // Verify exit was called with success code (0) for help
-      expect(processExitSpy).toHaveBeenCalledWith(0)
-
-      // Capture and verify help output
-      const helpOutput = stdoutWriteSpy.mock.calls.map((call) => call[0]).join('')
+      const helpOutput = await captureHelpOutput(['node', 'ya-modbus', '--help'])
       expect(helpOutput).toMatchInlineSnapshot(`
         "Usage: ya-modbus [options] [command]
 
@@ -108,22 +118,12 @@ describe('CLI Entry Point - Integration Tests', () => {
             
         "
       `)
-
-      stdoutWriteSpy.mockRestore()
     })
   })
 
   describe('Read Command', () => {
     it('should display help information for read command', async () => {
-      const stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation()
-
-      await expect(program.parseAsync(['node', 'ya-modbus', 'read', '--help'])).rejects.toThrow(
-        'process.exit called'
-      )
-
-      expect(processExitSpy).toHaveBeenCalledWith(0)
-
-      const helpOutput = stdoutWriteSpy.mock.calls.map((call) => call[0]).join('')
+      const helpOutput = await captureHelpOutput(['node', 'ya-modbus', 'read', '--help'])
       expect(helpOutput).toMatchInlineSnapshot(`
         "Usage: ya-modbus read [options]
 
@@ -165,8 +165,6 @@ describe('CLI Entry Point - Integration Tests', () => {
           --help                  display help for command
         "
       `)
-
-      stdoutWriteSpy.mockRestore()
     })
 
     it('should execute read command with all RTU connection parameters', async () => {
@@ -440,15 +438,7 @@ describe('CLI Entry Point - Integration Tests', () => {
 
   describe('Write Command', () => {
     it('should display help information for write command', async () => {
-      const stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation()
-
-      await expect(program.parseAsync(['node', 'ya-modbus', 'write', '--help'])).rejects.toThrow(
-        'process.exit called'
-      )
-
-      expect(processExitSpy).toHaveBeenCalledWith(0)
-
-      const helpOutput = stdoutWriteSpy.mock.calls.map((call) => call[0]).join('')
+      const helpOutput = await captureHelpOutput(['node', 'ya-modbus', 'write', '--help'])
       expect(helpOutput).toMatchInlineSnapshot(`
         "Usage: ya-modbus write [options]
 
@@ -490,8 +480,6 @@ describe('CLI Entry Point - Integration Tests', () => {
           --help                  display help for command
         "
       `)
-
-      stdoutWriteSpy.mockRestore()
     })
 
     it('should execute write command with all parameters', async () => {
@@ -656,15 +644,7 @@ describe('CLI Entry Point - Integration Tests', () => {
 
   describe('Show Defaults Command', () => {
     it('should display help information for show-defaults command', async () => {
-      const stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation()
-
-      await expect(
-        program.parseAsync(['node', 'ya-modbus', 'show-defaults', '--help'])
-      ).rejects.toThrow('process.exit called')
-
-      expect(processExitSpy).toHaveBeenCalledWith(0)
-
-      const helpOutput = stdoutWriteSpy.mock.calls.map((call) => call[0]).join('')
+      const helpOutput = await captureHelpOutput(['node', 'ya-modbus', 'show-defaults', '--help'])
       expect(helpOutput).toMatchInlineSnapshot(`
         "Usage: ya-modbus show-defaults [options]
 
@@ -682,8 +662,6 @@ describe('CLI Entry Point - Integration Tests', () => {
           -h, --help              display help for command
         "
       `)
-
-      stdoutWriteSpy.mockRestore()
     })
 
     it('should execute show-defaults with driver package', async () => {
@@ -795,15 +773,7 @@ describe('CLI Entry Point - Integration Tests', () => {
 
   describe('Discover Command', () => {
     it('should display help information for discover command', async () => {
-      const stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation()
-
-      await expect(program.parseAsync(['node', 'ya-modbus', 'discover', '--help'])).rejects.toThrow(
-        'process.exit called'
-      )
-
-      expect(processExitSpy).toHaveBeenCalledWith(0)
-
-      const helpOutput = stdoutWriteSpy.mock.calls.map((call) => call[0]).join('')
+      const helpOutput = await captureHelpOutput(['node', 'ya-modbus', 'discover', '--help'])
       expect(helpOutput).toMatchInlineSnapshot(`
         "Usage: ya-modbus discover [options]
 
@@ -836,8 +806,6 @@ describe('CLI Entry Point - Integration Tests', () => {
           -h, --help              display help for command
         "
       `)
-
-      stdoutWriteSpy.mockRestore()
     })
 
     it('should execute discover with all parameters', async () => {
