@@ -25,7 +25,6 @@ module.exports = {
     '<rootDir>/src/**/*.ts',
     '!<rootDir>/src/**/*.test.ts',
     '!<rootDir>/src/**/*.d.ts',
-    '!<rootDir>/src/index.ts', // CLI entry point - tested via integration tests
   ],
   coverageThreshold: {
     global: {
