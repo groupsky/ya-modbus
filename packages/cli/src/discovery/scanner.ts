@@ -205,7 +205,7 @@ export async function scanForDevices(
       if (verbose) {
         const errorMessage = error instanceof Error ? error.message : String(error)
         console.warn(
-          `Connection failed for ${baudRate}/${parity}/${dataBits}/${stopBits}: ${errorMessage}`
+          `Connection failed on ${port} for ${baudRate}/${parity}/${dataBits}/${stopBits}: ${errorMessage}`
         )
       }
 

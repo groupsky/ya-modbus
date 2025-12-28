@@ -582,6 +582,47 @@ describe('scanForDevices', () => {
       // Client should still be closed despite the error
       expect(mockClient.close).toHaveBeenCalledTimes(1)
     })
+
+    test('logs connection errors with port path in verbose mode', async () => {
+      const mockIdentify = identifyDevice as jest.MockedFunction<typeof identifyDevice>
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
+
+      // Connection fails for this baud rate
+      mockClient.connectRTUBuffered = jest.fn().mockRejectedValue(new Error('Port not found'))
+
+      mockIdentify.mockResolvedValue({
+        present: false,
+        responseTimeMs: 10,
+        timeout: true,
+      })
+
+      const generatorOptions: GeneratorOptions = {
+        strategy: 'quick',
+        supportedConfig: {
+          validBaudRates: [9600],
+          validParity: ['none'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 2],
+        },
+      }
+
+      const scanOptions: ScanOptions = {
+        port: '/dev/ttyUSB0',
+        timeout: 1000,
+        delayMs: 0,
+        verbose: true,
+      }
+
+      await scanForDevices(generatorOptions, scanOptions)
+
+      // Should log error with port path included
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('/dev/ttyUSB0'))
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('9600'))
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Port not found'))
+
+      consoleWarnSpy.mockRestore()
+    })
   })
 
   describe('delay logic', () => {
