@@ -1,8 +1,11 @@
 /**
  * XYMD1 Temperature and Humidity Sensor Driver
  *
- * Factory default device specifications are exported via the DEFAULT_CONFIG constant.
- * See DEFAULT_CONFIG for baud rate, parity, data bits, stop bits, and default address.
+ * Supports XY-MD01 and XY-MD02 devices. Both models have identical Modbus interfaces
+ * and cannot be distinguished programmatically - only by physical appearance.
+ *
+ * Device specifications are exported via DEVICE_METADATA.
+ * See DEVICE_METADATA.md01 and DEVICE_METADATA.md02 for device-specific configurations.
  *
  * Register mapping:
  * - Input registers 1-2: Temperature (×10) and Humidity (×10)
@@ -17,57 +20,61 @@ import type {
   DataPoint,
   CreateDriverFunction,
   DriverConfig,
-  DefaultSerialConfig,
-  SupportedSerialConfig,
+  DeviceMetadata,
 } from '@ya-modbus/driver-types'
 
 /**
- * Supported configuration values for XYMD1
+ * Device metadata for XYMD1 driver variants
  *
- * The device supports:
- * - Baud rates: 9600, 14400, 19200 bps
- * - Parity: even, none
- * - Data bits: 8 only
- * - Stop bits: 1 only
- * - Slave address: 1-247 (standard Modbus range)
+ * Single source of truth for device information and configurations.
+ * XY-MD01 and XY-MD02 are identical from Modbus perspective - cannot be distinguished programmatically.
  *
- * See DEFAULT_CONFIG for factory defaults.
+ * Summaries: Referenced in README.md and AGENTS.md
  */
-export const SUPPORTED_CONFIG = {
-  validBaudRates: [9600, 14400, 19200],
-  validParity: ['even', 'none'],
-  validDataBits: [8],
-  validStopBits: [1],
-  validAddressRange: [1, 247],
-} as const satisfies SupportedSerialConfig
+export const DEVICE_METADATA = {
+  md01: {
+    name: 'XY-MD01',
+    manufacturer: 'Unknown',
+    model: 'XY-MD01',
+    description: 'Temperature and humidity sensor (typically configured with parity: none)',
+    defaultConfig: {
+      baudRate: 9600,
+      parity: 'none',
+      dataBits: 8,
+      stopBits: 1,
+      defaultAddress: 1,
+    },
+    supportedConfig: {
+      validBaudRates: [9600, 14400, 19200],
+      validParity: ['none', 'even', 'odd'],
+      validDataBits: [8],
+      validStopBits: [1],
+      validAddressRange: [1, 247],
+    },
+  },
+  md02: {
+    name: 'XY-MD02',
+    manufacturer: 'Unknown',
+    model: 'XY-MD02',
+    description: 'Temperature and humidity sensor (typically configured with parity: even)',
+    defaultConfig: {
+      baudRate: 9600,
+      parity: 'even',
+      dataBits: 8,
+      stopBits: 1,
+      defaultAddress: 1,
+    },
+    supportedConfig: {
+      validBaudRates: [9600, 14400, 19200],
+      validParity: ['none', 'even', 'odd'],
+      validDataBits: [8],
+      validStopBits: [1],
+      validAddressRange: [1, 247],
+    },
+  },
+} as const satisfies Record<string, DeviceMetadata>
 
-/**
- * Default XYMD1 device configuration
- *
- * Use these values when connecting to a factory-default XYMD1 device.
- * These are the settings the device ships with from the manufacturer.
- *
- * @example
- * ```typescript
- * import { DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
- *
- * const transport = await createRTUTransport({
- *   port: '/dev/ttyUSB0',
- *   baudRate: DEFAULT_CONFIG.baudRate,
- *   parity: DEFAULT_CONFIG.parity,
- *   dataBits: DEFAULT_CONFIG.dataBits,
- *   stopBits: DEFAULT_CONFIG.stopBits,
- *   slaveId: DEFAULT_CONFIG.defaultAddress,
- * })
- * ```
- */
-export const DEFAULT_CONFIG = {
-  baudRate: 9600,
-  parity: 'even',
-  dataBits: 8,
-  stopBits: 1,
-  defaultAddress: 1,
-} as const satisfies DefaultSerialConfig
+export type XYMD1DeviceType = keyof typeof DEVICE_METADATA
 
 /**
  * Data point definitions for XYMD1
@@ -168,9 +175,14 @@ function decodeDataPoint(id: string, rawValue: Buffer): unknown {
 }
 
 /**
- * Valid baud rate type extracted from SUPPORTED_CONFIG
+ * Valid baud rate type extracted from device metadata
+ * Both device variants support the same baud rates
  */
-type ValidBaudRate = (typeof SUPPORTED_CONFIG.validBaudRates)[number]
+type ValidBaudRate = NonNullable<
+  (typeof DEVICE_METADATA)['md01']['supportedConfig']
+>['validBaudRates'] extends readonly (infer T)[]
+  ? T
+  : never
 
 /**
  * Validate that a value is one of the supported baud rates
@@ -179,9 +191,8 @@ type ValidBaudRate = (typeof SUPPORTED_CONFIG.validBaudRates)[number]
  * in the type guard, providing more specific type narrowing than just 'number'.
  */
 function isValidBaudRate(value: unknown): value is ValidBaudRate {
-  return (
-    typeof value === 'number' && SUPPORTED_CONFIG.validBaudRates.includes(value as ValidBaudRate)
-  )
+  const validBaudRates = DEVICE_METADATA.md01.supportedConfig!.validBaudRates!
+  return typeof value === 'number' && validBaudRates.includes(value as ValidBaudRate)
 }
 
 /**
@@ -189,7 +200,7 @@ function isValidBaudRate(value: unknown): value is ValidBaudRate {
  */
 function encodeDataPoint(id: string, value: unknown): Buffer {
   if (id === 'device_address') {
-    const [min, max] = SUPPORTED_CONFIG.validAddressRange
+    const [min, max] = DEVICE_METADATA.md01.supportedConfig!.validAddressRange!
     if (typeof value !== 'number' || value < min || value > max) {
       throw new Error(`Invalid device address: must be between ${min} and ${max}`)
     }
@@ -199,9 +210,8 @@ function encodeDataPoint(id: string, value: unknown): Buffer {
   }
   if (id === 'baud_rate') {
     if (!isValidBaudRate(value)) {
-      throw new Error(
-        `Invalid baud rate: must be one of ${SUPPORTED_CONFIG.validBaudRates.join(', ')}`
-      )
+      const validBaudRates = DEVICE_METADATA.md01.supportedConfig!.validBaudRates!
+      throw new Error(`Invalid baud rate: must be one of ${validBaudRates.join(', ')}`)
     }
     const buffer = Buffer.allocUnsafe(2)
     buffer.writeUInt16BE(value, 0)
@@ -223,18 +233,48 @@ function encodeDataPoint(id: string, value: unknown): Buffer {
 }
 
 /**
+ * Determine device variant from DriverConfig
+ * Defaults to md01 if not specified
+ */
+function determineDeviceType(config: DriverConfig): XYMD1DeviceType {
+  if (config.deviceType) {
+    if (config.deviceType in DEVICE_METADATA) {
+      return config.deviceType as XYMD1DeviceType
+    }
+
+    const validTypes = Object.keys(DEVICE_METADATA).join(', ')
+    const deviceList = Object.entries(DEVICE_METADATA)
+      .map(([id, meta]) => `  - ${id}: ${meta.name}${meta.description ? ` (${meta.description})` : ''}`)
+      .join('\n')
+
+    throw new Error(
+      `Invalid deviceType: "${config.deviceType}". ` +
+        `Valid types for xymd1 driver: ${validTypes}\n\n` +
+        `Available devices:\n${deviceList}`
+    )
+  }
+
+  // Default to md01
+  return 'md01'
+}
+
+/**
  * Create XYMD1 device driver
  */
 export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
-  const { transport } = config
+  try {
+    const { transport } = config
 
-  const driver: DeviceDriver = {
-    name: 'XY-MD1',
-    manufacturer: 'Unknown',
-    model: 'XY-MD1',
-    dataPoints: DATA_POINTS,
+    const deviceType = determineDeviceType(config)
+    const metadata = DEVICE_METADATA[deviceType]
 
-    async readDataPoint(id: string): Promise<unknown> {
+    const driver: DeviceDriver = {
+      name: metadata.name,
+      manufacturer: metadata.manufacturer,
+      model: metadata.model,
+      dataPoints: DATA_POINTS,
+
+      async readDataPoint(id: string): Promise<unknown> {
       if (id === 'device_address') {
         const buffer = await transport.readHoldingRegisters(0x101, 1)
         return decodeDataPoint(id, buffer)
@@ -352,5 +392,8 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
     },
   }
 
-  return Promise.resolve(driver)
+    return Promise.resolve(driver)
+  } catch (error) {
+    return Promise.reject(error instanceof Error ? error : new Error(String(error)))
+  }
 }

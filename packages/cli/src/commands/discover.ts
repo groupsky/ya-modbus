@@ -14,6 +14,7 @@ export interface DiscoverOptions {
   // Discovery options
   strategy?: DiscoveryStrategy
   driver?: string
+  device?: string
   local?: boolean
   timeout?: number
   delay?: number

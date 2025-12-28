@@ -234,6 +234,7 @@ export interface TransportOptions {
  */
 export interface DriverOptions {
   driver?: string
+  device?: string
   slaveId: number
 }
 
@@ -341,12 +342,14 @@ export async function withDriverInstance<T>(
   transport: Transport,
   driverMetadata: LoadedDriver,
   slaveId: number,
+  deviceType: string | undefined,
   fn: (driver: DeviceDriver) => Promise<T>
 ): Promise<T> {
   // Create driver instance
   const driver = await driverMetadata.createDriver({
     transport,
     slaveId,
+    ...(deviceType && { deviceType }),
   })
 
   return await fn(driver)
@@ -371,7 +374,7 @@ export async function withDriverInstance<T>(
  * @throws ValidationError if user options or driver defaults violate constraints
  */
 export async function withDriver<T>(
-  options: TransportOptions & { driver?: string },
+  options: TransportOptions & { driver?: string; device?: string },
   fn: (driver: DeviceDriver, mergedOptions: TransportOptions) => Promise<T>
 ): Promise<T> {
   // Load driver metadata first
@@ -414,6 +417,7 @@ export async function withDriver<T>(
       transport,
       driverMetadata,
       mergedOptions.slaveId,
+      options.device,
       async (driver) => {
         // Execute callback with driver and merged options
         return await fn(driver, mergedOptions)

@@ -68,9 +68,9 @@ describe('Driver Loader', () => {
     expect(driverMetadata).toBeDefined()
     expect(driverMetadata.createDriver).toBeDefined()
     expect(typeof driverMetadata.createDriver).toBe('function')
-    // XYMD1 should export DEFAULT_CONFIG and SUPPORTED_CONFIG
-    expect(driverMetadata.defaultConfig).toBeDefined()
-    expect(driverMetadata.supportedConfig).toBeDefined()
+    // Note: XYMD1 is a multi-device driver and no longer exports top-level
+    // DEFAULT_CONFIG/SUPPORTED_CONFIG. Those are now in DEVICE_METADATA per device.
+    // The loader still accepts these as optional fields for backward compatibility.
   })
 
   test('should throw error if explicit package does not exist', async () => {

@@ -22,6 +22,10 @@ function addConnectionOptions(command: Command): Command {
         '-d, --driver <package>',
         'Driver package name (e.g., ya-modbus-driver-xymd1). Use "show-defaults" to see driver config'
       )
+      .option(
+        '--device <type>',
+        'Device type within driver (e.g., md01, md02). Only for multi-device drivers'
+      )
 
       // Connection Options
       .optionsGroup('Connection Options:')
@@ -132,6 +136,7 @@ program
   .requiredOption('-p, --port <path>', 'Serial port for RTU (e.g., /dev/ttyUSB0, COM3)')
   .optionsGroup('Driver Options:')
   .option('-d, --driver <package>', 'Driver package (uses SUPPORTED_CONFIG to limit scan)')
+  .option('--device <type>', 'Device type within driver (e.g., md01, md02). Optional')
   .option('--local', 'Load driver from local package (cwd)')
   .optionsGroup('Discovery Options:')
   .option(

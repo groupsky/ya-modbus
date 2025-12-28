@@ -12,6 +12,7 @@ import type {
   SupportedSerialConfig,
   SupportedTCPConfig,
   SupportedConfig,
+  DeviceMetadata,
 } from './device-driver.js'
 
 describe('DefaultSerialConfig', () => {
@@ -277,5 +278,155 @@ describe('SupportedConfig union type', () => {
 
     expect(tcpConfig.validPorts).toEqual([502])
     expect('validPorts' in tcpConfig).toBe(true)
+  })
+})
+
+describe('DeviceMetadata', () => {
+  it('should accept valid device metadata with embedded configs', () => {
+    const metadata: DeviceMetadata = {
+      name: 'XY-MD01',
+      manufacturer: 'Unknown',
+      model: 'XY-MD01',
+      description: 'Temperature sensor',
+      defaultConfig: {
+        baudRate: 9600,
+        parity: 'none',
+        dataBits: 8,
+        stopBits: 1,
+        defaultAddress: 1,
+      },
+      supportedConfig: {
+        validBaudRates: [9600, 14400, 19200],
+        validParity: ['none', 'even', 'odd'],
+        validDataBits: [8],
+        validStopBits: [1],
+        validAddressRange: [1, 247],
+      },
+    }
+
+    expect(metadata.name).toBe('XY-MD01')
+    expect(metadata.manufacturer).toBe('Unknown')
+    expect(metadata.model).toBe('XY-MD01')
+    expect(metadata.description).toBe('Temperature sensor')
+    expect(metadata.defaultConfig).toBeDefined()
+    expect(metadata.supportedConfig).toBeDefined()
+  })
+
+  it('should accept minimal metadata without optional fields', () => {
+    const metadata: DeviceMetadata = {
+      name: 'Device',
+      manufacturer: 'Manufacturer',
+      model: 'MODEL-1',
+    }
+
+    expect(metadata.name).toBe('Device')
+    expect(metadata.manufacturer).toBe('Manufacturer')
+    expect(metadata.model).toBe('MODEL-1')
+    expect(metadata.description).toBeUndefined()
+    expect(metadata.defaultConfig).toBeUndefined()
+    expect(metadata.supportedConfig).toBeUndefined()
+  })
+
+  it('should work with Record<string, DeviceMetadata> for multi-device drivers', () => {
+    const deviceMetadata = {
+      md01: {
+        name: 'XY-MD01',
+        manufacturer: 'Unknown',
+        model: 'XY-MD01',
+        description: 'Parity: none',
+        defaultConfig: {
+          baudRate: 9600,
+          parity: 'none',
+          dataBits: 8,
+          stopBits: 1,
+          defaultAddress: 1,
+        },
+        supportedConfig: {
+          validBaudRates: [9600, 14400, 19200],
+          validParity: ['none', 'even', 'odd'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 247],
+        },
+      },
+      md02: {
+        name: 'XY-MD02',
+        manufacturer: 'Unknown',
+        model: 'XY-MD02',
+        description: 'Parity: even',
+        defaultConfig: {
+          baudRate: 9600,
+          parity: 'even',
+          dataBits: 8,
+          stopBits: 1,
+          defaultAddress: 1,
+        },
+        supportedConfig: {
+          validBaudRates: [9600, 14400, 19200],
+          validParity: ['none', 'even', 'odd'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 247],
+        },
+      },
+    } as const satisfies Record<string, DeviceMetadata>
+
+    expect(deviceMetadata.md01.name).toBe('XY-MD01')
+    expect(deviceMetadata.md02.name).toBe('XY-MD02')
+    expect(Object.keys(deviceMetadata)).toEqual(['md01', 'md02'])
+  })
+
+  it('should preserve literal types with as const satisfies', () => {
+    const deviceMetadata = {
+      test: {
+        name: 'Test Device',
+        manufacturer: 'Test Manufacturer',
+        model: 'TEST-1',
+        description: 'Test device',
+        defaultConfig: {
+          baudRate: 9600,
+          parity: 'none',
+          dataBits: 8,
+          stopBits: 1,
+          defaultAddress: 1,
+        },
+        supportedConfig: {
+          validBaudRates: [9600],
+          validParity: ['none'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 247],
+        },
+      },
+    } as const satisfies Record<string, DeviceMetadata>
+
+    // Verify literal types are preserved
+    const _nameType: 'Test Device' = deviceMetadata.test.name
+    const _manufacturerType: 'Test Manufacturer' = deviceMetadata.test.manufacturer
+    const _modelType: 'TEST-1' = deviceMetadata.test.model
+
+    expect(_nameType).toBe('Test Device')
+    expect(_manufacturerType).toBe('Test Manufacturer')
+    expect(_modelType).toBe('TEST-1')
+  })
+
+  it('should support TCP devices with DeviceMetadata', () => {
+    const metadata: DeviceMetadata = {
+      name: 'TCP Device',
+      manufacturer: 'Manufacturer',
+      model: 'TCP-1',
+      defaultConfig: {
+        defaultAddress: 1,
+        defaultPort: 502,
+      },
+      supportedConfig: {
+        validPorts: [502, 503],
+        validAddressRange: [1, 247],
+      },
+    }
+
+    expect(metadata.name).toBe('TCP Device')
+    expect('defaultPort' in metadata.defaultConfig!).toBe(true)
+    expect('validPorts' in metadata.supportedConfig!).toBe(true)
   })
 })

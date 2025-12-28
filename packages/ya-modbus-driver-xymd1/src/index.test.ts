@@ -4,59 +4,93 @@
 
 import type { Transport } from '@ya-modbus/driver-types'
 
-import { createDriver, DEFAULT_CONFIG, SUPPORTED_CONFIG } from './index'
+import { createDriver, DEVICE_METADATA } from './index'
 
-describe('Configuration Constants', () => {
-  describe('DEFAULT_CONFIG', () => {
-    it('should export default device configuration', () => {
-      expect(DEFAULT_CONFIG).toBeDefined()
-      expect(DEFAULT_CONFIG.baudRate).toBe(9600)
-      expect(DEFAULT_CONFIG.parity).toBe('even')
-      expect(DEFAULT_CONFIG.dataBits).toBe(8)
-      expect(DEFAULT_CONFIG.stopBits).toBe(1)
-      expect(DEFAULT_CONFIG.defaultAddress).toBe(1)
+describe('Device Metadata', () => {
+  it('should export DEVICE_METADATA with md01 and md02', () => {
+    expect(DEVICE_METADATA).toBeDefined()
+    expect(DEVICE_METADATA.md01).toBeDefined()
+    expect(DEVICE_METADATA.md02).toBeDefined()
+    expect(Object.keys(DEVICE_METADATA)).toEqual(['md01', 'md02'])
+  })
+
+  describe('MD01 Configuration', () => {
+    it('should have correct metadata', () => {
+      expect(DEVICE_METADATA.md01.name).toBe('XY-MD01')
+      expect(DEVICE_METADATA.md01.manufacturer).toBe('Unknown')
+      expect(DEVICE_METADATA.md01.model).toBe('XY-MD01')
+      expect(DEVICE_METADATA.md01.description).toContain('parity: none')
     })
 
-    it('should have all required properties', () => {
-      // Verify all expected properties are present
-      expect(DEFAULT_CONFIG).toHaveProperty('baudRate')
-      expect(DEFAULT_CONFIG).toHaveProperty('parity')
-      expect(DEFAULT_CONFIG).toHaveProperty('dataBits')
-      expect(DEFAULT_CONFIG).toHaveProperty('stopBits')
-      expect(DEFAULT_CONFIG).toHaveProperty('defaultAddress')
+    it('should have default config with parity none', () => {
+      const config = DEVICE_METADATA.md01.defaultConfig
+      expect(config.baudRate).toBe(9600)
+      expect(config.parity).toBe('none')
+      expect(config.dataBits).toBe(8)
+      expect(config.stopBits).toBe(1)
+      expect(config.defaultAddress).toBe(1)
+    })
+
+    it('should have supported config including all parities', () => {
+      const supported = DEVICE_METADATA.md01.supportedConfig
+      expect(supported.validBaudRates).toEqual([9600, 14400, 19200])
+      expect(supported.validParity).toEqual(['none', 'even', 'odd'])
+      expect(supported.validDataBits).toEqual([8])
+      expect(supported.validStopBits).toEqual([1])
+      expect(supported.validAddressRange).toEqual([1, 247])
+    })
+
+    it('should have default config within supported ranges', () => {
+      const defaultCfg = DEVICE_METADATA.md01.defaultConfig
+      const supported = DEVICE_METADATA.md01.supportedConfig
+
+      expect(supported.validBaudRates).toContain(defaultCfg.baudRate)
+      expect(supported.validParity).toContain(defaultCfg.parity)
+      expect(supported.validDataBits).toContain(defaultCfg.dataBits)
+      expect(supported.validStopBits).toContain(defaultCfg.stopBits)
+      const [min, max] = supported.validAddressRange
+      expect(defaultCfg.defaultAddress).toBeGreaterThanOrEqual(min)
+      expect(defaultCfg.defaultAddress).toBeLessThanOrEqual(max)
     })
   })
 
-  describe('SUPPORTED_CONFIG', () => {
-    it('should export supported configuration values', () => {
-      expect(SUPPORTED_CONFIG).toBeDefined()
-      expect(SUPPORTED_CONFIG.validBaudRates).toEqual([9600, 14400, 19200])
-      expect(SUPPORTED_CONFIG.validParity).toEqual(['even', 'none'])
-      expect(SUPPORTED_CONFIG.validDataBits).toEqual([8])
-      expect(SUPPORTED_CONFIG.validStopBits).toEqual([1])
-      expect(SUPPORTED_CONFIG.validAddressRange).toEqual([1, 247])
+  describe('MD02 Configuration', () => {
+    it('should have correct metadata', () => {
+      expect(DEVICE_METADATA.md02.name).toBe('XY-MD02')
+      expect(DEVICE_METADATA.md02.manufacturer).toBe('Unknown')
+      expect(DEVICE_METADATA.md02.model).toBe('XY-MD02')
+      expect(DEVICE_METADATA.md02.description).toContain('parity: even')
     })
 
-    it('should include DEFAULT_CONFIG baud rate in valid baud rates', () => {
-      expect(SUPPORTED_CONFIG.validBaudRates).toContain(DEFAULT_CONFIG.baudRate)
+    it('should have default config with parity even', () => {
+      const config = DEVICE_METADATA.md02.defaultConfig
+      expect(config.baudRate).toBe(9600)
+      expect(config.parity).toBe('even')
+      expect(config.dataBits).toBe(8)
+      expect(config.stopBits).toBe(1)
+      expect(config.defaultAddress).toBe(1)
     })
 
-    it('should include DEFAULT_CONFIG parity in valid parity settings', () => {
-      expect(SUPPORTED_CONFIG.validParity).toContain(DEFAULT_CONFIG.parity)
+    it('should have supported config including all parities', () => {
+      const supported = DEVICE_METADATA.md02.supportedConfig
+      expect(supported.validBaudRates).toEqual([9600, 14400, 19200])
+      expect(supported.validParity).toEqual(['none', 'even', 'odd'])
+      expect(supported.validDataBits).toEqual([8])
+      expect(supported.validStopBits).toEqual([1])
+      expect(supported.validAddressRange).toEqual([1, 247])
     })
 
-    it('should include DEFAULT_CONFIG data bits in valid data bits', () => {
-      expect(SUPPORTED_CONFIG.validDataBits).toContain(DEFAULT_CONFIG.dataBits)
-    })
+    it('should have default config within supported ranges', () => {
+      const defaultCfg = DEVICE_METADATA.md02.defaultConfig
+      const supported = DEVICE_METADATA.md02.supportedConfig
 
-    it('should include DEFAULT_CONFIG stop bits in valid stop bits', () => {
-      expect(SUPPORTED_CONFIG.validStopBits).toContain(DEFAULT_CONFIG.stopBits)
-    })
-
-    it('should include DEFAULT_CONFIG address in valid address range', () => {
-      const [min, max] = SUPPORTED_CONFIG.validAddressRange
-      expect(DEFAULT_CONFIG.defaultAddress).toBeGreaterThanOrEqual(min)
-      expect(DEFAULT_CONFIG.defaultAddress).toBeLessThanOrEqual(max)
+      expect(supported.validBaudRates).toContain(defaultCfg.baudRate)
+      expect(supported.validParity).toContain(defaultCfg.parity)
+      expect(supported.validDataBits).toContain(defaultCfg.dataBits)
+      expect(supported.validStopBits).toContain(defaultCfg.stopBits)
+      const [min, max] = supported.validAddressRange
+      expect(defaultCfg.defaultAddress).toBeGreaterThanOrEqual(min)
+      expect(defaultCfg.defaultAddress).toBeLessThanOrEqual(max)
     })
   })
 })
@@ -78,15 +112,75 @@ describe('XYMD1 Driver', () => {
   })
 
   describe('createDriver', () => {
-    it('should create driver with correct metadata', async () => {
+    it('should default to MD01 when deviceType not specified', async () => {
       const driver = await createDriver({
         transport: mockTransport,
         slaveId: 1,
       })
 
-      expect(driver.name).toBe('XY-MD1')
+      expect(driver.name).toBe('XY-MD01')
       expect(driver.manufacturer).toBe('Unknown')
-      expect(driver.model).toBe('XY-MD1')
+      expect(driver.model).toBe('XY-MD01')
+    })
+
+    it('should create MD01 driver when deviceType is md01', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+        deviceType: 'md01',
+      })
+
+      expect(driver.name).toBe('XY-MD01')
+      expect(driver.manufacturer).toBe('Unknown')
+      expect(driver.model).toBe('XY-MD01')
+    })
+
+    it('should create MD02 driver when deviceType is md02', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+        deviceType: 'md02',
+      })
+
+      expect(driver.name).toBe('XY-MD02')
+      expect(driver.manufacturer).toBe('Unknown')
+      expect(driver.model).toBe('XY-MD02')
+    })
+
+    it('should throw error for invalid deviceType', async () => {
+      await expect(
+        createDriver({
+          transport: mockTransport,
+          slaveId: 1,
+          deviceType: 'invalid',
+        })
+      ).rejects.toThrow('Invalid deviceType: "invalid"')
+    })
+
+    it('should list available devices in error message', async () => {
+      await expect(
+        createDriver({
+          transport: mockTransport,
+          slaveId: 1,
+          deviceType: 'md03',
+        })
+      ).rejects.toThrow(/Available devices:.*md01.*md02/s)
+    })
+
+    it('should have same dataPoints for both device variants', async () => {
+      const md01 = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+        deviceType: 'md01',
+      })
+
+      const md02 = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+        deviceType: 'md02',
+      })
+
+      expect(md01.dataPoints).toEqual(md02.dataPoints)
     })
 
     it('should expose temperature and humidity data points', async () => {

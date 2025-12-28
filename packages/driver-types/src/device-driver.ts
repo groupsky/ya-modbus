@@ -14,9 +14,29 @@ export type SlaveId = number
 
 /**
  * Device driver factory function configuration
+ *
+ * For multi-device drivers, the deviceType field selects which device variant
+ * to create. Device selection is manual (no auto-detection).
+ *
+ * @example
+ * ```typescript
+ * // Explicit device selection for multi-device driver
+ * const driver = await createDriver({
+ *   transport,
+ *   slaveId: 1,
+ *   deviceType: 'md02',  // Select specific device variant
+ * })
+ *
+ * // Auto-selection (driver chooses default variant)
+ * const driver = await createDriver({
+ *   transport,
+ *   slaveId: 1,
+ *   // deviceType omitted - driver uses default device
+ * })
+ * ```
  */
 export interface DriverConfig {
-  /** Optional device type within driver package */
+  /** Optional device type within driver package (for multi-device drivers) */
   deviceType?: string
 
   /** Modbus transport layer */
@@ -263,3 +283,43 @@ export interface SupportedTCPConfig {
  * Drivers should export SUPPORTED_CONFIG matching one of these types
  */
 export type SupportedConfig = SupportedSerialConfig | SupportedTCPConfig
+
+/**
+ * Metadata for a device variant within a multi-device driver package
+ *
+ * Device ID is the object key in the metadata record.
+ * Configs are embedded directly in the metadata for single source of truth.
+ *
+ * @example
+ * ```typescript
+ * export const DEVICE_METADATA = {
+ *   md01: {
+ *     name: 'XY-MD01',
+ *     manufacturer: 'Unknown',
+ *     model: 'XY-MD01',
+ *     description: 'Temperature sensor',
+ *     defaultConfig: { baudRate: 9600, parity: 'none', ... },
+ *     supportedConfig: { validBaudRates: [9600, 14400, 19200], ... },
+ *   },
+ * } as const satisfies Record<string, DeviceMetadata>
+ * ```
+ */
+export interface DeviceMetadata {
+  /** Human-readable device name (e.g., 'XY-MD01') */
+  readonly name: string
+
+  /** Manufacturer name */
+  readonly manufacturer: string
+
+  /** Model identifier */
+  readonly model: string
+
+  /** Brief description (optional) */
+  readonly description?: string
+
+  /** Device-specific default configuration (optional) */
+  readonly defaultConfig?: DefaultConfig
+
+  /** Device-specific configuration constraints (optional) */
+  readonly supportedConfig?: SupportedConfig
+}
