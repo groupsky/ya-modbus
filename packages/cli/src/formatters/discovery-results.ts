@@ -28,7 +28,7 @@ export function formatDiscoveryTable(devices: DiscoveredDevice[]): string {
 
     const vendor = identification.vendorName ?? '-'
     const model = identification.modelName ?? identification.productCode ?? '-'
-    const responseTime = `${identification.responseTimeMs.toFixed(1)}ms`
+    const responseTime = `${Math.round(identification.responseTimeMs)}ms`
 
     table.push([
       slaveId.toString(),

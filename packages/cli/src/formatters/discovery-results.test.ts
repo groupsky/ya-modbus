@@ -36,7 +36,7 @@ describe('formatDiscoveryTable', () => {
     expect(result).toContain('9600')
     expect(result).toContain('N') // None parity
     expect(result).toContain('8N1')
-    expect(result).toContain('45.7ms')
+    expect(result).toContain('46ms') // 45.67 rounds to 46
     expect(result).toContain('Test Vendor')
     expect(result).toContain('Test Model')
   })
@@ -182,13 +182,13 @@ describe('formatDiscoveryTable', () => {
     expect(result).toContain('52')
 
     // Response times should appear in sorted slave ID order
-    // Slave 1 has 20.0ms, Slave 10 has 15.0ms, Slave 52 has 10.0ms
-    expect(result).toContain('20.0ms')
-    expect(result).toContain('15.0ms')
-    expect(result).toContain('10.0ms')
+    // Slave 1 has 20ms, Slave 10 has 15ms, Slave 52 has 10ms
+    expect(result).toContain('20ms')
+    expect(result).toContain('15ms')
+    expect(result).toContain('10ms')
   })
 
-  test('formats response time with 1 decimal place', () => {
+  test('formats response time as integer milliseconds', () => {
     const devices: DiscoveredDevice[] = [
       {
         slaveId: 1,
@@ -205,7 +205,27 @@ describe('formatDiscoveryTable', () => {
 
     const result = formatDiscoveryTable(devices)
 
-    expect(result).toContain('123.5ms')
+    expect(result).toContain('123ms')
+  })
+
+  test('rounds response time to nearest integer', () => {
+    const devices: DiscoveredDevice[] = [
+      {
+        slaveId: 1,
+        baudRate: 9600,
+        parity: 'none',
+        dataBits: 8,
+        stopBits: 1,
+        identification: {
+          present: true,
+          responseTimeMs: 45.7,
+        },
+      },
+    ]
+
+    const result = formatDiscoveryTable(devices)
+
+    expect(result).toContain('46ms') // 45.7 rounds to 46
   })
 })
 
