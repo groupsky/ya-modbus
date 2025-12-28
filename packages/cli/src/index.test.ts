@@ -93,6 +93,61 @@ describe('CLI Entry Point - Integration Tests', () => {
   })
 
   describe('Read Command', () => {
+    it('should display help information for read command', async () => {
+      const stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation()
+
+      await expect(program.parseAsync(['node', 'ya-modbus', 'read', '--help'])).rejects.toThrow(
+        'process.exit called'
+      )
+
+      expect(processExitSpy).toHaveBeenCalledWith(0)
+
+      const helpOutput = stdoutWriteSpy.mock.calls.map((call) => call[0]).join('')
+      expect(helpOutput).toMatchInlineSnapshot(`
+        "Usage: ya-modbus read [options]
+
+        Read data points from device
+
+        Driver Options:
+          -d, --driver <package>  Driver package name (e.g., ya-modbus-driver-xymd1).
+                                  Use "show-defaults" to see driver config
+
+        Connection Options:
+          -s, --slave-id <id>     Modbus slave ID (1-247). May use driver default if
+                                  available
+          --timeout <ms>          Response timeout in milliseconds (default: 1000)
+
+        RTU Connection (choose this OR TCP):
+          -p, --port <path>       Serial port for RTU (e.g., /dev/ttyUSB0, COM3)
+          -b, --baud-rate <rate>  Baud rate (RTU only). Uses driver default if not
+                                  specified
+          --parity <type>         Parity: none, even, odd (RTU only). Uses driver
+                                  default if not specified
+          --data-bits <bits>      Data bits: 7 or 8 (RTU only). Uses driver default if
+                                  not specified
+          --stop-bits <bits>      Stop bits: 1 or 2 (RTU only). Uses driver default if
+                                  not specified
+
+        TCP Connection (choose this OR RTU):
+          -h, --host <host>       TCP host for Modbus TCP (e.g., 192.168.1.100)
+          --tcp-port <port>       TCP port (default: 502)
+
+        Data Selection:
+          --data-point <id...>    Data point ID(s) to read
+          --all                   Read all readable data points
+
+        Output Options:
+          -f, --format <type>     Output format: table or json (default: table)
+                                  (default: "table")
+
+        Options:
+          --help                  display help for command
+        "
+      `)
+
+      stdoutWriteSpy.mockRestore()
+    })
+
     it('should execute read command with all RTU connection parameters', async () => {
       const mockReadCommand = jest.mocked(readModule.readCommand)
       mockReadCommand.mockResolvedValue()
@@ -363,6 +418,61 @@ describe('CLI Entry Point - Integration Tests', () => {
   })
 
   describe('Write Command', () => {
+    it('should display help information for write command', async () => {
+      const stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation()
+
+      await expect(program.parseAsync(['node', 'ya-modbus', 'write', '--help'])).rejects.toThrow(
+        'process.exit called'
+      )
+
+      expect(processExitSpy).toHaveBeenCalledWith(0)
+
+      const helpOutput = stdoutWriteSpy.mock.calls.map((call) => call[0]).join('')
+      expect(helpOutput).toMatchInlineSnapshot(`
+        "Usage: ya-modbus write [options]
+
+        Write data point to device
+
+        Driver Options:
+          -d, --driver <package>  Driver package name (e.g., ya-modbus-driver-xymd1).
+                                  Use "show-defaults" to see driver config
+
+        Connection Options:
+          -s, --slave-id <id>     Modbus slave ID (1-247). May use driver default if
+                                  available
+          --timeout <ms>          Response timeout in milliseconds (default: 1000)
+
+        RTU Connection (choose this OR TCP):
+          -p, --port <path>       Serial port for RTU (e.g., /dev/ttyUSB0, COM3)
+          -b, --baud-rate <rate>  Baud rate (RTU only). Uses driver default if not
+                                  specified
+          --parity <type>         Parity: none, even, odd (RTU only). Uses driver
+                                  default if not specified
+          --data-bits <bits>      Data bits: 7 or 8 (RTU only). Uses driver default if
+                                  not specified
+          --stop-bits <bits>      Stop bits: 1 or 2 (RTU only). Uses driver default if
+                                  not specified
+
+        TCP Connection (choose this OR RTU):
+          -h, --host <host>       TCP host for Modbus TCP (e.g., 192.168.1.100)
+          --tcp-port <port>       TCP port (default: 502)
+
+        Data Options:
+          --data-point <id>       Data point ID to write
+          --value <value>         Value to write
+
+        Write Options:
+          -y, --yes               Skip confirmation prompt
+          --verify                Read back and verify written value
+
+        Options:
+          --help                  display help for command
+        "
+      `)
+
+      stdoutWriteSpy.mockRestore()
+    })
+
     it('should execute write command with all parameters', async () => {
       const mockWriteCommand = jest.mocked(writeModule.writeCommand)
       mockWriteCommand.mockResolvedValue()
@@ -524,6 +634,37 @@ describe('CLI Entry Point - Integration Tests', () => {
   })
 
   describe('Show Defaults Command', () => {
+    it('should display help information for show-defaults command', async () => {
+      const stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation()
+
+      await expect(
+        program.parseAsync(['node', 'ya-modbus', 'show-defaults', '--help'])
+      ).rejects.toThrow('process.exit called')
+
+      expect(processExitSpy).toHaveBeenCalledWith(0)
+
+      const helpOutput = stdoutWriteSpy.mock.calls.map((call) => call[0]).join('')
+      expect(helpOutput).toMatchInlineSnapshot(`
+        "Usage: ya-modbus show-defaults [options]
+
+        Show driver DEFAULT_CONFIG and SUPPORTED_CONFIG
+
+        Driver Selection:
+          -d, --driver <package>  Driver package name
+          --local                 Load from local package (cwd)
+
+        Output Options:
+          -f, --format <type>     Output format: table or json (default: table)
+                                  (default: "table")
+
+        Options:
+          -h, --help              display help for command
+        "
+      `)
+
+      stdoutWriteSpy.mockRestore()
+    })
+
     it('should execute show-defaults with driver package', async () => {
       const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
       mockShowDefaultsCommand.mockResolvedValue()
@@ -632,6 +773,52 @@ describe('CLI Entry Point - Integration Tests', () => {
   })
 
   describe('Discover Command', () => {
+    it('should display help information for discover command', async () => {
+      const stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation()
+
+      await expect(program.parseAsync(['node', 'ya-modbus', 'discover', '--help'])).rejects.toThrow(
+        'process.exit called'
+      )
+
+      expect(processExitSpy).toHaveBeenCalledWith(0)
+
+      const helpOutput = stdoutWriteSpy.mock.calls.map((call) => call[0]).join('')
+      expect(helpOutput).toMatchInlineSnapshot(`
+        "Usage: ya-modbus discover [options]
+
+        Discover Modbus devices on serial port by scanning slave IDs and parameters
+
+        Connection:
+          -p, --port <path>       Serial port for RTU (e.g., /dev/ttyUSB0, COM3)
+
+        Driver Options:
+          -d, --driver <package>  Driver package (uses SUPPORTED_CONFIG to limit scan)
+          --local                 Load driver from local package (cwd)
+
+        Discovery Options:
+          --strategy <type>       Discovery strategy: quick (driver params) or thorough
+                                  (all params) (default: "quick")
+          --timeout <ms>          Response timeout in milliseconds (default: 1000)
+          --delay <ms>            Delay between attempts in milliseconds (default: 100)
+          --max-devices <count>   Maximum number of devices to find (default: 1, use 0
+                                  for unlimited)
+
+        Output Options:
+          --verbose               Show detailed progress with current parameters being
+                                  tested
+          --silent                Suppress all output except final result (useful for
+                                  scripts)
+          -f, --format <type>     Output format: table or json (default: table)
+                                  (default: "table")
+
+        Options:
+          -h, --help              display help for command
+        "
+      `)
+
+      stdoutWriteSpy.mockRestore()
+    })
+
     it('should execute discover with all parameters', async () => {
       const mockDiscoverCommand = jest.mocked(discoverModule.discoverCommand)
       mockDiscoverCommand.mockResolvedValue()
