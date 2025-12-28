@@ -176,9 +176,9 @@ program
   .option('--local', 'Load from local package (cwd)')
   .optionsGroup('Output Options:')
   .option('-f, --format <type>', 'Output format: table or json (default: table)', 'table')
-  .action(async (options: ShowDefaultsOptions) => {
+  .action((options: ShowDefaultsOptions) => {
     try {
-      await showDefaultsCommand(options)
+      showDefaultsCommand(options)
     } catch (error) {
       console.error(`Error: ${(error as Error).message}`)
       process.exit(1)

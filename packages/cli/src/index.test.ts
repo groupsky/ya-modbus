@@ -132,6 +132,8 @@ describe('CLI Entry Point - Integration Tests', () => {
         Driver Options:
           -d, --driver <package>  Driver package name (e.g., ya-modbus-driver-xymd1).
                                   Use "show-defaults" to see driver config
+          --device <type>         Device type within driver (e.g., md01, md02). Only for
+                                  multi-device drivers
 
         Connection Options:
           -s, --slave-id <id>     Modbus slave ID (1-247). May use driver default if
@@ -447,6 +449,8 @@ describe('CLI Entry Point - Integration Tests', () => {
         Driver Options:
           -d, --driver <package>  Driver package name (e.g., ya-modbus-driver-xymd1).
                                   Use "show-defaults" to see driver config
+          --device <type>         Device type within driver (e.g., md01, md02). Only for
+                                  multi-device drivers
 
         Connection Options:
           -s, --slave-id <id>     Modbus slave ID (1-247). May use driver default if
@@ -784,6 +788,7 @@ describe('CLI Entry Point - Integration Tests', () => {
 
         Driver Options:
           -d, --driver <package>  Driver package (uses SUPPORTED_CONFIG to limit scan)
+          --device <type>         Device type within driver (e.g., md01, md02). Optional
           --local                 Load driver from local package (cwd)
 
         Discovery Options:

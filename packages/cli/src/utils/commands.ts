@@ -4,7 +4,6 @@ import type {
   BaudRate,
   DataBits,
   DataPoint,
-  DefaultSerialConfig,
   DeviceDriver,
   Parity,
   StopBits,
@@ -13,9 +12,6 @@ import type {
 
 import { loadDriver, type LoadedDriver } from '../driver-loader/loader.js'
 import { createTransport, type TransportConfig } from '../transport/factory.js'
-
-import { omitUndefined } from './object-utils.js'
-import { validateSerialOptions } from './validation.js'
 
 /**
  * Default RTU transport configuration values
@@ -291,42 +287,19 @@ export async function loadDriverMetadata(driverName?: string): Promise<LoadedDri
 }
 
 /**
- * Apply driver defaults to transport options
+ * Pass through transport options unchanged
  *
- * @param options - Transport options (may be incomplete)
- * @param driverMetadata - Loaded driver metadata with defaults
- * @returns Transport options with defaults applied
+ * Device configuration is now handled at the device level via DEVICE_METADATA.
+ * Connection parameters must be explicitly specified by the user.
+ *
+ * @param options - Transport options
+ * @returns Transport options unchanged
  */
 export function applyDriverDefaults(
   options: TransportOptions,
-  driverMetadata?: LoadedDriver
+  _driverMetadata?: LoadedDriver
 ): TransportOptions {
-  // For TCP connections, no serial defaults apply
-  if (options.host) {
-    return options
-  }
-
-  // Extract serial defaults if available
-  const defaultConfig = driverMetadata?.defaultConfig
-  const isSerialConfig = (config: unknown): config is DefaultSerialConfig => {
-    return (
-      config !== null && config !== undefined && typeof config === 'object' && 'baudRate' in config
-    )
-  }
-
-  if (!isSerialConfig(defaultConfig)) {
-    return options
-  }
-
-  // Apply defaults for unspecified options
-  return {
-    ...options,
-    baudRate: options.baudRate ?? defaultConfig.baudRate,
-    dataBits: options.dataBits ?? defaultConfig.dataBits,
-    stopBits: options.stopBits ?? defaultConfig.stopBits,
-    parity: options.parity ?? defaultConfig.parity,
-    slaveId: options.slaveId ?? defaultConfig.defaultAddress,
-  }
+  return options
 }
 
 /**
@@ -380,35 +353,8 @@ export async function withDriver<T>(
   // Load driver metadata first
   const driverMetadata = await loadDriverMetadata(options.driver)
 
-  // Validate user-specified options against driver constraints (only for RTU connections)
-  if (!options.host) {
-    const validationOptions = omitUndefined({
-      baudRate: options.baudRate,
-      parity: options.parity,
-      dataBits: options.dataBits,
-      stopBits: options.stopBits,
-      slaveId: options.slaveId,
-    })
-
-    validateSerialOptions(validationOptions, driverMetadata)
-  }
-
-  // Apply driver defaults to options
+  // Apply driver defaults to options (currently a pass-through)
   const mergedOptions = applyDriverDefaults(options, driverMetadata)
-
-  // Validate merged options to catch invalid defaults from third-party drivers
-  // This ensures driver DEFAULT_CONFIG values are valid according to SUPPORTED_CONFIG
-  if (!mergedOptions.host) {
-    const mergedValidationOptions = omitUndefined({
-      baudRate: mergedOptions.baudRate,
-      parity: mergedOptions.parity,
-      dataBits: mergedOptions.dataBits,
-      stopBits: mergedOptions.stopBits,
-      slaveId: mergedOptions.slaveId,
-    })
-
-    validateSerialOptions(mergedValidationOptions, driverMetadata)
-  }
 
   // Create transport with merged options
   return await withTransport(mergedOptions, async (transport) => {

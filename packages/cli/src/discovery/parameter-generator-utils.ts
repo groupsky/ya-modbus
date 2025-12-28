@@ -1,10 +1,4 @@
-import type {
-  BaudRate,
-  DataBits,
-  Parity,
-  StopBits,
-  SupportedSerialConfig,
-} from '@ya-modbus/driver-types'
+import type { BaudRate, DataBits, Parity, StopBits } from '@ya-modbus/driver-types'
 
 import {
   COMMON_BAUD_RATES,
@@ -20,41 +14,27 @@ import {
 import type { DiscoveryStrategy, GeneratorOptions } from './parameter-generator.js'
 
 /**
- * Get parameter arrays based on strategy and configuration
+ * Get parameter arrays based on discovery strategy
  */
-export function getParameterArrays(
-  strategy: DiscoveryStrategy,
-  supportedConfig?: SupportedSerialConfig
-): {
+export function getParameterArrays(strategy: DiscoveryStrategy): {
   baudRates: readonly BaudRate[]
   parities: readonly Parity[]
   dataBits: readonly DataBits[]
   stopBits: readonly StopBits[]
   addressRange: readonly [number, number]
 } {
-  if (strategy === 'quick' && supportedConfig) {
-    // Quick mode with driver config: use supported values or fall back to common
-    return {
-      baudRates: supportedConfig.validBaudRates ?? COMMON_BAUD_RATES,
-      parities: supportedConfig.validParity ?? STANDARD_PARITY,
-      dataBits: supportedConfig.validDataBits ?? STANDARD_DATA_BITS,
-      stopBits: supportedConfig.validStopBits ?? STANDARD_STOP_BITS,
-      addressRange: supportedConfig.validAddressRange ?? [MIN_SLAVE_ID, MAX_SLAVE_ID],
-    }
-  }
-
   if (strategy === 'thorough') {
-    // Thorough mode: use supported config if provided, otherwise standard Modbus
+    // Thorough mode: use all standard Modbus parameters
     return {
-      baudRates: supportedConfig?.validBaudRates ?? STANDARD_BAUD_RATES,
-      parities: supportedConfig?.validParity ?? STANDARD_PARITY,
-      dataBits: supportedConfig?.validDataBits ?? STANDARD_DATA_BITS,
-      stopBits: supportedConfig?.validStopBits ?? STANDARD_STOP_BITS,
-      addressRange: supportedConfig?.validAddressRange ?? [MIN_SLAVE_ID, MAX_SLAVE_ID],
+      baudRates: STANDARD_BAUD_RATES,
+      parities: STANDARD_PARITY,
+      dataBits: STANDARD_DATA_BITS,
+      stopBits: STANDARD_STOP_BITS,
+      addressRange: [MIN_SLAVE_ID, MAX_SLAVE_ID],
     }
   }
 
-  // Quick mode without driver config: use common parameters
+  // Quick mode: use common parameters
   return {
     baudRates: COMMON_BAUD_RATES,
     parities: STANDARD_PARITY,
@@ -80,12 +60,9 @@ export function getParameterArrays(
  * ```
  */
 export function countParameterCombinations(options: GeneratorOptions): number {
-  const { strategy, supportedConfig } = options
+  const { strategy } = options
 
-  const { baudRates, parities, dataBits, stopBits, addressRange } = getParameterArrays(
-    strategy,
-    supportedConfig
-  )
+  const { baudRates, parities, dataBits, stopBits, addressRange } = getParameterArrays(strategy)
 
   // Calculate address count
   const [minId, maxId] = addressRange

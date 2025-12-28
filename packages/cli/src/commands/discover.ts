@@ -1,7 +1,6 @@
 import type { DiscoveryStrategy } from '../discovery/parameter-generator.js'
 import { ProgressTracker } from '../discovery/progress.js'
 import { scanForDevices } from '../discovery/scanner.js'
-import { loadDriver } from '../driver-loader/loader.js'
 import { formatDiscoveryJSON, formatDiscoveryTable } from '../formatters/discovery-results.js'
 
 /**
@@ -58,62 +57,10 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
     console.log('')
   }
 
-  // Load driver metadata if specified
-  let driverMetadata
-  if (options.driver || options.local) {
-    try {
-      if (options.local) {
-        driverMetadata = await loadDriver({
-          localPackage: true,
-        })
-        if (!silent) {
-          console.log('Using local driver package')
-        }
-      } else if (options.driver) {
-        driverMetadata = await loadDriver({
-          driverPackage: options.driver,
-        })
-        if (!silent) {
-          console.log(`Using driver: ${options.driver}`)
-        }
-      }
-
-      if (!silent) {
-        if (driverMetadata?.defaultConfig) {
-          console.log('Using driver DEFAULT_CONFIG for parameter prioritization')
-        }
-        if (driverMetadata?.supportedConfig) {
-          console.log('Using driver SUPPORTED_CONFIG to limit parameter combinations')
-        }
-        console.log('')
-      }
-    } catch (error) {
-      if (!silent) {
-        console.error(
-          `Warning: Failed to load driver ${options.driver ?? 'from local package'}: ${(error as Error).message}`
-        )
-        console.error('Continuing with generic Modbus parameters...')
-        console.log('')
-      }
-    }
-  }
-
   // Create progress tracker (calculate total combinations without materializing)
   const { countParameterCombinations } = await import('../discovery/parameter-generator-utils.js')
 
-  // Build generator options conditionally to avoid passing undefined
-  const generatorOptions: Parameters<typeof countParameterCombinations>[0] = {
-    strategy,
-  }
-
-  if (driverMetadata?.defaultConfig && 'baudRate' in driverMetadata.defaultConfig) {
-    generatorOptions.defaultConfig = driverMetadata.defaultConfig
-  }
-
-  if (driverMetadata?.supportedConfig && 'validBaudRates' in driverMetadata.supportedConfig) {
-    generatorOptions.supportedConfig = driverMetadata.supportedConfig
-  }
-
+  const generatorOptions = { strategy }
   const totalCombinations = countParameterCombinations(generatorOptions)
 
   const progress = new ProgressTracker(totalCombinations)

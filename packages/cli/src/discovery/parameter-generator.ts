@@ -1,11 +1,4 @@
-import type {
-  BaudRate,
-  DataBits,
-  DefaultSerialConfig,
-  Parity,
-  StopBits,
-  SupportedSerialConfig,
-} from '@ya-modbus/driver-types'
+import type { BaudRate, DataBits, Parity, StopBits } from '@ya-modbus/driver-types'
 
 import { MAX_SLAVE_ID, MIN_SLAVE_ID } from './constants.js'
 import { getParameterArrays } from './parameter-generator-utils.js'
@@ -25,8 +18,8 @@ export interface ParameterCombination {
 /**
  * Discovery strategy type
  *
- * - quick: Tests only driver-supported parameters (5-10 minutes)
- * - thorough: Tests all standard Modbus parameters (30-60 minutes)
+ * - quick: Tests common Modbus parameters (faster scan)
+ * - thorough: Tests all standard Modbus parameters (comprehensive scan)
  */
 export type DiscoveryStrategy = 'quick' | 'thorough'
 
@@ -36,12 +29,6 @@ export type DiscoveryStrategy = 'quick' | 'thorough'
 export interface GeneratorOptions {
   /** Discovery strategy to use */
   strategy: DiscoveryStrategy
-
-  /** Driver-provided default configuration (prioritized first) */
-  defaultConfig?: DefaultSerialConfig
-
-  /** Driver-provided supported configuration constraints */
-  supportedConfig?: SupportedSerialConfig
 }
 
 /**
@@ -98,20 +85,6 @@ function* generateSlaveIds(
 }
 
 /**
- * Prioritize default configuration values in parameter arrays
- *
- * Moves default values to the front of arrays while preserving uniqueness
- */
-function prioritizeDefaults<T>(array: readonly T[], defaultValue: T | undefined): readonly T[] {
-  if (defaultValue === undefined || !array.includes(defaultValue)) {
-    return array
-  }
-
-  // Move default to front, remove duplicates
-  return [defaultValue, ...array.filter((v) => v !== defaultValue)]
-}
-
-/**
  * Group of parameter combinations that share the same serial configuration
  */
 export interface ParameterGroup {
@@ -150,22 +123,13 @@ export interface ParameterGroup {
  * ```
  */
 export function* generateParameterGroups(options: GeneratorOptions): Generator<ParameterGroup> {
-  const { strategy, defaultConfig, supportedConfig } = options
+  const { strategy } = options
 
   // Get parameter arrays
-  let { baudRates, parities, dataBits, stopBits } = getParameterArrays(strategy, supportedConfig)
-  const { addressRange } = getParameterArrays(strategy, supportedConfig)
-
-  // Prioritize default values to test them first
-  if (defaultConfig) {
-    baudRates = prioritizeDefaults(baudRates, defaultConfig.baudRate)
-    parities = prioritizeDefaults(parities, defaultConfig.parity)
-    dataBits = prioritizeDefaults(dataBits, defaultConfig.dataBits)
-    stopBits = prioritizeDefaults(stopBits, defaultConfig.stopBits)
-  }
+  const { baudRates, parities, dataBits, stopBits, addressRange } = getParameterArrays(strategy)
 
   // Generate slave IDs once (reused for each serial config)
-  const slaveIds = Array.from(generateSlaveIds(addressRange, defaultConfig?.defaultAddress))
+  const slaveIds = Array.from(generateSlaveIds(addressRange))
 
   // Generate groups: iterate serial params (baud × parity × data × stop)
   // For each serial config, create a group with all slave IDs
@@ -227,25 +191,13 @@ export function* generateParameterGroups(options: GeneratorOptions): Generator<P
 export function* generateParameterCombinations(
   options: GeneratorOptions
 ): Generator<ParameterCombination> {
-  const { strategy, defaultConfig, supportedConfig } = options
+  const { strategy } = options
 
   // Get parameter arrays
-  let { baudRates, parities, dataBits, stopBits } = getParameterArrays(strategy, supportedConfig)
-  const { addressRange } = getParameterArrays(strategy, supportedConfig)
+  const { baudRates, parities, dataBits, stopBits, addressRange } = getParameterArrays(strategy)
 
-  // Prioritize default values to test them first
-  if (defaultConfig) {
-    baudRates = prioritizeDefaults(baudRates, defaultConfig.baudRate)
-    parities = prioritizeDefaults(parities, defaultConfig.parity)
-    dataBits = prioritizeDefaults(dataBits, defaultConfig.dataBits)
-    stopBits = prioritizeDefaults(stopBits, defaultConfig.stopBits)
-  }
-
-  // Generate combinations in priority order:
-  // - Default config combination first
-  // - Then iterate: slave IDs (prioritized) × baud rates (prioritized) × parity × data × stop
-
-  const slaveIds = Array.from(generateSlaveIds(addressRange, defaultConfig?.defaultAddress))
+  // Generate slave IDs
+  const slaveIds = Array.from(generateSlaveIds(addressRange))
 
   for (const slaveId of slaveIds) {
     for (const baudRate of baudRates) {

@@ -1,10 +1,9 @@
 /**
  * Show driver defaults command
  *
- * Displays DEFAULT_CONFIG and SUPPORTED_CONFIG from a driver package.
+ * Note: This command is deprecated. Device configurations are now per-device
+ * in DEVICE_METADATA. Import and inspect DEVICE_METADATA directly from the driver package.
  */
-
-import { loadDriver } from '../driver-loader/loader.js'
 
 /**
  * Options for show-defaults command
@@ -25,52 +24,18 @@ export interface ShowDefaultsOptions {
  *
  * @param options - Command options
  */
-export async function showDefaultsCommand(options: ShowDefaultsOptions): Promise<void> {
-  // Validate that either driver or local is specified
-  if (!options.driver && !options.local) {
-    throw new Error('Either --driver or --local must be specified')
-  }
-
-  // Load driver metadata
-  const driverMetadata = await loadDriver(
-    options.local ? { localPackage: true } : { driverPackage: options.driver as string }
-  )
-
-  if (options.format === 'json') {
-    // JSON output
-    console.log(
-      JSON.stringify(
-        {
-          defaultConfig: driverMetadata.defaultConfig,
-          supportedConfig: driverMetadata.supportedConfig,
-        },
-        null,
-        2
-      )
-    )
-  } else {
-    // Human-readable table output
-    console.log('Driver Defaults')
-    console.log('===============\n')
-
-    if (driverMetadata.defaultConfig) {
-      console.log('DEFAULT_CONFIG:')
-      for (const [key, value] of Object.entries(driverMetadata.defaultConfig)) {
-        console.log(`  ${key}: ${JSON.stringify(value)}`)
-      }
-      console.log()
-    } else {
-      console.log('No DEFAULT_CONFIG exported by this driver.\n')
-    }
-
-    if (driverMetadata.supportedConfig) {
-      console.log('SUPPORTED_CONFIG:')
-      for (const [key, value] of Object.entries(driverMetadata.supportedConfig)) {
-        console.log(`  ${key}: ${JSON.stringify(value)}`)
-      }
-      console.log()
-    } else {
-      console.log('No SUPPORTED_CONFIG exported by this driver.\n')
-    }
-  }
+export function showDefaultsCommand(_options: ShowDefaultsOptions): void {
+  console.log('The show-defaults command is deprecated.')
+  console.log('')
+  console.log('Device configurations are now per-device in DEVICE_METADATA.')
+  console.log('To view device configurations:')
+  console.log('')
+  console.log("  import { DEVICE_METADATA } from 'ya-modbus-driver-xymd1'")
+  console.log('  ')
+  console.log('  for (const [deviceId, metadata] of Object.entries(DEVICE_METADATA)) {')
+  console.log('    console.log(`Device: ${deviceId} - ${metadata.name}`)')
+  console.log('    console.log(metadata.defaultConfig)')
+  console.log('    console.log(metadata.supportedConfig)')
+  console.log('  }')
+  console.log('')
 }

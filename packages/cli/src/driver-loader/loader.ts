@@ -1,22 +1,14 @@
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 
-import type { CreateDriverFunction, DefaultConfig, SupportedConfig } from '@ya-modbus/driver-types'
-
-import { validateDefaultConfig, validateSupportedConfig } from './config-validator.js'
+import type { CreateDriverFunction } from '@ya-modbus/driver-types'
 
 /**
- * Loaded driver module with configuration metadata
+ * Loaded driver module
  */
 export interface LoadedDriver {
   /** Driver factory function */
   createDriver: CreateDriverFunction
-
-  /** Factory-default device configuration (if provided by driver) */
-  defaultConfig?: DefaultConfig
-
-  /** Supported configuration constraints (if provided by driver) */
-  supportedConfig?: SupportedConfig
 }
 
 /**
@@ -156,10 +148,8 @@ export async function loadDriver(options: LoadDriverOptions): Promise<LoadedDriv
       throw new Error('Driver package must export a createDriver function')
     }
 
-    const { createDriver, DEFAULT_CONFIG, SUPPORTED_CONFIG } = driverModule as {
+    const { createDriver } = driverModule as {
       createDriver?: unknown
-      DEFAULT_CONFIG?: unknown
-      SUPPORTED_CONFIG?: unknown
     }
 
     if (!createDriver) {
@@ -170,22 +160,9 @@ export async function loadDriver(options: LoadDriverOptions): Promise<LoadedDriv
       throw new Error('createDriver must be a function')
     }
 
-    // Build result object conditionally to satisfy exactOptionalPropertyTypes
-    const result: LoadedDriver = {
+    return {
       createDriver: createDriver as CreateDriverFunction,
     }
-
-    // Validate and add DEFAULT_CONFIG if present
-    if (DEFAULT_CONFIG !== null && DEFAULT_CONFIG !== undefined) {
-      result.defaultConfig = validateDefaultConfig(DEFAULT_CONFIG)
-    }
-
-    // Validate and add SUPPORTED_CONFIG if present
-    if (SUPPORTED_CONFIG !== null && SUPPORTED_CONFIG !== undefined) {
-      result.supportedConfig = validateSupportedConfig(SUPPORTED_CONFIG)
-    }
-
-    return result
   } catch (error) {
     // Re-throw our custom errors (they already have helpful messages)
     if (error instanceof Error) {

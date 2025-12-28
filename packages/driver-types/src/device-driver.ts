@@ -317,6 +317,9 @@ export interface DeviceMetadata {
   /** Brief description (optional) */
   readonly description?: string
 
+  /** Device-specific data points */
+  readonly dataPoints: ReadonlyArray<DataPoint>
+
   /** Device-specific default configuration (optional) */
   readonly defaultConfig?: DefaultConfig
 
