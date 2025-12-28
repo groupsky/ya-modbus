@@ -159,17 +159,23 @@ async function tryFC43(client: ModbusRTU, startTime: number): Promise<DeviceIden
 
     // modbus-serial returns { data: { 0: "vendor", 1: "product", 2: "revision" }, conformityLevel }
     if (response.data && typeof response.data === 'object') {
-      const data = response.data as unknown as Record<number, string>
+      const data = response.data as unknown as Record<number, string | undefined>
 
-      if (data[FC43_OBJECT_ID.VENDOR_NAME]) {
-        result.vendorName = data[FC43_OBJECT_ID.VENDOR_NAME]
+      const vendorName = data[FC43_OBJECT_ID.VENDOR_NAME]
+      if (vendorName !== undefined) {
+        result.vendorName = vendorName
       }
-      if (data[FC43_OBJECT_ID.PRODUCT_CODE]) {
-        result.productCode = data[FC43_OBJECT_ID.PRODUCT_CODE]
+
+      const productCode = data[FC43_OBJECT_ID.PRODUCT_CODE]
+      if (productCode !== undefined) {
+        result.productCode = productCode
       }
-      if (data[FC43_OBJECT_ID.MAJOR_MINOR_REVISION]) {
-        result.revision = data[FC43_OBJECT_ID.MAJOR_MINOR_REVISION]
+
+      const revision = data[FC43_OBJECT_ID.MAJOR_MINOR_REVISION]
+      if (revision !== undefined) {
+        result.revision = revision
       }
+
       // Note: modelName requires requesting FC43_OBJECT_ID.MODEL_NAME specifically
     }
 
