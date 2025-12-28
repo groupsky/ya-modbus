@@ -91,7 +91,8 @@ addConnectionOptions(program.command('read').description('Read data points from 
   .option('-f, --format <type>', 'Output format: table or json (default: table)', 'table')
   .action(async (options: ReadOptions & { tcpPort?: number }) => {
     try {
-      // Conditionally include port (don't set to undefined due to exactOptionalPropertyTypes)
+      // tcpPort is parsed by Commander but not used by readCommand (transport layer handles it).
+      // Destructure it out to avoid passing undefined (exactOptionalPropertyTypes requirement).
       const { tcpPort: _tcpPort, ...commandOptions } = options
       await readCommand(commandOptions)
     } catch (error) {
@@ -110,7 +111,8 @@ addConnectionOptions(program.command('write').description('Write data point to d
   .option('--verify', 'Read back and verify written value')
   .action(async (options: WriteOptions & { tcpPort?: number }) => {
     try {
-      // Conditionally include port (don't set to undefined due to exactOptionalPropertyTypes)
+      // tcpPort is parsed by Commander but not used by writeCommand (transport layer handles it).
+      // Destructure it out to avoid passing undefined (exactOptionalPropertyTypes requirement).
       const { tcpPort: _tcpPort, ...commandOptions } = options
       await writeCommand(commandOptions)
     } catch (error) {
