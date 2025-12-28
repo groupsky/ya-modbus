@@ -76,8 +76,6 @@ Examples:
   $ ya-modbus write --host 192.168.1.100 --slave-id 1 --data-point voltage --value 220
   $ ya-modbus discover --port /dev/ttyUSB0 --strategy quick
   $ ya-modbus show-defaults --driver ya-modbus-driver-xymd1
-
-Documentation: https://github.com/groupsky/ya-modbus-mqtt-bridge-2
     `
   )
 
