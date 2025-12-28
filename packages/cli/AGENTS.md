@@ -8,10 +8,10 @@ Interactive CLI tool for testing and developing Modbus device drivers. Supports 
 
 ```
 src/
-├── commands/          # Command implementations ONLY (no utils/validation)
+├── commands/          # Command implementations ONLY
 │   ├── read.ts        # Read data points
 │   └── write.ts       # Write data points
-├── utils/             # Shared utilities (commands.ts, validation.ts)
+├── utils/             # Shared utilities (commands.ts)
 ├── transport/         # Transport layer (Modbus RTU/TCP)
 │   ├── factory.ts     # Auto-detect RTU vs TCP
 │   ├── rtu-transport.ts
@@ -69,11 +69,32 @@ Two loading modes:
 
 Common option groups:
 
+- Driver options: driver, device
 - RTU connection: port, baud-rate, parity, data-bits, stop-bits
 - TCP connection: host, tcp-port
-- Shared: slave-id, timeout, driver
+- Shared: slave-id, timeout
 
 **Design rationale**: Group related options reduces duplication. Users specify RTU or TCP, never both.
+
+### Multi-Device Driver Support
+
+**`--device` flag**: Select device variant within multi-device driver packages.
+
+**Usage**: `ya-modbus read --driver ya-modbus-driver-xymd1 --device md02 --port /dev/ttyUSB0 --slave-id 1 --all`
+
+**Behavior**:
+
+- If omitted: Driver uses first device in DEVICE_METADATA (typically md01)
+- If specified: Driver loads specified device variant configuration
+- Invalid device ID: Error with list of available devices
+
+**Implementation**: Passed to driver as `deviceType` in DriverConfig.
+
+See:
+
+- `packages/devices/AGENTS.md` for multi-device driver pattern
+- `docs/MULTI-DEVICE-PATTERN.md` for implementation guide
+- `packages/ya-modbus-driver-xymd1` for reference implementation
 
 ### Error Handling
 
@@ -181,10 +202,9 @@ src/
 **Key Design Patterns**:
 
 1. **Parameter Generator**
-   - Generator function yields combinations in priority order
+   - Generator function yields combinations based on discovery strategy
    - Supports quick (common params) and thorough (all params) strategies
-   - Prioritizes DEFAULT_CONFIG from driver packages
-   - Respects SUPPORTED_CONFIG to limit scan space
+   - Strategy-based: No longer uses driver configs for parameter selection
 
 2. **Device Identifier**
    - Uses FC43 (Read Device Identification) to probe for device presence and gather vendor/model info
@@ -217,7 +237,7 @@ src/
 
 **Testing Approach**:
 
-- `parameter-generator.test.ts`: Verifies combination generation, prioritization, DEFAULT_CONFIG handling
+- `parameter-generator.test.ts`: Verifies strategy-based combination generation (quick vs thorough)
 - `device-identifier.test.ts`: Mocks ModbusRTU client, tests FC43 device identification, error classification
 
 **User Documentation**: `docs/discover-command.md`
