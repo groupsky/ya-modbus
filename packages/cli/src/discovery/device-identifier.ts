@@ -1,8 +1,5 @@
 import type ModbusRTU from 'modbus-serial'
 
-import type { LoadedDriver } from '../driver-loader/loader.js'
-import { createModbusTransport } from '../transport/create-modbus-transport.js'
-
 /**
  * Device identification result from discovery attempt
  * Provides comprehensive information about device presence and capabilities
@@ -87,6 +84,9 @@ function isCRCError(error: unknown): boolean {
  *
  * FC43/14 is the standard MEI (Modbus Encapsulated Interface) for device identification.
  * Not all devices or modbus-serial versions support this.
+ *
+ * Any Modbus response (including exceptions) indicates a device is present.
+ * Only timeouts and CRC errors mean no device with these parameters.
  */
 async function tryFC43(client: ModbusRTU): Promise<Partial<DeviceIdentificationResult>> {
   // Check if client supports readDeviceIdentification
@@ -94,6 +94,8 @@ async function tryFC43(client: ModbusRTU): Promise<Partial<DeviceIdentificationR
     typeof (client as { readDeviceIdentification?: unknown }).readDeviceIdentification !==
     'function'
   ) {
+    // Client doesn't support FC43 - treat as device not present
+    // (caller should handle this as timeout/not found)
     return {}
   }
 
@@ -130,7 +132,8 @@ async function tryFC43(client: ModbusRTU): Promise<Partial<DeviceIdentificationR
   } catch (error) {
     const exceptionCode = isModbusException(error)
     if (exceptionCode !== undefined) {
-      // Exception means device is present but doesn't support FC43
+      // Exception means device is present but doesn't support FC43 or the specific registers
+      // This is still a successful device detection - we found a device, just don't know what it is
       return {
         present: true,
         supportsFC43: false,
@@ -138,131 +141,7 @@ async function tryFC43(client: ModbusRTU): Promise<Partial<DeviceIdentificationR
       }
     }
 
-    // Other errors (timeout, CRC) will be handled by fallback
-    throw error
-  }
-}
-
-/**
- * Try to identify device using driver data points
- *
- * When a driver is available, we can use its data point definitions
- * to read actual device data, which is more reliable than generic probing.
- */
-async function tryDriverDataPoint(
-  client: ModbusRTU,
-  driverMetadata: LoadedDriver,
-  slaveId: number
-): Promise<Partial<DeviceIdentificationResult>> {
-  try {
-    // Create transport wrapper around the ModbusRTU client
-    // Use maxRetries=1 for discovery (no retries) to avoid 200ms retry delays
-    const transport = createModbusTransport(client, 1)
-
-    // Create driver instance
-    const driver = await driverMetadata.createDriver({ transport, slaveId })
-
-    // Find first readable data point (prefer input registers for sensors)
-    const readableDataPoint = driver.dataPoints.find(
-      (dp) => dp.access === 'r' || dp.access === 'rw'
-    )
-
-    if (!readableDataPoint) {
-      // Driver has no readable data points, can't test
-      return {}
-    }
-
-    // Try to read the data point
-    await driver.readDataPoint(readableDataPoint.id)
-
-    // Success! Device is present and driver works
-    return {
-      present: true,
-    }
-  } catch (error) {
-    const exceptionCode = isModbusException(error)
-    if (exceptionCode !== undefined) {
-      // Exception means device is present (responded with error code)
-      return {
-        present: true,
-        exceptionCode,
-      }
-    }
-
-    // Timeout or CRC error - device not present with these parameters
-    throw error
-  }
-}
-
-/**
- * Try to identify device using FC04 (Read Input Registers)
- *
- * FC04 reads input registers (read-only data, typically sensor values).
- * Many sensor devices have input registers starting at 0 or 1.
- * Tries both addresses to maximize detection.
- */
-async function tryFC04(client: ModbusRTU): Promise<Partial<DeviceIdentificationResult>> {
-  // Try reading input register 1 first (common for sensors like XYMD1)
-  try {
-    await client.readInputRegisters(1, 1)
-
-    return {
-      present: true,
-    }
-  } catch (error) {
-    const exceptionCode = isModbusException(error)
-    if (exceptionCode !== undefined) {
-      // Exception from register 1, try register 0
-      try {
-        await client.readInputRegisters(0, 1)
-
-        return {
-          present: true,
-        }
-      } catch (error2) {
-        const exceptionCode2 = isModbusException(error2)
-        if (exceptionCode2 !== undefined) {
-          // Device present but no input registers at 0 or 1
-          return {
-            present: true,
-            exceptionCode: exceptionCode2,
-          }
-        }
-
-        // Timeout or CRC error on second attempt
-        throw error2
-      }
-    }
-
-    // Timeout or CRC error - device not present with these parameters
-    throw error
-  }
-}
-
-/**
- * Try to identify device using FC03 (Read Holding Registers)
- *
- * FC03 reads holding registers (read-write data, typically configuration).
- * Attempts to read register 0, which most devices support.
- */
-async function tryFC03(client: ModbusRTU): Promise<Partial<DeviceIdentificationResult>> {
-  try {
-    await client.readHoldingRegisters(0, 1)
-
-    return {
-      present: true,
-    }
-  } catch (error) {
-    const exceptionCode = isModbusException(error)
-    if (exceptionCode !== undefined) {
-      // Exception means device is present but register 0 not available
-      return {
-        present: true,
-        exceptionCode,
-      }
-    }
-
-    // Timeout or CRC error - device not present with these parameters
+    // Other errors (timeout, CRC) will be handled by caller
     throw error
   }
 }
@@ -270,16 +149,11 @@ async function tryFC03(client: ModbusRTU): Promise<Partial<DeviceIdentificationR
 /**
  * Attempt to identify a Modbus device at the current client configuration
  *
- * Tries multiple detection methods in priority order:
- * 1. Driver data points (if driver provided) - uses driver's register knowledge
- * 2. FC43 (Read Device Identification) - provides vendor/model info
- * 3. FC04 (Read Input Registers) - common for sensors
- * 4. FC03 (Read Holding Registers) - universal fallback
+ * Uses FC43 (Read Device Identification) to probe for device presence.
+ * Any Modbus response (including exceptions) indicates a device is present.
+ * Only timeouts and CRC errors mean no device with these parameters.
  *
- * @param client - Configured ModbusRTU client (address and serial params already set)
- * @param timeout - Response timeout in milliseconds
- * @param slaveId - Modbus slave ID currently being tested
- * @param driverMetadata - Optional loaded driver for driver-based detection
+ * @param client - Configured ModbusRTU client (address, serial params, and timeout already set)
  * @returns Device identification result
  *
  * @example
@@ -287,66 +161,16 @@ async function tryFC03(client: ModbusRTU): Promise<Partial<DeviceIdentificationR
  * const client = new ModbusRTU()
  * await client.connectRTUBuffered('/dev/ttyUSB0', { baudRate: 9600 })
  * client.setID(1)
+ * client.setTimeout(1000)
  *
- * const result = await identifyDevice(client, 1000)
+ * const result = await identifyDevice(client)
  * if (result.present) {
  *   console.log(`Found device: ${result.vendorName ?? 'Unknown'}`)
  * }
  * ```
  */
-export async function identifyDevice(
-  client: ModbusRTU,
-  timeout: number,
-  slaveId: number,
-  driverMetadata?: LoadedDriver
-): Promise<DeviceIdentificationResult> {
+export async function identifyDevice(client: ModbusRTU): Promise<DeviceIdentificationResult> {
   const startTime = performance.now()
-
-  // Set timeout on client (if method exists)
-  if (typeof client.setTimeout === 'function') {
-    client.setTimeout(timeout)
-  }
-
-  // Try driver-based detection first if driver is available
-  if (driverMetadata) {
-    try {
-      const driverResult = await tryDriverDataPoint(client, driverMetadata, slaveId)
-
-      if (driverResult.present) {
-        const responseTime = Math.round((performance.now() - startTime) * 100) / 100
-
-        const result: DeviceIdentificationResult = {
-          present: driverResult.present,
-          responseTimeMs: responseTime,
-        }
-
-        if (driverResult.exceptionCode !== undefined) {
-          result.exceptionCode = driverResult.exceptionCode
-        }
-
-        return result
-      }
-    } catch (error) {
-      // Driver-based detection failed, fall through to generic methods
-      if (isTimeout(error)) {
-        return {
-          present: false,
-          timeout: true,
-          responseTimeMs: Math.round((performance.now() - startTime) * 100) / 100,
-        }
-      }
-
-      if (isCRCError(error)) {
-        return {
-          present: false,
-          crcError: true,
-          responseTimeMs: Math.round((performance.now() - startTime) * 100) / 100,
-        }
-      }
-
-      // Other error, fall through to generic detection
-    }
-  }
 
   try {
     // Try FC43 (provides device identification)
@@ -383,85 +207,18 @@ export async function identifyDevice(
       return result
     }
 
-    // FC43 not available or not supported, fall through to FC03
+    // FC43 returned empty result (client doesn't support readDeviceIdentification)
+    // This means no device was detected
+    const responseTime = Math.round((performance.now() - startTime) * 100) / 100
+    return {
+      present: false,
+      responseTimeMs: responseTime,
+    }
   } catch (error) {
     // FC43 failed with error, check error type
+    const responseTime = Math.round((performance.now() - startTime) * 100) / 100
+
     if (isTimeout(error)) {
-      return {
-        present: false,
-        timeout: true,
-        responseTimeMs: Math.round((performance.now() - startTime) * 100) / 100,
-      }
-    }
-
-    if (isCRCError(error)) {
-      return {
-        present: false,
-        crcError: true,
-        responseTimeMs: Math.round((performance.now() - startTime) * 100) / 100,
-      }
-    }
-
-    // FC43 threw other error, fall through to FC04
-  }
-
-  // Try FC04 (input registers - common for sensors)
-  try {
-    const fc04Result = await tryFC04(client)
-    const responseTime = Math.round((performance.now() - startTime) * 100) / 100
-
-    const result: DeviceIdentificationResult = {
-      present: fc04Result.present ?? false,
-      responseTimeMs: responseTime,
-    }
-
-    if (fc04Result.exceptionCode !== undefined) {
-      result.exceptionCode = fc04Result.exceptionCode
-    }
-
-    return result
-  } catch (fc04Error) {
-    // FC04 failed, check error type
-    if (isTimeout(fc04Error)) {
-      return {
-        present: false,
-        timeout: true,
-        responseTimeMs: Math.round((performance.now() - startTime) * 100) / 100,
-      }
-    }
-
-    if (isCRCError(fc04Error)) {
-      return {
-        present: false,
-        crcError: true,
-        responseTimeMs: Math.round((performance.now() - startTime) * 100) / 100,
-      }
-    }
-
-    // FC04 threw other error, fall through to FC03
-  }
-
-  // Try FC03 as final fallback
-  try {
-    const fc03Result = await tryFC03(client)
-    const responseTime = Math.round((performance.now() - startTime) * 100) / 100
-
-    // Build complete result with all required properties
-    const result: DeviceIdentificationResult = {
-      present: fc03Result.present ?? false,
-      responseTimeMs: responseTime,
-    }
-
-    if (fc03Result.exceptionCode !== undefined) {
-      result.exceptionCode = fc03Result.exceptionCode
-    }
-
-    return result
-  } catch (fc03Error) {
-    // FC03 also failed, classify error
-    const responseTime = Math.round((performance.now() - startTime) * 100) / 100
-
-    if (isTimeout(fc03Error)) {
       return {
         present: false,
         timeout: true,
@@ -469,7 +226,7 @@ export async function identifyDevice(
       }
     }
 
-    if (isCRCError(fc03Error)) {
+    if (isCRCError(error)) {
       return {
         present: false,
         crcError: true,

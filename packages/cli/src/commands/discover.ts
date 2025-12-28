@@ -180,11 +180,6 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
     }
   }
 
-  // Add driverMetadata if available
-  if (driverMetadata) {
-    scanOptions.driverMetadata = driverMetadata
-  }
-
   // Scan for devices
   const devices = await scanForDevices(generatorOptions, scanOptions)
 

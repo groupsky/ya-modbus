@@ -1,7 +1,5 @@
 import ModbusRTU from 'modbus-serial'
 
-import type { LoadedDriver } from '../driver-loader/loader.js'
-
 import { identifyDevice, type DeviceIdentificationResult } from './device-identifier.js'
 import { countParameterCombinations } from './parameter-generator-utils.js'
 import {
@@ -30,9 +28,6 @@ export interface ScanOptions {
 
   /** Delay between attempts in milliseconds */
   delayMs: number
-
-  /** Optional loaded driver for driver-based detection */
-  driverMetadata?: LoadedDriver
 
   /** Maximum number of devices to find (0 for unlimited, default: 1) */
   maxDevices?: number
@@ -72,7 +67,6 @@ export async function scanForDevices(
     port,
     timeout,
     delayMs,
-    driverMetadata,
     maxDevices = 1,
     onProgress,
     onDeviceFound,
@@ -106,6 +100,12 @@ export async function scanForDevices(
         dataBits,
         stopBits,
       })
+
+      // Set timeout once for this connection
+      if (typeof client.setTimeout === 'function') {
+        client.setTimeout(timeout)
+      }
+
       try {
         // Test all slave IDs with this serial configuration
         for (const combination of groupCombinations) {
@@ -124,7 +124,7 @@ export async function scanForDevices(
             client.setID(slaveId)
 
             // Try to identify device
-            const identification = await identifyDevice(client, timeout, slaveId, driverMetadata)
+            const identification = await identifyDevice(client)
 
             // If device found, add to results
             if (identification.present) {

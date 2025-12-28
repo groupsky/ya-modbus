@@ -21,6 +21,7 @@ describe('scanForDevices', () => {
     mockClient = {
       connectRTUBuffered: jest.fn().mockResolvedValue(undefined),
       setID: jest.fn(),
+      setTimeout: jest.fn(),
       close: jest.fn((callback: () => void) => callback()),
     }
 
@@ -35,7 +36,9 @@ describe('scanForDevices', () => {
       const mockIdentify = identifyDevice as jest.MockedFunction<typeof identifyDevice>
 
       // Mock device found at slave ID 52
-      mockIdentify.mockImplementation((_client, _timeout, slaveId) => {
+      mockIdentify.mockImplementation((client) => {
+        // Get the slave ID from the last setID call
+        const slaveId = (client.setID as jest.Mock).mock.lastCall?.[0]
         if (slaveId === 52) {
           return {
             present: true,
@@ -360,7 +363,8 @@ describe('scanForDevices', () => {
     test('calls onDeviceFound when device discovered', async () => {
       const mockIdentify = identifyDevice as jest.MockedFunction<typeof identifyDevice>
 
-      mockIdentify.mockImplementation((_client, _timeout, slaveId) => {
+      mockIdentify.mockImplementation((client) => {
+        const slaveId = (client.setID as jest.Mock).mock.lastCall?.[0]
         if (slaveId === 2) {
           return { present: true, responseTimeMs: 45.67 }
         }
@@ -403,7 +407,8 @@ describe('scanForDevices', () => {
     test('calls onTestAttempt for each test', async () => {
       const mockIdentify = identifyDevice as jest.MockedFunction<typeof identifyDevice>
 
-      mockIdentify.mockImplementation((_client, _timeout, slaveId) => {
+      mockIdentify.mockImplementation((client) => {
+        const slaveId = (client.setID as jest.Mock).mock.lastCall?.[0]
         if (slaveId === 2) {
           return { present: true, responseTimeMs: 45.67 }
         }
@@ -499,7 +504,8 @@ describe('scanForDevices', () => {
     test('continues scanning when device identification throws error', async () => {
       const mockIdentify = identifyDevice as jest.MockedFunction<typeof identifyDevice>
 
-      mockIdentify.mockImplementation((_client, _timeout, slaveId) => {
+      mockIdentify.mockImplementation((client) => {
+        const slaveId = (client.setID as jest.Mock).mock.lastCall?.[0]
         if (slaveId === 2) {
           throw new Error('Network error')
         }
@@ -582,7 +588,8 @@ describe('scanForDevices', () => {
     test('waits delay after finding device when continuing scan', async () => {
       const mockIdentify = identifyDevice as jest.MockedFunction<typeof identifyDevice>
 
-      mockIdentify.mockImplementation((_client, _timeout, slaveId) => {
+      mockIdentify.mockImplementation((client) => {
+        const slaveId = (client.setID as jest.Mock).mock.lastCall?.[0]
         if (slaveId === 1) {
           return { present: true, responseTimeMs: 45.67 }
         }
