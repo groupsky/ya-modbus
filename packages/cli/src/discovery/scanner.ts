@@ -97,10 +97,9 @@ export async function scanForDevices(
     // Get serial params from group
     const { baudRate, parity, dataBits, stopBits } = serialParams
 
-    let client: ModbusRTU | undefined
     try {
       // Create and connect once for this serial parameter set
-      client = new ModbusRTU()
+      const client = new ModbusRTU()
       await client.connectRTUBuffered(port, {
         baudRate,
         parity,
@@ -167,10 +166,9 @@ export async function scanForDevices(
       }
 
       // Close connection after testing all slave IDs
-      if (client) {
-        const clientToClose = client
-        await new Promise<void>((resolve) => clientToClose.close(resolve))
-      }
+      // Client is always defined here since we only reach this point after successful connection
+      const clientToClose = client
+      await new Promise<void>((resolve) => clientToClose.close(resolve))
     } catch {
       // Connection error for this serial parameter set - skip entire group
       // This can happen if port is busy, doesn't exist, or serial params are invalid

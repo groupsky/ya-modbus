@@ -30,7 +30,7 @@ export async function withRetry<T>(
   fn: () => Promise<T>,
   maxRetries: number = MAX_RETRIES
 ): Promise<T> {
-  let lastError: Error | undefined
+  let lastError: Error
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -46,5 +46,5 @@ export async function withRetry<T>(
   }
 
   // lastError is always defined here since we only reach this point after catching an error
-  throw lastError as Error
+  throw lastError
 }

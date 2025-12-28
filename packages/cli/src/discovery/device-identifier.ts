@@ -372,9 +372,7 @@ export async function identifyDevice(
       if (fc43Result.productCode) {
         result.productCode = fc43Result.productCode
       }
-      if (fc43Result.modelName) {
-        result.modelName = fc43Result.modelName
-      }
+      // Note: modelName (object ID 7) not currently fetched - would require separate FC43 request
       if (fc43Result.revision) {
         result.revision = fc43Result.revision
       }
