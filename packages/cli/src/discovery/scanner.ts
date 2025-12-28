@@ -106,69 +106,70 @@ export async function scanForDevices(
         dataBits,
         stopBits,
       })
+      try {
+        // Test all slave IDs with this serial configuration
+        for (const combination of groupCombinations) {
+          // Stop if we've found enough devices
+          if (maxDevices > 0 && discovered.length >= maxDevices) {
+            break
+          }
 
-      // Test all slave IDs with this serial configuration
-      for (const combination of groupCombinations) {
-        // Stop if we've found enough devices
-        if (maxDevices > 0 && discovered.length >= maxDevices) {
-          break
-        }
+          const { slaveId } = combination
 
-        const { slaveId } = combination
+          try {
+            // Notify verbose progress
+            onTestAttempt?.(combination, 'testing')
 
-        try {
-          // Notify verbose progress
-          onTestAttempt?.(combination, 'testing')
+            // Set slave ID (reusing same connection)
+            client.setID(slaveId)
 
-          // Set slave ID (reusing same connection)
-          client.setID(slaveId)
+            // Try to identify device
+            const identification = await identifyDevice(client, timeout, slaveId, driverMetadata)
 
-          // Try to identify device
-          const identification = await identifyDevice(client, timeout, slaveId, driverMetadata)
+            // If device found, add to results
+            if (identification.present) {
+              const device: DiscoveredDevice = {
+                ...combination,
+                identification,
+              }
 
-          // If device found, add to results
-          if (identification.present) {
-            const device: DiscoveredDevice = {
-              ...combination,
-              identification,
+              discovered.push(device)
+              onTestAttempt?.(combination, 'found')
+              onDeviceFound?.(device)
+
+              // Only wait for bus recovery if we're continuing the scan
+              // If we've reached maxDevices, we're done - no delay needed
+              const reachedLimit = maxDevices > 0 && discovered.length >= maxDevices
+              if (delayMs > 0 && !reachedLimit) {
+                await new Promise((resolve) => setTimeout(resolve, delayMs))
+              }
+            } else {
+              onTestAttempt?.(combination, 'not-found')
+              // No device - we timed out. If delay is longer than timeout,
+              // we need to wait the remainder to meet the delay requirement
+              if (delayMs > timeout) {
+                await new Promise((resolve) => setTimeout(resolve, delayMs - timeout))
+              }
             }
-
-            discovered.push(device)
-            onTestAttempt?.(combination, 'found')
-            onDeviceFound?.(device)
-
-            // Only wait for bus recovery if we're continuing the scan
-            // If we've reached maxDevices, we're done - no delay needed
-            const reachedLimit = maxDevices > 0 && discovered.length >= maxDevices
-            if (delayMs > 0 && !reachedLimit) {
-              await new Promise((resolve) => setTimeout(resolve, delayMs))
-            }
-          } else {
+          } catch {
+            // Device identification error - skip this slave ID
             onTestAttempt?.(combination, 'not-found')
-            // No device - we timed out. If delay is longer than timeout,
-            // we need to wait the remainder to meet the delay requirement
+            // Error case - also need to wait remainder if delay > timeout
             if (delayMs > timeout) {
               await new Promise((resolve) => setTimeout(resolve, delayMs - timeout))
             }
           }
-        } catch {
-          // Device identification error - skip this slave ID
-          onTestAttempt?.(combination, 'not-found')
-          // Error case - also need to wait remainder if delay > timeout
-          if (delayMs > timeout) {
-            await new Promise((resolve) => setTimeout(resolve, delayMs - timeout))
-          }
+
+          // Update progress
+          currentIndex++
+          onProgress?.(currentIndex, total, discovered.length)
         }
-
-        // Update progress
-        currentIndex++
-        onProgress?.(currentIndex, total, discovered.length)
+      } finally {
+        // Close connection after testing all slave IDs
+        // Client is always defined here since we only reach this point after successful connection
+        const clientToClose = client
+        await new Promise<void>((resolve) => clientToClose.close(resolve))
       }
-
-      // Close connection after testing all slave IDs
-      // Client is always defined here since we only reach this point after successful connection
-      const clientToClose = client
-      await new Promise<void>((resolve) => clientToClose.close(resolve))
     } catch {
       // Connection error for this serial parameter set - skip entire group
       // This can happen if port is busy, doesn't exist, or serial params are invalid

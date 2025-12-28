@@ -536,6 +536,46 @@ describe('scanForDevices', () => {
         'not-found'
       )
     })
+
+    test('closes client even when onProgress throws exception', async () => {
+      const mockIdentify = identifyDevice as jest.MockedFunction<typeof identifyDevice>
+
+      mockIdentify.mockResolvedValue({
+        present: false,
+        responseTimeMs: 10,
+        timeout: true,
+      })
+
+      const onProgress = jest.fn().mockImplementation(() => {
+        throw new Error('Progress callback error')
+      })
+
+      const generatorOptions: GeneratorOptions = {
+        strategy: 'quick',
+        supportedConfig: {
+          validBaudRates: [9600],
+          validParity: ['none'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 2],
+        },
+      }
+
+      const scanOptions: ScanOptions = {
+        port: '/dev/ttyUSB0',
+        timeout: 1000,
+        delayMs: 0,
+        onProgress,
+      }
+
+      // Expect the error to be thrown
+      await expect(scanForDevices(generatorOptions, scanOptions)).rejects.toThrow(
+        'Progress callback error'
+      )
+
+      // Client should still be closed despite the error
+      expect(mockClient.close).toHaveBeenCalledTimes(1)
+    })
   })
 
   describe('delay logic', () => {
