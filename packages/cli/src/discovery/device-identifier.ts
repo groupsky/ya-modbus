@@ -80,7 +80,8 @@ export interface DeviceIdentificationResult {
  */
 function isModbusException(error: unknown): number | undefined {
   if (error && typeof error === 'object' && 'modbusCode' in error) {
-    return error.modbusCode as number
+    const code = (error as { modbusCode: unknown }).modbusCode
+    return typeof code === 'number' ? code : undefined
   }
   return undefined
 }

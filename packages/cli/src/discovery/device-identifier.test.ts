@@ -240,5 +240,20 @@ describe('identifyDevice', () => {
       expect(result.supportsFC43).toBe(false)
       expect(result.exceptionCode).toBe(1)
     })
+
+    test('ignores modbusCode if it is not a number', async () => {
+      mockClient.readDeviceIdentification = jest.fn().mockRejectedValue({
+        message: 'Some error',
+        modbusCode: 'invalid', // Non-number modbusCode should be ignored
+      })
+
+      const result = await identifyDevice(mockClient as ModbusRTU)
+
+      // Should be treated as a generic error (not timeout, not CRC, not exception)
+      expect(result.present).toBe(false)
+      expect(result.timeout).toBeUndefined()
+      expect(result.crcError).toBeUndefined()
+      expect(result.exceptionCode).toBeUndefined()
+    })
   })
 })
