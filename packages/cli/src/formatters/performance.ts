@@ -23,7 +23,7 @@ export function formatPerformance(metrics: PerformanceMetrics): string {
 
   const lines = [
     chalk.bold('\nPerformance:'),
-    `  Response time: ${responseTimeMs}ms`,
+    `  Response time: ${responseTimeMs.toFixed(1)}ms`,
     `  Operations: ${operations}`,
   ]
 

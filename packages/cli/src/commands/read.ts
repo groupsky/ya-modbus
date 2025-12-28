@@ -81,7 +81,7 @@ export async function readCommand(options: ReadOptions): Promise<void> {
     // Calculate performance metrics
     const endTime = performance.now()
     const metrics: PerformanceMetrics = {
-      responseTimeMs: Math.round((endTime - startTime) * 10) / 10,
+      responseTimeMs: endTime - startTime,
       operations: dataPointIds.length,
       errors: 0, // Errors cause exceptions, so this is always 0 for successful reads
     }

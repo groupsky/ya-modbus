@@ -100,7 +100,7 @@ async function tryFC43(client: ModbusRTU, startTime: number): Promise<DeviceIden
     // Build result object with response time
     const result: DeviceIdentificationResult = {
       present: true,
-      responseTimeMs: Math.round((performance.now() - startTime) * 100) / 100,
+      responseTimeMs: performance.now() - startTime,
       supportsFC43: true,
     }
 
@@ -126,7 +126,7 @@ async function tryFC43(client: ModbusRTU, startTime: number): Promise<DeviceIden
 
     return result
   } catch (error) {
-    const responseTime = Math.round((performance.now() - startTime) * 100) / 100
+    const responseTime = performance.now() - startTime
     const exceptionCode = isModbusException(error)
 
     if (exceptionCode !== undefined) {
@@ -176,7 +176,7 @@ export async function identifyDevice(client: ModbusRTU): Promise<DeviceIdentific
     return await tryFC43(client, startTime)
   } catch (error) {
     // Communication error - classify and return appropriate result
-    const responseTime = Math.round((performance.now() - startTime) * 100) / 100
+    const responseTime = performance.now() - startTime
 
     if (isTimeout(error)) {
       return {
