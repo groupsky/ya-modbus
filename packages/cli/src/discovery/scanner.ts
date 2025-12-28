@@ -46,6 +46,42 @@ export interface ScanOptions {
 }
 
 /**
+ * Apply inter-test delay to prevent bus contention
+ *
+ * When a device is found, waits full delayMs for bus recovery.
+ * When no device found or error, waits remainder (delayMs - timeout) since
+ * timeout already consumed time waiting for response.
+ *
+ * @param delayMs - Configured delay between tests
+ * @param timeout - Request timeout in milliseconds
+ * @param deviceFound - Whether a device was found (true) or not found/error (false)
+ * @param shouldContinue - Whether scanning will continue after this delay
+ */
+async function applyInterTestDelay(
+  delayMs: number,
+  timeout: number,
+  deviceFound: boolean,
+  shouldContinue: boolean
+): Promise<void> {
+  // Skip delay if not continuing (reached maxDevices)
+  if (!shouldContinue) {
+    return
+  }
+
+  if (deviceFound) {
+    // Device found - wait full delay for bus recovery
+    if (delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+  } else {
+    // No device or error - timeout already consumed time, wait remainder
+    if (delayMs > timeout) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs - timeout))
+    }
+  }
+}
+
+/**
  * Scan for Modbus devices using given parameter combinations
  *
  * **Performance Optimization**: Uses grouped generator to avoid materializing
@@ -136,27 +172,19 @@ export async function scanForDevices(
               onTestAttempt?.(combination, 'found')
               onDeviceFound?.(device)
 
-              // Only wait for bus recovery if we're continuing the scan
-              // If we've reached maxDevices, we're done - no delay needed
+              // Apply delay for bus recovery before next test
               const reachedLimit = maxDevices > 0 && discovered.length >= maxDevices
-              if (delayMs > 0 && !reachedLimit) {
-                await new Promise((resolve) => setTimeout(resolve, delayMs))
-              }
+              await applyInterTestDelay(delayMs, timeout, true, !reachedLimit)
             } else {
               onTestAttempt?.(combination, 'not-found')
-              // No device - we timed out. If delay is longer than timeout,
-              // we need to wait the remainder to meet the delay requirement
-              if (delayMs > timeout) {
-                await new Promise((resolve) => setTimeout(resolve, delayMs - timeout))
-              }
+              // Apply delay before next test (timeout already consumed time)
+              await applyInterTestDelay(delayMs, timeout, false, true)
             }
           } catch {
             // Device identification error - skip this slave ID
             onTestAttempt?.(combination, 'not-found')
-            // Error case - also need to wait remainder if delay > timeout
-            if (delayMs > timeout) {
-              await new Promise((resolve) => setTimeout(resolve, delayMs - timeout))
-            }
+            // Apply delay before next test (error/timeout already consumed time)
+            await applyInterTestDelay(delayMs, timeout, false, true)
           }
 
           // Update progress
