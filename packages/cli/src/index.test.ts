@@ -146,6 +146,7 @@ describe('CLI Entry Point - Integration Tests', () => {
         program.parseAsync(['node', 'ya-modbus', 'read', '--slave-id', '1', '--all'])
       ).rejects.toThrow('process.exit called')
 
+      expect(mockReadCommand).toHaveBeenCalled()
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error: Failed to connect to device')
       expect(processExitSpy).toHaveBeenCalledWith(1)
     })
@@ -346,6 +347,7 @@ describe('CLI Entry Point - Integration Tests', () => {
         ])
       ).rejects.toThrow('process.exit called')
 
+      expect(mockWriteCommand).toHaveBeenCalled()
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error: Permission denied')
       expect(processExitSpy).toHaveBeenCalledWith(1)
     })
@@ -487,6 +489,7 @@ describe('CLI Entry Point - Integration Tests', () => {
         program.parseAsync(['node', 'ya-modbus', 'show-defaults', '--driver', 'invalid-driver'])
       ).rejects.toThrow('process.exit called')
 
+      expect(mockShowDefaultsCommand).toHaveBeenCalled()
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error: Driver package not found')
       expect(processExitSpy).toHaveBeenCalledWith(1)
     })
@@ -613,6 +616,7 @@ describe('CLI Entry Point - Integration Tests', () => {
         program.parseAsync(['node', 'ya-modbus', 'discover', '--port', '/dev/ttyUSB0'])
       ).rejects.toThrow('process.exit called')
 
+      expect(mockDiscoverCommand).toHaveBeenCalled()
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error: Cannot open port: Permission denied')
       expect(processExitSpy).toHaveBeenCalledWith(1)
     })
