@@ -10,6 +10,25 @@ jest.mock('./commands/write.js')
 jest.mock('./commands/show-defaults.js')
 jest.mock('./commands/discover.js')
 
+/**
+ * Integration tests for CLI entry point
+ *
+ * Testing Strategy:
+ * - Uses program.parseAsync() to simulate real command-line usage
+ * - Mocks command modules to verify they're called with correct parameters
+ * - Uses inline snapshots for help output verification
+ *
+ * Process.exit Mocking:
+ * The process.exit mock throws an error to prevent actual process termination during tests.
+ * This approach works because Commander.js doesn't catch errors thrown from the exit handler,
+ * allowing us to:
+ * 1. Verify exit was called (for validation errors, help display, etc.)
+ * 2. Verify the exit code (0 for success, 1 for errors)
+ * 3. Continue test execution after expected exits
+ *
+ * NOTE: Help output snapshots will break on Commander.js version updates or option text changes.
+ * Use `npm test -- -u` to update snapshots after verifying changes are intentional.
+ */
 describe('CLI Entry Point - Integration Tests', () => {
   let consoleErrorSpy: jest.SpyInstance
   let processExitSpy: jest.SpyInstance
@@ -17,6 +36,8 @@ describe('CLI Entry Point - Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+    // Mock process.exit to throw error instead of terminating process
+    // This allows tests to verify exit behavior without stopping test execution
     processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
       throw new Error('process.exit called')
     })
