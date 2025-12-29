@@ -44,17 +44,6 @@ CRITICAL: Add package to `/jest.config.js` projects array or tests won't run fro
 
 For driver development (architecture, workflow, testing), see docs/agents/driver-development.md
 
-### Required Exports
-
-- `createDriver(config)` - Factory function
-
-### Recommended Exports
-
-- `DEFAULT_CONFIG` - Factory defaults (use `DefaultSerialConfig` or `DefaultTCPConfig`)
-- `SUPPORTED_CONFIG` - Device constraints (use `SupportedSerialConfig` or `SupportedTCPConfig`)
-
-If exporting both, add cross-validation tests ensuring defaults are within supported ranges.
-
 ## Verification Steps
 
 Before committing:

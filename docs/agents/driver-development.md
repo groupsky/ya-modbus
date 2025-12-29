@@ -33,6 +33,17 @@ paths: packages/devices/**/*.ts
 3. Test with real device using CLI tools
 4. Use characterization tools to discover device limits
 
+### Required Exports
+
+- `createDriver(config)` - Factory function
+
+### Recommended Exports
+
+- `DEFAULT_CONFIG` - Factory defaults (use `DefaultSerialConfig` or `DefaultTCPConfig`)
+- `SUPPORTED_CONFIG` - Device constraints (use `SupportedSerialConfig` or `SupportedTCPConfig`)
+
+If exporting both, add cross-validation tests ensuring defaults are within supported ranges.
+
 ## Testing
 
 - Emulator for fast iteration (`@ya-modbus/driver-dev-tools`)
