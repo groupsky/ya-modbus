@@ -201,8 +201,7 @@ ya-modbus discover \
 - `--strategy <type>` - Discovery strategy: `quick` (default) or `thorough`
   - **Quick**: Tests SUPPORTED_CONFIG params or common Modbus parameters
   - **Thorough**: Tests all standard Modbus parameters (8 baud rates, 3 parity modes, 247 addresses)
-- `--driver <package>` - Driver package to use for parameter prioritization
-- `--local` - Load driver from local package (cwd)
+- `--driver <package>` - Driver package to use for parameter prioritization (auto-detects from cwd if not specified)
 - `--timeout <ms>` - Response timeout in milliseconds (default: 1000)
 - `--delay <ms>` - Delay between attempts in milliseconds (default: 100)
 - `--max-devices <count>` - Maximum number of devices to find (default: 1, use 0 for unlimited)
@@ -387,7 +386,7 @@ When using third-party or development drivers, be aware:
    Fix: export const DEFAULT_CONFIG = { baudRate: 9600, ... } // number, not string
    ```
 
-2. **Development Mode Hints**: When loading local drivers with `--local` or auto-detection, invalid configurations trigger detailed fix instructions to help driver developers.
+2. **Development Mode Hints**: When loading local drivers via auto-detection, invalid configurations trigger detailed fix instructions to help driver developers.
 
 3. **Configuration Safety**: Both `DEFAULT_CONFIG` and `SUPPORTED_CONFIG` are validated:
    - Type checking (baudRate must be number, not string)
@@ -407,9 +406,9 @@ Use the `show-defaults` command to inspect driver configuration before use:
 # Show defaults from installed driver
 ya-modbus show-defaults --driver ya-modbus-driver-xymd1
 
-# Show defaults from local development driver
+# Show defaults from local development driver (auto-detects from cwd)
 cd packages/my-driver
-ya-modbus show-defaults --local
+ya-modbus show-defaults
 
 # JSON output for tooling
 ya-modbus show-defaults --driver ya-modbus-driver-xymd1 --format json
@@ -444,8 +443,9 @@ Some drivers support multiple device variants (e.g., an energy meter family driv
 # List devices from installed driver
 ya-modbus list-devices --driver ya-modbus-driver-orno-we
 
-# List devices from local development driver
-ya-modbus list-devices --local
+# List devices from local development driver (auto-detects from cwd)
+cd packages/my-driver
+ya-modbus list-devices
 
 # JSON output for tooling
 ya-modbus list-devices --driver ya-modbus-driver-orno-we --format json

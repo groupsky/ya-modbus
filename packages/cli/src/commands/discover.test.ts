@@ -124,7 +124,7 @@ describe('Discover Command', () => {
 
       // Should NOT log fallback messages
       expect(consoleLogSpy).not.toHaveBeenCalledWith(
-        'No driver specified, using generic Modbus parameters...'
+        'No driver available, using generic Modbus parameters...'
       )
     })
 
@@ -365,8 +365,26 @@ describe('Discover Command', () => {
       })
 
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        'No driver specified, using generic Modbus parameters...'
+        'No driver available, using generic Modbus parameters...'
       )
+    })
+
+    test('should show error details in verbose mode when driver fails to load', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+      jest
+        .spyOn(driverLoader, 'loadDriver')
+        .mockRejectedValue(new Error('package.json not found in current directory'))
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        format: 'table',
+        verbose: true,
+      })
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'No driver available, using generic Modbus parameters...'
+      )
+      expect(consoleLogSpy).toHaveBeenCalledWith('  (package.json not found in current directory)')
     })
   })
 

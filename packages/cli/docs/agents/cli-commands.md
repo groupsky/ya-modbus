@@ -16,6 +16,20 @@ Common option groups:
 
 Users specify RTU or TCP, never both.
 
+## Driver Loading
+
+Driver auto-detection when `--driver` not specified:
+
+```
+1. --driver <pkg>   → use installed package
+2. (nothing)        → auto-detect from cwd package.json
+3. cwd not driver   → error with suggestion (or fallback for discover)
+```
+
+Detection checks for `ya-modbus-driver` keyword in package.json.
+
+See: `src/driver-loader/loader.ts`, `src/utils/commands.ts`
+
 ## Adding a New Command
 
 1. Create `src/commands/<name>.ts` and `src/commands/<name>.test.ts`
