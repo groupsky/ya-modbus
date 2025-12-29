@@ -1,8 +1,12 @@
+---
+paths: /**/{AGENTS,CLAUDE,.aider}.md, /**/.cursorrules, /.github/copilot-instructions.md
+---
+
 # Agent Documentation Maintenance
 
 ## Core Principles
 
-- No common knowledge (TypeScript, npm, Git basics assumed)
+- No common knowledge
 - ~50 lines max per file
 - Reference > copy: point to source files, don't embed
 - Progressive disclosure: load only relevant context per task

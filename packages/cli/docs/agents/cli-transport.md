@@ -1,3 +1,7 @@
+---
+paths: /**/src/transport/*.ts
+---
+
 # CLI Transport Layer
 
 ## Architecture

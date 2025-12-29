@@ -1,3 +1,7 @@
+---
+paths: /**/*.ts
+---
+
 # Code Quality Guidelines
 
 ## Principles

@@ -1,3 +1,7 @@
+---
+paths: /**/src/commands/*.ts
+---
+
 # CLI Command Structure
 
 ## Pattern
@@ -22,10 +26,25 @@ Users specify RTU or TCP, never both.
 
 See existing: `src/commands/read.ts`, `src/commands/write.ts`
 
-## Testing Commands
+## Directory Boundaries
 
-Mock all dependencies (transport/factory, driver-loader, formatters).
+`src/commands/` contains **ONLY** command implementations and tests.
 
-Verify flow: create transport → load driver → read/write → format output.
+### What Does NOT Belong Here
 
-See: `src/commands/read.test.ts`, `src/commands/write.test.ts`
+- ❌ Utils/helpers → `src/utils/commands.ts`
+  - `withDriver()`, `withTransport()`, `applyDriverDefaults()`
+- ❌ Validation → `src/utils/validation.ts`
+  - `validateBaudRate()`, `validateParity()`, `ValidationError`
+- ❌ Types → `src/types/` or `@ya-modbus/driver-types`
+- ❌ Constants → relevant module (e.g., `src/utils/commands.ts`)
+- ❌ Never: `utils.ts`, `helpers.ts`, `validation.ts` in commands/
+
+### Related Directories
+
+- `src/utils/` - Command helpers, validation
+- `src/formatters/` - Table/JSON/performance output
+- `src/transport/` - RTU/TCP transport implementations
+- `src/driver-loader/` - Dynamic driver loading
+
+See: `src/utils/commands.ts`, `src/formatters/table.ts`

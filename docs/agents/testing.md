@@ -1,3 +1,7 @@
+---
+paths: /**/*.test.ts
+---
+
 # Testing Guidelines
 
 ## Methodology
