@@ -5,6 +5,8 @@ import type { LoadedDriver } from '../driver-loader/loader.js'
 import {
   applyDriverDefaults,
   getEffectiveDefaultConfig,
+  getEffectiveDriverMetadata,
+  getEffectiveSupportedConfig,
   type TransportOptions,
 } from './commands.js'
 
@@ -523,5 +525,160 @@ describe('getEffectiveDefaultConfig', () => {
 
     const result = getEffectiveDefaultConfig(driverMetadata, 'device-a')
     expect(result).toBeUndefined()
+  })
+})
+
+describe('getEffectiveSupportedConfig', () => {
+  const driverSupportedConfig = {
+    validBaudRates: [9600, 19200],
+    validParity: ['even', 'none'] as const,
+  }
+
+  const deviceSupportedConfig = {
+    validBaudRates: [19200, 38400],
+    validParity: ['none'] as const,
+  }
+
+  test('should return undefined when driverMetadata is undefined', () => {
+    const result = getEffectiveSupportedConfig(undefined, undefined)
+    expect(result).toBeUndefined()
+  })
+
+  test('should return driver config when no device is specified', () => {
+    const driverMetadata: LoadedDriver = {
+      createDriver: jest.fn(),
+      supportedConfig: driverSupportedConfig,
+    }
+
+    const result = getEffectiveSupportedConfig(driverMetadata, undefined)
+    expect(result).toBe(driverSupportedConfig)
+  })
+
+  test('should return device-specific config when device is selected', () => {
+    const driverMetadata: LoadedDriver = {
+      createDriver: jest.fn(),
+      supportedConfig: driverSupportedConfig,
+      devices: {
+        'device-a': {
+          manufacturer: 'Acme',
+          model: 'X1',
+          supportedConfig: deviceSupportedConfig,
+        },
+      },
+    }
+
+    const result = getEffectiveSupportedConfig(driverMetadata, 'device-a')
+    expect(result).toBe(deviceSupportedConfig)
+  })
+
+  test('should fall back to driver config when device has no supportedConfig', () => {
+    const driverMetadata: LoadedDriver = {
+      createDriver: jest.fn(),
+      supportedConfig: driverSupportedConfig,
+      devices: {
+        'device-a': {
+          manufacturer: 'Acme',
+          model: 'X1',
+        },
+      },
+    }
+
+    const result = getEffectiveSupportedConfig(driverMetadata, 'device-a')
+    expect(result).toBe(driverSupportedConfig)
+  })
+})
+
+describe('getEffectiveDriverMetadata', () => {
+  const driverDefaultConfig: DefaultSerialConfig = {
+    baudRate: 9600,
+    parity: 'even',
+    dataBits: 8,
+    stopBits: 1,
+    defaultAddress: 1,
+  }
+
+  const deviceDefaultConfig: DefaultSerialConfig = {
+    baudRate: 19200,
+    parity: 'none',
+    dataBits: 8,
+    stopBits: 2,
+    defaultAddress: 10,
+  }
+
+  const driverSupportedConfig = {
+    validBaudRates: [9600, 19200],
+  }
+
+  const deviceSupportedConfig = {
+    validBaudRates: [19200, 38400],
+  }
+
+  test('should return driver-level configs when no device is specified', () => {
+    const driverMetadata: LoadedDriver = {
+      createDriver: jest.fn(),
+      defaultConfig: driverDefaultConfig,
+      supportedConfig: driverSupportedConfig,
+    }
+
+    const result = getEffectiveDriverMetadata(driverMetadata, undefined)
+
+    expect(result.defaultConfig).toBe(driverDefaultConfig)
+    expect(result.supportedConfig).toBe(driverSupportedConfig)
+    expect(result.createDriver).toBe(driverMetadata.createDriver)
+  })
+
+  test('should return device-specific configs when device is selected', () => {
+    const driverMetadata: LoadedDriver = {
+      createDriver: jest.fn(),
+      defaultConfig: driverDefaultConfig,
+      supportedConfig: driverSupportedConfig,
+      devices: {
+        'device-a': {
+          manufacturer: 'Acme',
+          model: 'X1',
+          defaultConfig: deviceDefaultConfig,
+          supportedConfig: deviceSupportedConfig,
+        },
+      },
+    }
+
+    const result = getEffectiveDriverMetadata(driverMetadata, 'device-a')
+
+    expect(result.defaultConfig).toBe(deviceDefaultConfig)
+    expect(result.supportedConfig).toBe(deviceSupportedConfig)
+    expect(result.devices).toBe(driverMetadata.devices)
+  })
+
+  test('should mix device-specific and driver-level configs', () => {
+    const driverMetadata: LoadedDriver = {
+      createDriver: jest.fn(),
+      defaultConfig: driverDefaultConfig,
+      supportedConfig: driverSupportedConfig,
+      devices: {
+        'device-a': {
+          manufacturer: 'Acme',
+          model: 'X1',
+          defaultConfig: deviceDefaultConfig,
+          // No supportedConfig - should fall back to driver
+        },
+      },
+    }
+
+    const result = getEffectiveDriverMetadata(driverMetadata, 'device-a')
+
+    expect(result.defaultConfig).toBe(deviceDefaultConfig) // Device-specific
+    expect(result.supportedConfig).toBe(driverSupportedConfig) // Driver fallback
+  })
+
+  test('should not include undefined configs', () => {
+    const driverMetadata: LoadedDriver = {
+      createDriver: jest.fn(),
+    }
+
+    const result = getEffectiveDriverMetadata(driverMetadata, undefined)
+
+    expect(result).not.toHaveProperty('defaultConfig')
+    expect(result).not.toHaveProperty('supportedConfig')
+    expect(result).not.toHaveProperty('devices')
   })
 })

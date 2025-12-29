@@ -325,6 +325,70 @@ export function getEffectiveDefaultConfig(
 }
 
 /**
+ * Get the effective supported config for a device
+ *
+ * Returns device-specific constraints if available, otherwise driver-level constraints.
+ *
+ * @param driverMetadata - Loaded driver metadata
+ * @param device - Optional device key
+ * @returns Effective supported config or undefined
+ */
+export function getEffectiveSupportedConfig(
+  driverMetadata: LoadedDriver | undefined,
+  device: string | undefined
+): LoadedDriver['supportedConfig'] | undefined {
+  if (!driverMetadata) {
+    return undefined
+  }
+
+  // Check for device-specific config first
+  if (device && driverMetadata.devices?.[device]?.supportedConfig) {
+    return driverMetadata.devices[device].supportedConfig
+  }
+
+  // Fall back to driver-level config
+  return driverMetadata.supportedConfig
+}
+
+/**
+ * Create an effective driver metadata with device-specific configs resolved
+ *
+ * This creates a view of the driver metadata where defaultConfig and supportedConfig
+ * are resolved based on the selected device. This allows validation and other
+ * functions to work with device-specific settings transparently.
+ *
+ * @param driverMetadata - Loaded driver metadata
+ * @param device - Optional device key
+ * @returns Driver metadata with effective configs for the selected device
+ */
+export function getEffectiveDriverMetadata(
+  driverMetadata: LoadedDriver,
+  device: string | undefined
+): LoadedDriver {
+  const effectiveDefaultConfig = getEffectiveDefaultConfig(driverMetadata, device)
+  const effectiveSupportedConfig = getEffectiveSupportedConfig(driverMetadata, device)
+
+  // Build result conditionally to satisfy exactOptionalPropertyTypes
+  const result: LoadedDriver = {
+    createDriver: driverMetadata.createDriver,
+  }
+
+  if (driverMetadata.devices) {
+    result.devices = driverMetadata.devices
+  }
+
+  if (effectiveDefaultConfig) {
+    result.defaultConfig = effectiveDefaultConfig
+  }
+
+  if (effectiveSupportedConfig) {
+    result.supportedConfig = effectiveSupportedConfig
+  }
+
+  return result
+}
+
+/**
  * Apply driver defaults to transport options
  *
  * Uses device-specific defaults if a device is selected, otherwise driver-level defaults.
@@ -420,7 +484,10 @@ export async function withDriver<T>(
   // Load driver metadata first
   const driverMetadata = await loadDriverMetadata(options.driver)
 
-  // Validate user-specified options against driver constraints (only for RTU connections)
+  // Get effective metadata with device-specific configs resolved
+  const effectiveMetadata = getEffectiveDriverMetadata(driverMetadata, options.device)
+
+  // Validate user-specified options against device/driver constraints (only for RTU connections)
   if (!options.host) {
     const validationOptions = omitUndefined({
       baudRate: options.baudRate,
@@ -430,7 +497,7 @@ export async function withDriver<T>(
       slaveId: options.slaveId,
     })
 
-    validateSerialOptions(validationOptions, driverMetadata)
+    validateSerialOptions(validationOptions, effectiveMetadata)
   }
 
   // Apply driver defaults to options (device-specific if selected)
@@ -447,7 +514,7 @@ export async function withDriver<T>(
       slaveId: mergedOptions.slaveId,
     })
 
-    validateSerialOptions(mergedValidationOptions, driverMetadata)
+    validateSerialOptions(mergedValidationOptions, effectiveMetadata)
   }
 
   // Create transport with merged options
