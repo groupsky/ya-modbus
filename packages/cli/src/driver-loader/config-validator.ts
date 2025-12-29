@@ -238,25 +238,59 @@ export function validateDevices(devices: unknown): DeviceRegistry {
     }
 
     // Validate nested defaultConfig if present
+    let validatedDefaultConfig: DefaultConfig | undefined
     if ('defaultConfig' in deviceObj && deviceObj['defaultConfig'] !== undefined) {
       try {
-        validateDefaultConfig(deviceObj['defaultConfig'])
+        validatedDefaultConfig = validateDefaultConfig(deviceObj['defaultConfig'])
       } catch (error) {
         throw new Error(`Invalid DEVICES["${key}"].defaultConfig: ${(error as Error).message}`)
       }
     }
 
     // Validate nested supportedConfig if present
+    let validatedSupportedConfig: SupportedConfig | undefined
     if ('supportedConfig' in deviceObj && deviceObj['supportedConfig'] !== undefined) {
       try {
-        validateSupportedConfig(deviceObj['supportedConfig'])
+        validatedSupportedConfig = validateSupportedConfig(deviceObj['supportedConfig'])
       } catch (error) {
         throw new Error(`Invalid DEVICES["${key}"].supportedConfig: ${(error as Error).message}`)
+      }
+    }
+
+    // Cross-validate device-specific configs
+    if (validatedDefaultConfig && validatedSupportedConfig) {
+      const warnings = crossValidateConfigs(validatedDefaultConfig, validatedSupportedConfig)
+      if (warnings.length > 0) {
+        console.warn(`\nWarning: DEVICES["${key}"] has configuration inconsistencies:`)
+        for (const warning of warnings) {
+          console.warn(`  - ${warning}`)
+        }
+        console.warn('  This may indicate a driver authoring error\n')
       }
     }
   }
 
   return devices as DeviceRegistry
+}
+
+/**
+ * Helper function to validate if a value is within a numeric range
+ *
+ * @param value - The value to check
+ * @param range - [min, max] range tuple
+ * @param fieldName - Name of the field for error message
+ * @returns Warning message if value is outside range, undefined otherwise
+ */
+function validateAddressRange(
+  value: number,
+  range: readonly [number, number],
+  fieldName: string
+): string | undefined {
+  const [min, max] = range
+  if (value < min || value > max) {
+    return `${fieldName}: ${value} is not in validAddressRange: [${min}, ${max}]`
+  }
+  return undefined
 }
 
 /**
@@ -348,11 +382,13 @@ export function crossValidateConfigs(
       'validAddressRange' in serialSupported &&
       Array.isArray(serialSupported['validAddressRange'])
     ) {
-      const [min, max] = serialSupported['validAddressRange'] as [number, number]
-      if (serialDefault.defaultAddress < min || serialDefault.defaultAddress > max) {
-        warnings.push(
-          `defaultAddress: ${serialDefault.defaultAddress} is not in validAddressRange: [${min}, ${max}]`
-        )
+      const warning = validateAddressRange(
+        serialDefault.defaultAddress,
+        serialSupported['validAddressRange'] as [number, number],
+        'defaultAddress'
+      )
+      if (warning) {
+        warnings.push(warning)
       }
     }
   } else if (isTCP) {
@@ -375,11 +411,13 @@ export function crossValidateConfigs(
       'validAddressRange' in tcpSupported &&
       Array.isArray(tcpSupported['validAddressRange'])
     ) {
-      const [min, max] = tcpSupported['validAddressRange'] as [number, number]
-      if (tcpDefault.defaultAddress < min || tcpDefault.defaultAddress > max) {
-        warnings.push(
-          `defaultAddress: ${tcpDefault.defaultAddress} is not in validAddressRange: [${min}, ${max}]`
-        )
+      const warning = validateAddressRange(
+        tcpDefault.defaultAddress,
+        tcpSupported['validAddressRange'] as [number, number],
+        'defaultAddress'
+      )
+      if (warning) {
+        warnings.push(warning)
       }
     }
   }

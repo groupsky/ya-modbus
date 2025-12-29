@@ -459,6 +459,106 @@ describe('validateDevices', () => {
       expect(() => validateDevices(devices)).toThrow('Invalid DEVICES["device-1"].supportedConfig:')
     })
   })
+
+  describe('device-specific config cross-validation', () => {
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
+
+    beforeEach(() => {
+      consoleWarnSpy.mockClear()
+    })
+
+    afterAll(() => {
+      consoleWarnSpy.mockRestore()
+    })
+
+    test('should warn when device has inconsistent defaultConfig and supportedConfig', () => {
+      const devices = {
+        'device-1': {
+          manufacturer: 'Acme',
+          model: 'X1',
+          defaultConfig: {
+            baudRate: 115200,
+            parity: 'even' as const,
+            dataBits: 8 as const,
+            stopBits: 1 as const,
+            defaultAddress: 1,
+          },
+          supportedConfig: {
+            validBaudRates: [9600],
+          },
+        },
+      }
+
+      validateDevices(devices)
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '\nWarning: DEVICES["device-1"] has configuration inconsistencies:'
+      )
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '  - baudRate: 115200 is not in validBaudRates: [9600]'
+      )
+      expect(consoleWarnSpy).toHaveBeenCalledWith('  This may indicate a driver authoring error\n')
+    })
+
+    test('should not warn when device has consistent configs', () => {
+      const devices = {
+        'device-1': {
+          manufacturer: 'Acme',
+          model: 'X1',
+          defaultConfig: {
+            baudRate: 9600,
+            parity: 'even' as const,
+            dataBits: 8 as const,
+            stopBits: 1 as const,
+            defaultAddress: 1,
+          },
+          supportedConfig: {
+            validBaudRates: [9600, 19200],
+          },
+        },
+      }
+
+      validateDevices(devices)
+
+      expect(consoleWarnSpy).not.toHaveBeenCalled()
+    })
+
+    test('should not warn when device has only defaultConfig', () => {
+      const devices = {
+        'device-1': {
+          manufacturer: 'Acme',
+          model: 'X1',
+          defaultConfig: {
+            baudRate: 9600,
+            parity: 'even' as const,
+            dataBits: 8 as const,
+            stopBits: 1 as const,
+            defaultAddress: 1,
+          },
+        },
+      }
+
+      validateDevices(devices)
+
+      expect(consoleWarnSpy).not.toHaveBeenCalled()
+    })
+
+    test('should not warn when device has only supportedConfig', () => {
+      const devices = {
+        'device-1': {
+          manufacturer: 'Acme',
+          model: 'X1',
+          supportedConfig: {
+            validBaudRates: [9600, 19200],
+          },
+        },
+      }
+
+      validateDevices(devices)
+
+      expect(consoleWarnSpy).not.toHaveBeenCalled()
+    })
+  })
 })
 
 describe('crossValidateConfigs', () => {
@@ -605,6 +705,70 @@ describe('crossValidateConfigs', () => {
       expect(warnings).toEqual(['defaultAddress: 250 is not in validAddressRange: [1, 247]'])
     })
 
+    test('should warn when defaultAddress is below minimum (boundary test)', () => {
+      const defaultConfig = {
+        baudRate: 9600,
+        parity: 'even' as const,
+        dataBits: 8 as const,
+        stopBits: 1 as const,
+        defaultAddress: 0,
+      }
+      const supportedConfig = {
+        validAddressRange: [1, 247] as const,
+      }
+
+      const warnings = crossValidateConfigs(defaultConfig, supportedConfig)
+      expect(warnings).toEqual(['defaultAddress: 0 is not in validAddressRange: [1, 247]'])
+    })
+
+    test('should not warn when defaultAddress is at minimum boundary', () => {
+      const defaultConfig = {
+        baudRate: 9600,
+        parity: 'even' as const,
+        dataBits: 8 as const,
+        stopBits: 1 as const,
+        defaultAddress: 1,
+      }
+      const supportedConfig = {
+        validAddressRange: [1, 247] as const,
+      }
+
+      const warnings = crossValidateConfigs(defaultConfig, supportedConfig)
+      expect(warnings).toEqual([])
+    })
+
+    test('should not warn when defaultAddress is at maximum boundary', () => {
+      const defaultConfig = {
+        baudRate: 9600,
+        parity: 'even' as const,
+        dataBits: 8 as const,
+        stopBits: 1 as const,
+        defaultAddress: 247,
+      }
+      const supportedConfig = {
+        validAddressRange: [1, 247] as const,
+      }
+
+      const warnings = crossValidateConfigs(defaultConfig, supportedConfig)
+      expect(warnings).toEqual([])
+    })
+
+    test('should warn when defaultAddress is above maximum (boundary test)', () => {
+      const defaultConfig = {
+        baudRate: 9600,
+        parity: 'even' as const,
+        dataBits: 8 as const,
+        stopBits: 1 as const,
+        defaultAddress: 248,
+      }
+      const supportedConfig = {
+        validAddressRange: [1, 247] as const,
+      }
+
+      const warnings = crossValidateConfigs(defaultConfig, supportedConfig)
+      expect(warnings).toEqual(['defaultAddress: 248 is not in validAddressRange: [1, 247]'])
+    })
+
     test('should return multiple warnings when multiple constraints are violated', () => {
       const defaultConfig = {
         baudRate: 115200,
@@ -657,6 +821,32 @@ describe('crossValidateConfigs', () => {
 
       const warnings = crossValidateConfigs(defaultConfig, supportedConfig)
       expect(warnings).toEqual(['defaultAddress: 250 is not in validAddressRange: [1, 247]'])
+    })
+
+    test('should warn when TCP defaultAddress is below minimum (boundary test)', () => {
+      const defaultConfig = {
+        defaultPort: 502,
+        defaultAddress: 0,
+      }
+      const supportedConfig = {
+        validAddressRange: [1, 247] as const,
+      }
+
+      const warnings = crossValidateConfigs(defaultConfig, supportedConfig)
+      expect(warnings).toEqual(['defaultAddress: 0 is not in validAddressRange: [1, 247]'])
+    })
+
+    test('should not warn when TCP defaultAddress is at boundary', () => {
+      const defaultConfig = {
+        defaultPort: 502,
+        defaultAddress: 1,
+      }
+      const supportedConfig = {
+        validAddressRange: [1, 247] as const,
+      }
+
+      const warnings = crossValidateConfigs(defaultConfig, supportedConfig)
+      expect(warnings).toEqual([])
     })
 
     test('should return multiple warnings for TCP when multiple constraints are violated', () => {
