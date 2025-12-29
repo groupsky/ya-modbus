@@ -5,6 +5,8 @@
  */
 
 import type { DefaultSerialConfig, DefaultTCPConfig } from '@ya-modbus/driver-types'
+import chalk from 'chalk'
+import Table from 'cli-table3'
 
 import { loadDriver } from '../driver-loader/loader.js'
 
@@ -85,38 +87,35 @@ export async function listDevicesCommand(options: ListDevicesOptions): Promise<v
     return
   }
 
-  console.log('Supported Devices')
-  console.log('=================\n')
+  console.log(chalk.bold('Supported Devices\n'))
 
-  // Calculate column widths
+  // Create table
+  const table = new Table({
+    head: [
+      chalk.bold('Device'),
+      chalk.bold('Manufacturer'),
+      chalk.bold('Model'),
+      chalk.bold('Config'),
+      chalk.bold('Description'),
+    ],
+    style: {
+      head: ['cyan'],
+    },
+  })
+
+  // Add rows
   const entries = Object.entries(devices)
-  const keyWidth = Math.max(6, ...entries.map(([key]) => key.length))
-  const manufacturerWidth = Math.max(12, ...entries.map(([, info]) => info.manufacturer.length))
-  const modelWidth = Math.max(5, ...entries.map(([, info]) => info.model.length))
-
-  // Header
-  const header = [
-    'DEVICE'.padEnd(keyWidth),
-    'MANUFACTURER'.padEnd(manufacturerWidth),
-    'MODEL'.padEnd(modelWidth),
-    'CONFIG',
-    'DESCRIPTION',
-  ].join('  ')
-  console.log(header)
-  console.log('-'.repeat(header.length))
-
-  // Rows
   for (const [key, info] of entries) {
     const config = info.defaultConfig ?? driverMetadata.defaultConfig
-    const row = [
-      key.padEnd(keyWidth),
-      info.manufacturer.padEnd(manufacturerWidth),
-      info.model.padEnd(modelWidth),
-      formatDefaultConfig(config).padEnd(12),
+    table.push([
+      key,
+      info.manufacturer,
+      info.model,
+      formatDefaultConfig(config),
       info.description ?? '',
-    ].join('  ')
-    console.log(row)
+    ])
   }
 
+  console.log(table.toString())
   console.log(`\nTotal: ${entries.length} device(s)`)
 }

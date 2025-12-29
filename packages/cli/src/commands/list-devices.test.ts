@@ -176,6 +176,62 @@ describe('listDevicesCommand', () => {
       const output = consoleLogSpy.mock.calls.map((call) => call[0]).join('\n')
       expect(output).toContain('9600 8E1') // Driver default config
     })
+
+    test('should format TCP config in table output', async () => {
+      mockLoadDriver.mockResolvedValue({
+        createDriver: jest.fn(),
+        devices: {
+          'device-1': {
+            manufacturer: 'Acme',
+            model: 'X1',
+            defaultConfig: {
+              defaultPort: 502,
+              defaultAddress: 1,
+            },
+          },
+        },
+        defaultConfig: {
+          defaultPort: 502,
+          defaultAddress: 1,
+        },
+      })
+
+      await listDevicesCommand({ driver: 'test-driver', format: 'table' })
+
+      const output = consoleLogSpy.mock.calls.map((call) => call[0]).join('\n')
+      expect(output).toContain('TCP:502')
+    })
+
+    test('should show odd parity correctly', async () => {
+      mockLoadDriver.mockResolvedValue({
+        createDriver: jest.fn(),
+        devices: {
+          'device-1': {
+            manufacturer: 'Acme',
+            model: 'X1',
+            defaultConfig: {
+              baudRate: 19200,
+              parity: 'odd',
+              dataBits: 8,
+              stopBits: 2,
+              defaultAddress: 1,
+            },
+          },
+        },
+        defaultConfig: {
+          baudRate: 9600,
+          parity: 'even',
+          dataBits: 8,
+          stopBits: 1,
+          defaultAddress: 1,
+        },
+      })
+
+      await listDevicesCommand({ driver: 'test-driver', format: 'table' })
+
+      const output = consoleLogSpy.mock.calls.map((call) => call[0]).join('\n')
+      expect(output).toContain('19200 8O2') // Odd parity
+    })
   })
 
   describe('loading modes', () => {
