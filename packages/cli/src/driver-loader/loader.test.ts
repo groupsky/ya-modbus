@@ -71,6 +71,8 @@ describe('Driver Loader', () => {
     // XYMD1 should export DEFAULT_CONFIG and SUPPORTED_CONFIG
     expect(driverMetadata.defaultConfig).toBeDefined()
     expect(driverMetadata.supportedConfig).toBeDefined()
+    // XYMD1 is a single-device driver, so devices should be undefined
+    expect(driverMetadata.devices).toBeUndefined()
   })
 
   test('should throw error if explicit package does not exist', async () => {
