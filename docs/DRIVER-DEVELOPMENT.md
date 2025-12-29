@@ -41,11 +41,10 @@ npm install --save-dev @ya-modbus/driver-dev-tools typescript @types/node
 my-modbus-driver/
 ├── package.json
 ├── tsconfig.json
-├── src/
-│   ├── index.ts              # Driver export
-│   ├── device.ts             # Driver implementation
-│   └── device.test.ts        # Tests
-└── ya-modbus-driver.json     # Optional metadata
+└── src/
+    ├── index.ts              # Driver export
+    ├── device.ts             # Driver implementation
+    └── device.test.ts        # Tests
 ```
 
 ### 3. Implement Driver(s)
@@ -474,24 +473,6 @@ Document in driver implementation, enforce via function composition.
 - `keywords` must include `"ya-modbus-driver"` for discovery
 - `peerDependencies` declares SDK compatibility
 - `description` should list supported device types if multiple
-
-### Optional: ya-modbus-driver.json
-
-> **Note**: This file is for future tooling integration. Currently, use the `DEVICES` export
-> (see [multi-device example](#example-multi-device-package-functional-approach)) which provides
-> device metadata programmatically and is used by the CLI's `list-devices` command.
-
-Static metadata for package registries and discovery tools:
-
-```json
-{
-  "supportsAutoDetection": true,
-  "manufacturer": "Acme Corp",
-  "deviceFamily": "X-Series Solar Inverters",
-  "documentation": "https://example.com/docs",
-  "homepage": "https://github.com/acme/modbus-driver-solar"
-}
-```
 
 **Benefits of single factory approach**:
 
