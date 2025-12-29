@@ -1,20 +1,12 @@
-# GitHub Actions Workflows - Agent Guide
+# GitHub Actions Workflows
 
 ## Node.js Version Management
 
 **Default rule**: Always use `.nvmrc` for Node.js version in workflows.
 
-```yaml
-- name: Setup Node.js from .nvmrc
-  uses: actions/setup-node@v6
-  with:
-    node-version-file: '.nvmrc'
-    cache: 'npm'
-```
-
 **Exception**: When verifying runtime compatibility across multiple Node.js versions, generate matrix from `package.json` engines field.
 
-See: `ci.yml` setup job for matrix generation implementation
+See: `.github/workflows/ci.yml` for matrix generation implementation
 
 ## Rationale
 
