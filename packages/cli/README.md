@@ -11,6 +11,7 @@ CLI tool for testing and developing Modbus device drivers.
 - **Discover devices** automatically by scanning serial ports for Modbus RTU devices
 - **Read data points** from Modbus devices (RTU/TCP)
 - **Write data points** to Modbus devices with confirmation
+- **List supported devices** from multi-device drivers
 - **Auto-detect drivers** from current package during development
 - **Multiple output formats** (table, JSON)
 - **Performance metrics** (response time, operation count)
@@ -269,6 +270,7 @@ Based on real-world testing with default settings (timeout=1000ms, delay=100ms):
 - `--slave-id <id>` - Modbus slave ID (1-247) **(required)**
 - `--timeout <ms>` - Response timeout in milliseconds (default: 1000)
 - `--driver <package>` - Explicit driver package name
+- `--device <key>` - Device key for multi-device drivers (use `list-devices` to see available devices)
 
 ### Driver Loading
 
@@ -424,6 +426,68 @@ SUPPORTED_CONFIG:
   validStopBits: [1]
   validAddressRange: [1,247]
 ```
+
+**List Supported Devices (Multi-Device Drivers):**
+
+Some drivers support multiple device variants (e.g., an energy meter family driver supporting OR-WE-514, OR-WE-516, etc.). Use `list-devices` to see available devices:
+
+```bash
+# List devices from installed driver
+ya-modbus list-devices --driver ya-modbus-driver-orno-we
+
+# List devices from local development driver
+ya-modbus list-devices --local
+
+# JSON output for tooling
+ya-modbus list-devices --driver ya-modbus-driver-orno-we --format json
+```
+
+Output:
+
+```
+Supported Devices
+
+┌────────────┬──────────────┬───────────┬─────────────┬─────────────────────────┐
+│ Device     │ Manufacturer │ Model     │ Config      │ Description             │
+├────────────┼──────────────┼───────────┼─────────────┼─────────────────────────┤
+│ or-we-514  │ ORNO         │ OR-WE-514 │ 9600 8E1    │ Single-phase meter      │
+│ or-we-516  │ ORNO         │ OR-WE-516 │ 9600 8E1    │ Three-phase meter       │
+└────────────┴──────────────┴───────────┴─────────────┴─────────────────────────┘
+
+Total: 2 device(s)
+```
+
+For single-device drivers, the command indicates there is no DEVICES registry:
+
+```
+This driver does not export a DEVICES registry.
+It is a single-device driver.
+
+Default config: 9600 8E1
+```
+
+**Using Multi-Device Drivers:**
+
+When using a multi-device driver, specify the device with `--device`:
+
+```bash
+# Read from a specific device variant
+ya-modbus read \
+  --driver ya-modbus-driver-orno-we \
+  --device or-we-514 \
+  --port /dev/ttyUSB0 \
+  --data-point voltage
+
+# The --device option applies device-specific defaults and validation
+ya-modbus write \
+  --driver ya-modbus-driver-orno-we \
+  --device or-we-516 \
+  --port /dev/ttyUSB0 \
+  --data-point relay_state \
+  --value 1
+```
+
+If `--device` is omitted with a multi-device driver, the driver-level defaults are used. If `--device` is specified with a single-device driver, a warning is shown and the option is ignored.
 
 **Best Practices:**
 
