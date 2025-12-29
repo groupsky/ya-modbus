@@ -14,7 +14,6 @@ export interface DiscoverOptions {
   // Discovery options
   strategy?: DiscoveryStrategy
   driver?: string
-  local?: boolean
   timeout?: number
   delay?: number
   maxDevices?: number
@@ -57,43 +56,30 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
     console.log('')
   }
 
-  // Load driver metadata if specified
+  // Try to load driver metadata (explicit --driver or auto-detect from cwd)
   let driverMetadata
-  if (options.driver || options.local) {
-    try {
-      if (options.local) {
-        driverMetadata = await loadDriver({
-          localPackage: true,
-        })
-        if (!silent) {
-          console.log('Using local driver package')
-        }
-      } else if (options.driver) {
-        driverMetadata = await loadDriver({
-          driverPackage: options.driver,
-        })
-        if (!silent) {
-          console.log(`Using driver: ${options.driver}`)
-        }
+  try {
+    driverMetadata = await loadDriver(options.driver ? { driverPackage: options.driver } : {})
+    if (!silent) {
+      if (options.driver) {
+        console.log(`Using driver: ${options.driver}`)
+      } else {
+        console.log('Using local driver package')
       }
 
-      if (!silent) {
-        if (driverMetadata?.defaultConfig) {
-          console.log('Using driver DEFAULT_CONFIG for parameter prioritization')
-        }
-        if (driverMetadata?.supportedConfig) {
-          console.log('Using driver SUPPORTED_CONFIG to limit parameter combinations')
-        }
-        console.log('')
+      if (driverMetadata?.defaultConfig) {
+        console.log('Using driver DEFAULT_CONFIG for parameter prioritization')
       }
-    } catch (error) {
-      if (!silent) {
-        console.error(
-          `Warning: Failed to load driver ${options.driver ?? 'from local package'}: ${(error as Error).message}`
-        )
-        console.error('Continuing with generic Modbus parameters...')
-        console.log('')
+      if (driverMetadata?.supportedConfig) {
+        console.log('Using driver SUPPORTED_CONFIG to limit parameter combinations')
       }
+      console.log('')
+    }
+  } catch {
+    // Driver loading failed - continue with generic Modbus parameters
+    if (!silent) {
+      console.log('No driver specified, using generic Modbus parameters...')
+      console.log('')
     }
   }
 

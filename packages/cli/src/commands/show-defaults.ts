@@ -10,11 +10,8 @@ import { loadDriver } from '../driver-loader/loader.js'
  * Options for show-defaults command
  */
 export interface ShowDefaultsOptions {
-  /** Driver package name */
+  /** Driver package name (auto-detects from cwd if not specified) */
   driver?: string
-
-  /** Load from local package (cwd) */
-  local?: boolean
 
   /** Output format: 'table' or 'json' */
   format?: 'table' | 'json'
@@ -26,15 +23,8 @@ export interface ShowDefaultsOptions {
  * @param options - Command options
  */
 export async function showDefaultsCommand(options: ShowDefaultsOptions): Promise<void> {
-  // Validate that either driver or local is specified
-  if (!options.driver && !options.local) {
-    throw new Error('Either --driver or --local must be specified')
-  }
-
-  // Load driver metadata
-  const driverMetadata = await loadDriver(
-    options.local ? { localPackage: true } : { driverPackage: options.driver as string }
-  )
+  // Load driver metadata (auto-detects from cwd if no --driver specified)
+  const driverMetadata = await loadDriver(options.driver ? { driverPackage: options.driver } : {})
 
   if (options.format === 'json') {
     // JSON output

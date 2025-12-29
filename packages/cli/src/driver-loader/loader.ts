@@ -117,28 +117,29 @@ async function tryImport(paths: string[]): Promise<unknown> {
  *
  * Supports two modes:
  * 1. Explicit package name: `loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' })`
- * 2. Auto-detect local: `loadDriver({ localPackage: true })` - reads from cwd package.json
+ * 2. Auto-detect local: `loadDriver({ localPackage: true })` or `loadDriver({})` - reads from cwd package.json
  *
- * @param options - Loading options
+ * When no options are specified, auto-detects from current working directory.
+ *
+ * @param options - Loading options (defaults to local package detection)
  * @returns Loaded driver with createDriver function and optional configuration metadata
  * @throws Error if driver cannot be loaded or is invalid
  */
-export async function loadDriver(options: LoadDriverOptions): Promise<LoadedDriver> {
+export async function loadDriver(options: LoadDriverOptions = {}): Promise<LoadedDriver> {
   const { driverPackage, localPackage } = options
 
-  // Validate that exactly one option is provided
-  if (!driverPackage && !localPackage) {
-    throw new Error('Either localPackage or driverPackage must be specified')
-  }
-
+  // Validate that at most one option is provided
   if (driverPackage && localPackage) {
     throw new Error('Cannot specify both localPackage and driverPackage')
   }
 
+  // Default to local package detection when nothing specified
+  const useLocalPackage = !driverPackage && (localPackage ?? true)
+
   try {
     let driverModule: unknown
 
-    if (localPackage) {
+    if (useLocalPackage) {
       // Auto-detect and load local package
       const packageName = await detectLocalPackage()
 
@@ -151,15 +152,13 @@ export async function loadDriver(options: LoadDriverOptions): Promise<LoadedDriv
       ]
 
       driverModule = await tryImport(importPaths)
-    } else if (driverPackage) {
-      // Load explicit package
+    } else {
+      // Load explicit package (driverPackage is guaranteed to be defined here)
+      const pkg = driverPackage as string
       try {
-        driverModule = await import(driverPackage)
+        driverModule = await import(pkg)
       } catch {
-        throw new Error(
-          `Driver package not found: ${driverPackage}\n` +
-            `Install it with: npm install ${driverPackage}`
-        )
+        throw new Error(`Driver package not found: ${pkg}\nInstall it with: npm install ${pkg}`)
       }
     }
 

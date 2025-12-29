@@ -112,7 +112,7 @@ describe('showDefaultsCommand', () => {
     expect(output).toContain('No SUPPORTED_CONFIG')
   })
 
-  test('should load local package when --local flag is used', async () => {
+  test('should auto-detect from cwd when no driver specified', async () => {
     const driverMetadata: LoadedDriver = {
       createDriver: jest.fn(),
       defaultConfig: {
@@ -126,13 +126,11 @@ describe('showDefaultsCommand', () => {
 
     loadDriver.mockResolvedValue(driverMetadata)
 
-    const options: ShowDefaultsOptions = {
-      local: true,
-    }
+    const options: ShowDefaultsOptions = {}
 
     await showDefaultsCommand(options)
 
-    expect(loadDriver).toHaveBeenCalledWith({ localPackage: true })
+    expect(loadDriver).toHaveBeenCalledWith({})
 
     const output = consoleLogSpy.mock.calls.map((call) => call.join(' ')).join('\n')
     expect(output).toContain('baudRate: 19200')
@@ -174,16 +172,5 @@ describe('showDefaultsCommand', () => {
       },
       supportedConfig: undefined,
     })
-  })
-
-  test('should throw error when neither driver nor local is specified', async () => {
-    const options: ShowDefaultsOptions = {}
-
-    await expect(showDefaultsCommand(options)).rejects.toThrow(
-      'Either --driver or --local must be specified'
-    )
-
-    // loadDriver should not be called
-    expect(loadDriver).not.toHaveBeenCalled()
   })
 })

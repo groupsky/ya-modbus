@@ -655,9 +655,9 @@ describe('CLI Entry Point - Integration Tests', () => {
 
         Show driver DEFAULT_CONFIG and SUPPORTED_CONFIG
 
-        Driver Selection:
-          -d, --driver <package>  Driver package name
-          --local                 Load from local package (cwd)
+        Driver Options:
+          -d, --driver <package>  Driver package (auto-detects from cwd if not
+                                  specified)
 
         Output Options:
           -f, --format <type>     Output format: table or json (default: table)
@@ -692,23 +692,21 @@ describe('CLI Entry Point - Integration Tests', () => {
       expect(mockShowDefaultsCommand).toHaveBeenCalledTimes(1)
     })
 
-    it('should execute show-defaults with local driver', async () => {
+    it('should execute show-defaults with auto-detection (no driver specified)', async () => {
       const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
       mockShowDefaultsCommand.mockResolvedValue()
 
-      await program.parseAsync([
-        'node',
-        'ya-modbus',
-        'show-defaults',
-        '--local',
-        '--format',
-        'table',
-      ])
+      await program.parseAsync(['node', 'ya-modbus', 'show-defaults', '--format', 'table'])
 
       expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
         expect.objectContaining({
-          local: true,
           format: 'table',
+        })
+      )
+      // Verify driver is not set (triggers auto-detection)
+      expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          driver: expect.anything(),
         })
       )
     })
@@ -788,8 +786,8 @@ describe('CLI Entry Point - Integration Tests', () => {
           -p, --port <path>       Serial port for RTU (e.g., /dev/ttyUSB0, COM3)
 
         Driver Options:
-          -d, --driver <package>  Driver package (uses SUPPORTED_CONFIG to limit scan)
-          --local                 Load driver from local package (cwd)
+          -d, --driver <package>  Driver package (auto-detects from cwd if not
+                                  specified)
 
         Discovery Options:
           --strategy <type>       Discovery strategy: quick (driver params) or thorough
@@ -825,7 +823,6 @@ describe('CLI Entry Point - Integration Tests', () => {
         '/dev/ttyUSB0',
         '--driver',
         'test-driver',
-        '--local',
         '--strategy',
         'thorough',
         '--timeout',
@@ -843,7 +840,6 @@ describe('CLI Entry Point - Integration Tests', () => {
         expect.objectContaining({
           port: '/dev/ttyUSB0',
           driver: 'test-driver',
-          local: true,
           strategy: 'thorough',
           timeout: 500,
           delay: 50,
