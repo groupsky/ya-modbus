@@ -113,18 +113,19 @@ describe('Discover Command', () => {
       expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('"slaveId": 52'))
     })
 
-    test('should suppress error messages in silent mode when driver fails to load', async () => {
+    test('should suppress fallback message in silent mode when driver fails to load', async () => {
       jest.spyOn(driverLoader, 'loadDriver').mockRejectedValue(new Error('Driver not found'))
 
       await discoverCommand({
         port: '/dev/ttyUSB0',
-        driver: 'nonexistent-driver',
         silent: true,
         format: 'table',
       })
 
-      // Should NOT log error messages
-      expect(consoleErrorSpy).not.toHaveBeenCalled()
+      // Should NOT log fallback messages
+      expect(consoleLogSpy).not.toHaveBeenCalledWith(
+        'No driver specified, using generic Modbus parameters...'
+      )
     })
 
     test('should not show progress bar in silent mode', async () => {
@@ -271,7 +272,7 @@ describe('Discover Command', () => {
   })
 
   describe('driver loading', () => {
-    test('should show local driver message', async () => {
+    test('should show local driver message when auto-detected', async () => {
       jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
       jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue({
         createDriver: jest.fn(),
@@ -281,7 +282,6 @@ describe('Discover Command', () => {
 
       await discoverCommand({
         port: '/dev/ttyUSB0',
-        local: true,
         format: 'table',
       })
 
@@ -355,20 +355,18 @@ describe('Discover Command', () => {
       )
     })
 
-    test('should show warning when driver fails to load', async () => {
+    test('should continue with generic parameters when driver fails to load', async () => {
       jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
       jest.spyOn(driverLoader, 'loadDriver').mockRejectedValue(new Error('Driver not found'))
 
       await discoverCommand({
         port: '/dev/ttyUSB0',
-        driver: 'nonexistent-driver',
         format: 'table',
       })
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Warning: Failed to load driver nonexistent-driver')
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'No driver specified, using generic Modbus parameters...'
       )
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Continuing with generic Modbus parameters...')
     })
   })
 
