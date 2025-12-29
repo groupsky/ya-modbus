@@ -8,6 +8,7 @@ TypeScript monorepo using npm workspaces.
 - `testing.md` - TDD, behavior tests, mocking
 - `code-quality.md` - DRY, KISS, file limits
 - `driver-development.md` - Driver architecture, data points, testing
+- `package-creation.md` - Creating new packages
 - `maintenance.md` - Updating these docs
 - `workflows.md` - CI workflow patterns
 
@@ -17,6 +18,6 @@ TypeScript monorepo using npm workspaces.
 
 ## Tasks
 
-- create new package - docs/NEW-PACKAGE.md
+- create new package - docs/agents/package-creation.md
 - develop a driver - docs/agents/driver-development.md
 - architecture - docs/ARCHITECTURE.md
