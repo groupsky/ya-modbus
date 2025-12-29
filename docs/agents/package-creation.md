@@ -20,16 +20,9 @@ Every new package MUST include:
 
 ### Coverage Thresholds
 
-```javascript
-coverageThreshold: {
-  global: {
-    branches: 95,
-    functions: 95,
-    lines: 95,
-    statements: 95,
-  },
-}
-```
+All packages require 95% coverage (branches, functions, lines, statements).
+
+See: `packages/ya-modbus-driver-xymd1/jest.config.cjs:23-30` for required `coverageThreshold` configuration.
 
 ### Root Jest Configuration
 
