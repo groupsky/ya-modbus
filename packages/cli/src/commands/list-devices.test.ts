@@ -29,6 +29,17 @@ describe('listDevicesCommand', () => {
 
       expect(mockLoadDriver).toHaveBeenCalledWith({})
     })
+
+    test('should throw descriptive error when auto-detection fails', async () => {
+      mockLoadDriver.mockRejectedValue(
+        new Error(
+          'package.json not found in current directory. ' +
+            'Run this command from a driver package directory or specify --driver'
+        )
+      )
+
+      await expect(listDevicesCommand({})).rejects.toThrow('package.json not found')
+    })
   })
 
   describe('JSON output', () => {
