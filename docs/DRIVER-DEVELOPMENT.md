@@ -72,10 +72,10 @@ See `packages/devices/` for reference implementations.
 ```typescript
 // src/index.ts - Single factory function for all device types
 export const createDriver = async (config) => {
-  const { deviceType, transport, slaveId } = config
+  const { device, transport, slaveId } = config
 
   // Auto-detect device type if not specified
-  const detectedType = deviceType || (await detectDeviceType(transport, slaveId))
+  const detectedType = device || (await detectDeviceType(transport, slaveId))
 
   // Return device-specific implementation
   switch (detectedType) {
@@ -90,6 +90,25 @@ export const createDriver = async (config) => {
   }
 }
 
+// DEVICES registry - provides metadata for CLI tools
+export const DEVICES = {
+  X1000: {
+    manufacturer: 'Acme Corp',
+    model: 'X1000',
+    description: '1kW Solar Inverter',
+  },
+  X2000: {
+    manufacturer: 'Acme Corp',
+    model: 'X2000',
+    description: '2kW Solar Inverter',
+  },
+  X5000: {
+    manufacturer: 'Acme Corp',
+    model: 'X5000',
+    description: '5kW Solar Inverter',
+  },
+}
+
 // Auto-detection helper (reads device identification registers)
 const detectDeviceType = async (transport, slaveId) => {
   // Read model register and determine type
@@ -99,6 +118,13 @@ const detectDeviceType = async (transport, slaveId) => {
 ```
 
 **Benefits**: Single entry point, optional auto-detection, simpler configuration.
+
+**Exports for multi-device drivers**:
+
+- `createDriver` - Factory function (required)
+- `DEFAULT_CONFIG` - Connection defaults (recommended)
+- `SUPPORTED_CONFIG` - Valid parameter ranges (recommended)
+- `DEVICES` - Device registry with metadata (recommended for multi-device drivers)
 
 ### 4. Development Workflow
 
@@ -130,10 +156,10 @@ import type { DeviceDriver, DataPoint } from '@ya-modbus/driver-sdk'
 
 // Single factory function - handles device type selection
 export const createDriver = async (config): Promise<DeviceDriver> => {
-  const { deviceType, transport, slaveId } = config
+  const { device, transport, slaveId } = config
 
   // Auto-detect if type not specified
-  const type = deviceType || (await autoDetectDeviceType(transport, slaveId))
+  const type = device || (await autoDetectDeviceType(transport, slaveId))
 
   // Return driver configuration for detected type
   return {
@@ -212,7 +238,7 @@ describe('MyDevice', () => {
 
   it('should read voltage with explicit device type', async () => {
     const driver = await createDriver({
-      deviceType: 'ModelA',
+      device: 'ModelA',
       slaveId: 1,
       transport: harness.getTransport(),
     })
@@ -223,7 +249,7 @@ describe('MyDevice', () => {
 
   it('should auto-detect device type', async () => {
     const driver = await createDriver({
-      // No deviceType - will auto-detect
+      // No device - will auto-detect
       slaveId: 1,
       transport: harness.getTransport(),
     })
@@ -542,21 +568,21 @@ npm install -g ya-modbus-driver-solar
     {
       "id": "inverter_1",
       "driver": "ya-modbus-driver-solar",
-      "deviceType": "X1000",  // Optional: auto-detect if omitted
+      "device": "X1000",  // Optional: auto-detect if omitted
       "transport": "tcp",
       "host": "192.168.1.100"
     },
     {
       "id": "inverter_2",
       "driver": "ya-modbus-driver-solar",
-      "deviceType": "X2000",  // Explicit type
+      "device": "X2000",  // Explicit type
       "transport": "tcp",
       "host": "192.168.1.101"
     },
     {
       "id": "inverter_3",
       "driver": "ya-modbus-driver-solar",
-      // No deviceType - will auto-detect
+      // No device - will auto-detect
       "transport": "tcp",
       "host": "192.168.1.102"
     }
@@ -567,8 +593,8 @@ npm install -g ya-modbus-driver-solar
 **Configuration format**:
 
 - `driver`: Package name only (e.g., `ya-modbus-driver-solar`)
-- `deviceType`: Optional, specifies which device variant
-- Auto-detection: Omit `deviceType` and driver will detect device model
+- `device`: Optional, specifies which device variant (use `ya-modbus list-devices` to see available devices)
+- Auto-detection: Omit `device` and driver will detect device model
 - Single package handles entire device family
 
 ## Best Practices
