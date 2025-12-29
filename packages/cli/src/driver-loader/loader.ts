@@ -190,6 +190,14 @@ export async function loadDriver(options: LoadDriverOptions = {}): Promise<Loade
       throw new Error('createDriver must be a function')
     }
 
+    if (createDriver.length !== 1) {
+      throw new Error(
+        `Invalid createDriver signature: expected 1 parameter, got ${createDriver.length}.\n` +
+          'Fix: export const createDriver = (config: DriverConfig) => Promise<DeviceDriver>\n' +
+          'See: CreateDriverFunction type in @ya-modbus/driver-types'
+      )
+    }
+
     // Build result object conditionally to satisfy exactOptionalPropertyTypes
     const result: LoadedDriver = {
       createDriver: createDriver as CreateDriverFunction,
