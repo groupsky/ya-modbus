@@ -4,7 +4,6 @@ import { Command } from 'commander'
 
 import { discoverCommand, type DiscoverOptions } from './commands/discover.js'
 import { readCommand, type ReadOptions } from './commands/read.js'
-import { showDefaultsCommand, type ShowDefaultsOptions } from './commands/show-defaults.js'
 import { writeCommand, type WriteOptions } from './commands/write.js'
 
 /**
@@ -20,7 +19,7 @@ function addConnectionOptions(command: Command): Command {
       .optionsGroup('Driver Options:')
       .option(
         '-d, --driver <package>',
-        'Driver package name (e.g., ya-modbus-driver-xymd1). Use "show-defaults" to see driver config'
+        'Driver package name (e.g., ya-modbus-driver-xymd1). See driver README for device configs'
       )
       .option(
         '--device <type>',
@@ -79,7 +78,6 @@ Examples:
   $ ya-modbus read --port /dev/ttyUSB0 --slave-id 1 --driver ya-modbus-driver-xymd1 --all
   $ ya-modbus write --host 192.168.1.100 --slave-id 1 --data-point voltage --value 220
   $ ya-modbus discover --port /dev/ttyUSB0 --strategy quick
-  $ ya-modbus show-defaults --driver ya-modbus-driver-xymd1
     `
   )
 
@@ -158,27 +156,6 @@ program
   .action(async (options: DiscoverOptions) => {
     try {
       await discoverCommand(options)
-    } catch (error) {
-      console.error(`Error: ${(error as Error).message}`)
-      process.exit(1)
-    }
-  })
-
-// Driver Utilities
-program.commandsGroup('Driver Utilities:')
-
-// Show defaults command
-program
-  .command('show-defaults')
-  .description('Show driver DEFAULT_CONFIG and SUPPORTED_CONFIG')
-  .optionsGroup('Driver Selection:')
-  .option('-d, --driver <package>', 'Driver package name')
-  .option('--local', 'Load from local package (cwd)')
-  .optionsGroup('Output Options:')
-  .option('-f, --format <type>', 'Output format: table or json (default: table)', 'table')
-  .action((options: ShowDefaultsOptions) => {
-    try {
-      showDefaultsCommand(options)
     } catch (error) {
       console.error(`Error: ${(error as Error).message}`)
       process.exit(1)

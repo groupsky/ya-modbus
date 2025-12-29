@@ -451,5 +451,4 @@ The command distinguishes between:
 
 - [`read` command](../README.md#read-command) - Read data points after discovery
 - [`write` command](../README.md#write-command) - Write data points after discovery
-- [`show-defaults` command](../README.md#show-defaults-command) - View driver defaults
 - [Driver Development Guide](../../../docs/DRIVER-DEVELOPMENT.md) - Creating custom drivers

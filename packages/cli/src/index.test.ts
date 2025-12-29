@@ -1,13 +1,11 @@
 import * as discoverModule from './commands/discover.js'
 import * as readModule from './commands/read.js'
-import * as showDefaultsModule from './commands/show-defaults.js'
 import * as writeModule from './commands/write.js'
 
 import { program } from './index.js'
 
 jest.mock('./commands/read.js')
 jest.mock('./commands/write.js')
-jest.mock('./commands/show-defaults.js')
 jest.mock('./commands/discover.js')
 
 /**
@@ -93,28 +91,24 @@ describe('CLI Entry Point - Integration Tests', () => {
         CLI tool for testing and developing Modbus device drivers
 
         Options:
-          -V, --version            output the version number
-          -h, --help               display help for command
+          -V, --version       output the version number
+          -h, --help          display help for command
 
         Device Operations:
-          read [options]           Read data points from device
-          write [options]          Write data point to device
+          read [options]      Read data points from device
+          write [options]     Write data point to device
 
         Device Discovery:
-          discover [options]       Discover Modbus devices on serial port by scanning
-                                   slave IDs and parameters
-
-        Driver Utilities:
-          show-defaults [options]  Show driver DEFAULT_CONFIG and SUPPORTED_CONFIG
+          discover [options]  Discover Modbus devices on serial port by scanning slave
+                              IDs and parameters
 
         Commands:
-          help [command]           display help for command
+          help [command]      display help for command
 
         Examples:
           $ ya-modbus read --port /dev/ttyUSB0 --slave-id 1 --driver ya-modbus-driver-xymd1 --all
           $ ya-modbus write --host 192.168.1.100 --slave-id 1 --data-point voltage --value 220
           $ ya-modbus discover --port /dev/ttyUSB0 --strategy quick
-          $ ya-modbus show-defaults --driver ya-modbus-driver-xymd1
             
         "
       `)
@@ -131,7 +125,7 @@ describe('CLI Entry Point - Integration Tests', () => {
 
         Driver Options:
           -d, --driver <package>  Driver package name (e.g., ya-modbus-driver-xymd1).
-                                  Use "show-defaults" to see driver config
+                                  See driver README for device configs
           --device <type>         Device type within driver (e.g., md01, md02). Only for
                                   multi-device drivers
 
@@ -448,7 +442,7 @@ describe('CLI Entry Point - Integration Tests', () => {
 
         Driver Options:
           -d, --driver <package>  Driver package name (e.g., ya-modbus-driver-xymd1).
-                                  Use "show-defaults" to see driver config
+                                  See driver README for device configs
           --device <type>         Device type within driver (e.g., md01, md02). Only for
                                   multi-device drivers
 
@@ -641,135 +635,6 @@ describe('CLI Entry Point - Integration Tests', () => {
         expect.objectContaining({
           yes: true,
           verify: true,
-        })
-      )
-    })
-  })
-
-  describe('Show Defaults Command', () => {
-    it('should display help information for show-defaults command', async () => {
-      const helpOutput = await captureHelpOutput(['node', 'ya-modbus', 'show-defaults', '--help'])
-      expect(helpOutput).toMatchInlineSnapshot(`
-        "Usage: ya-modbus show-defaults [options]
-
-        Show driver DEFAULT_CONFIG and SUPPORTED_CONFIG
-
-        Driver Selection:
-          -d, --driver <package>  Driver package name
-          --local                 Load from local package (cwd)
-
-        Output Options:
-          -f, --format <type>     Output format: table or json (default: table)
-                                  (default: "table")
-
-        Options:
-          -h, --help              display help for command
-        "
-      `)
-    })
-
-    it('should execute show-defaults with driver package', async () => {
-      const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
-      mockShowDefaultsCommand.mockResolvedValue()
-
-      await program.parseAsync([
-        'node',
-        'ya-modbus',
-        'show-defaults',
-        '--driver',
-        'ya-modbus-driver-xymd1',
-        '--format',
-        'json',
-      ])
-
-      expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
-        expect.objectContaining({
-          driver: 'ya-modbus-driver-xymd1',
-          format: 'json',
-        })
-      )
-      expect(mockShowDefaultsCommand).toHaveBeenCalledTimes(1)
-    })
-
-    it('should execute show-defaults with local driver', async () => {
-      const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
-      mockShowDefaultsCommand.mockResolvedValue()
-
-      await program.parseAsync([
-        'node',
-        'ya-modbus',
-        'show-defaults',
-        '--local',
-        '--format',
-        'table',
-      ])
-
-      expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
-        expect.objectContaining({
-          local: true,
-          format: 'table',
-        })
-      )
-    })
-
-    it('should execute show-defaults with default format', async () => {
-      const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
-      mockShowDefaultsCommand.mockResolvedValue()
-
-      await program.parseAsync(['node', 'ya-modbus', 'show-defaults', '--driver', 'test-driver'])
-
-      expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
-        expect.objectContaining({
-          driver: 'test-driver',
-          format: 'table', // default value
-        })
-      )
-    })
-
-    it('should handle driver loading errors', async () => {
-      const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
-      mockShowDefaultsCommand.mockRejectedValue(new Error('Driver package not found'))
-
-      await expect(
-        program.parseAsync(['node', 'ya-modbus', 'show-defaults', '--driver', 'invalid-driver'])
-      ).rejects.toThrow('process.exit called')
-
-      expect(mockShowDefaultsCommand).toHaveBeenCalled()
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error: Driver package not found')
-      expect(processExitSpy).toHaveBeenCalledWith(1)
-    })
-
-    it('should parse short option flags correctly', async () => {
-      const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
-      mockShowDefaultsCommand.mockResolvedValue()
-
-      await program.parseAsync([
-        'node',
-        'ya-modbus',
-        'show-defaults',
-        '-d',
-        'test-driver',
-        '-f',
-        'json',
-      ])
-
-      expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
-        expect.objectContaining({
-          driver: 'test-driver',
-          format: 'json',
-        })
-      )
-    })
-
-    it('should work without any options', async () => {
-      const mockShowDefaultsCommand = jest.mocked(showDefaultsModule.showDefaultsCommand)
-      mockShowDefaultsCommand.mockResolvedValue()
-
-      await program.parseAsync(['node', 'ya-modbus', 'show-defaults'])
-
-      expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
-        expect.objectContaining({
-          format: 'table',
         })
       )
     })

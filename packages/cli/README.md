@@ -388,47 +388,30 @@ When using third-party or development drivers, be aware:
    Error: Invalid baud rate 38400. This driver supports: 9600, 14400, 19200 (default: 9600)
    ```
 
-**Show Driver Defaults:**
+**Inspecting Driver Configuration:**
 
-Use the `show-defaults` command to inspect driver configuration before use:
+Driver configurations are accessed programmatically via `DEVICE_METADATA`:
 
-```bash
-# Show defaults from installed driver
-ya-modbus show-defaults --driver ya-modbus-driver-xymd1
+```typescript
+import { DEVICE_METADATA } from 'ya-modbus-driver-xymd1'
 
-# Show defaults from local development driver
-cd packages/my-driver
-ya-modbus show-defaults --local
+// List all available devices
+for (const [deviceId, metadata] of Object.entries(DEVICE_METADATA)) {
+  console.log(`Device: ${deviceId} - ${metadata.name}`)
+  console.log('Default config:', metadata.defaultConfig)
+  console.log('Supported config:', metadata.supportedConfig)
+  console.log('Data points:', metadata.dataPoints)
+}
 
-# JSON output for tooling
-ya-modbus show-defaults --driver ya-modbus-driver-xymd1 --format json
-```
-
-Output:
-
-```
-Driver Defaults
-===============
-
-DEFAULT_CONFIG:
-  baudRate: 9600
-  parity: "even"
-  dataBits: 8
-  stopBits: 1
-  defaultAddress: 1
-
-SUPPORTED_CONFIG:
-  validBaudRates: [9600,14400,19200]
-  validParity: ["even","none"]
-  validDataBits: [8]
-  validStopBits: [1]
-  validAddressRange: [1,247]
+// Use specific device configuration
+const config = DEVICE_METADATA.md02.defaultConfig
+console.log(`Parity: ${config.parity}`) // 'even'
 ```
 
 **Best Practices:**
 
-1. **Test with `show-defaults`**: Before using a third-party driver, inspect its configuration
-2. **Validate in development**: Run `ya-modbus show-defaults --local` when developing drivers
+1. **Review driver documentation**: Check README.md for device variants and configurations
+2. **Use DEVICE_METADATA**: Access device configs programmatically for tooling integration
 3. **Read error messages**: The CLI provides specific fix instructions for configuration errors
 4. **Use first-party drivers**: Official drivers undergo rigorous validation
 
