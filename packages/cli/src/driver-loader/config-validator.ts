@@ -266,6 +266,7 @@ export function validateDevices(devices: unknown): DeviceRegistry {
           console.warn(`  - ${warning}`)
         }
         console.warn('  This may indicate a driver authoring error\n')
+        console.warn('Run: ya-modbus show-defaults --driver <package> to inspect configuration\n')
       }
     }
   }
