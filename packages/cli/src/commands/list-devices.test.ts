@@ -1,6 +1,6 @@
 import { loadDriver } from '../driver-loader/loader.js'
 
-import { listDevicesCommand, type ListDevicesOptions } from './list-devices.js'
+import { listDevicesCommand } from './list-devices.js'
 
 jest.mock('../driver-loader/loader.js')
 
@@ -18,13 +18,16 @@ describe('listDevicesCommand', () => {
     consoleLogSpy.mockRestore()
   })
 
-  describe('validation', () => {
-    test('should throw error if neither driver nor local is specified', async () => {
-      const options: ListDevicesOptions = {}
+  describe('auto-detection', () => {
+    test('should auto-detect from cwd when no driver specified', async () => {
+      mockLoadDriver.mockResolvedValue({
+        createDriver: jest.fn(),
+        devices: { 'device-1': { manufacturer: 'Acme', model: 'X1' } },
+      })
 
-      await expect(listDevicesCommand(options)).rejects.toThrow(
-        'Either --driver or --local must be specified'
-      )
+      await listDevicesCommand({ format: 'json' })
+
+      expect(mockLoadDriver).toHaveBeenCalledWith({})
     })
   })
 
@@ -270,17 +273,6 @@ describe('listDevicesCommand', () => {
       await listDevicesCommand({ driver: 'my-driver-package', format: 'json' })
 
       expect(mockLoadDriver).toHaveBeenCalledWith({ driverPackage: 'my-driver-package' })
-    })
-
-    test('should load local driver', async () => {
-      mockLoadDriver.mockResolvedValue({
-        createDriver: jest.fn(),
-        devices: { 'device-1': { manufacturer: 'Acme', model: 'X1' } },
-      })
-
-      await listDevicesCommand({ local: true, format: 'json' })
-
-      expect(mockLoadDriver).toHaveBeenCalledWith({ localPackage: true })
     })
   })
 })

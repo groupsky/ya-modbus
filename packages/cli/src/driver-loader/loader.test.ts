@@ -14,10 +14,14 @@ describe('Driver Loader', () => {
   // Note: These tests verify error handling and validation logic.
   // Actual dynamic import mocking is complex in ES modules and tested via integration tests.
 
-  test('should require either localPackage or driverPackage', async () => {
-    await expect(loadDriver({})).rejects.toThrow(
-      'Either localPackage or driverPackage must be specified'
-    )
+  test('should auto-detect local package when no options specified', async () => {
+    // When no options are specified, loadDriver should attempt local package detection
+    // This will fail if not in a driver package directory (no ya-modbus-driver keyword)
+    const error = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException
+    error.code = 'ENOENT'
+    mockReadFile.mockRejectedValue(error)
+
+    await expect(loadDriver({})).rejects.toThrow('package.json not found')
   })
 
   test('should not allow both localPackage and driverPackage', async () => {

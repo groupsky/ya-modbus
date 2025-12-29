@@ -136,8 +136,7 @@ program
   .optionsGroup('Connection:')
   .requiredOption('-p, --port <path>', 'Serial port for RTU (e.g., /dev/ttyUSB0, COM3)')
   .optionsGroup('Driver Options:')
-  .option('-d, --driver <package>', 'Driver package (uses SUPPORTED_CONFIG to limit scan)')
-  .option('--local', 'Load driver from local package (cwd)')
+  .option('-d, --driver <package>', 'Driver package (auto-detects from cwd if not specified)')
   .optionsGroup('Discovery Options:')
   .option(
     '--strategy <type>',
@@ -171,9 +170,8 @@ program.commandsGroup('Driver Utilities:')
 program
   .command('list-devices')
   .description('List supported devices from driver DEVICES registry')
-  .optionsGroup('Driver Selection:')
-  .option('-d, --driver <package>', 'Driver package name')
-  .option('--local', 'Load from local package (cwd)')
+  .optionsGroup('Driver Options:')
+  .option('-d, --driver <package>', 'Driver package (auto-detects from cwd if not specified)')
   .optionsGroup('Output Options:')
   .option('-f, --format <type>', 'Output format: table or json (default: table)', 'table')
   .action(async (options: ListDevicesOptions) => {
@@ -189,9 +187,8 @@ program
 program
   .command('show-defaults')
   .description('Show driver DEFAULT_CONFIG and SUPPORTED_CONFIG')
-  .optionsGroup('Driver Selection:')
-  .option('-d, --driver <package>', 'Driver package name')
-  .option('--local', 'Load from local package (cwd)')
+  .optionsGroup('Driver Options:')
+  .option('-d, --driver <package>', 'Driver package (auto-detects from cwd if not specified)')
   .optionsGroup('Output Options:')
   .option('-f, --format <type>', 'Output format: table or json (default: table)', 'table')
   .action(async (options: ShowDefaultsOptions) => {
