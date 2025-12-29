@@ -451,7 +451,9 @@ export async function withDriverInstance<T>(
     }
   } else if (device) {
     // Warn user that --device is ignored for single-device drivers
-    console.warn(`Warning: --device option ignored (driver does not export a DEVICES registry)`)
+    console.warn(
+      `Warning: --device '${device}' ignored (driver does not export a DEVICES registry)`
+    )
   }
 
   // Create driver instance - only include device if defined

@@ -503,7 +503,7 @@ describe('Utils', () => {
       await withDriverInstance(mockTransport, driverMetadata, 1, 'some-device', async () => {})
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        'Warning: --device option ignored (driver does not export a DEVICES registry)'
+        "Warning: --device 'some-device' ignored (driver does not export a DEVICES registry)"
       )
       // Driver should still be created (device param passed but ignored by single-device driver)
       expect(createDriver).toHaveBeenCalledWith({
