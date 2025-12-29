@@ -232,6 +232,32 @@ describe('listDevicesCommand', () => {
       const output = consoleLogSpy.mock.calls.map((call) => call[0]).join('\n')
       expect(output).toContain('19200 8O2') // Odd parity
     })
+
+    test('should show dash for config with no recognized properties', async () => {
+      mockLoadDriver.mockResolvedValue({
+        createDriver: jest.fn(),
+        devices: {
+          'device-1': {
+            manufacturer: 'Acme',
+            model: 'X1',
+            // Config object exists but has neither baudRate nor defaultPort
+            defaultConfig: {
+              defaultAddress: 1,
+            } as never, // Type bypass for testing edge case
+          },
+        },
+      })
+
+      await listDevicesCommand({ driver: 'test-driver', format: 'table' })
+
+      const output = consoleLogSpy.mock.calls.map((call) => call[0]).join('\n')
+      // Table row should contain a dash for the config column
+      expect(output).toContain('device-1')
+      expect(output).toContain('Acme')
+      // The row format is: device-1 | Acme | X1 | - | (empty description)
+      // Verify the table contains the dash (config column)
+      expect(output).toMatch(/device-1.*Acme.*X1.*-/)
+    })
   })
 
   describe('loading modes', () => {
