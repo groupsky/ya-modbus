@@ -33,7 +33,7 @@ import type {
  * Supported configuration values for Ex9EM
  *
  * The device supports:
- * - Baud rates: 9600, 19200 bps (typical Modbus RTU rates)
+ * - Baud rates: 1200, 2400, 4800, 9600 bps (per register map PDF)
  * - Parity: even, none
  * - Data bits: 8 only
  * - Stop bits: 1 only
@@ -42,7 +42,7 @@ import type {
  * See DEFAULT_CONFIG for factory defaults.
  */
 export const SUPPORTED_CONFIG = {
-  validBaudRates: [9600, 19200],
+  validBaudRates: [1200, 2400, 4800, 9600],
   validParity: ['even', 'none'],
   validDataBits: [8],
   validStopBits: [1],
@@ -155,8 +155,9 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     id: 'total_reactive_energy',
     name: 'Total Reactive Energy',
     type: 'float',
+    unit: 'kVArh',
     access: 'r',
-    description: 'Total reactive energy in kilovolt-amperes reactive hours (kVArh)',
+    description: 'Total reactive energy in kilovolt-amperes reactive hours',
     decimals: 2,
   },
 ]
@@ -179,10 +180,10 @@ function decodeAllDataPoints(buffer: Buffer): Record<string, unknown> {
   const apparent_power = buffer.readUInt16BE(10)
   // Power factor (register 6, ×1000)
   const power_factor = buffer.readUInt16BE(12) / 1000
-  // Total active energy (registers 7-8, 32-bit, ×100)
-  const total_active_energy = ((buffer.readUInt16BE(14) << 16) + buffer.readUInt16BE(16)) / 100
-  // Total reactive energy (registers 9-10, 32-bit, ×100)
-  const total_reactive_energy = ((buffer.readUInt16BE(18) << 16) + buffer.readUInt16BE(20)) / 100
+  // Total active energy (registers 7-8, 32-bit big-endian, ×100)
+  const total_active_energy = (buffer.readUInt16BE(14) * 65536 + buffer.readUInt16BE(16)) / 100
+  // Total reactive energy (registers 9-10, 32-bit big-endian, ×100)
+  const total_reactive_energy = (buffer.readUInt16BE(18) * 65536 + buffer.readUInt16BE(20)) / 100
 
   return {
     voltage,

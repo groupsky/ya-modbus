@@ -29,7 +29,7 @@ describe('Configuration Constants', () => {
   describe('SUPPORTED_CONFIG', () => {
     it('should export supported configuration values', () => {
       expect(SUPPORTED_CONFIG).toBeDefined()
-      expect(SUPPORTED_CONFIG.validBaudRates).toEqual([9600, 19200])
+      expect(SUPPORTED_CONFIG.validBaudRates).toEqual([1200, 2400, 4800, 9600])
       expect(SUPPORTED_CONFIG.validParity).toEqual(['even', 'none'])
       expect(SUPPORTED_CONFIG.validDataBits).toEqual([8])
       expect(SUPPORTED_CONFIG.validStopBits).toEqual([1])
@@ -150,7 +150,7 @@ describe('Ex9EM Driver', () => {
       const totalReactiveEnergy = dataPoints.find((dp) => dp.id === 'total_reactive_energy')
       expect(totalReactiveEnergy).toBeDefined()
       expect(totalReactiveEnergy?.type).toBe('float')
-      expect(totalReactiveEnergy?.unit).toBeUndefined()
+      expect(totalReactiveEnergy?.unit).toBe('kVArh')
       expect(totalReactiveEnergy?.access).toBe('r')
     })
   })
@@ -563,6 +563,120 @@ describe('Ex9EM Driver', () => {
       mockTransport.readHoldingRegisters.mockResolvedValue(Buffer.alloc(22))
 
       await expect(driver.readDataPoint('invalid')).rejects.toThrow('Unknown data point')
+    })
+
+    it('should handle power factor boundary value 0.000', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      mockTransport.readHoldingRegisters.mockResolvedValue(
+        Buffer.from([
+          0x00,
+          0x00, // voltage = 0
+          0x00,
+          0x00, // current = 0
+          0x00,
+          0x00, // frequency = 0
+          0x00,
+          0x00, // active_power = 0
+          0x00,
+          0x00, // reactive_power = 0
+          0x00,
+          0x00, // apparent_power = 0
+          0x00,
+          0x00, // power_factor = 0 (0.000)
+          0x00,
+          0x00,
+          0x00,
+          0x00, // total_active_energy = 0
+          0x00,
+          0x00,
+          0x00,
+          0x00, // total_reactive_energy = 0
+        ])
+      )
+
+      const powerFactor = await driver.readDataPoint('power_factor')
+      expect(powerFactor).toBe(0.0)
+    })
+
+    it('should handle power factor boundary value 1.000', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      mockTransport.readHoldingRegisters.mockResolvedValue(
+        Buffer.from([
+          0x08,
+          0xfc, // voltage = 2300
+          0x00,
+          0x34, // current = 52
+          0x01,
+          0xf4, // frequency = 500
+          0x04,
+          0xa4, // active_power = 1188W
+          0x00,
+          0x00, // reactive_power = 0VAr
+          0x04,
+          0xa4, // apparent_power = 1188VA
+          0x03,
+          0xe8, // power_factor = 1000 (1.000)
+          0x00,
+          0x00,
+          0x00,
+          0x64, // total_active_energy = 100
+          0x00,
+          0x00,
+          0x00,
+          0x00, // total_reactive_energy = 0
+        ])
+      )
+
+      const powerFactor = await driver.readDataPoint('power_factor')
+      expect(powerFactor).toBe(1.0)
+    })
+
+    it('should handle maximum 32-bit energy values', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Maximum 32-bit value: 0xFFFFFFFF = 4294967295 ÷ 100 = 42949672.95
+      mockTransport.readHoldingRegisters.mockResolvedValue(
+        Buffer.from([
+          0x08,
+          0xfc, // voltage = 2300
+          0x00,
+          0x34, // current = 52
+          0x01,
+          0xf4, // frequency = 500
+          0x04,
+          0xa4, // active_power = 1188W
+          0x00,
+          0x96, // reactive_power = 150VAr
+          0x04,
+          0xb5, // apparent_power = 1205VA
+          0x03,
+          0x52, // power_factor = 850
+          0xff,
+          0xff,
+          0xff,
+          0xff, // total_active_energy = max (42949672.95 kWh)
+          0xff,
+          0xff,
+          0xff,
+          0xff, // total_reactive_energy = max (42949672.95 kVArh)
+        ])
+      )
+
+      const totalActiveEnergy = await driver.readDataPoint('total_active_energy')
+      const totalReactiveEnergy = await driver.readDataPoint('total_reactive_energy')
+      expect(totalActiveEnergy).toBe(42949672.95)
+      expect(totalReactiveEnergy).toBe(42949672.95)
     })
   })
 
