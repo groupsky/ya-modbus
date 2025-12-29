@@ -1,4 +1,8 @@
-import { validateDefaultConfig, validateSupportedConfig } from './config-validator.js'
+import {
+  validateDefaultConfig,
+  validateDevices,
+  validateSupportedConfig,
+} from './config-validator.js'
 
 describe('validateDefaultConfig', () => {
   describe('valid configurations', () => {
@@ -312,6 +316,146 @@ describe('validateSupportedConfig', () => {
       expect(() => validateSupportedConfig(config)).toThrow(
         'Invalid SUPPORTED_CONFIG: validParity must be an array, got object'
       )
+    })
+  })
+})
+
+describe('validateDevices', () => {
+  describe('valid configurations', () => {
+    test('should accept valid devices registry with minimal properties', () => {
+      const devices = {
+        'device-1': {
+          manufacturer: 'Acme',
+          model: 'X1',
+        },
+      }
+
+      expect(() => validateDevices(devices)).not.toThrow()
+      expect(validateDevices(devices)).toEqual(devices)
+    })
+
+    test('should accept valid devices registry with all properties', () => {
+      const devices = {
+        'device-1': {
+          manufacturer: 'Acme',
+          model: 'X1',
+          description: 'A test device',
+          defaultConfig: {
+            baudRate: 9600,
+            parity: 'even',
+            dataBits: 8,
+            stopBits: 1,
+            defaultAddress: 1,
+          },
+          supportedConfig: { validBaudRates: [9600, 19200] },
+        },
+      }
+
+      expect(() => validateDevices(devices)).not.toThrow()
+    })
+
+    test('should accept multiple devices', () => {
+      const devices = {
+        'device-1': { manufacturer: 'Acme', model: 'X1' },
+        'device-2': { manufacturer: 'Acme', model: 'X2' },
+        'device-3': { manufacturer: 'Other', model: 'Y1' },
+      }
+
+      expect(() => validateDevices(devices)).not.toThrow()
+    })
+  })
+
+  describe('invalid config shape', () => {
+    test('should reject null', () => {
+      expect(() => validateDevices(null)).toThrow('Invalid DEVICES: must be an object')
+    })
+
+    test('should reject undefined', () => {
+      expect(() => validateDevices(undefined)).toThrow('Invalid DEVICES: must be an object')
+    })
+
+    test('should reject non-object types', () => {
+      expect(() => validateDevices('string')).toThrow('Invalid DEVICES: must be an object')
+      expect(() => validateDevices(123)).toThrow('Invalid DEVICES: must be an object')
+      expect(() => validateDevices(true)).toThrow('Invalid DEVICES: must be an object')
+    })
+
+    test('should reject arrays', () => {
+      expect(() => validateDevices([])).toThrow('Invalid DEVICES: must be an object, not an array')
+      expect(() => validateDevices([{ manufacturer: 'Acme', model: 'X1' }])).toThrow(
+        'Invalid DEVICES: must be an object, not an array'
+      )
+    })
+
+    test('should reject empty object', () => {
+      expect(() => validateDevices({})).toThrow('Invalid DEVICES: must contain at least one device')
+    })
+  })
+
+  describe('invalid device entries', () => {
+    test('should reject non-object device entry', () => {
+      expect(() => validateDevices({ 'device-1': null })).toThrow(
+        'Invalid DEVICES["device-1"]: must be an object'
+      )
+      expect(() => validateDevices({ 'device-1': 'string' })).toThrow(
+        'Invalid DEVICES["device-1"]: must be an object'
+      )
+    })
+
+    test('should reject missing manufacturer', () => {
+      expect(() => validateDevices({ 'device-1': { model: 'X1' } })).toThrow(
+        'Invalid DEVICES["device-1"]: manufacturer must be a string'
+      )
+    })
+
+    test('should reject non-string manufacturer', () => {
+      expect(() => validateDevices({ 'device-1': { manufacturer: 123, model: 'X1' } })).toThrow(
+        'Invalid DEVICES["device-1"]: manufacturer must be a string'
+      )
+    })
+
+    test('should reject missing model', () => {
+      expect(() => validateDevices({ 'device-1': { manufacturer: 'Acme' } })).toThrow(
+        'Invalid DEVICES["device-1"]: model must be a string'
+      )
+    })
+
+    test('should reject non-string model', () => {
+      expect(() => validateDevices({ 'device-1': { manufacturer: 'Acme', model: 123 } })).toThrow(
+        'Invalid DEVICES["device-1"]: model must be a string'
+      )
+    })
+
+    test('should reject non-string description', () => {
+      expect(() =>
+        validateDevices({ 'device-1': { manufacturer: 'Acme', model: 'X1', description: 123 } })
+      ).toThrow('Invalid DEVICES["device-1"]: description must be a string')
+    })
+  })
+
+  describe('nested config validation', () => {
+    test('should reject invalid nested defaultConfig', () => {
+      const devices = {
+        'device-1': {
+          manufacturer: 'Acme',
+          model: 'X1',
+          defaultConfig: { baudRate: '9600' }, // string instead of number
+        },
+      }
+
+      expect(() => validateDevices(devices)).toThrow('Invalid DEVICES["device-1"].defaultConfig:')
+    })
+
+    test('should reject invalid nested supportedConfig', () => {
+      const devices = {
+        'device-1': {
+          manufacturer: 'Acme',
+          model: 'X1',
+          supportedConfig: { validBaudRates: 9600 }, // number instead of array
+        },
+      }
+
+      expect(() => validateDevices(devices)).toThrow('Invalid DEVICES["device-1"].supportedConfig:')
     })
   })
 })

@@ -536,14 +536,13 @@ No cyclic dependencies: SDK is contract, core is runtime, drivers are plugins.
 
 ### Driver Discovery
 
-**Convention-based loading** with optional metadata:
+**Convention-based loading**:
 
 1. **Package naming**:
    - Recommended: `ya-modbus-driver-<name>` (e.g., `ya-modbus-driver-solar`)
    - Scoped packages: `@org/ya-modbus-driver-<name>`
    - Required: keyword `"ya-modbus-driver"` in package.json
-2. **Standard export**: Driver classes exported from package main entry
-3. **Optional metadata**: `ya-modbus-driver.json` for tooling/discovery
+2. **Standard exports**: `createDriver` factory, optional `DEFAULT_CONFIG`, `SUPPORTED_CONFIG`, `DEVICES`
 
 **Example third-party driver** (`ya-modbus-driver-solar`):
 
@@ -562,9 +561,9 @@ No cyclic dependencies: SDK is contract, core is runtime, drivers are plugins.
 
 **Single package, multiple device types**: Package exports single `createDriver` factory function that handles all device variants.
 
-**Auto-detection**: Driver can auto-detect device type from identification registers when `deviceType` config omitted.
+**Auto-detection**: Driver can auto-detect device type from identification registers when `device` config omitted.
 
-**Runtime loading**: Core bridge imports package and calls `createDriver(config)` with optional `deviceType` parameter.
+**Runtime loading**: Core bridge imports package and calls `createDriver(config)` with optional `device` parameter.
 
 ### Driver Interface Contract
 
@@ -693,15 +692,15 @@ npm install ya-modbus-mqtt-bridge ya-modbus-driver-solar
 ```json
 {
   "driver": "ya-modbus-driver-solar",
-  "deviceType": "X1000" // Optional - auto-detect if omitted
+  "device": "X1000" // Optional - auto-detect if omitted
 }
 ```
 
 **Configuration pattern**:
 
 - `driver`: Package name (e.g., `ya-modbus-driver-solar`)
-- `deviceType`: Optional device variant within package
-- Auto-detection: Omit `deviceType` and driver reads identification registers
+- `device`: Optional device variant within package (use `ya-modbus list-devices` to see options)
+- Auto-detection: Omit `device` and driver reads identification registers
 
 **Benefits**:
 

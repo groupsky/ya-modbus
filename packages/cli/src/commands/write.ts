@@ -30,6 +30,7 @@ export interface WriteOptions {
 
   // Driver options
   driver?: string
+  device?: string
 
   // Write options
   dataPoint: string

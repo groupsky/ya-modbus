@@ -12,6 +12,8 @@ import type {
   SupportedSerialConfig,
   SupportedTCPConfig,
   SupportedConfig,
+  DeviceInfo,
+  DeviceRegistry,
 } from './device-driver.js'
 
 describe('DefaultSerialConfig', () => {
@@ -277,5 +279,187 @@ describe('SupportedConfig union type', () => {
 
     expect(tcpConfig.validPorts).toEqual([502])
     expect('validPorts' in tcpConfig).toBe(true)
+  })
+})
+
+describe('DeviceInfo', () => {
+  it('should accept minimal device info', () => {
+    const deviceInfo: DeviceInfo = {
+      manufacturer: 'ORNO',
+      model: 'OR-WE-514',
+    }
+
+    expect(deviceInfo.manufacturer).toBe('ORNO')
+    expect(deviceInfo.model).toBe('OR-WE-514')
+    expect(deviceInfo.description).toBeUndefined()
+  })
+
+  it('should accept device info with description', () => {
+    const deviceInfo: DeviceInfo = {
+      manufacturer: 'ORNO',
+      model: 'OR-WE-514',
+      description: 'Single-phase energy meter',
+    }
+
+    expect(deviceInfo.description).toBe('Single-phase energy meter')
+  })
+
+  it('should accept device info with serial defaultConfig', () => {
+    const deviceInfo: DeviceInfo = {
+      manufacturer: 'ORNO',
+      model: 'OR-WE-514',
+      defaultConfig: {
+        baudRate: 9600,
+        parity: 'even',
+        dataBits: 8,
+        stopBits: 1,
+        defaultAddress: 1,
+      },
+    }
+
+    expect(deviceInfo.defaultConfig).toBeDefined()
+    expect('baudRate' in deviceInfo.defaultConfig!).toBe(true)
+  })
+
+  it('should accept device info with TCP defaultConfig', () => {
+    const deviceInfo: DeviceInfo = {
+      manufacturer: 'Acme',
+      model: 'TCP-100',
+      defaultConfig: {
+        defaultPort: 502,
+        defaultAddress: 1,
+      },
+    }
+
+    expect(deviceInfo.defaultConfig).toBeDefined()
+    expect('defaultPort' in deviceInfo.defaultConfig!).toBe(true)
+  })
+
+  it('should accept device info with supportedConfig', () => {
+    const deviceInfo: DeviceInfo = {
+      manufacturer: 'ORNO',
+      model: 'OR-WE-514',
+      supportedConfig: {
+        validBaudRates: [9600, 19200],
+        validParity: ['even', 'none'],
+      },
+    }
+
+    expect(deviceInfo.supportedConfig).toBeDefined()
+    expect(deviceInfo.supportedConfig!.validBaudRates).toEqual([9600, 19200])
+  })
+
+  it('should accept complete device info', () => {
+    const deviceInfo: DeviceInfo = {
+      manufacturer: 'ORNO',
+      model: 'OR-WE-514',
+      description: 'Single-phase energy meter',
+      defaultConfig: {
+        baudRate: 9600,
+        parity: 'even',
+        dataBits: 8,
+        stopBits: 1,
+        defaultAddress: 1,
+      },
+      supportedConfig: {
+        validBaudRates: [9600, 19200],
+        validParity: ['even', 'none'],
+      },
+    }
+
+    expect(deviceInfo.manufacturer).toBe('ORNO')
+    expect(deviceInfo.model).toBe('OR-WE-514')
+    expect(deviceInfo.description).toBe('Single-phase energy meter')
+    expect(deviceInfo.defaultConfig).toBeDefined()
+    expect(deviceInfo.supportedConfig).toBeDefined()
+  })
+})
+
+describe('DeviceRegistry', () => {
+  it('should accept empty registry at type level (rejected at runtime)', () => {
+    // Note: TypeScript allows empty registries, but the CLI validates
+    // that DEVICES contains at least one device at runtime.
+    const registry: DeviceRegistry = {}
+
+    expect(Object.keys(registry)).toHaveLength(0)
+  })
+
+  it('should accept registry with single device', () => {
+    const registry: DeviceRegistry = {
+      'or-we-514': {
+        manufacturer: 'ORNO',
+        model: 'OR-WE-514',
+      },
+    }
+
+    expect(registry['or-we-514'].manufacturer).toBe('ORNO')
+    expect(registry['or-we-514'].model).toBe('OR-WE-514')
+  })
+
+  it('should accept registry with multiple devices', () => {
+    const registry: DeviceRegistry = {
+      'or-we-514': {
+        manufacturer: 'ORNO',
+        model: 'OR-WE-514',
+        description: 'Single-phase meter',
+      },
+      'or-we-516': {
+        manufacturer: 'ORNO',
+        model: 'OR-WE-516',
+        description: 'Three-phase meter',
+      },
+    }
+
+    expect(Object.keys(registry)).toHaveLength(2)
+    expect(registry['or-we-514'].description).toBe('Single-phase meter')
+    expect(registry['or-we-516'].description).toBe('Three-phase meter')
+  })
+
+  it('should preserve literal types with as const satisfies', () => {
+    const registry = {
+      'device-a': {
+        manufacturer: 'Acme',
+        model: 'A1',
+      },
+      'device-b': {
+        manufacturer: 'Acme',
+        model: 'B1',
+        description: 'Device B',
+      },
+    } as const satisfies DeviceRegistry
+
+    // Type assertions to verify literal types are preserved
+    const _manufacturerA: 'Acme' = registry['device-a'].manufacturer
+    const _modelB: 'B1' = registry['device-b'].model
+
+    expect(_manufacturerA).toBe('Acme')
+    expect(_modelB).toBe('B1')
+  })
+
+  it('should accept devices with device-specific configs', () => {
+    const registry: DeviceRegistry = {
+      'serial-device': {
+        manufacturer: 'Acme',
+        model: 'S1',
+        defaultConfig: {
+          baudRate: 9600,
+          parity: 'even',
+          dataBits: 8,
+          stopBits: 1,
+          defaultAddress: 1,
+        },
+      },
+      'tcp-device': {
+        manufacturer: 'Acme',
+        model: 'T1',
+        defaultConfig: {
+          defaultPort: 502,
+          defaultAddress: 1,
+        },
+      },
+    }
+
+    expect('baudRate' in registry['serial-device'].defaultConfig!).toBe(true)
+    expect('defaultPort' in registry['tcp-device'].defaultConfig!).toBe(true)
   })
 })

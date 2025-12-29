@@ -1,9 +1,18 @@
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 
-import type { CreateDriverFunction, DefaultConfig, SupportedConfig } from '@ya-modbus/driver-types'
+import type {
+  CreateDriverFunction,
+  DefaultConfig,
+  DeviceRegistry,
+  SupportedConfig,
+} from '@ya-modbus/driver-types'
 
-import { validateDefaultConfig, validateSupportedConfig } from './config-validator.js'
+import {
+  validateDefaultConfig,
+  validateDevices,
+  validateSupportedConfig,
+} from './config-validator.js'
 
 /**
  * Loaded driver module with configuration metadata
@@ -11,6 +20,9 @@ import { validateDefaultConfig, validateSupportedConfig } from './config-validat
 export interface LoadedDriver {
   /** Driver factory function */
   createDriver: CreateDriverFunction
+
+  /** Registry of supported devices (for multi-device drivers) */
+  devices?: DeviceRegistry
 
   /** Factory-default device configuration (if provided by driver) */
   defaultConfig?: DefaultConfig
@@ -156,8 +168,9 @@ export async function loadDriver(options: LoadDriverOptions): Promise<LoadedDriv
       throw new Error('Driver package must export a createDriver function')
     }
 
-    const { createDriver, DEFAULT_CONFIG, SUPPORTED_CONFIG } = driverModule as {
+    const { createDriver, DEVICES, DEFAULT_CONFIG, SUPPORTED_CONFIG } = driverModule as {
       createDriver?: unknown
+      DEVICES?: unknown
       DEFAULT_CONFIG?: unknown
       SUPPORTED_CONFIG?: unknown
     }
@@ -173,6 +186,11 @@ export async function loadDriver(options: LoadDriverOptions): Promise<LoadedDriv
     // Build result object conditionally to satisfy exactOptionalPropertyTypes
     const result: LoadedDriver = {
       createDriver: createDriver as CreateDriverFunction,
+    }
+
+    // Validate and add DEVICES if present
+    if (DEVICES !== null && DEVICES !== undefined) {
+      result.devices = validateDevices(DEVICES)
     }
 
     // Validate and add DEFAULT_CONFIG if present
