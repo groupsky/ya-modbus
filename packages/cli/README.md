@@ -305,6 +305,15 @@ Drivers export `DEFAULT_CONFIG` and `SUPPORTED_CONFIG` constants that the CLI us
 - Validate user input against device-specific constraints
 - Show helpful error messages with valid values and defaults
 
+**Configuration priority** (highest to lowest):
+
+1. **User-specified** - Command-line options (e.g., `--baud-rate 19200`)
+2. **Device-specific** - `DEVICES[key].defaultConfig` when `--device` is used
+3. **Driver-level** - `DEFAULT_CONFIG` export from driver package
+4. **CLI fallback** - Built-in defaults (9600 8E1, slave ID 1)
+
+The same priority applies to validation constraints (`supportedConfig`).
+
 **Before (manual configuration):**
 
 ```bash
