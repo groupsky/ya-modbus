@@ -477,11 +477,14 @@ Document in driver implementation, enforce via function composition.
 
 ### Optional: ya-modbus-driver.json
 
-For packages supporting multiple device types:
+> **Note**: This file is for future tooling integration. Currently, use the `DEVICES` export
+> (see [multi-device example](#example-multi-device-package-functional-approach)) which provides
+> device metadata programmatically and is used by the CLI's `list-devices` command.
+
+Static metadata for package registries and discovery tools:
 
 ```json
 {
-  "deviceTypes": ["X1000", "X2000", "X5000"],
   "supportsAutoDetection": true,
   "manufacturer": "Acme Corp",
   "deviceFamily": "X-Series Solar Inverters",
