@@ -41,8 +41,9 @@ paths: packages/devices/**/*.ts
 
 - `DEFAULT_CONFIG` - Factory defaults (use `DefaultSerialConfig` or `DefaultTCPConfig`)
 - `SUPPORTED_CONFIG` - Device constraints (use `SupportedSerialConfig` or `SupportedTCPConfig`)
+- `DEVICES` - Device registry for multi-device drivers (use `DeviceRegistry`)
 
-If exporting both, add cross-validation tests ensuring defaults are within supported ranges.
+If exporting both DEFAULT_CONFIG and SUPPORTED_CONFIG, add cross-validation tests ensuring defaults are within supported ranges.
 
 ## Testing
 
