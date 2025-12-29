@@ -258,3 +258,131 @@ export function validateDevices(devices: unknown): DeviceRegistry {
 
   return devices as DeviceRegistry
 }
+
+/**
+ * Cross-validate DEFAULT_CONFIG against SUPPORTED_CONFIG constraints
+ *
+ * Checks that all DEFAULT_CONFIG values are within SUPPORTED_CONFIG constraints.
+ * This helps catch driver authoring errors where defaults don't match declared support.
+ *
+ * @param defaultConfig - The validated DEFAULT_CONFIG
+ * @param supportedConfig - The validated SUPPORTED_CONFIG
+ * @returns Array of warning messages for any inconsistencies found (empty if all valid)
+ *
+ * @example
+ * const warnings = crossValidateConfigs(
+ *   { baudRate: 115200, parity: 'even', dataBits: 8, stopBits: 1, defaultAddress: 1 },
+ *   { validBaudRates: [9600], validParity: ['even', 'odd'] }
+ * )
+ * // Returns: ['baudRate: 115200 is not in validBaudRates: [9600]']
+ */
+export function crossValidateConfigs(
+  defaultConfig: DefaultConfig,
+  supportedConfig: SupportedConfig
+): string[] {
+  const warnings: string[] = []
+
+  // Determine if this is serial or TCP config
+  const isSerial = 'baudRate' in defaultConfig
+  const isTCP = 'defaultPort' in defaultConfig
+
+  if (isSerial) {
+    const serialDefault = defaultConfig
+    const serialSupported = supportedConfig as Record<string, unknown>
+
+    // Check baudRate
+    if ('validBaudRates' in serialSupported && Array.isArray(serialSupported['validBaudRates'])) {
+      const validBaudRates = serialSupported['validBaudRates'] as number[]
+      if (!validBaudRates.includes(serialDefault.baudRate)) {
+        warnings.push(
+          `baudRate: ${serialDefault.baudRate} is not in validBaudRates: [${validBaudRates.join(', ')}]`
+        )
+      }
+    }
+
+    // Check parity
+    if (
+      'parity' in serialDefault &&
+      'validParity' in serialSupported &&
+      Array.isArray(serialSupported['validParity'])
+    ) {
+      const validParity = serialSupported['validParity'] as string[]
+      if (!validParity.includes(serialDefault.parity)) {
+        warnings.push(
+          `parity: "${serialDefault.parity}" is not in validParity: [${validParity.map((p) => `"${p}"`).join(', ')}]`
+        )
+      }
+    }
+
+    // Check dataBits
+    if (
+      'dataBits' in serialDefault &&
+      'validDataBits' in serialSupported &&
+      Array.isArray(serialSupported['validDataBits'])
+    ) {
+      const validDataBits = serialSupported['validDataBits'] as number[]
+      if (!validDataBits.includes(serialDefault.dataBits)) {
+        warnings.push(
+          `dataBits: ${serialDefault.dataBits} is not in validDataBits: [${validDataBits.join(', ')}]`
+        )
+      }
+    }
+
+    // Check stopBits
+    if (
+      'stopBits' in serialDefault &&
+      'validStopBits' in serialSupported &&
+      Array.isArray(serialSupported['validStopBits'])
+    ) {
+      const validStopBits = serialSupported['validStopBits'] as number[]
+      if (!validStopBits.includes(serialDefault.stopBits)) {
+        warnings.push(
+          `stopBits: ${serialDefault.stopBits} is not in validStopBits: [${validStopBits.join(', ')}]`
+        )
+      }
+    }
+
+    // Check defaultAddress (serial)
+    if (
+      'defaultAddress' in serialDefault &&
+      'validAddressRange' in serialSupported &&
+      Array.isArray(serialSupported['validAddressRange'])
+    ) {
+      const [min, max] = serialSupported['validAddressRange'] as [number, number]
+      if (serialDefault.defaultAddress < min || serialDefault.defaultAddress > max) {
+        warnings.push(
+          `defaultAddress: ${serialDefault.defaultAddress} is not in validAddressRange: [${min}, ${max}]`
+        )
+      }
+    }
+  } else if (isTCP) {
+    const tcpDefault = defaultConfig
+    const tcpSupported = supportedConfig as Record<string, unknown>
+
+    // Check defaultPort
+    if ('validPorts' in tcpSupported && Array.isArray(tcpSupported['validPorts'])) {
+      const validPorts = tcpSupported['validPorts'] as number[]
+      if (!validPorts.includes(tcpDefault.defaultPort)) {
+        warnings.push(
+          `defaultPort: ${tcpDefault.defaultPort} is not in validPorts: [${validPorts.join(', ')}]`
+        )
+      }
+    }
+
+    // Check defaultAddress (TCP)
+    if (
+      'defaultAddress' in tcpDefault &&
+      'validAddressRange' in tcpSupported &&
+      Array.isArray(tcpSupported['validAddressRange'])
+    ) {
+      const [min, max] = tcpSupported['validAddressRange'] as [number, number]
+      if (tcpDefault.defaultAddress < min || tcpDefault.defaultAddress > max) {
+        warnings.push(
+          `defaultAddress: ${tcpDefault.defaultAddress} is not in validAddressRange: [${min}, ${max}]`
+        )
+      }
+    }
+  }
+
+  return warnings
+}
