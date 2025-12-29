@@ -932,6 +932,31 @@ describe('Ex9EM Driver', () => {
       expect(mockTransport.readHoldingRegisters).toHaveBeenNthCalledWith(3, 0x002b, 1)
     })
 
+    it('should read only config data points without measurement data points', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Mock baud_rate register (value 4 = 9600 bps)
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x04]))
+
+      // Mock device_address register
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x34]))
+
+      const values = await driver.readDataPoints(['baud_rate', 'device_address'])
+
+      expect(values).toEqual({
+        baud_rate: 9600,
+        device_address: 52,
+      })
+
+      // Should only read config registers, not measurement registers
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledTimes(2)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenNthCalledWith(1, 0x002a, 1)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenNthCalledWith(2, 0x002b, 1)
+    })
+
     it('should throw when reading password in batch', async () => {
       const driver = await createDriver({
         transport: mockTransport,
@@ -1175,7 +1200,7 @@ describe('Ex9EM Driver', () => {
       }
     })
 
-    it('should return raw value for unknown baud rate encoding', async () => {
+    it('should throw error for unknown baud rate encoding', async () => {
       const driver = await createDriver({
         transport: mockTransport,
         slaveId: 1,
@@ -1184,8 +1209,9 @@ describe('Ex9EM Driver', () => {
       // Mock unknown encoded value (e.g., 0x05)
       mockTransport.readHoldingRegisters.mockResolvedValue(Buffer.from([0x00, 0x05]))
 
-      const value = await driver.readDataPoint('baud_rate')
-      expect(value).toBe(5) // Should return raw value when not in mapping
+      await expect(driver.readDataPoint('baud_rate')).rejects.toThrow(
+        'Unknown baud rate encoding from device: 5'
+      )
     })
   })
 })

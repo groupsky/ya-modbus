@@ -205,16 +205,16 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
 ]
 
 /**
+ * Valid baud rate type extracted from SUPPORTED_CONFIG
+ */
+type ValidBaudRate = (typeof SUPPORTED_CONFIG.validBaudRates)[number]
+
+/**
  * Baud rate encoding/decoding mappings
  * Device encoding: 1=1200, 2=2400, 3=4800, 4=9600 bps
  */
 const BAUD_RATE_DECODE: Record<number, number> = { 1: 1200, 2: 2400, 3: 4800, 4: 9600 }
-const BAUD_RATE_ENCODE: Record<number, number> = { 1200: 1, 2400: 2, 4800: 3, 9600: 4 }
-
-/**
- * Valid baud rate type extracted from SUPPORTED_CONFIG
- */
-type ValidBaudRate = (typeof SUPPORTED_CONFIG.validBaudRates)[number]
+const BAUD_RATE_ENCODE: Record<ValidBaudRate, number> = { 1200: 1, 2400: 2, 4800: 3, 9600: 4 }
 
 /**
  * Validate that a value is one of the supported baud rates
@@ -283,7 +283,11 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
       if (id === 'baud_rate') {
         const buffer = await transport.readHoldingRegisters(0x002a, 1)
         const value = buffer.readUInt16BE(0)
-        return BAUD_RATE_DECODE[value] ?? value
+        const decoded = BAUD_RATE_DECODE[value]
+        if (decoded === undefined) {
+          throw new Error(`Unknown baud rate encoding from device: ${value}`)
+        }
+        return decoded
       }
       if (id === 'device_address') {
         const buffer = await transport.readHoldingRegisters(0x002b, 1)
@@ -305,6 +309,11 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
     },
 
     async readDataPoints(ids: string[]): Promise<Record<string, unknown>> {
+      // Check for write-only data points first
+      if (ids.includes('password')) {
+        throw new Error('Password is write-only')
+      }
+
       const result: Record<string, unknown> = {}
 
       // Separate measurement and configuration data points
@@ -328,11 +337,6 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
       // Read configuration registers individually
       for (const id of configIds) {
         result[id] = await this.readDataPoint(id)
-      }
-
-      // Handle password request
-      if (ids.includes('password')) {
-        throw new Error('Password is write-only')
       }
 
       return result
