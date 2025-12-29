@@ -6,7 +6,8 @@ CLI tool for testing Modbus device drivers.
 
 - `docs/agents/cli-transport.md` - Transport layer patterns
 - `docs/agents/cli-commands.md` - Command structure
+- `docs/discovery.md` - Discovery architecture and patterns
 
 ## Human Docs
 
-- `docs/discovery.md` - Discovery command details
+- `docs/discover-command.md` - Discovery command user guide
