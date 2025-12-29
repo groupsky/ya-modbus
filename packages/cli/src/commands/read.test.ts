@@ -286,10 +286,8 @@ describe('Read Command', () => {
 
     await readCommand(options)
 
-    // Verify driver loader was called in local mode
-    expect(driverLoader.loadDriver).toHaveBeenCalledWith({
-      localPackage: true,
-    })
+    // Verify driver loader was called with auto-detection (empty options)
+    expect(driverLoader.loadDriver).toHaveBeenCalledWith({})
   })
 
   test('should measure performance metrics', async () => {

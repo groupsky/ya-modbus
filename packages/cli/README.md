@@ -501,7 +501,7 @@ If `--device` is omitted with a multi-device driver, the driver-level defaults a
 **Best Practices:**
 
 1. **Test with `show-defaults`**: Before using a third-party driver, inspect its configuration
-2. **Validate in development**: Run `ya-modbus show-defaults --local` when developing drivers
+2. **Validate in development**: Run `ya-modbus show-defaults` from your driver directory to validate configuration
 3. **Read error messages**: The CLI provides specific fix instructions for configuration errors
 4. **Use first-party drivers**: Official drivers undergo rigorous validation
 
