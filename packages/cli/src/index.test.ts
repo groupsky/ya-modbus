@@ -1,4 +1,5 @@
 import * as discoverModule from './commands/discover.js'
+import * as listDevicesModule from './commands/list-devices.js'
 import * as readModule from './commands/read.js'
 import * as showDefaultsModule from './commands/show-defaults.js'
 import * as writeModule from './commands/write.js'
@@ -9,6 +10,7 @@ jest.mock('./commands/read.js')
 jest.mock('./commands/write.js')
 jest.mock('./commands/show-defaults.js')
 jest.mock('./commands/discover.js')
+jest.mock('./commands/list-devices.js')
 
 /**
  * Integration tests for CLI entry point
@@ -771,6 +773,97 @@ describe('CLI Entry Point - Integration Tests', () => {
           format: 'table',
         })
       )
+    })
+  })
+
+  describe('List Devices Command', () => {
+    it('should display help information for list-devices command', async () => {
+      const helpOutput = await captureHelpOutput(['node', 'ya-modbus', 'list-devices', '--help'])
+      expect(helpOutput).toMatchInlineSnapshot(`
+        "Usage: ya-modbus list-devices [options]
+
+        List supported devices from driver DEVICES registry
+
+        Driver Options:
+          -d, --driver <package>  Driver package (auto-detects from cwd if not
+                                  specified)
+
+        Output Options:
+          -f, --format <type>     Output format: table or json (default: table)
+                                  (default: "table")
+
+        Options:
+          -h, --help              display help for command
+        "
+      `)
+    })
+
+    it('should execute list-devices with driver package', async () => {
+      const mockListDevicesCommand = jest.mocked(listDevicesModule.listDevicesCommand)
+      mockListDevicesCommand.mockResolvedValue()
+
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'list-devices',
+        '--driver',
+        'ya-modbus-driver-xymd1',
+        '--format',
+        'json',
+      ])
+
+      expect(mockListDevicesCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          driver: 'ya-modbus-driver-xymd1',
+          format: 'json',
+        })
+      )
+      expect(mockListDevicesCommand).toHaveBeenCalledTimes(1)
+    })
+
+    it('should execute list-devices with auto-detection (no driver specified)', async () => {
+      const mockListDevicesCommand = jest.mocked(listDevicesModule.listDevicesCommand)
+      mockListDevicesCommand.mockResolvedValue()
+
+      await program.parseAsync(['node', 'ya-modbus', 'list-devices', '--format', 'table'])
+
+      expect(mockListDevicesCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          format: 'table',
+        })
+      )
+      // Verify driver is not set (triggers auto-detection)
+      expect(mockListDevicesCommand).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          driver: expect.anything(),
+        })
+      )
+    })
+
+    it('should work without any options', async () => {
+      const mockListDevicesCommand = jest.mocked(listDevicesModule.listDevicesCommand)
+      mockListDevicesCommand.mockResolvedValue()
+
+      await program.parseAsync(['node', 'ya-modbus', 'list-devices'])
+
+      expect(mockListDevicesCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          format: 'table',
+        })
+      )
+    })
+
+    it('should handle driver loading errors', async () => {
+      const mockListDevicesCommand = jest.mocked(listDevicesModule.listDevicesCommand)
+      mockListDevicesCommand.mockRejectedValue(new Error('Driver package not found'))
+
+      await expect(
+        program.parseAsync(['node', 'ya-modbus', 'list-devices', '--driver', 'invalid-driver'])
+      ).rejects.toThrow('process.exit called')
+
+      expect(mockListDevicesCommand).toHaveBeenCalled()
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error: Driver package not found')
+      expect(processExitSpy).toHaveBeenCalledWith(1)
     })
   })
 

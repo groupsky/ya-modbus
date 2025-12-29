@@ -386,6 +386,29 @@ describe('Discover Command', () => {
       )
       expect(consoleLogSpy).toHaveBeenCalledWith('  (package.json not found in current directory)')
     })
+
+    test('should fallback gracefully when explicit --driver fails to load', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+      jest
+        .spyOn(driverLoader, 'loadDriver')
+        .mockRejectedValue(new Error('Driver package not found: nonexistent-driver'))
+
+      // Even with explicit --driver, discover gracefully falls back
+      // (unlike list-devices/show-defaults which require a driver)
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        driver: 'nonexistent-driver',
+        format: 'table',
+        verbose: true,
+      })
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'No driver available, using generic Modbus parameters...'
+      )
+      expect(consoleLogSpy).toHaveBeenCalledWith('  (Driver package not found: nonexistent-driver)')
+      // Verify scan still executed with generic parameters
+      expect(scanner.scanForDevices).toHaveBeenCalled()
+    })
   })
 
   describe('verbose mode', () => {
