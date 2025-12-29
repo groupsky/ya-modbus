@@ -877,6 +877,86 @@ describe('Ex9EM Driver', () => {
         'Unknown data point'
       )
     })
+
+    it('should read config registers with measurement data points', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Mock measurement registers
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(
+        Buffer.from([
+          0x08,
+          0xfc, // voltage = 2300 (230.0V)
+          0x00,
+          0x34, // current = 52 (5.2A)
+          0x01,
+          0xf4, // frequency = 500 (50.0Hz)
+          0x04,
+          0xa4, // active_power = 1188W
+          0x00,
+          0x96, // reactive_power = 150VAr
+          0x04,
+          0xb5, // apparent_power = 1205VA
+          0x03,
+          0x52, // power_factor = 850 (0.850)
+          0x00,
+          0x01,
+          0xe2,
+          0x40, // total_active_energy = 123456 (1234.56kWh)
+          0x00,
+          0x01,
+          0x81,
+          0xcd, // total_reactive_energy = 98765 (987.65kVArh)
+        ])
+      )
+
+      // Mock baud_rate register (value 4 = 9600 bps)
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x04]))
+
+      // Mock device_address register
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x01]))
+
+      const values = await driver.readDataPoints(['voltage', 'baud_rate', 'device_address'])
+
+      expect(values).toEqual({
+        voltage: 230.0,
+        baud_rate: 9600,
+        device_address: 1,
+      })
+
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledTimes(3)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenNthCalledWith(1, 0x0000, 11)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenNthCalledWith(2, 0x002a, 1)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenNthCalledWith(3, 0x002b, 1)
+    })
+
+    it('should throw when reading password in batch', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Mock measurement buffer for voltage reading
+      mockTransport.readHoldingRegisters.mockResolvedValue(Buffer.alloc(22))
+
+      await expect(driver.readDataPoints(['voltage', 'password'])).rejects.toThrow(
+        'Password is write-only'
+      )
+    })
+
+    it('should throw on buffer too short', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Mock buffer with only 10 bytes (should be 22)
+      mockTransport.readHoldingRegisters.mockResolvedValue(Buffer.alloc(10))
+
+      await expect(driver.readDataPoint('voltage')).rejects.toThrow('Buffer too short')
+    })
   })
 
   describe('writeDataPoint', () => {
@@ -1043,6 +1123,69 @@ describe('Ex9EM Driver', () => {
         0x002c,
         Buffer.from([0xff, 0xff, 0xff, 0xff])
       )
+    })
+
+    it('should reject non-finite values for device_address', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      await expect(driver.writeDataPoint('device_address', NaN)).rejects.toThrow(
+        'Invalid device address'
+      )
+      await expect(driver.writeDataPoint('device_address', Infinity)).rejects.toThrow(
+        'Invalid device address'
+      )
+      await expect(driver.writeDataPoint('device_address', -Infinity)).rejects.toThrow(
+        'Invalid device address'
+      )
+    })
+
+    it('should reject non-finite values for password', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      await expect(driver.writeDataPoint('password', NaN)).rejects.toThrow('Invalid password')
+      await expect(driver.writeDataPoint('password', Infinity)).rejects.toThrow('Invalid password')
+      await expect(driver.writeDataPoint('password', -Infinity)).rejects.toThrow('Invalid password')
+    })
+  })
+
+  describe('readDataPoint - baud rate decoding', () => {
+    it('should decode known baud rate values', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      const testCases = [
+        { encoded: 0x01, decoded: 1200 },
+        { encoded: 0x02, decoded: 2400 },
+        { encoded: 0x03, decoded: 4800 },
+        { encoded: 0x04, decoded: 9600 },
+      ]
+
+      for (const test of testCases) {
+        mockTransport.readHoldingRegisters.mockResolvedValue(Buffer.from([0x00, test.encoded]))
+        const value = await driver.readDataPoint('baud_rate')
+        expect(value).toBe(test.decoded)
+      }
+    })
+
+    it('should return raw value for unknown baud rate encoding', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Mock unknown encoded value (e.g., 0x05)
+      mockTransport.readHoldingRegisters.mockResolvedValue(Buffer.from([0x00, 0x05]))
+
+      const value = await driver.readDataPoint('baud_rate')
+      expect(value).toBe(5) // Should return raw value when not in mapping
     })
   })
 })

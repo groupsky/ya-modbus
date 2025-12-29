@@ -205,6 +205,13 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
 ]
 
 /**
+ * Baud rate encoding/decoding mappings
+ * Device encoding: 1=1200, 2=2400, 3=4800, 4=9600 bps
+ */
+const BAUD_RATE_DECODE: Record<number, number> = { 1: 1200, 2: 2400, 3: 4800, 4: 9600 }
+const BAUD_RATE_ENCODE: Record<number, number> = { 1200: 1, 2400: 2, 4800: 3, 9600: 4 }
+
+/**
  * Valid baud rate type extracted from SUPPORTED_CONFIG
  */
 type ValidBaudRate = (typeof SUPPORTED_CONFIG.validBaudRates)[number]
@@ -219,9 +226,14 @@ function isValidBaudRate(value: unknown): value is ValidBaudRate {
 }
 
 /**
- * Decode raw Modbus buffer to data point values
+ * Decode raw Modbus buffer containing measurement data to data point values
  */
-function decodeAllDataPoints(buffer: Buffer): Record<string, unknown> {
+function decodeMeasurementDataPoints(buffer: Buffer): Record<string, unknown> {
+  // Buffer must contain 11 registers (22 bytes) for all measurement data
+  if (buffer.length < 22) {
+    throw new Error(`Buffer too short: expected at least 22 bytes, got ${buffer.length}`)
+  }
+
   // Voltage (register 0, ×10)
   const voltage = buffer.readUInt16BE(0) / 10
   // Current (register 1, ×10)
@@ -271,9 +283,7 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
       if (id === 'baud_rate') {
         const buffer = await transport.readHoldingRegisters(0x002a, 1)
         const value = buffer.readUInt16BE(0)
-        // Decode: 1=1200, 2=2400, 3=4800, 4=9600
-        const baudRateMap: Record<number, number> = { 1: 1200, 2: 2400, 3: 4800, 4: 9600 }
-        return baudRateMap[value] ?? value
+        return BAUD_RATE_DECODE[value] ?? value
       }
       if (id === 'device_address') {
         const buffer = await transport.readHoldingRegisters(0x002b, 1)
@@ -285,7 +295,7 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
 
       // Read all measurement registers at once (0x0000-0x000A = 11 registers)
       const buffer = await transport.readHoldingRegisters(0x0000, 11)
-      const allValues = decodeAllDataPoints(buffer)
+      const allValues = decodeMeasurementDataPoints(buffer)
 
       if (!(id in allValues)) {
         throw new Error(`Unknown data point: ${id}`)
@@ -303,10 +313,10 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
       )
       const configIds = ids.filter((id) => id === 'baud_rate' || id === 'device_address')
 
-      // Read measurement registers if needed
+      // Read measurement registers if needed (0x0000-0x000A = 11 registers)
       if (measurementIds.length > 0) {
         const buffer = await transport.readHoldingRegisters(0x0000, 11)
-        const allValues = decodeAllDataPoints(buffer)
+        const allValues = decodeMeasurementDataPoints(buffer)
         for (const id of measurementIds) {
           if (!(id in allValues)) {
             throw new Error(`Unknown data point: ${id}`)
@@ -329,26 +339,24 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
     },
 
     async writeDataPoint(id: string, value: unknown): Promise<void> {
-      // Validate and write baud rate
+      // Validate and write baud rate (register 0x002A)
       if (id === 'baud_rate') {
         if (!isValidBaudRate(value)) {
           throw new Error(
             `Invalid baud rate: must be one of ${SUPPORTED_CONFIG.validBaudRates.join(', ')}`
           )
         }
-        // Encode: 1200=1, 2400=2, 4800=3, 9600=4
-        const baudRateMap: Record<number, number> = { 1200: 1, 2400: 2, 4800: 3, 9600: 4 }
-        const encoded = baudRateMap[value]
+        const encoded = BAUD_RATE_ENCODE[value]
         const buffer = Buffer.allocUnsafe(2)
         buffer.writeUInt16BE(encoded, 0)
         await transport.writeMultipleRegisters(0x002a, buffer)
         return
       }
 
-      // Validate and write device address
+      // Validate and write device address (register 0x002B, range 1-247)
       if (id === 'device_address') {
         const [min, max] = SUPPORTED_CONFIG.validAddressRange
-        if (typeof value !== 'number' || value < min || value > max) {
+        if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
           throw new Error(`Invalid device address: must be between ${min} and ${max}`)
         }
         const buffer = Buffer.allocUnsafe(2)
@@ -357,9 +365,14 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         return
       }
 
-      // Write password (32-bit, register 0x002C)
+      // Write password (32-bit, registers 0x002C-0x002D, range 0-4294967295)
       if (id === 'password') {
-        if (typeof value !== 'number' || value < 0 || value > 4294967295) {
+        if (
+          typeof value !== 'number' ||
+          !Number.isFinite(value) ||
+          value < 0 ||
+          value > 4294967295
+        ) {
           throw new Error('Invalid password: must be between 0 and 4294967295')
         }
         const buffer = Buffer.allocUnsafe(4)
