@@ -16,8 +16,8 @@ export type SlaveId = number
  * Device driver factory function configuration
  */
 export interface DriverConfig {
-  /** Optional device type within driver package */
-  deviceType?: string
+  /** Device key from driver's DEVICES registry (for multi-device drivers) */
+  device?: string
 
   /** Modbus transport layer */
   transport: Transport
@@ -263,3 +263,60 @@ export interface SupportedTCPConfig {
  * Drivers should export SUPPORTED_CONFIG matching one of these types
  */
 export type SupportedConfig = SupportedSerialConfig | SupportedTCPConfig
+
+/**
+ * Device metadata for multi-device drivers
+ *
+ * Contains user-facing information about a supported device.
+ * Internal details like register mappings are not exposed here.
+ *
+ * @example
+ * ```typescript
+ * const deviceInfo: DeviceInfo = {
+ *   manufacturer: 'ORNO',
+ *   model: 'OR-WE-514',
+ *   description: 'Single-phase energy meter',
+ *   defaultConfig: { baudRate: 9600, parity: 'even', ... },
+ * }
+ * ```
+ */
+export interface DeviceInfo {
+  /** Device manufacturer */
+  readonly manufacturer: string
+
+  /** Device model identifier */
+  readonly model: string
+
+  /** Human-readable device description */
+  readonly description?: string
+
+  /** Device-specific default configuration */
+  readonly defaultConfig?: DefaultConfig
+
+  /** Device-specific supported configuration constraints */
+  readonly supportedConfig?: SupportedConfig
+}
+
+/**
+ * Registry of supported devices for multi-device drivers
+ *
+ * Maps device keys to their metadata. Device keys are used with the
+ * `device` parameter in DriverConfig to select which device to use.
+ *
+ * @example
+ * ```typescript
+ * export const DEVICES: DeviceRegistry = {
+ *   'or-we-514': {
+ *     manufacturer: 'ORNO',
+ *     model: 'OR-WE-514',
+ *     description: 'Single-phase energy meter',
+ *   },
+ *   'or-we-516': {
+ *     manufacturer: 'ORNO',
+ *     model: 'OR-WE-516',
+ *     description: 'Three-phase energy meter',
+ *   },
+ * }
+ * ```
+ */
+export type DeviceRegistry = Readonly<Record<string, DeviceInfo>>

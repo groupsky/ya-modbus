@@ -1,4 +1,6 @@
-import type { DataPoint, DeviceDriver } from '@ya-modbus/driver-types'
+import type { DataPoint, DeviceDriver, Transport } from '@ya-modbus/driver-types'
+
+import type { LoadedDriver } from '../driver-loader/loader.js'
 
 import {
   confirm,
@@ -10,6 +12,7 @@ import {
   isWritable,
   parseValue,
   validateValue,
+  withDriverInstance,
 } from './commands.js'
 
 // Mock readline/promises for confirm tests
@@ -411,6 +414,82 @@ describe('Utils', () => {
       mockQuestion.mockRejectedValue(new Error('Test error'))
       await expect(confirm('Proceed?')).rejects.toThrow('Test error')
       expect(mockClose).toHaveBeenCalled()
+    })
+  })
+
+  describe('withDriverInstance', () => {
+    const mockTransport = {} as Transport
+    const mockDriver: DeviceDriver = {
+      name: 'Test',
+      manufacturer: 'Test',
+      model: 'Test',
+      dataPoints: [],
+      readDataPoint: jest.fn(),
+      readDataPoints: jest.fn(),
+      writeDataPoint: jest.fn(),
+    }
+
+    test('should throw error for invalid device key when DEVICES registry exists', async () => {
+      const driverMetadata: LoadedDriver = {
+        createDriver: jest.fn().mockResolvedValue(mockDriver),
+        devices: {
+          'device-a': { manufacturer: 'Acme', model: 'A' },
+          'device-b': { manufacturer: 'Acme', model: 'B' },
+        },
+      }
+
+      await expect(
+        withDriverInstance(mockTransport, driverMetadata, 1, 'invalid-device', async () => {})
+      ).rejects.toThrow('Unknown device: invalid-device. Valid devices: device-a, device-b')
+    })
+
+    test('should pass valid device key to createDriver', async () => {
+      const createDriver = jest.fn().mockResolvedValue(mockDriver)
+      const driverMetadata: LoadedDriver = {
+        createDriver,
+        devices: {
+          'device-a': { manufacturer: 'Acme', model: 'A' },
+        },
+      }
+
+      await withDriverInstance(mockTransport, driverMetadata, 1, 'device-a', async () => {})
+
+      expect(createDriver).toHaveBeenCalledWith({
+        transport: mockTransport,
+        slaveId: 1,
+        device: 'device-a',
+      })
+    })
+
+    test('should not include device in config when undefined', async () => {
+      const createDriver = jest.fn().mockResolvedValue(mockDriver)
+      const driverMetadata: LoadedDriver = {
+        createDriver,
+      }
+
+      await withDriverInstance(mockTransport, driverMetadata, 1, undefined, async () => {})
+
+      expect(createDriver).toHaveBeenCalledWith({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+    })
+
+    test('should allow undefined device when DEVICES registry exists', async () => {
+      const createDriver = jest.fn().mockResolvedValue(mockDriver)
+      const driverMetadata: LoadedDriver = {
+        createDriver,
+        devices: {
+          'device-a': { manufacturer: 'Acme', model: 'A' },
+        },
+      }
+
+      await withDriverInstance(mockTransport, driverMetadata, 1, undefined, async () => {})
+
+      expect(createDriver).toHaveBeenCalledWith({
+        transport: mockTransport,
+        slaveId: 1,
+      })
     })
   })
 })

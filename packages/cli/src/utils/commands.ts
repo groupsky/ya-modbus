@@ -234,6 +234,7 @@ export interface TransportOptions {
  */
 export interface DriverOptions {
   driver?: string
+  device?: string
   slaveId: number
 }
 
@@ -334,6 +335,7 @@ export function applyDriverDefaults(
  * @param transport - Transport to use for driver communication
  * @param driverMetadata - Loaded driver metadata
  * @param slaveId - Modbus slave ID
+ * @param device - Optional device key for multi-device drivers
  * @param fn - Function to execute with the driver
  * @returns Result of the function
  */
@@ -341,13 +343,21 @@ export async function withDriverInstance<T>(
   transport: Transport,
   driverMetadata: LoadedDriver,
   slaveId: number,
+  device: string | undefined,
   fn: (driver: DeviceDriver) => Promise<T>
 ): Promise<T> {
-  // Create driver instance
-  const driver = await driverMetadata.createDriver({
-    transport,
-    slaveId,
-  })
+  // Validate device key if DEVICES registry exists
+  if (driverMetadata.devices) {
+    const validDevices = Object.keys(driverMetadata.devices)
+    if (device && !validDevices.includes(device)) {
+      throw new Error(`Unknown device: ${device}. Valid devices: ${validDevices.join(', ')}`)
+    }
+  }
+
+  // Create driver instance - only include device if defined
+  const driverConfig = device ? { transport, slaveId, device } : { transport, slaveId }
+
+  const driver = await driverMetadata.createDriver(driverConfig)
 
   return await fn(driver)
 }
@@ -371,7 +381,7 @@ export async function withDriverInstance<T>(
  * @throws ValidationError if user options or driver defaults violate constraints
  */
 export async function withDriver<T>(
-  options: TransportOptions & { driver?: string },
+  options: TransportOptions & { driver?: string; device?: string },
   fn: (driver: DeviceDriver, mergedOptions: TransportOptions) => Promise<T>
 ): Promise<T> {
   // Load driver metadata first
@@ -414,6 +424,7 @@ export async function withDriver<T>(
       transport,
       driverMetadata,
       mergedOptions.slaveId,
+      options.device,
       async (driver) => {
         // Execute callback with driver and merged options
         return await fn(driver, mergedOptions)

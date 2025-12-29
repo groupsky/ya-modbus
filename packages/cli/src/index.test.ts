@@ -105,6 +105,7 @@ describe('CLI Entry Point - Integration Tests', () => {
                                    slave IDs and parameters
 
         Driver Utilities:
+          list-devices [options]   List supported devices from driver DEVICES registry
           show-defaults [options]  Show driver DEFAULT_CONFIG and SUPPORTED_CONFIG
 
         Commands:
@@ -132,6 +133,8 @@ describe('CLI Entry Point - Integration Tests', () => {
         Driver Options:
           -d, --driver <package>  Driver package name (e.g., ya-modbus-driver-xymd1).
                                   Use "show-defaults" to see driver config
+          --device <key>          Device key for multi-device drivers. Use
+                                  "list-devices" to see available devices
 
         Connection Options:
           -s, --slave-id <id>     Modbus slave ID (1-247). May use driver default if
@@ -447,6 +450,8 @@ describe('CLI Entry Point - Integration Tests', () => {
         Driver Options:
           -d, --driver <package>  Driver package name (e.g., ya-modbus-driver-xymd1).
                                   Use "show-defaults" to see driver config
+          --device <key>          Device key for multi-device drivers. Use
+                                  "list-devices" to see available devices
 
         Connection Options:
           -s, --slave-id <id>     Modbus slave ID (1-247). May use driver default if

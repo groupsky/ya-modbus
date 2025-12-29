@@ -3,6 +3,7 @@
 import { Command } from 'commander'
 
 import { discoverCommand, type DiscoverOptions } from './commands/discover.js'
+import { listDevicesCommand, type ListDevicesOptions } from './commands/list-devices.js'
 import { readCommand, type ReadOptions } from './commands/read.js'
 import { showDefaultsCommand, type ShowDefaultsOptions } from './commands/show-defaults.js'
 import { writeCommand, type WriteOptions } from './commands/write.js'
@@ -21,6 +22,10 @@ function addConnectionOptions(command: Command): Command {
       .option(
         '-d, --driver <package>',
         'Driver package name (e.g., ya-modbus-driver-xymd1). Use "show-defaults" to see driver config'
+      )
+      .option(
+        '--device <key>',
+        'Device key for multi-device drivers. Use "list-devices" to see available devices'
       )
 
       // Connection Options
@@ -161,6 +166,24 @@ program
 
 // Driver Utilities
 program.commandsGroup('Driver Utilities:')
+
+// List devices command
+program
+  .command('list-devices')
+  .description('List supported devices from driver DEVICES registry')
+  .optionsGroup('Driver Selection:')
+  .option('-d, --driver <package>', 'Driver package name')
+  .option('--local', 'Load from local package (cwd)')
+  .optionsGroup('Output Options:')
+  .option('-f, --format <type>', 'Output format: table or json (default: table)', 'table')
+  .action(async (options: ListDevicesOptions) => {
+    try {
+      await listDevicesCommand(options)
+    } catch (error) {
+      console.error(`Error: ${(error as Error).message}`)
+      process.exit(1)
+    }
+  })
 
 // Show defaults command
 program
