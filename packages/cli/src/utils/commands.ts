@@ -283,11 +283,13 @@ export async function withTransport<T>(
 /**
  * Load driver metadata without creating an instance
  *
- * @param driverName - Optional driver package name
+ * When no driver name is provided, auto-detects from current working directory.
+ *
+ * @param driverName - Optional driver package name (auto-detects from cwd if not specified)
  * @returns Loaded driver metadata
  */
 export async function loadDriverMetadata(driverName?: string): Promise<LoadedDriver> {
-  return await loadDriver(driverName ? { driverPackage: driverName } : { localPackage: true })
+  return await loadDriver(driverName ? { driverPackage: driverName } : {})
 }
 
 /**

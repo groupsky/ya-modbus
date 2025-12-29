@@ -116,10 +116,17 @@ async function tryImport(paths: string[]): Promise<unknown> {
  * Load a driver package dynamically
  *
  * Supports two modes:
- * 1. Explicit package name: `loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' })`
- * 2. Auto-detect local: `loadDriver({ localPackage: true })` or `loadDriver({})` - reads from cwd package.json
+ * 1. Explicit package: `loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' })`
+ * 2. Auto-detect from cwd: `loadDriver({})` - reads package.json from current directory
  *
- * When no options are specified, auto-detects from current working directory.
+ * Auto-detection checks for `ya-modbus-driver` keyword in package.json keywords.
+ *
+ * @example
+ * // Auto-detect from current directory (preferred for CLI commands)
+ * const driver = await loadDriver({})
+ *
+ * // Load explicit package
+ * const driver = await loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' })
  *
  * @param options - Loading options (defaults to local package detection)
  * @returns Loaded driver with createDriver function and optional configuration metadata
