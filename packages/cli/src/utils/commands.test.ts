@@ -491,5 +491,28 @@ describe('Utils', () => {
         slaveId: 1,
       })
     })
+
+    test('should warn when device is specified but no DEVICES registry exists', async () => {
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
+      const createDriver = jest.fn().mockResolvedValue(mockDriver)
+      const driverMetadata: LoadedDriver = {
+        createDriver,
+        // No devices registry - single-device driver
+      }
+
+      await withDriverInstance(mockTransport, driverMetadata, 1, 'some-device', async () => {})
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Warning: --device option ignored (driver does not export a DEVICES registry)'
+      )
+      // Driver should still be created (device param passed but ignored by single-device driver)
+      expect(createDriver).toHaveBeenCalledWith({
+        transport: mockTransport,
+        slaveId: 1,
+        device: 'some-device',
+      })
+
+      consoleWarnSpy.mockRestore()
+    })
   })
 })

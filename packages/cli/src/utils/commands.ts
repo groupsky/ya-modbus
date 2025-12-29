@@ -449,6 +449,9 @@ export async function withDriverInstance<T>(
     if (device && !validDevices.includes(device)) {
       throw new Error(`Unknown device: ${device}. Valid devices: ${validDevices.join(', ')}`)
     }
+  } else if (device) {
+    // Warn user that --device is ignored for single-device drivers
+    console.warn(`Warning: --device option ignored (driver does not export a DEVICES registry)`)
   }
 
   // Create driver instance - only include device if defined
