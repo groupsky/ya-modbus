@@ -4,7 +4,9 @@
  * Factory default device specifications are exported via the DEFAULT_CONFIG constant.
  * See DEFAULT_CONFIG for baud rate, parity, data bits, stop bits, and default address.
  *
- * Register mapping (based on working device implementation):
+ * Register mapping:
+ *
+ * Measurement registers (based on working device implementation):
  * - Holding register 0x0000: Voltage (×10, V)
  * - Holding register 0x0001: Current (×10, A)
  * - Holding register 0x0002: Grid frequency (×10, Hz) [undocumented in PDF]
@@ -15,9 +17,14 @@
  * - Holding registers 0x0007-0x0008: Total active energy (32-bit, ×100, kWh)
  * - Holding registers 0x0009-0x000A: Total reactive energy (32-bit, ×100, kVArh)
  *
+ * Configuration registers (per PDF documentation):
+ * - Holding register 0x002A: Baud rate (1=1200, 2=2400, 3=4800, 4=9600)
+ * - Holding register 0x002B: Device address (1-247)
+ * - Holding registers 0x002C-0x002D: Password (32-bit, default 0)
+ *
  * Note: The official PDF register map (docs/ex9em-1p-1m-80a-mo-mt-register-map.pdf)
- * shows a different layout with gaps and tariff-specific energy registers.
- * This implementation is based on verified working code with the actual device.
+ * shows a different layout with gaps and tariff-specific energy registers for 0x0007-0x001A.
+ * This implementation uses the simplified layout from verified working code.
  */
 
 import type {
@@ -160,7 +167,56 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     description: 'Total reactive energy in kilovolt-amperes reactive hours',
     decimals: 2,
   },
+  {
+    id: 'device_address',
+    name: 'Device Address',
+    type: 'integer',
+    access: 'rw',
+    pollType: 'on-demand',
+    description: 'Modbus device address (1-247). Changes applied after device restart.',
+    min: 1,
+    max: 247,
+  },
+  {
+    id: 'baud_rate',
+    name: 'Baud Rate',
+    type: 'enum',
+    access: 'rw',
+    pollType: 'on-demand',
+    description: 'Serial communication baud rate. Changes applied after device restart.',
+    enumValues: {
+      1200: '1200 bps',
+      2400: '2400 bps',
+      4800: '4800 bps',
+      9600: '9600 bps',
+    },
+  },
+  {
+    id: 'password',
+    name: 'Password',
+    type: 'integer',
+    access: 'w',
+    pollType: 'on-demand',
+    description:
+      'Device password for configuration changes (32-bit, default 0). Write password before changing configuration.',
+    min: 0,
+    max: 4294967295,
+  },
 ]
+
+/**
+ * Valid baud rate type extracted from SUPPORTED_CONFIG
+ */
+type ValidBaudRate = (typeof SUPPORTED_CONFIG.validBaudRates)[number]
+
+/**
+ * Validate that a value is one of the supported baud rates
+ */
+function isValidBaudRate(value: unknown): value is ValidBaudRate {
+  return (
+    typeof value === 'number' && SUPPORTED_CONFIG.validBaudRates.includes(value as ValidBaudRate)
+  )
+}
 
 /**
  * Decode raw Modbus buffer to data point values
@@ -211,7 +267,23 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
     dataPoints: DATA_POINTS,
 
     async readDataPoint(id: string): Promise<unknown> {
-      // Read all registers at once (0x0000-0x000A = 11 registers)
+      // Configuration registers (read individually)
+      if (id === 'baud_rate') {
+        const buffer = await transport.readHoldingRegisters(0x002a, 1)
+        const value = buffer.readUInt16BE(0)
+        // Decode: 1=1200, 2=2400, 3=4800, 4=9600
+        const baudRateMap: Record<number, number> = { 1: 1200, 2: 2400, 3: 4800, 4: 9600 }
+        return baudRateMap[value] ?? value
+      }
+      if (id === 'device_address') {
+        const buffer = await transport.readHoldingRegisters(0x002b, 1)
+        return buffer.readUInt16BE(0)
+      }
+      if (id === 'password') {
+        throw new Error('Password is write-only')
+      }
+
+      // Read all measurement registers at once (0x0000-0x000A = 11 registers)
       const buffer = await transport.readHoldingRegisters(0x0000, 11)
       const allValues = decodeAllDataPoints(buffer)
 
@@ -223,25 +295,81 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
     },
 
     async readDataPoints(ids: string[]): Promise<Record<string, unknown>> {
-      // Read all registers at once (0x0000-0x000A = 11 registers)
-      const buffer = await transport.readHoldingRegisters(0x0000, 11)
-      const allValues = decodeAllDataPoints(buffer)
-
-      // Return only the requested data points
       const result: Record<string, unknown> = {}
-      for (const id of ids) {
-        if (!(id in allValues)) {
-          throw new Error(`Unknown data point: ${id}`)
+
+      // Separate measurement and configuration data points
+      const measurementIds = ids.filter(
+        (id) => id !== 'baud_rate' && id !== 'device_address' && id !== 'password'
+      )
+      const configIds = ids.filter((id) => id === 'baud_rate' || id === 'device_address')
+
+      // Read measurement registers if needed
+      if (measurementIds.length > 0) {
+        const buffer = await transport.readHoldingRegisters(0x0000, 11)
+        const allValues = decodeAllDataPoints(buffer)
+        for (const id of measurementIds) {
+          if (!(id in allValues)) {
+            throw new Error(`Unknown data point: ${id}`)
+          }
+          result[id] = allValues[id]
         }
-        result[id] = allValues[id]
+      }
+
+      // Read configuration registers individually
+      for (const id of configIds) {
+        result[id] = await this.readDataPoint(id)
+      }
+
+      // Handle password request
+      if (ids.includes('password')) {
+        throw new Error('Password is write-only')
       }
 
       return result
     },
 
-    // eslint-disable-next-line @typescript-eslint/require-await
-    async writeDataPoint(_id: string, _value: unknown): Promise<void> {
-      throw new Error('All data points are read-only')
+    async writeDataPoint(id: string, value: unknown): Promise<void> {
+      // Validate and write baud rate
+      if (id === 'baud_rate') {
+        if (!isValidBaudRate(value)) {
+          throw new Error(
+            `Invalid baud rate: must be one of ${SUPPORTED_CONFIG.validBaudRates.join(', ')}`
+          )
+        }
+        // Encode: 1200=1, 2400=2, 4800=3, 9600=4
+        const baudRateMap: Record<number, number> = { 1200: 1, 2400: 2, 4800: 3, 9600: 4 }
+        const encoded = baudRateMap[value]
+        const buffer = Buffer.allocUnsafe(2)
+        buffer.writeUInt16BE(encoded, 0)
+        await transport.writeMultipleRegisters(0x002a, buffer)
+        return
+      }
+
+      // Validate and write device address
+      if (id === 'device_address') {
+        const [min, max] = SUPPORTED_CONFIG.validAddressRange
+        if (typeof value !== 'number' || value < min || value > max) {
+          throw new Error(`Invalid device address: must be between ${min} and ${max}`)
+        }
+        const buffer = Buffer.allocUnsafe(2)
+        buffer.writeUInt16BE(value, 0)
+        await transport.writeMultipleRegisters(0x002b, buffer)
+        return
+      }
+
+      // Write password (32-bit, register 0x002C)
+      if (id === 'password') {
+        if (typeof value !== 'number' || value < 0 || value > 4294967295) {
+          throw new Error('Invalid password: must be between 0 and 4294967295')
+        }
+        const buffer = Buffer.allocUnsafe(4)
+        buffer.writeUInt32BE(value, 0)
+        await transport.writeMultipleRegisters(0x002c, buffer)
+        return
+      }
+
+      // All other data points are read-only
+      throw new Error(`Data point ${id} is read-only`)
     },
   }
 

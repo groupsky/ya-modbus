@@ -52,17 +52,20 @@ console.log(values)
 
 ## Available Data Points
 
-| ID                      | Name                  | Type    | Unit  | Access | Description                               |
-| ----------------------- | --------------------- | ------- | ----- | ------ | ----------------------------------------- |
-| `voltage`               | Voltage               | float   | V     | r      | Line voltage in volts                     |
-| `current`               | Current               | float   | A     | r      | Line current in amperes                   |
-| `frequency`             | Grid Frequency        | float   | Hz    | r      | Grid frequency in hertz                   |
-| `active_power`          | Active Power          | integer | W     | r      | Active power in watts                     |
-| `reactive_power`        | Reactive Power        | integer | VAr   | r      | Reactive power in volt-amperes reactive   |
-| `apparent_power`        | Apparent Power        | integer | VA    | r      | Apparent power in volt-amperes            |
-| `power_factor`          | Power Factor          | float   |       | r      | Power factor (0.000-1.000, dimensionless) |
-| `total_active_energy`   | Total Active Energy   | float   | kWh   | r      | Total active energy consumption           |
-| `total_reactive_energy` | Total Reactive Energy | float   | kVArh | r      | Total reactive energy                     |
+| ID                      | Name                  | Type    | Unit  | Access | Description                                           |
+| ----------------------- | --------------------- | ------- | ----- | ------ | ----------------------------------------------------- |
+| `voltage`               | Voltage               | float   | V     | r      | Line voltage in volts                                 |
+| `current`               | Current               | float   | A     | r      | Line current in amperes                               |
+| `frequency`             | Grid Frequency        | float   | Hz    | r      | Grid frequency in hertz                               |
+| `active_power`          | Active Power          | integer | W     | r      | Active power in watts                                 |
+| `reactive_power`        | Reactive Power        | integer | VAr   | r      | Reactive power in volt-amperes reactive               |
+| `apparent_power`        | Apparent Power        | integer | VA    | r      | Apparent power in volt-amperes                        |
+| `power_factor`          | Power Factor          | float   |       | r      | Power factor (0.000-1.000, dimensionless)             |
+| `total_active_energy`   | Total Active Energy   | float   | kWh   | r      | Total active energy consumption                       |
+| `total_reactive_energy` | Total Reactive Energy | float   | kVArh | r      | Total reactive energy                                 |
+| `device_address`        | Device Address        | integer |       | rw     | Modbus address (1-247), changes after device restart  |
+| `baud_rate`             | Baud Rate             | enum    |       | rw     | Communication baud rate, changes after device restart |
+| `password`              | Password              | integer |       | w      | Device password (0-4294967295) for configuration      |
 
 ## Factory Default Configuration
 

@@ -95,7 +95,7 @@ describe('Ex9EM Driver', () => {
       })
 
       const dataPoints = driver.dataPoints
-      expect(dataPoints).toHaveLength(9)
+      expect(dataPoints).toHaveLength(12)
 
       const voltage = dataPoints.find((dp) => dp.id === 'voltage')
       expect(voltage).toBeDefined()
@@ -152,6 +152,26 @@ describe('Ex9EM Driver', () => {
       expect(totalReactiveEnergy?.type).toBe('float')
       expect(totalReactiveEnergy?.unit).toBe('kVArh')
       expect(totalReactiveEnergy?.access).toBe('r')
+
+      const deviceAddress = dataPoints.find((dp) => dp.id === 'device_address')
+      expect(deviceAddress).toBeDefined()
+      expect(deviceAddress?.type).toBe('integer')
+      expect(deviceAddress?.access).toBe('rw')
+      expect(deviceAddress?.pollType).toBe('on-demand')
+      expect(deviceAddress?.min).toBe(1)
+      expect(deviceAddress?.max).toBe(247)
+
+      const baudRate = dataPoints.find((dp) => dp.id === 'baud_rate')
+      expect(baudRate).toBeDefined()
+      expect(baudRate?.type).toBe('enum')
+      expect(baudRate?.access).toBe('rw')
+      expect(baudRate?.pollType).toBe('on-demand')
+
+      const password = dataPoints.find((dp) => dp.id === 'password')
+      expect(password).toBeDefined()
+      expect(password?.type).toBe('integer')
+      expect(password?.access).toBe('w')
+      expect(password?.pollType).toBe('on-demand')
     })
   })
 
@@ -678,6 +698,63 @@ describe('Ex9EM Driver', () => {
       expect(totalActiveEnergy).toBe(42949672.95)
       expect(totalReactiveEnergy).toBe(42949672.95)
     })
+
+    it('should read device address', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Mock response: device_address = 52
+      mockTransport.readHoldingRegisters.mockResolvedValue(Buffer.from([0x00, 0x34]))
+
+      const address = await driver.readDataPoint('device_address')
+      expect(address).toBe(52)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x002b, 1)
+    })
+
+    it('should read baud rate', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Mock response: baud_rate = 4 (9600 bps)
+      mockTransport.readHoldingRegisters.mockResolvedValue(Buffer.from([0x00, 0x04]))
+
+      const baudRate = await driver.readDataPoint('baud_rate')
+      expect(baudRate).toBe(9600)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x002a, 1)
+    })
+
+    it('should decode all supported baud rates correctly', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      const baudRateTests = [
+        { encoded: 1, decoded: 1200 },
+        { encoded: 2, decoded: 2400 },
+        { encoded: 3, decoded: 4800 },
+        { encoded: 4, decoded: 9600 },
+      ]
+
+      for (const test of baudRateTests) {
+        mockTransport.readHoldingRegisters.mockResolvedValue(Buffer.from([0x00, test.encoded]))
+        const baudRate = await driver.readDataPoint('baud_rate')
+        expect(baudRate).toBe(test.decoded)
+      }
+    })
+
+    it('should throw error when reading password', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      await expect(driver.readDataPoint('password')).rejects.toThrow('Password is write-only')
+    })
   })
 
   describe('readDataPoints', () => {
@@ -803,38 +880,168 @@ describe('Ex9EM Driver', () => {
   })
 
   describe('writeDataPoint', () => {
-    it('should throw error when attempting to write to any data point', async () => {
+    it('should throw error when attempting to write to read-only measurement data points', async () => {
       const driver = await createDriver({
         transport: mockTransport,
         slaveId: 1,
       })
 
-      await expect(driver.writeDataPoint('voltage', 230)).rejects.toThrow(
-        'All data points are read-only'
+      await expect(driver.writeDataPoint('voltage', 230)).rejects.toThrow('read-only')
+      await expect(driver.writeDataPoint('current', 5)).rejects.toThrow('read-only')
+      await expect(driver.writeDataPoint('frequency', 50)).rejects.toThrow('read-only')
+      await expect(driver.writeDataPoint('active_power', 1000)).rejects.toThrow('read-only')
+      await expect(driver.writeDataPoint('reactive_power', 100)).rejects.toThrow('read-only')
+      await expect(driver.writeDataPoint('apparent_power', 1000)).rejects.toThrow('read-only')
+      await expect(driver.writeDataPoint('power_factor', 0.95)).rejects.toThrow('read-only')
+      await expect(driver.writeDataPoint('total_active_energy', 1000)).rejects.toThrow('read-only')
+      await expect(driver.writeDataPoint('total_reactive_energy', 500)).rejects.toThrow('read-only')
+    })
+
+    it('should write device address', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      await driver.writeDataPoint('device_address', 52)
+
+      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledWith(
+        0x002b,
+        Buffer.from([0x00, 0x34])
       )
-      await expect(driver.writeDataPoint('current', 5)).rejects.toThrow(
-        'All data points are read-only'
+    })
+
+    it('should validate device address range', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      await expect(driver.writeDataPoint('device_address', 0)).rejects.toThrow(
+        'Invalid device address'
       )
-      await expect(driver.writeDataPoint('frequency', 50)).rejects.toThrow(
-        'All data points are read-only'
+      await expect(driver.writeDataPoint('device_address', 248)).rejects.toThrow(
+        'Invalid device address'
       )
-      await expect(driver.writeDataPoint('active_power', 1000)).rejects.toThrow(
-        'All data points are read-only'
+      await expect(driver.writeDataPoint('device_address', -1)).rejects.toThrow(
+        'Invalid device address'
       )
-      await expect(driver.writeDataPoint('reactive_power', 100)).rejects.toThrow(
-        'All data points are read-only'
+    })
+
+    it('should accept valid device address range 1-247', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      await driver.writeDataPoint('device_address', 1)
+      await driver.writeDataPoint('device_address', 247)
+
+      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledTimes(2)
+    })
+
+    it('should write baud rate', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      await driver.writeDataPoint('baud_rate', 9600)
+
+      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledWith(
+        0x002a,
+        Buffer.from([0x00, 0x04])
       )
-      await expect(driver.writeDataPoint('apparent_power', 1000)).rejects.toThrow(
-        'All data points are read-only'
+    })
+
+    it('should validate baud rate values', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      await expect(driver.writeDataPoint('baud_rate', 1234)).rejects.toThrow('Invalid baud rate')
+      await expect(driver.writeDataPoint('baud_rate', 'invalid')).rejects.toThrow(
+        'Invalid baud rate'
       )
-      await expect(driver.writeDataPoint('power_factor', 0.95)).rejects.toThrow(
-        'All data points are read-only'
+    })
+
+    it('should accept all supported baud rates', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      const validRates = [1200, 2400, 4800, 9600]
+
+      for (const rate of validRates) {
+        await driver.writeDataPoint('baud_rate', rate)
+      }
+
+      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledTimes(validRates.length)
+    })
+
+    it('should encode baud rates correctly', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      const baudRateTests = [
+        { rate: 1200, encoded: 0x01 },
+        { rate: 2400, encoded: 0x02 },
+        { rate: 4800, encoded: 0x03 },
+        { rate: 9600, encoded: 0x04 },
+      ]
+
+      for (const test of baudRateTests) {
+        await driver.writeDataPoint('baud_rate', test.rate)
+        expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledWith(
+          0x002a,
+          Buffer.from([0x00, test.encoded])
+        )
+      }
+    })
+
+    it('should write password', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      await driver.writeDataPoint('password', 0)
+
+      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledWith(
+        0x002c,
+        Buffer.from([0x00, 0x00, 0x00, 0x00])
       )
-      await expect(driver.writeDataPoint('total_active_energy', 1000)).rejects.toThrow(
-        'All data points are read-only'
+    })
+
+    it('should validate password range', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      await expect(driver.writeDataPoint('password', -1)).rejects.toThrow('Invalid password')
+      await expect(driver.writeDataPoint('password', 4294967296)).rejects.toThrow(
+        'Invalid password'
       )
-      await expect(driver.writeDataPoint('total_reactive_energy', 500)).rejects.toThrow(
-        'All data points are read-only'
+    })
+
+    it('should accept password boundary values', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      await driver.writeDataPoint('password', 0)
+      await driver.writeDataPoint('password', 4294967295)
+
+      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledTimes(2)
+      expect(mockTransport.writeMultipleRegisters).toHaveBeenLastCalledWith(
+        0x002c,
+        Buffer.from([0xff, 0xff, 0xff, 0xff])
       )
     })
   })
