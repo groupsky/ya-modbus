@@ -2,7 +2,11 @@ import type { DefaultSerialConfig, DefaultTCPConfig } from '@ya-modbus/driver-ty
 
 import type { LoadedDriver } from '../driver-loader/loader.js'
 
-import { applyDriverDefaults, type TransportOptions } from './commands.js'
+import {
+  applyDriverDefaults,
+  getEffectiveDefaultConfig,
+  type TransportOptions,
+} from './commands.js'
 
 describe('applyDriverDefaults', () => {
   describe('TCP connections', () => {
@@ -314,5 +318,210 @@ describe('applyDriverDefaults', () => {
       expect(result.dataBits).toBeUndefined()
       expect(result.stopBits).toBeUndefined()
     })
+  })
+
+  describe('Device-specific config', () => {
+    const driverDefaultConfig: DefaultSerialConfig = {
+      baudRate: 9600,
+      parity: 'even',
+      dataBits: 8,
+      stopBits: 1,
+      defaultAddress: 1,
+    }
+
+    const deviceDefaultConfig: DefaultSerialConfig = {
+      baudRate: 19200,
+      parity: 'none',
+      dataBits: 8,
+      stopBits: 2,
+      defaultAddress: 10,
+    }
+
+    test('should use device-specific config when device is selected', () => {
+      const options: TransportOptions = {
+        port: '/dev/ttyUSB0',
+        slaveId: 5,
+      }
+
+      const driverMetadata: LoadedDriver = {
+        createDriver: jest.fn(),
+        defaultConfig: driverDefaultConfig,
+        devices: {
+          'device-a': {
+            manufacturer: 'Acme',
+            model: 'X1',
+            defaultConfig: deviceDefaultConfig,
+          },
+        },
+      }
+
+      const result = applyDriverDefaults(options, driverMetadata, 'device-a')
+
+      expect(result.baudRate).toBe(19200) // From device config
+      expect(result.parity).toBe('none') // From device config
+      expect(result.stopBits).toBe(2) // From device config
+      expect(result.slaveId).toBe(5) // User specified
+    })
+
+    test('should fall back to driver config when device has no defaultConfig', () => {
+      const options: TransportOptions = {
+        port: '/dev/ttyUSB0',
+        slaveId: 5,
+      }
+
+      const driverMetadata: LoadedDriver = {
+        createDriver: jest.fn(),
+        defaultConfig: driverDefaultConfig,
+        devices: {
+          'device-a': {
+            manufacturer: 'Acme',
+            model: 'X1',
+            // No defaultConfig
+          },
+        },
+      }
+
+      const result = applyDriverDefaults(options, driverMetadata, 'device-a')
+
+      expect(result.baudRate).toBe(9600) // From driver config
+      expect(result.parity).toBe('even') // From driver config
+    })
+
+    test('should fall back to driver config when device is not specified', () => {
+      const options: TransportOptions = {
+        port: '/dev/ttyUSB0',
+        slaveId: 5,
+      }
+
+      const driverMetadata: LoadedDriver = {
+        createDriver: jest.fn(),
+        defaultConfig: driverDefaultConfig,
+        devices: {
+          'device-a': {
+            manufacturer: 'Acme',
+            model: 'X1',
+            defaultConfig: deviceDefaultConfig,
+          },
+        },
+      }
+
+      const result = applyDriverDefaults(options, driverMetadata, undefined)
+
+      expect(result.baudRate).toBe(9600) // From driver config
+      expect(result.parity).toBe('even') // From driver config
+    })
+
+    test('should ignore device-specific TCP config for RTU connection', () => {
+      const options: TransportOptions = {
+        port: '/dev/ttyUSB0',
+        slaveId: 5,
+      }
+
+      const driverMetadata: LoadedDriver = {
+        createDriver: jest.fn(),
+        defaultConfig: driverDefaultConfig,
+        devices: {
+          'device-a': {
+            manufacturer: 'Acme',
+            model: 'X1',
+            defaultConfig: {
+              defaultPort: 502,
+              defaultAddress: 1,
+            } as DefaultTCPConfig,
+          },
+        },
+      }
+
+      const result = applyDriverDefaults(options, driverMetadata, 'device-a')
+
+      // Should fall back to driver config since device has TCP config
+      expect(result.baudRate).toBe(9600)
+      expect(result.parity).toBe('even')
+    })
+  })
+})
+
+describe('getEffectiveDefaultConfig', () => {
+  const driverDefaultConfig: DefaultSerialConfig = {
+    baudRate: 9600,
+    parity: 'even',
+    dataBits: 8,
+    stopBits: 1,
+    defaultAddress: 1,
+  }
+
+  const deviceDefaultConfig: DefaultSerialConfig = {
+    baudRate: 19200,
+    parity: 'none',
+    dataBits: 8,
+    stopBits: 2,
+    defaultAddress: 10,
+  }
+
+  test('should return undefined when driverMetadata is undefined', () => {
+    const result = getEffectiveDefaultConfig(undefined, undefined)
+    expect(result).toBeUndefined()
+  })
+
+  test('should return driver config when no device is specified', () => {
+    const driverMetadata: LoadedDriver = {
+      createDriver: jest.fn(),
+      defaultConfig: driverDefaultConfig,
+    }
+
+    const result = getEffectiveDefaultConfig(driverMetadata, undefined)
+    expect(result).toBe(driverDefaultConfig)
+  })
+
+  test('should return device-specific config when device is selected', () => {
+    const driverMetadata: LoadedDriver = {
+      createDriver: jest.fn(),
+      defaultConfig: driverDefaultConfig,
+      devices: {
+        'device-a': {
+          manufacturer: 'Acme',
+          model: 'X1',
+          defaultConfig: deviceDefaultConfig,
+        },
+      },
+    }
+
+    const result = getEffectiveDefaultConfig(driverMetadata, 'device-a')
+    expect(result).toBe(deviceDefaultConfig)
+  })
+
+  test('should fall back to driver config when device has no defaultConfig', () => {
+    const driverMetadata: LoadedDriver = {
+      createDriver: jest.fn(),
+      defaultConfig: driverDefaultConfig,
+      devices: {
+        'device-a': {
+          manufacturer: 'Acme',
+          model: 'X1',
+        },
+      },
+    }
+
+    const result = getEffectiveDefaultConfig(driverMetadata, 'device-a')
+    expect(result).toBe(driverDefaultConfig)
+  })
+
+  test('should return undefined when device has TCP config (not serial)', () => {
+    const driverMetadata: LoadedDriver = {
+      createDriver: jest.fn(),
+      devices: {
+        'device-a': {
+          manufacturer: 'Acme',
+          model: 'X1',
+          defaultConfig: {
+            defaultPort: 502,
+            defaultAddress: 1,
+          } as DefaultTCPConfig,
+        },
+      },
+    }
+
+    const result = getEffectiveDefaultConfig(driverMetadata, 'device-a')
+    expect(result).toBeUndefined()
   })
 })

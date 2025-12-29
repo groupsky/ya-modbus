@@ -291,30 +291,63 @@ export async function loadDriverMetadata(driverName?: string): Promise<LoadedDri
 }
 
 /**
+ * Get the effective default config for a device
+ *
+ * Returns device-specific config if available, otherwise driver-level config.
+ *
+ * @param driverMetadata - Loaded driver metadata
+ * @param device - Optional device key
+ * @returns Effective default config or undefined
+ */
+export function getEffectiveDefaultConfig(
+  driverMetadata: LoadedDriver | undefined,
+  device: string | undefined
+): DefaultSerialConfig | undefined {
+  if (!driverMetadata) {
+    return undefined
+  }
+
+  // Check for device-specific config first
+  if (device && driverMetadata.devices?.[device]?.defaultConfig) {
+    const deviceConfig = driverMetadata.devices[device].defaultConfig
+    if (deviceConfig && 'baudRate' in deviceConfig) {
+      return deviceConfig
+    }
+  }
+
+  // Fall back to driver-level config
+  const driverConfig = driverMetadata.defaultConfig
+  if (driverConfig && 'baudRate' in driverConfig) {
+    return driverConfig
+  }
+
+  return undefined
+}
+
+/**
  * Apply driver defaults to transport options
+ *
+ * Uses device-specific defaults if a device is selected, otherwise driver-level defaults.
  *
  * @param options - Transport options (may be incomplete)
  * @param driverMetadata - Loaded driver metadata with defaults
+ * @param device - Optional device key for multi-device drivers
  * @returns Transport options with defaults applied
  */
 export function applyDriverDefaults(
   options: TransportOptions,
-  driverMetadata?: LoadedDriver
+  driverMetadata?: LoadedDriver,
+  device?: string
 ): TransportOptions {
   // For TCP connections, no serial defaults apply
   if (options.host) {
     return options
   }
 
-  // Extract serial defaults if available
-  const defaultConfig = driverMetadata?.defaultConfig
-  const isSerialConfig = (config: unknown): config is DefaultSerialConfig => {
-    return (
-      config !== null && config !== undefined && typeof config === 'object' && 'baudRate' in config
-    )
-  }
+  // Get effective config (device-specific or driver-level)
+  const defaultConfig = getEffectiveDefaultConfig(driverMetadata, device)
 
-  if (!isSerialConfig(defaultConfig)) {
+  if (!defaultConfig) {
     return options
   }
 
@@ -400,8 +433,8 @@ export async function withDriver<T>(
     validateSerialOptions(validationOptions, driverMetadata)
   }
 
-  // Apply driver defaults to options
-  const mergedOptions = applyDriverDefaults(options, driverMetadata)
+  // Apply driver defaults to options (device-specific if selected)
+  const mergedOptions = applyDriverDefaults(options, driverMetadata, options.device)
 
   // Validate merged options to catch invalid defaults from third-party drivers
   // This ensures driver DEFAULT_CONFIG values are valid according to SUPPORTED_CONFIG
