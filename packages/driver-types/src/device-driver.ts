@@ -303,12 +303,11 @@ export interface DeviceInfo {
  * Maps device keys to their metadata. Device keys are used with the
  * `device` parameter in DriverConfig to select which device to use.
  *
- * Note: The CLI validates that DEVICES contains at least one device.
- * Empty registries will be rejected at runtime with a validation error.
+ * **Must contain at least one device.** Empty registries are rejected at runtime.
  *
  * @example
  * ```typescript
- * export const DEVICES: DeviceRegistry = {
+ * export const DEVICES = {
  *   'or-we-514': {
  *     manufacturer: 'ORNO',
  *     model: 'OR-WE-514',
@@ -319,7 +318,7 @@ export interface DeviceInfo {
  *     model: 'OR-WE-516',
  *     description: 'Three-phase energy meter',
  *   },
- * }
+ * } as const satisfies DeviceRegistry
  * ```
  */
 export type DeviceRegistry = Readonly<Record<string, DeviceInfo>>
