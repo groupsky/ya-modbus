@@ -40,18 +40,20 @@ CRITICAL: Add package to `/jest.config.js` projects array or tests won't run fro
 - Drivers: `ya-modbus-driver-<device>`
 - Utilities: `@ya-modbus/<name>`
 
-## Driver Package Exports
+## Driver Packages
 
-Required:
+For driver development (architecture, workflow, testing), see docs/agents/driver-development.md
 
-- `createDriver` function
+### Required Exports
 
-Recommended:
+- `createDriver(config)` - Factory function
 
-- `DEFAULT_CONFIG` constant - Factory defaults (use `DefaultSerialConfig` or `DefaultTCPConfig`)
-- `SUPPORTED_CONFIG` constant - Device-specific constraints (use `SupportedSerialConfig` or `SupportedTCPConfig`)
+### Recommended Exports
 
-If exporting both configs, add cross-validation tests ensuring defaults are within supported ranges.
+- `DEFAULT_CONFIG` - Factory defaults (use `DefaultSerialConfig` or `DefaultTCPConfig`)
+- `SUPPORTED_CONFIG` - Device constraints (use `SupportedSerialConfig` or `SupportedTCPConfig`)
+
+If exporting both, add cross-validation tests ensuring defaults are within supported ranges.
 
 ## Verification Steps
 
@@ -66,5 +68,6 @@ Before committing:
 ## References
 
 - Comprehensive guide: docs/NEW-PACKAGE.md
+- Driver development: docs/agents/driver-development.md
 - Driver reference: packages/ya-modbus-driver-xymd1
 - CLI reference: packages/cli
