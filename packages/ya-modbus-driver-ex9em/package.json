@@ -25,7 +25,8 @@
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf dist",
-    "test": "jest"
+    "test": "jest",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@ya-modbus/driver-types": "^0.0.0"

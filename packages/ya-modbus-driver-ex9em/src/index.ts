@@ -249,9 +249,9 @@ function decodeMeasurementDataPoints(buffer: Buffer): Record<string, unknown> {
   // Power factor (register 6, ×1000)
   const power_factor = buffer.readUInt16BE(12) / 1000
   // Total active energy (registers 7-8, 32-bit big-endian, ×100)
-  const total_active_energy = (buffer.readUInt16BE(14) * 65536 + buffer.readUInt16BE(16)) / 100
+  const total_active_energy = buffer.readUInt32BE(14) / 100
   // Total reactive energy (registers 9-10, 32-bit big-endian, ×100)
-  const total_reactive_energy = (buffer.readUInt16BE(18) * 65536 + buffer.readUInt16BE(20)) / 100
+  const total_reactive_energy = buffer.readUInt32BE(18) / 100
 
   return {
     voltage,
