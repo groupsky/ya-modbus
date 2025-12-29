@@ -9,6 +9,7 @@ import type {
 } from '@ya-modbus/driver-types'
 
 import {
+  crossValidateConfigs,
   validateDefaultConfig,
   validateDevices,
   validateSupportedConfig,
@@ -207,6 +208,19 @@ export async function loadDriver(options: LoadDriverOptions = {}): Promise<Loade
     // Validate and add SUPPORTED_CONFIG if present
     if (SUPPORTED_CONFIG !== null && SUPPORTED_CONFIG !== undefined) {
       result.supportedConfig = validateSupportedConfig(SUPPORTED_CONFIG)
+    }
+
+    // Cross-validate DEFAULT_CONFIG against SUPPORTED_CONFIG if both are present
+    if (result.defaultConfig && result.supportedConfig) {
+      const warnings = crossValidateConfigs(result.defaultConfig, result.supportedConfig)
+      if (warnings.length > 0) {
+        console.warn('\nWarning: Driver DEFAULT_CONFIG has inconsistencies:')
+        for (const warning of warnings) {
+          console.warn(`  - ${warning}`)
+        }
+        console.warn('  This may indicate a driver authoring error\n')
+        console.warn('Run: ya-modbus show-defaults --driver <package> to inspect configuration\n')
+      }
     }
 
     return result
