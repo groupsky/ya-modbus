@@ -1,5 +1,5 @@
 ---
-paths: /**/{AGENTS,CLAUDE,.aider}.md, /**/.cursorrules, /.github/copilot-instructions.md
+paths: /**/{AGENTS,CLAUDE,.aider}.md, /**/.cursorrules, /.github/copilot-instructions.md, /**/docs/agents/*.md, /**/.claude/rules/**/*.md
 ---
 
 # Agent Documentation Maintenance
@@ -21,6 +21,11 @@ paths: /**/{AGENTS,CLAUDE,.aider}.md, /**/.cursorrules, /.github/copilot-instruc
 
 - Canonical: AGENTS.md
 - Symlinks: CLAUDE.md, .aider.md, .cursorrules → AGENTS.md
+- Agent docs: .claude/rules/agents → docs/agents (for Claude Desktop)
+
+## Frontmatter
+
+- Use `paths:` to specify where the doc applies
 
 ## When to Update
 
