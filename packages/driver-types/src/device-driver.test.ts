@@ -376,7 +376,9 @@ describe('DeviceInfo', () => {
 })
 
 describe('DeviceRegistry', () => {
-  it('should accept empty registry', () => {
+  it('should accept empty registry at type level (rejected at runtime)', () => {
+    // Note: TypeScript allows empty registries, but the CLI validates
+    // that DEVICES contains at least one device at runtime.
     const registry: DeviceRegistry = {}
 
     expect(Object.keys(registry)).toHaveLength(0)

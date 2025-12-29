@@ -303,6 +303,9 @@ export interface DeviceInfo {
  * Maps device keys to their metadata. Device keys are used with the
  * `device` parameter in DriverConfig to select which device to use.
  *
+ * Note: The CLI validates that DEVICES contains at least one device.
+ * Empty registries will be rejected at runtime with a validation error.
+ *
  * @example
  * ```typescript
  * export const DEVICES: DeviceRegistry = {
