@@ -1,11 +1,11 @@
 /**
  * Runtime validation for driver configuration exports
  *
- * Validates DEFAULT_CONFIG and SUPPORTED_CONFIG from third-party drivers
+ * Validates DEFAULT_CONFIG, SUPPORTED_CONFIG, and DEVICES from third-party drivers
  * to ensure type safety at runtime.
  */
 
-import type { DefaultConfig, SupportedConfig } from '@ya-modbus/driver-types'
+import type { DefaultConfig, DeviceRegistry, SupportedConfig } from '@ya-modbus/driver-types'
 
 /**
  * Validate DEFAULT_CONFIG export from a driver module
@@ -171,4 +171,90 @@ export function validateSupportedConfig(config: unknown): SupportedConfig {
   }
 
   return config as SupportedConfig
+}
+
+/**
+ * Validate DEVICES export from a driver module
+ *
+ * @param devices - The DEVICES value to validate
+ * @returns Validated devices registry
+ * @throws Error with helpful message if validation fails
+ */
+export function validateDevices(devices: unknown): DeviceRegistry {
+  if (devices === null || devices === undefined || typeof devices !== 'object') {
+    throw new Error(
+      'Invalid DEVICES: must be an object.\n' +
+        "Fix: export const DEVICES = { 'device-key': { manufacturer: 'Acme', model: 'X1' } }"
+    )
+  }
+
+  if (Array.isArray(devices)) {
+    throw new Error(
+      'Invalid DEVICES: must be an object, not an array.\n' +
+        "Fix: export const DEVICES = { 'device-key': { manufacturer: 'Acme', model: 'X1' } }"
+    )
+  }
+
+  const devicesObj = devices as Record<string, unknown>
+  const entries = Object.entries(devicesObj)
+
+  if (entries.length === 0) {
+    throw new Error(
+      'Invalid DEVICES: must contain at least one device.\n' +
+        "Fix: export const DEVICES = { 'device-key': { manufacturer: 'Acme', model: 'X1' } }"
+    )
+  }
+
+  // Validate each device entry
+  for (const [key, device] of entries) {
+    if (device === null || device === undefined || typeof device !== 'object') {
+      throw new Error(
+        `Invalid DEVICES["${key}"]: must be an object.\n` +
+          `Fix: DEVICES["${key}"] = { manufacturer: 'Acme', model: 'X1' }`
+      )
+    }
+
+    const deviceObj = device as Record<string, unknown>
+
+    if (typeof deviceObj['manufacturer'] !== 'string') {
+      throw new Error(
+        `Invalid DEVICES["${key}"]: manufacturer must be a string.\n` +
+          `Fix: DEVICES["${key}"] = { manufacturer: 'Acme', ... }`
+      )
+    }
+
+    if (typeof deviceObj['model'] !== 'string') {
+      throw new Error(
+        `Invalid DEVICES["${key}"]: model must be a string.\n` +
+          `Fix: DEVICES["${key}"] = { model: 'X1', ... }`
+      )
+    }
+
+    if ('description' in deviceObj && typeof deviceObj['description'] !== 'string') {
+      throw new Error(
+        `Invalid DEVICES["${key}"]: description must be a string.\n` +
+          `Fix: DEVICES["${key}"] = { description: 'A device', ... }`
+      )
+    }
+
+    // Validate nested defaultConfig if present
+    if ('defaultConfig' in deviceObj && deviceObj['defaultConfig'] !== undefined) {
+      try {
+        validateDefaultConfig(deviceObj['defaultConfig'])
+      } catch (error) {
+        throw new Error(`Invalid DEVICES["${key}"].defaultConfig: ${(error as Error).message}`)
+      }
+    }
+
+    // Validate nested supportedConfig if present
+    if ('supportedConfig' in deviceObj && deviceObj['supportedConfig'] !== undefined) {
+      try {
+        validateSupportedConfig(deviceObj['supportedConfig'])
+      } catch (error) {
+        throw new Error(`Invalid DEVICES["${key}"].supportedConfig: ${(error as Error).message}`)
+      }
+    }
+  }
+
+  return devices as DeviceRegistry
 }

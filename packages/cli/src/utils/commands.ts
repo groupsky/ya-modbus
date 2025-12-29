@@ -234,6 +234,7 @@ export interface TransportOptions {
  */
 export interface DriverOptions {
   driver?: string
+  device?: string
   slaveId: number
 }
 
@@ -290,30 +291,127 @@ export async function loadDriverMetadata(driverName?: string): Promise<LoadedDri
 }
 
 /**
+ * Get the effective default config for a device
+ *
+ * Returns device-specific config if available, otherwise driver-level config.
+ *
+ * @param driverMetadata - Loaded driver metadata
+ * @param device - Optional device key
+ * @returns Effective default config or undefined
+ */
+export function getEffectiveDefaultConfig(
+  driverMetadata: LoadedDriver | undefined,
+  device: string | undefined
+): DefaultSerialConfig | undefined {
+  if (!driverMetadata) {
+    return undefined
+  }
+
+  // Check for device-specific config first
+  if (device && driverMetadata.devices?.[device]?.defaultConfig) {
+    const deviceConfig = driverMetadata.devices[device].defaultConfig
+    if (deviceConfig && 'baudRate' in deviceConfig) {
+      return deviceConfig
+    }
+  }
+
+  // Fall back to driver-level config
+  const driverConfig = driverMetadata.defaultConfig
+  if (driverConfig && 'baudRate' in driverConfig) {
+    return driverConfig
+  }
+
+  return undefined
+}
+
+/**
+ * Get the effective supported config for a device
+ *
+ * Returns device-specific constraints if available, otherwise driver-level constraints.
+ *
+ * @param driverMetadata - Loaded driver metadata
+ * @param device - Optional device key
+ * @returns Effective supported config or undefined
+ */
+export function getEffectiveSupportedConfig(
+  driverMetadata: LoadedDriver | undefined,
+  device: string | undefined
+): LoadedDriver['supportedConfig'] | undefined {
+  if (!driverMetadata) {
+    return undefined
+  }
+
+  // Check for device-specific config first
+  if (device && driverMetadata.devices?.[device]?.supportedConfig) {
+    return driverMetadata.devices[device].supportedConfig
+  }
+
+  // Fall back to driver-level config
+  return driverMetadata.supportedConfig
+}
+
+/**
+ * Create an effective driver metadata with device-specific configs resolved
+ *
+ * This creates a view of the driver metadata where defaultConfig and supportedConfig
+ * are resolved based on the selected device. This allows validation and other
+ * functions to work with device-specific settings transparently.
+ *
+ * @param driverMetadata - Loaded driver metadata
+ * @param device - Optional device key
+ * @returns Driver metadata with effective configs for the selected device
+ */
+export function getEffectiveDriverMetadata(
+  driverMetadata: LoadedDriver,
+  device: string | undefined
+): LoadedDriver {
+  const effectiveDefaultConfig = getEffectiveDefaultConfig(driverMetadata, device)
+  const effectiveSupportedConfig = getEffectiveSupportedConfig(driverMetadata, device)
+
+  // Build result conditionally to satisfy exactOptionalPropertyTypes
+  const result: LoadedDriver = {
+    createDriver: driverMetadata.createDriver,
+  }
+
+  if (driverMetadata.devices) {
+    result.devices = driverMetadata.devices
+  }
+
+  if (effectiveDefaultConfig) {
+    result.defaultConfig = effectiveDefaultConfig
+  }
+
+  if (effectiveSupportedConfig) {
+    result.supportedConfig = effectiveSupportedConfig
+  }
+
+  return result
+}
+
+/**
  * Apply driver defaults to transport options
+ *
+ * Uses device-specific defaults if a device is selected, otherwise driver-level defaults.
  *
  * @param options - Transport options (may be incomplete)
  * @param driverMetadata - Loaded driver metadata with defaults
+ * @param device - Optional device key for multi-device drivers
  * @returns Transport options with defaults applied
  */
 export function applyDriverDefaults(
   options: TransportOptions,
-  driverMetadata?: LoadedDriver
+  driverMetadata?: LoadedDriver,
+  device?: string
 ): TransportOptions {
   // For TCP connections, no serial defaults apply
   if (options.host) {
     return options
   }
 
-  // Extract serial defaults if available
-  const defaultConfig = driverMetadata?.defaultConfig
-  const isSerialConfig = (config: unknown): config is DefaultSerialConfig => {
-    return (
-      config !== null && config !== undefined && typeof config === 'object' && 'baudRate' in config
-    )
-  }
+  // Get effective config (device-specific or driver-level)
+  const defaultConfig = getEffectiveDefaultConfig(driverMetadata, device)
 
-  if (!isSerialConfig(defaultConfig)) {
+  if (!defaultConfig) {
     return options
   }
 
@@ -334,6 +432,7 @@ export function applyDriverDefaults(
  * @param transport - Transport to use for driver communication
  * @param driverMetadata - Loaded driver metadata
  * @param slaveId - Modbus slave ID
+ * @param device - Optional device key for multi-device drivers
  * @param fn - Function to execute with the driver
  * @returns Result of the function
  */
@@ -341,13 +440,26 @@ export async function withDriverInstance<T>(
   transport: Transport,
   driverMetadata: LoadedDriver,
   slaveId: number,
+  device: string | undefined,
   fn: (driver: DeviceDriver) => Promise<T>
 ): Promise<T> {
-  // Create driver instance
-  const driver = await driverMetadata.createDriver({
-    transport,
-    slaveId,
-  })
+  // Validate device key if DEVICES registry exists
+  if (driverMetadata.devices) {
+    const validDevices = Object.keys(driverMetadata.devices)
+    if (device && !validDevices.includes(device)) {
+      throw new Error(`Unknown device: ${device}. Valid devices: ${validDevices.join(', ')}`)
+    }
+  } else if (device) {
+    // Warn user that --device is ignored for single-device drivers
+    console.warn(
+      `Warning: --device '${device}' ignored (driver does not export a DEVICES registry)`
+    )
+  }
+
+  // Create driver instance - only include device if defined
+  const driverConfig = device ? { transport, slaveId, device } : { transport, slaveId }
+
+  const driver = await driverMetadata.createDriver(driverConfig)
 
   return await fn(driver)
 }
@@ -371,13 +483,16 @@ export async function withDriverInstance<T>(
  * @throws ValidationError if user options or driver defaults violate constraints
  */
 export async function withDriver<T>(
-  options: TransportOptions & { driver?: string },
+  options: TransportOptions & { driver?: string; device?: string },
   fn: (driver: DeviceDriver, mergedOptions: TransportOptions) => Promise<T>
 ): Promise<T> {
   // Load driver metadata first
   const driverMetadata = await loadDriverMetadata(options.driver)
 
-  // Validate user-specified options against driver constraints (only for RTU connections)
+  // Get effective metadata with device-specific configs resolved
+  const effectiveMetadata = getEffectiveDriverMetadata(driverMetadata, options.device)
+
+  // Validate user-specified options against device/driver constraints (only for RTU connections)
   if (!options.host) {
     const validationOptions = omitUndefined({
       baudRate: options.baudRate,
@@ -387,11 +502,11 @@ export async function withDriver<T>(
       slaveId: options.slaveId,
     })
 
-    validateSerialOptions(validationOptions, driverMetadata)
+    validateSerialOptions(validationOptions, effectiveMetadata)
   }
 
-  // Apply driver defaults to options
-  const mergedOptions = applyDriverDefaults(options, driverMetadata)
+  // Apply driver defaults to options (device-specific if selected)
+  const mergedOptions = applyDriverDefaults(options, driverMetadata, options.device)
 
   // Validate merged options to catch invalid defaults from third-party drivers
   // This ensures driver DEFAULT_CONFIG values are valid according to SUPPORTED_CONFIG
@@ -404,7 +519,7 @@ export async function withDriver<T>(
       slaveId: mergedOptions.slaveId,
     })
 
-    validateSerialOptions(mergedValidationOptions, driverMetadata)
+    validateSerialOptions(mergedValidationOptions, effectiveMetadata)
   }
 
   // Create transport with merged options
@@ -414,6 +529,7 @@ export async function withDriver<T>(
       transport,
       driverMetadata,
       mergedOptions.slaveId,
+      options.device,
       async (driver) => {
         // Execute callback with driver and merged options
         return await fn(driver, mergedOptions)

@@ -23,6 +23,7 @@ export interface ReadOptions {
 
   // Driver options
   driver?: string
+  device?: string
 
   // Data point selection
   dataPoint?: string[]
