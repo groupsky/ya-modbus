@@ -67,8 +67,6 @@ See `packages/cli/jest.config.cjs` or `packages/ya-modbus-driver-xymd1/jest.conf
 
 Create an AGENTS.md file with package-specific guidance for AI agents.
 
-**REQUIRED**: Read `docs/AGENTS-MAINTENANCE.md` before creating the file.
-
 **Template structure**:
 
 ```markdown
@@ -132,7 +130,6 @@ After creating the package:
 - [ ] Tests achieve at least 95% coverage across all metrics
 - [ ] `npm run lint` from package directory lints successfully
 - [ ] `npm run lint` from root includes the package
-- [ ] AGENTS.md follows guidelines in `docs/AGENTS-MAINTENANCE.md`
 - [ ] README.md contains essential usage information
 
 ## Common Patterns
@@ -287,5 +284,3 @@ Examples: `@ya-modbus/driver-types`, `@ya-modbus/cli`
 ## Getting Help
 
 - See existing packages for reference implementations
-- Consult `packages/AGENTS.md` for development patterns
-- Check `docs/AGENTS-MAINTENANCE.md` for documentation guidelines

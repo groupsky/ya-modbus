@@ -8,8 +8,14 @@ TypeScript monorepo using npm workspaces.
 - `testing.md` - TDD, behavior tests, mocking
 - `code-quality.md` - DRY, KISS, file limits
 - `maintenance.md` - Updating these docs
+- `workflows.md` - CI workflow patterns
 
 ## Navigation
 
-- `packages/AGENTS.md` - Package development
 - `.github/AGENTS.md` - CI/CD, workflows
+
+## Tasks
+
+- create new package - docs/NEW-PACKAGE.md
+- develop a driver - docs/DRIVER-DEVELOPMENT.md
+- architecture - docs/ARCHITECTURE.md
