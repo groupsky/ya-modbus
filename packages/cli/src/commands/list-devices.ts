@@ -5,7 +5,6 @@
  */
 
 import type { DefaultSerialConfig, DefaultTCPConfig } from '@ya-modbus/driver-types'
-import chalk from 'chalk'
 import Table from 'cli-table3'
 
 import { loadDriver } from '../driver-loader/loader.js'
@@ -87,19 +86,13 @@ export async function listDevicesCommand(options: ListDevicesOptions): Promise<v
     return
   }
 
-  console.log(chalk.bold('Supported Devices\n'))
+  console.log('Supported Devices\n')
 
   // Create table
   const table = new Table({
-    head: [
-      chalk.bold('Device'),
-      chalk.bold('Manufacturer'),
-      chalk.bold('Model'),
-      chalk.bold('Config'),
-      chalk.bold('Description'),
-    ],
+    head: ['Device', 'Manufacturer', 'Model', 'Config', 'Description'],
     style: {
-      head: ['cyan'],
+      head: ['cyan', 'bold'],
     },
   })
 
