@@ -75,10 +75,13 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
       }
       console.log('')
     }
-  } catch {
+  } catch (error) {
     // Driver loading failed - continue with generic Modbus parameters
     if (!silent) {
-      console.log('No driver specified, using generic Modbus parameters...')
+      console.log('No driver available, using generic Modbus parameters...')
+      if (verbose) {
+        console.log(`  (${(error as Error).message})`)
+      }
       console.log('')
     }
   }

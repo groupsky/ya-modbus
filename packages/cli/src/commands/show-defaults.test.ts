@@ -136,6 +136,17 @@ describe('showDefaultsCommand', () => {
     expect(output).toContain('baudRate: 19200')
   })
 
+  test('should throw descriptive error when auto-detection fails', async () => {
+    loadDriver.mockRejectedValue(
+      new Error(
+        'package.json not found in current directory. ' +
+          'Run this command from a driver package directory or specify --driver'
+      )
+    )
+
+    await expect(showDefaultsCommand({})).rejects.toThrow('package.json not found')
+  })
+
   test('should display JSON format when requested', async () => {
     const driverMetadata: LoadedDriver = {
       createDriver: jest.fn(),
