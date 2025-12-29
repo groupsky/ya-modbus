@@ -21,3 +21,8 @@ TypeScript monorepo using npm workspaces.
 - create new package - docs/agents/package-creation.md
 - develop a driver - docs/agents/driver-development.md
 - architecture - docs/ARCHITECTURE.md
+- writing code - docs/agents/code-quality.md
+- testing - docs/agents/testing.md
+- git processes - docs/agents/git.md
+- maintain docs - docs/agents/maintenance.md
+- CI workflows - docs/agents/workflows.md
