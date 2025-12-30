@@ -18,6 +18,7 @@ import {
   writeScaledInt16BE,
   createEnumValidator,
   createRangeValidator,
+  isValidInteger,
   formatEnumError,
   formatRangeError,
 } from '@ya-modbus/driver-sdk'
@@ -190,8 +191,9 @@ const isValidCorrection = createRangeValidator(-10.0, 10.0)
  */
 function encodeDataPoint(id: string, value: unknown): Buffer {
   if (id === 'device_address') {
-    if (!isValidAddress(value)) {
-      throw new Error(formatRangeError('device address', ...SUPPORTED_CONFIG.validAddressRange))
+    const [min, max] = SUPPORTED_CONFIG.validAddressRange
+    if (!isValidInteger(value) || !isValidAddress(value)) {
+      throw new Error(formatRangeError('device address', value, min, max))
     }
     const buffer = Buffer.allocUnsafe(2)
     buffer.writeUInt16BE(value, 0)
