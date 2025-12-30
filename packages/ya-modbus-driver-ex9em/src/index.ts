@@ -28,6 +28,14 @@
  * This implementation uses the simplified layout from verified working code.
  */
 
+import {
+  readScaledUInt16BE,
+  readScaledUInt32BE,
+  createEnumValidator,
+  createRangeValidator,
+  validateInteger,
+  formatEnumError,
+} from '@ya-modbus/driver-sdk'
 import type {
   DeviceDriver,
   DataPoint,
@@ -209,13 +217,10 @@ const BAUD_RATE_DECODE: Record<number, number> = { 1: 1200, 2: 2400, 3: 4800, 4:
 const BAUD_RATE_ENCODE: Record<ValidBaudRate, number> = { 1200: 1, 2400: 2, 4800: 3, 9600: 4 }
 
 /**
- * Validate that a value is one of the supported baud rates
+ * Validators for data point values
  */
-function isValidBaudRate(value: unknown): value is ValidBaudRate {
-  return (
-    typeof value === 'number' && SUPPORTED_CONFIG.validBaudRates.includes(value as ValidBaudRate)
-  )
-}
+const isValidBaudRate = createEnumValidator(SUPPORTED_CONFIG.validBaudRates)
+const isValidAddress = createRangeValidator(...SUPPORTED_CONFIG.validAddressRange)
 
 /**
  * Decode raw Modbus buffer containing measurement data to data point values
@@ -227,13 +232,13 @@ function decodeMeasurementDataPoints(buffer: Buffer): Record<string, unknown> {
   }
 
   // Voltage (register 0, ×10)
-  const voltage = buffer.readUInt16BE(0) / 10
+  const voltage = readScaledUInt16BE(buffer, 0, 10)
 
   // Current (register 1, ×10)
-  const current = buffer.readUInt16BE(2) / 10
+  const current = readScaledUInt16BE(buffer, 2, 10)
 
   // Grid frequency (register 2, ×10)
-  const frequency = buffer.readUInt16BE(4) / 10
+  const frequency = readScaledUInt16BE(buffer, 4, 10)
 
   // Active power (register 3, unsigned - device does not support bi-directional power)
   const active_power = buffer.readUInt16BE(6)
@@ -243,13 +248,13 @@ function decodeMeasurementDataPoints(buffer: Buffer): Record<string, unknown> {
   const apparent_power = buffer.readUInt16BE(10)
 
   // Power factor (register 6, ×1000)
-  const power_factor = buffer.readUInt16BE(12) / 1000
+  const power_factor = readScaledUInt16BE(buffer, 12, 1000)
 
   // Total active energy (registers 7-8, 32-bit big-endian, ×100)
-  const total_active_energy = buffer.readUInt32BE(14) / 100
+  const total_active_energy = readScaledUInt32BE(buffer, 14, 100)
 
   // Total reactive energy (registers 9-10, 32-bit big-endian, ×100)
-  const total_reactive_energy = buffer.readUInt32BE(18) / 100
+  const total_reactive_energy = readScaledUInt32BE(buffer, 18, 100)
 
   return {
     voltage,
@@ -347,9 +352,7 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
       // Validate and write baud rate (register 0x002A)
       if (id === 'baud_rate') {
         if (!isValidBaudRate(value)) {
-          throw new Error(
-            `Invalid baud rate: must be one of ${SUPPORTED_CONFIG.validBaudRates.join(', ')}`
-          )
+          throw new Error(formatEnumError('baud rate', SUPPORTED_CONFIG.validBaudRates))
         }
         const encoded = BAUD_RATE_ENCODE[value]
         const buffer = Buffer.allocUnsafe(2)
@@ -361,13 +364,7 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
       // Validate and write device address (register 0x002B, range 1-247)
       if (id === 'device_address') {
         const [min, max] = SUPPORTED_CONFIG.validAddressRange
-        if (
-          typeof value !== 'number' ||
-          !Number.isFinite(value) ||
-          !Number.isInteger(value) ||
-          value < min ||
-          value > max
-        ) {
+        if (!validateInteger(value) || !isValidAddress(value)) {
           throw new Error(`Invalid device address: must be an integer between ${min} and ${max}`)
         }
         const buffer = Buffer.allocUnsafe(2)
