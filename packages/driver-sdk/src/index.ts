@@ -19,7 +19,7 @@
  * const temperature = readScaledUInt16BE(buffer, 0, 10)
  *
  * // Validate baud rate
- * const isValidBaudRate = createEnumValidator([9600, 14400, 19200], 'baud rate')
+ * const isValidBaudRate = createEnumValidator([9600, 14400, 19200] as const)
  * if (!isValidBaudRate(value)) {
  *   throw new Error(formatEnumError('baud rate', [9600, 14400, 19200]))
  * }
