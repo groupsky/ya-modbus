@@ -12,6 +12,16 @@
  * - Holding register 0x104: Humidity correction (signed, ×10, -100 to +100)
  */
 
+import {
+  readScaledUInt16BE,
+  readScaledInt16BE,
+  writeScaledInt16BE,
+  createEnumValidator,
+  createRangeValidator,
+  isValidInteger,
+  formatEnumError,
+  formatRangeError,
+} from '@ya-modbus/driver-sdk'
 import type {
   DeviceDriver,
   DataPoint,
@@ -147,12 +157,10 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
  */
 function decodeDataPoint(id: string, rawValue: Buffer): unknown {
   if (id === 'temperature') {
-    const temp = rawValue.readUInt16BE(0)
-    return temp / 10
+    return readScaledUInt16BE(rawValue, 0, 10)
   }
   if (id === 'humidity') {
-    const humidity = rawValue.readUInt16BE(2)
-    return humidity / 10
+    return readScaledUInt16BE(rawValue, 2, 10)
   }
   if (id === 'device_address') {
     return rawValue.readUInt16BE(0)
@@ -162,27 +170,21 @@ function decodeDataPoint(id: string, rawValue: Buffer): unknown {
   }
   // Both correction values use the same signed 16-bit encoding
   if (id === 'temperature_correction' || id === 'humidity_correction') {
-    return rawValue.readInt16BE(0) / 10
+    return readScaledInt16BE(rawValue, 0, 10)
   }
   throw new Error(`Unknown data point: ${id}`)
 }
 
 /**
- * Valid baud rate type extracted from SUPPORTED_CONFIG
+ * Validate that a value is one of the supported baud rates
  */
-type ValidBaudRate = (typeof SUPPORTED_CONFIG.validBaudRates)[number]
+const isValidBaudRate = createEnumValidator(SUPPORTED_CONFIG.validBaudRates)
 
 /**
- * Validate that a value is one of the supported baud rates
- *
- * This pattern extracts the literal type from the config array and uses it
- * in the type guard, providing more specific type narrowing than just 'number'.
+ * Validators for data point values
  */
-function isValidBaudRate(value: unknown): value is ValidBaudRate {
-  return (
-    typeof value === 'number' && SUPPORTED_CONFIG.validBaudRates.includes(value as ValidBaudRate)
-  )
-}
+const isValidAddress = createRangeValidator(...SUPPORTED_CONFIG.validAddressRange)
+const isValidCorrection = createRangeValidator(-10.0, 10.0)
 
 /**
  * Encode data point value to Modbus register value(s)
@@ -190,8 +192,8 @@ function isValidBaudRate(value: unknown): value is ValidBaudRate {
 function encodeDataPoint(id: string, value: unknown): Buffer {
   if (id === 'device_address') {
     const [min, max] = SUPPORTED_CONFIG.validAddressRange
-    if (typeof value !== 'number' || value < min || value > max) {
-      throw new Error(`Invalid device address: must be between ${min} and ${max}`)
+    if (!isValidInteger(value) || !isValidAddress(value)) {
+      throw new Error(formatRangeError('device address', value, min, max))
     }
     const buffer = Buffer.allocUnsafe(2)
     buffer.writeUInt16BE(value, 0)
@@ -199,9 +201,7 @@ function encodeDataPoint(id: string, value: unknown): Buffer {
   }
   if (id === 'baud_rate') {
     if (!isValidBaudRate(value)) {
-      throw new Error(
-        `Invalid baud rate: must be one of ${SUPPORTED_CONFIG.validBaudRates.join(', ')}`
-      )
+      throw new Error(formatEnumError('baud rate', SUPPORTED_CONFIG.validBaudRates))
     }
     const buffer = Buffer.allocUnsafe(2)
     buffer.writeUInt16BE(value, 0)
@@ -209,15 +209,11 @@ function encodeDataPoint(id: string, value: unknown): Buffer {
   }
   // Both correction values use the same validation and encoding
   if (id === 'temperature_correction' || id === 'humidity_correction') {
-    if (typeof value !== 'number' || !Number.isFinite(value) || value < -10.0 || value > 10.0) {
+    if (!isValidCorrection(value)) {
       const fieldName = id === 'temperature_correction' ? 'temperature' : 'humidity'
-      throw new Error(`Invalid ${fieldName} correction: must be between -10.0 and 10.0`)
+      throw new Error(formatRangeError(`${fieldName} correction`, -10.0, 10.0))
     }
-    const buffer = Buffer.allocUnsafe(2)
-    // Use Math.trunc for predictable rounding toward zero (avoids floating-point precision issues)
-    const intValue = Math.trunc(value * 10)
-    buffer.writeInt16BE(intValue, 0)
-    return buffer
+    return writeScaledInt16BE(value, 10)
   }
   throw new Error(`Data point ${id} is read-only`)
 }
@@ -300,8 +296,8 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         const buffer = await transport.readHoldingRegisters(0x101, 4)
         result['device_address'] = buffer.readUInt16BE(0)
         result['baud_rate'] = buffer.readUInt16BE(2)
-        result['temperature_correction'] = buffer.readInt16BE(4) / 10
-        result['humidity_correction'] = buffer.readInt16BE(6) / 10
+        result['temperature_correction'] = readScaledInt16BE(buffer, 4, 10)
+        result['humidity_correction'] = readScaledInt16BE(buffer, 6, 10)
       } else {
         // Batch by adjacent register groups
         const configPoints = holdingRegisterPoints.filter(
@@ -332,8 +328,8 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         // Read temperature_correction and humidity_correction together if both requested (registers 0x103-0x104)
         if (correctionPoints.length === 2) {
           const buffer = await transport.readHoldingRegisters(0x103, 2)
-          result['temperature_correction'] = buffer.readInt16BE(0) / 10
-          result['humidity_correction'] = buffer.readInt16BE(2) / 10
+          result['temperature_correction'] = readScaledInt16BE(buffer, 0, 10)
+          result['humidity_correction'] = readScaledInt16BE(buffer, 2, 10)
         } else {
           // Read individually if only one is requested
           for (const id of correctionPoints) {

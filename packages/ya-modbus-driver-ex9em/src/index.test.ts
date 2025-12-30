@@ -1120,7 +1120,7 @@ describe('Ex9EM Driver', () => {
       })
 
       await expect(driver.writeDataPoint('device_address', 5.5)).rejects.toThrow(
-        'Invalid device address: must be an integer between 1 and 247'
+        'Invalid device address: received 5.5, must be between 1 and 247'
       )
     })
   })
