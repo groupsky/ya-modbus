@@ -1,6 +1,6 @@
 # ya-modbus-driver-xymd1
 
-XYMD1 Temperature and Humidity Sensor driver for ya-modbus-mqtt-bridge.
+XYMD1 Temperature and Humidity Sensor driver for ya-modbus.
 
 ## Device Information
 

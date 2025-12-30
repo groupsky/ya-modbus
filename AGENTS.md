@@ -1,4 +1,4 @@
-# ya-modbus-mqtt-bridge
+# ya-modbus
 
 TypeScript monorepo using npm workspaces.
 

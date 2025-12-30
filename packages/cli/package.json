@@ -17,6 +17,15 @@
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/groupsky/ya-modbus.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/groupsky/ya-modbus/tree/main/packages/cli#readme",
+  "bugs": {
+    "url": "https://github.com/groupsky/ya-modbus/issues"
+  },
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf dist",
