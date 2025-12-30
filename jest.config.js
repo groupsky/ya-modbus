@@ -3,6 +3,7 @@ module.exports = {
     '<rootDir>/packages/cli',
     '<rootDir>/packages/driver-types',
     '<rootDir>/packages/driver-sdk',
+    '<rootDir>/packages/ya-modbus-driver-ex9em',
     '<rootDir>/packages/ya-modbus-driver-xymd1',
   ],
   coverageReporters: ['text', 'lcov', 'html'],

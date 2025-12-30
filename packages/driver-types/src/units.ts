@@ -21,6 +21,8 @@ export type Unit =
   | 'Wh' // Watt-hours
   | 'kWh' // Kilowatt-hours
   | 'MWh' // Megawatt-hours
+  | 'VArh' // Volt-amperes reactive hours
+  | 'kVArh' // Kilovolt-amperes reactive hours
   | 'Ah' // Ampere-hours
   | 'Hz' // Hertz (frequency)
   | 'Ω' // Ohms (resistance)

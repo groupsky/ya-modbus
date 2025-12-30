@@ -1,0 +1,33 @@
+{
+  "name": "ya-modbus-driver-ex9em",
+  "version": "0.0.0",
+  "description": "NOARK Ex9EM Energy Meter driver for ya-modbus",
+  "keywords": [
+    "modbus",
+    "driver",
+    "energy",
+    "meter",
+    "power",
+    "ex9em",
+    "noark",
+    "ya-modbus-driver"
+  ],
+  "author": "Geno Roupsky <185580+groupsky@users.noreply.github.com>",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist",
+    "test": "jest",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@ya-modbus/driver-types": "^0.0.0"
+  }
+}
