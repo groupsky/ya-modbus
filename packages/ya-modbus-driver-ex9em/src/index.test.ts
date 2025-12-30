@@ -1230,5 +1230,21 @@ describe('Ex9EM Driver', () => {
         'Unknown baud rate encoding from device: 5'
       )
     })
+
+    it('should throw error for unknown baud rate in batched read', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Mock both config registers with unknown baud rate encoding
+      mockTransport.readHoldingRegisters.mockResolvedValue(
+        Buffer.from([0x00, 0x05, 0x00, 0x01]) // baud_rate=5 (unknown), device_address=1
+      )
+
+      await expect(driver.readDataPoints(['baud_rate', 'device_address'])).rejects.toThrow(
+        'Unknown baud rate encoding from device: 5'
+      )
+    })
   })
 })

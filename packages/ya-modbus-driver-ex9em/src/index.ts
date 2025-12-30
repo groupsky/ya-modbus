@@ -236,22 +236,52 @@ function decodeMeasurementDataPoints(buffer: Buffer): Record<string, unknown> {
 
   // Voltage (register 0, ×10)
   const voltage = buffer.readUInt16BE(0) / 10
+  /* istanbul ignore next - defensive check, UInt16 / constant is always finite */
+  if (!Number.isFinite(voltage)) {
+    throw new Error('Invalid voltage value from device')
+  }
+
   // Current (register 1, ×10)
   const current = buffer.readUInt16BE(2) / 10
+  /* istanbul ignore next - defensive check, UInt16 / constant is always finite */
+  if (!Number.isFinite(current)) {
+    throw new Error('Invalid current value from device')
+  }
+
   // Grid frequency (register 2, ×10)
   const frequency = buffer.readUInt16BE(4) / 10
-  // Active power (register 3)
+  /* istanbul ignore next - defensive check, UInt16 / constant is always finite */
+  if (!Number.isFinite(frequency)) {
+    throw new Error('Invalid frequency value from device')
+  }
+
+  // Active power (register 3, unsigned - device does not support bi-directional power)
   const active_power = buffer.readUInt16BE(6)
-  // Reactive power (register 4)
+  // Reactive power (register 4, unsigned - device does not support bi-directional power)
   const reactive_power = buffer.readUInt16BE(8)
-  // Apparent power (register 5)
+  // Apparent power (register 5, unsigned - device does not support bi-directional power)
   const apparent_power = buffer.readUInt16BE(10)
+
   // Power factor (register 6, ×1000)
   const power_factor = buffer.readUInt16BE(12) / 1000
+  /* istanbul ignore next - defensive check, UInt16 / constant is always finite */
+  if (!Number.isFinite(power_factor)) {
+    throw new Error('Invalid power factor value from device')
+  }
+
   // Total active energy (registers 7-8, 32-bit big-endian, ×100)
   const total_active_energy = buffer.readUInt32BE(14) / 100
+  /* istanbul ignore next - defensive check, UInt32 / constant is always finite */
+  if (!Number.isFinite(total_active_energy)) {
+    throw new Error('Invalid total active energy value from device')
+  }
+
   // Total reactive energy (registers 9-10, 32-bit big-endian, ×100)
   const total_reactive_energy = buffer.readUInt32BE(18) / 100
+  /* istanbul ignore next - defensive check, UInt32 / constant is always finite */
+  if (!Number.isFinite(total_reactive_energy)) {
+    throw new Error('Invalid total reactive energy value from device')
+  }
 
   return {
     voltage,
@@ -339,7 +369,11 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         // Both baud_rate and device_address requested - read in single transaction
         const buffer = await transport.readHoldingRegisters(0x002a, 2)
         const baudValue = buffer.readUInt16BE(0)
-        result['baud_rate'] = BAUD_RATE_DECODE[baudValue] ?? baudValue
+        const decoded = BAUD_RATE_DECODE[baudValue]
+        if (decoded === undefined) {
+          throw new Error(`Unknown baud rate encoding from device: ${baudValue}`)
+        }
+        result['baud_rate'] = decoded
         result['device_address'] = buffer.readUInt16BE(2)
       } else {
         // Single config register requested - read individually
