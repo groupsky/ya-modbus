@@ -57,7 +57,7 @@ my-modbus-driver/
 
 See `packages/ya-modbus-driver-*/` for reference implementations.
 
-**Required**: Implement `DeviceDriver` interface from `@ya-modbus/driver-sdk`.
+**Required**: Implement `DeviceDriver` interface from `@ya-modbus/driver-types`.
 
 **Key responsibilities**:
 
@@ -151,7 +151,7 @@ npx ya-modbus characterize --port /dev/ttyUSB0 --slave-id 1 \
 **Single factory function per package** that handles all device types:
 
 ```typescript
-import type { DeviceDriver, DataPoint } from '@ya-modbus/driver-sdk'
+import type { DeviceDriver, DataPoint } from '@ya-modbus/driver-types'
 
 // Single factory function - handles device type selection
 export const createDriver = async (config): Promise<DeviceDriver> => {
@@ -486,7 +486,7 @@ Document in driver implementation, enforce via function composition.
 
 ### Standard Data Types
 
-See `packages/core/src/types/data-types.ts` for complete list.
+See `packages/driver-types/src/data-types.ts` for complete list.
 
 Common types:
 
@@ -498,7 +498,7 @@ Common types:
 
 ### Standard Units
 
-See `packages/core/src/types/units.ts` for complete list.
+See `packages/driver-types/src/units.ts` for complete list.
 
 Common units:
 
@@ -507,17 +507,69 @@ Common units:
 - Temperature: `°C`, `°F`, `K`
 - Percentage: `%`
 
+### Transformation Utilities
+
+The `@ya-modbus/driver-sdk` package provides codec functions for common transformation patterns:
+
+**Reading scaled integer values:**
+
+```typescript
+import { readScaledUInt16BE, readScaledInt16BE, readScaledUInt32BE } from '@ya-modbus/driver-sdk'
+
+// Temperature stored as uint16 ×10 (235 = 23.5°C)
+const buffer = await transport.readInputRegisters(0, 1)
+const temperature = readScaledUInt16BE(buffer, 0, 10) // 23.5
+
+// Correction offset stored as int16 ×10 (-50 = -5.0°C)
+const corrBuffer = await transport.readHoldingRegisters(0x103, 1)
+const correction = readScaledInt16BE(corrBuffer, 0, 10) // -5.0
+
+// Total energy stored as uint32 ×100 (1000000 = 10000.00 kWh)
+const energyBuffer = await transport.readHoldingRegisters(0x0007, 2)
+const totalEnergy = readScaledUInt32BE(energyBuffer, 0, 100) // 10000.0
+```
+
+**Writing scaled integer values:**
+
+```typescript
+import { writeScaledUInt16BE, writeScaledInt16BE } from '@ya-modbus/driver-sdk'
+
+// Write humidity correction of 5.5% (stored as 55)
+const humBuffer = writeScaledUInt16BE(5.5, 10)
+await transport.writeMultipleRegisters(0x104, humBuffer)
+
+// Write temperature correction of -3.5°C (stored as -35)
+const tempBuffer = writeScaledInt16BE(-3.5, 10)
+await transport.writeMultipleRegisters(0x103, tempBuffer)
+```
+
+**Edge case handling:**
+
+All codec functions validate inputs and throw descriptive errors:
+
+```typescript
+// Throws: Invalid scale: must be greater than 0
+readScaledUInt16BE(buffer, 0, 0)
+
+// Throws: Invalid value: must be a finite number
+writeScaledUInt16BE(NaN, 10)
+
+// Throws: Invalid scaled value: 65536 is outside uint16 range (0 to 65535)
+writeScaledUInt16BE(6553.6, 10)
+```
+
+See `packages/driver-sdk/README.md` for complete API reference.
+
 ### Transformation Examples
 
-| Device Encoding | Raw Buffer   | Decoded Value              |
-| --------------- | ------------ | -------------------------- |
-| uint16 × 0.1    | `0x0901`     | `230.5` (float)            |
-| int16           | `0xFFFE`     | `-2` (integer)             |
-| float32 BE      | `0x43664000` | `230.5` (float)            |
-| Decimal YYMMDD  | `0x03D3EC`   | `"2025-12-20"` (timestamp) |
-| BCD             | `0x1234`     | `1234` (integer)           |
-
-Use transformation helpers from `@ya-modbus/driver-sdk`.
+| Device Encoding | Raw Buffer   | Decoded Value              | SDK Function                   |
+| --------------- | ------------ | -------------------------- | ------------------------------ |
+| uint16 × 10     | `0x00EB`     | `23.5` (float)             | `readScaledUInt16BE(..., 10)`  |
+| int16 × 10      | `0xFFCE`     | `-5.0` (float)             | `readScaledInt16BE(..., 10)`   |
+| uint32 × 100    | `0x000F4240` | `10000.0` (float)          | `readScaledUInt32BE(..., 100)` |
+| float32 BE      | `0x43664000` | `230.5` (float)            | Custom decoder                 |
+| Decimal YYMMDD  | `0x03D3EC`   | `"2025-12-20"` (timestamp) | Custom decoder                 |
+| BCD             | `0x1234`     | `1234` (integer)           | Custom decoder                 |
 
 ## Publishing
 
