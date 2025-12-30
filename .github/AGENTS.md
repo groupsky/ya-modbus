@@ -2,6 +2,6 @@
 
 CI/CD and repository settings.
 
-## Agent Guidelines
+## Required Reading
 
-See: `docs/agents/workflows.md` - CI workflow patterns
+READ docs/agents/workflows.md BEFORE modifying workflows or CI/CD configuration.
