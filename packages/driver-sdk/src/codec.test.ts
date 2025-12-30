@@ -184,120 +184,95 @@ describe('writeScaledInt16BE', () => {
 
 describe('Edge case validation', () => {
   describe('readScaledUInt16BE validation', () => {
-    it('should throw on division by zero (scale=0)', () => {
+    it.each([
+      {
+        scale: 0,
+        expected: 'Invalid scale: must be greater than 0',
+        desc: 'division by zero (scale=0)',
+      },
+      { scale: -10, expected: 'Invalid scale: must be greater than 0', desc: 'negative scale' },
+      { scale: NaN, expected: 'Invalid scale: must be a finite number', desc: 'NaN scale' },
+      {
+        scale: Infinity,
+        expected: 'Invalid scale: must be a finite number',
+        desc: 'Infinity scale',
+      },
+      {
+        scale: -Infinity,
+        expected: 'Invalid scale: must be a finite number',
+        desc: '-Infinity scale',
+      },
+    ])('should throw on $desc', ({ scale, expected }) => {
       const buffer = Buffer.from([0x00, 0x64])
-      expect(() => readScaledUInt16BE(buffer, 0, 0)).toThrow(
-        'Invalid scale: must be greater than 0'
-      )
-    })
-
-    it('should throw on negative scale', () => {
-      const buffer = Buffer.from([0x00, 0x64])
-      expect(() => readScaledUInt16BE(buffer, 0, -10)).toThrow(
-        'Invalid scale: must be greater than 0'
-      )
-    })
-
-    it('should throw on NaN scale', () => {
-      const buffer = Buffer.from([0x00, 0x64])
-      expect(() => readScaledUInt16BE(buffer, 0, NaN)).toThrow(
-        'Invalid scale: must be a finite number'
-      )
-    })
-
-    it('should throw on Infinity scale', () => {
-      const buffer = Buffer.from([0x00, 0x64])
-      expect(() => readScaledUInt16BE(buffer, 0, Infinity)).toThrow(
-        'Invalid scale: must be a finite number'
-      )
-    })
-
-    it('should throw on -Infinity scale', () => {
-      const buffer = Buffer.from([0x00, 0x64])
-      expect(() => readScaledUInt16BE(buffer, 0, -Infinity)).toThrow(
-        'Invalid scale: must be a finite number'
-      )
+      expect(() => readScaledUInt16BE(buffer, 0, scale)).toThrow(expected)
     })
   })
 
   describe('readScaledInt16BE validation', () => {
-    it('should throw on division by zero (scale=0)', () => {
+    it.each([
+      {
+        scale: 0,
+        expected: 'Invalid scale: must be greater than 0',
+        desc: 'division by zero (scale=0)',
+      },
+      { scale: -10, expected: 'Invalid scale: must be greater than 0', desc: 'negative scale' },
+      { scale: NaN, expected: 'Invalid scale: must be a finite number', desc: 'NaN scale' },
+      {
+        scale: Infinity,
+        expected: 'Invalid scale: must be a finite number',
+        desc: 'Infinity scale',
+      },
+    ])('should throw on $desc', ({ scale, expected }) => {
       const buffer = Buffer.from([0x00, 0x64])
-      expect(() => readScaledInt16BE(buffer, 0, 0)).toThrow('Invalid scale: must be greater than 0')
-    })
-
-    it('should throw on negative scale', () => {
-      const buffer = Buffer.from([0x00, 0x64])
-      expect(() => readScaledInt16BE(buffer, 0, -10)).toThrow(
-        'Invalid scale: must be greater than 0'
-      )
-    })
-
-    it('should throw on NaN scale', () => {
-      const buffer = Buffer.from([0x00, 0x64])
-      expect(() => readScaledInt16BE(buffer, 0, NaN)).toThrow(
-        'Invalid scale: must be a finite number'
-      )
-    })
-
-    it('should throw on Infinity scale', () => {
-      const buffer = Buffer.from([0x00, 0x64])
-      expect(() => readScaledInt16BE(buffer, 0, Infinity)).toThrow(
-        'Invalid scale: must be a finite number'
-      )
+      expect(() => readScaledInt16BE(buffer, 0, scale)).toThrow(expected)
     })
   })
 
   describe('readScaledUInt32BE validation', () => {
-    it('should throw on division by zero (scale=0)', () => {
+    it.each([
+      {
+        scale: 0,
+        expected: 'Invalid scale: must be greater than 0',
+        desc: 'division by zero (scale=0)',
+      },
+      { scale: -100, expected: 'Invalid scale: must be greater than 0', desc: 'negative scale' },
+      { scale: NaN, expected: 'Invalid scale: must be a finite number', desc: 'NaN scale' },
+    ])('should throw on $desc', ({ scale, expected }) => {
       const buffer = Buffer.from([0x00, 0x00, 0x27, 0x10])
-      expect(() => readScaledUInt32BE(buffer, 0, 0)).toThrow(
-        'Invalid scale: must be greater than 0'
-      )
-    })
-
-    it('should throw on negative scale', () => {
-      const buffer = Buffer.from([0x00, 0x00, 0x27, 0x10])
-      expect(() => readScaledUInt32BE(buffer, 0, -100)).toThrow(
-        'Invalid scale: must be greater than 0'
-      )
-    })
-
-    it('should throw on NaN scale', () => {
-      const buffer = Buffer.from([0x00, 0x00, 0x27, 0x10])
-      expect(() => readScaledUInt32BE(buffer, 0, NaN)).toThrow(
-        'Invalid scale: must be a finite number'
-      )
+      expect(() => readScaledUInt32BE(buffer, 0, scale)).toThrow(expected)
     })
   })
 
   describe('writeScaledUInt16BE validation', () => {
-    it('should throw on NaN value', () => {
-      expect(() => writeScaledUInt16BE(NaN, 10)).toThrow('Invalid value: must be a finite number')
+    it.each([
+      {
+        value: NaN,
+        scale: 10,
+        expected: 'Invalid value: must be a finite number',
+        desc: 'NaN value',
+      },
+      {
+        value: Infinity,
+        scale: 10,
+        expected: 'Invalid value: must be a finite number',
+        desc: 'Infinity value',
+      },
+      {
+        value: -Infinity,
+        scale: 10,
+        expected: 'Invalid value: must be a finite number',
+        desc: '-Infinity value',
+      },
+    ])('should throw on $desc', ({ value, scale, expected }) => {
+      expect(() => writeScaledUInt16BE(value, scale)).toThrow(expected)
     })
 
-    it('should throw on Infinity value', () => {
-      expect(() => writeScaledUInt16BE(Infinity, 10)).toThrow(
-        'Invalid value: must be a finite number'
-      )
-    })
-
-    it('should throw on -Infinity value', () => {
-      expect(() => writeScaledUInt16BE(-Infinity, 10)).toThrow(
-        'Invalid value: must be a finite number'
-      )
-    })
-
-    it('should throw on negative scale', () => {
-      expect(() => writeScaledUInt16BE(10, -10)).toThrow('Invalid scale: must be greater than 0')
-    })
-
-    it('should throw on scale=0', () => {
-      expect(() => writeScaledUInt16BE(10, 0)).toThrow('Invalid scale: must be greater than 0')
-    })
-
-    it('should throw on NaN scale', () => {
-      expect(() => writeScaledUInt16BE(10, NaN)).toThrow('Invalid scale: must be a finite number')
+    it.each([
+      { scale: -10, expected: 'Invalid scale: must be greater than 0', desc: 'negative scale' },
+      { scale: 0, expected: 'Invalid scale: must be greater than 0', desc: 'scale=0' },
+      { scale: NaN, expected: 'Invalid scale: must be a finite number', desc: 'NaN scale' },
+    ])('should throw on $desc', ({ scale, expected }) => {
+      expect(() => writeScaledUInt16BE(10, scale)).toThrow(expected)
     })
 
     it('should throw when scaled value exceeds max uint16', () => {
@@ -319,32 +294,35 @@ describe('Edge case validation', () => {
   })
 
   describe('writeScaledInt16BE validation', () => {
-    it('should throw on NaN value', () => {
-      expect(() => writeScaledInt16BE(NaN, 10)).toThrow('Invalid value: must be a finite number')
+    it.each([
+      {
+        value: NaN,
+        scale: 10,
+        expected: 'Invalid value: must be a finite number',
+        desc: 'NaN value',
+      },
+      {
+        value: Infinity,
+        scale: 10,
+        expected: 'Invalid value: must be a finite number',
+        desc: 'Infinity value',
+      },
+      {
+        value: -Infinity,
+        scale: 10,
+        expected: 'Invalid value: must be a finite number',
+        desc: '-Infinity value',
+      },
+    ])('should throw on $desc', ({ value, scale, expected }) => {
+      expect(() => writeScaledInt16BE(value, scale)).toThrow(expected)
     })
 
-    it('should throw on Infinity value', () => {
-      expect(() => writeScaledInt16BE(Infinity, 10)).toThrow(
-        'Invalid value: must be a finite number'
-      )
-    })
-
-    it('should throw on -Infinity value', () => {
-      expect(() => writeScaledInt16BE(-Infinity, 10)).toThrow(
-        'Invalid value: must be a finite number'
-      )
-    })
-
-    it('should throw on negative scale', () => {
-      expect(() => writeScaledInt16BE(10, -10)).toThrow('Invalid scale: must be greater than 0')
-    })
-
-    it('should throw on scale=0', () => {
-      expect(() => writeScaledInt16BE(10, 0)).toThrow('Invalid scale: must be greater than 0')
-    })
-
-    it('should throw on NaN scale', () => {
-      expect(() => writeScaledInt16BE(10, NaN)).toThrow('Invalid scale: must be a finite number')
+    it.each([
+      { scale: -10, expected: 'Invalid scale: must be greater than 0', desc: 'negative scale' },
+      { scale: 0, expected: 'Invalid scale: must be greater than 0', desc: 'scale=0' },
+      { scale: NaN, expected: 'Invalid scale: must be a finite number', desc: 'NaN scale' },
+    ])('should throw on $desc', ({ scale, expected }) => {
+      expect(() => writeScaledInt16BE(10, scale)).toThrow(expected)
     })
 
     it('should throw when scaled value exceeds max int16', () => {
