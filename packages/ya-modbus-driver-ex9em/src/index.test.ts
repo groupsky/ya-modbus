@@ -95,7 +95,7 @@ describe('Ex9EM Driver', () => {
       })
 
       const dataPoints = driver.dataPoints
-      expect(dataPoints).toHaveLength(12)
+      expect(dataPoints).toHaveLength(11)
 
       const voltage = dataPoints.find((dp) => dp.id === 'voltage')
       expect(voltage).toBeDefined()
@@ -166,12 +166,6 @@ describe('Ex9EM Driver', () => {
       expect(baudRate?.type).toBe('enum')
       expect(baudRate?.access).toBe('rw')
       expect(baudRate?.pollType).toBe('on-demand')
-
-      const password = dataPoints.find((dp) => dp.id === 'password')
-      expect(password).toBeDefined()
-      expect(password?.type).toBe('integer')
-      expect(password?.access).toBe('w')
-      expect(password?.pollType).toBe('on-demand')
     })
   })
 
@@ -746,15 +740,6 @@ describe('Ex9EM Driver', () => {
         expect(baudRate).toBe(test.decoded)
       }
     })
-
-    it('should throw error when reading password', async () => {
-      const driver = await createDriver({
-        transport: mockTransport,
-        slaveId: 1,
-      })
-
-      await expect(driver.readDataPoint('password')).rejects.toThrow('Password is write-only')
-    })
   })
 
   describe('readDataPoints', () => {
@@ -974,20 +959,6 @@ describe('Ex9EM Driver', () => {
       expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x002a, 1)
     })
 
-    it('should throw when reading password in batch', async () => {
-      const driver = await createDriver({
-        transport: mockTransport,
-        slaveId: 1,
-      })
-
-      // Mock measurement buffer for voltage reading
-      mockTransport.readHoldingRegisters.mockResolvedValue(Buffer.alloc(22))
-
-      await expect(driver.readDataPoints(['voltage', 'password'])).rejects.toThrow(
-        'Password is write-only'
-      )
-    })
-
     it('should throw on buffer too short', async () => {
       const driver = await createDriver({
         transport: mockTransport,
@@ -1125,48 +1096,6 @@ describe('Ex9EM Driver', () => {
       }
     })
 
-    it('should write password', async () => {
-      const driver = await createDriver({
-        transport: mockTransport,
-        slaveId: 1,
-      })
-
-      await driver.writeDataPoint('password', 0)
-
-      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledWith(
-        0x002c,
-        Buffer.from([0x00, 0x00, 0x00, 0x00])
-      )
-    })
-
-    it('should validate password range', async () => {
-      const driver = await createDriver({
-        transport: mockTransport,
-        slaveId: 1,
-      })
-
-      await expect(driver.writeDataPoint('password', -1)).rejects.toThrow('Invalid password')
-      await expect(driver.writeDataPoint('password', 4294967296)).rejects.toThrow(
-        'Invalid password'
-      )
-    })
-
-    it('should accept password boundary values', async () => {
-      const driver = await createDriver({
-        transport: mockTransport,
-        slaveId: 1,
-      })
-
-      await driver.writeDataPoint('password', 0)
-      await driver.writeDataPoint('password', 4294967295)
-
-      expect(mockTransport.writeMultipleRegisters).toHaveBeenCalledTimes(2)
-      expect(mockTransport.writeMultipleRegisters).toHaveBeenLastCalledWith(
-        0x002c,
-        Buffer.from([0xff, 0xff, 0xff, 0xff])
-      )
-    })
-
     it('should reject non-finite values for device_address', async () => {
       const driver = await createDriver({
         transport: mockTransport,
@@ -1184,15 +1113,15 @@ describe('Ex9EM Driver', () => {
       )
     })
 
-    it('should reject non-finite values for password', async () => {
+    it('should reject non-integer values for device_address', async () => {
       const driver = await createDriver({
         transport: mockTransport,
         slaveId: 1,
       })
 
-      await expect(driver.writeDataPoint('password', NaN)).rejects.toThrow('Invalid password')
-      await expect(driver.writeDataPoint('password', Infinity)).rejects.toThrow('Invalid password')
-      await expect(driver.writeDataPoint('password', -Infinity)).rejects.toThrow('Invalid password')
+      await expect(driver.writeDataPoint('device_address', 5.5)).rejects.toThrow(
+        'Invalid device address: must be an integer between 1 and 247'
+      )
     })
   })
 

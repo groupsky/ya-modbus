@@ -20,7 +20,8 @@
  * Configuration registers (per PDF documentation):
  * - Holding register 0x002A: Baud rate (1=1200, 2=2400, 3=4800, 4=9600)
  * - Holding register 0x002B: Device address (1-247)
- * - Holding registers 0x002C-0x002D: Password (32-bit, default 0)
+ *
+ * Note: Configuration changes may require password unlock mechanism (not implemented)
  *
  * Note: The official PDF register map (docs/ex9em-1p-1m-80a-mo-mt-register-map.pdf)
  * shows a different layout with gaps and tariff-specific energy registers for 0x0007-0x001A.
@@ -173,7 +174,8 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     type: 'integer',
     access: 'rw',
     pollType: 'on-demand',
-    description: 'Modbus device address (1-247). Changes applied after device restart.',
+    description:
+      'Modbus device address (1-247). May require password unlock mechanism. Changes applied after device restart.',
     min: 1,
     max: 247,
   },
@@ -183,24 +185,14 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     type: 'enum',
     access: 'rw',
     pollType: 'on-demand',
-    description: 'Serial communication baud rate. Changes applied after device restart.',
+    description:
+      'Serial communication baud rate. May require password unlock mechanism. Changes applied after device restart.',
     enumValues: {
       1200: '1200 bps',
       2400: '2400 bps',
       4800: '4800 bps',
       9600: '9600 bps',
     },
-  },
-  {
-    id: 'password',
-    name: 'Password',
-    type: 'integer',
-    access: 'w',
-    pollType: 'on-demand',
-    description:
-      'Device password for configuration changes (32-bit, default 0). Write password before changing configuration.',
-    min: 0,
-    max: 4294967295,
   },
 ]
 
@@ -236,24 +228,12 @@ function decodeMeasurementDataPoints(buffer: Buffer): Record<string, unknown> {
 
   // Voltage (register 0, ×10)
   const voltage = buffer.readUInt16BE(0) / 10
-  /* istanbul ignore next - defensive check, UInt16 / constant is always finite */
-  if (!Number.isFinite(voltage)) {
-    throw new Error('Invalid voltage value from device')
-  }
 
   // Current (register 1, ×10)
   const current = buffer.readUInt16BE(2) / 10
-  /* istanbul ignore next - defensive check, UInt16 / constant is always finite */
-  if (!Number.isFinite(current)) {
-    throw new Error('Invalid current value from device')
-  }
 
   // Grid frequency (register 2, ×10)
   const frequency = buffer.readUInt16BE(4) / 10
-  /* istanbul ignore next - defensive check, UInt16 / constant is always finite */
-  if (!Number.isFinite(frequency)) {
-    throw new Error('Invalid frequency value from device')
-  }
 
   // Active power (register 3, unsigned - device does not support bi-directional power)
   const active_power = buffer.readUInt16BE(6)
@@ -264,24 +244,12 @@ function decodeMeasurementDataPoints(buffer: Buffer): Record<string, unknown> {
 
   // Power factor (register 6, ×1000)
   const power_factor = buffer.readUInt16BE(12) / 1000
-  /* istanbul ignore next - defensive check, UInt16 / constant is always finite */
-  if (!Number.isFinite(power_factor)) {
-    throw new Error('Invalid power factor value from device')
-  }
 
   // Total active energy (registers 7-8, 32-bit big-endian, ×100)
   const total_active_energy = buffer.readUInt32BE(14) / 100
-  /* istanbul ignore next - defensive check, UInt32 / constant is always finite */
-  if (!Number.isFinite(total_active_energy)) {
-    throw new Error('Invalid total active energy value from device')
-  }
 
   // Total reactive energy (registers 9-10, 32-bit big-endian, ×100)
   const total_reactive_energy = buffer.readUInt32BE(18) / 100
-  /* istanbul ignore next - defensive check, UInt32 / constant is always finite */
-  if (!Number.isFinite(total_reactive_energy)) {
-    throw new Error('Invalid total reactive energy value from device')
-  }
 
   return {
     voltage,
@@ -323,9 +291,6 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         const buffer = await transport.readHoldingRegisters(0x002b, 1)
         return buffer.readUInt16BE(0)
       }
-      if (id === 'password') {
-        throw new Error('Password is write-only')
-      }
 
       // Read all measurement registers at once (0x0000-0x000A = 11 registers)
       const buffer = await transport.readHoldingRegisters(0x0000, 11)
@@ -339,17 +304,10 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
     },
 
     async readDataPoints(ids: string[]): Promise<Record<string, unknown>> {
-      // Check for write-only data points first
-      if (ids.includes('password')) {
-        throw new Error('Password is write-only')
-      }
-
       const result: Record<string, unknown> = {}
 
       // Separate measurement and configuration data points
-      const measurementIds = ids.filter(
-        (id) => id !== 'baud_rate' && id !== 'device_address' && id !== 'password'
-      )
+      const measurementIds = ids.filter((id) => id !== 'baud_rate' && id !== 'device_address')
       const configIds = ids.filter((id) => id === 'baud_rate' || id === 'device_address')
 
       // Read measurement registers if needed (0x0000-0x000A = 11 registers)
@@ -403,28 +361,18 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
       // Validate and write device address (register 0x002B, range 1-247)
       if (id === 'device_address') {
         const [min, max] = SUPPORTED_CONFIG.validAddressRange
-        if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
-          throw new Error(`Invalid device address: must be between ${min} and ${max}`)
+        if (
+          typeof value !== 'number' ||
+          !Number.isFinite(value) ||
+          !Number.isInteger(value) ||
+          value < min ||
+          value > max
+        ) {
+          throw new Error(`Invalid device address: must be an integer between ${min} and ${max}`)
         }
         const buffer = Buffer.allocUnsafe(2)
         buffer.writeUInt16BE(value, 0)
         await transport.writeMultipleRegisters(0x002b, buffer)
-        return
-      }
-
-      // Write password (32-bit, registers 0x002C-0x002D, range 0-4294967295)
-      if (id === 'password') {
-        if (
-          typeof value !== 'number' ||
-          !Number.isFinite(value) ||
-          value < 0 ||
-          value > 4294967295
-        ) {
-          throw new Error('Invalid password: must be between 0 and 4294967295')
-        }
-        const buffer = Buffer.allocUnsafe(4)
-        buffer.writeUInt32BE(value, 0)
-        await transport.writeMultipleRegisters(0x002c, buffer)
         return
       }
 

@@ -65,7 +65,6 @@ console.log(values)
 | `total_reactive_energy` | Total Reactive Energy | float   | kVArh | r      | Total reactive energy                                 |
 | `device_address`        | Device Address        | integer |       | rw     | Modbus address (1-247), changes after device restart  |
 | `baud_rate`             | Baud Rate             | enum    |       | rw     | Communication baud rate, changes after device restart |
-| `password`              | Password              | integer |       | w      | Device password (0-4294967295) for configuration      |
 
 ## Factory Default Configuration
 
@@ -87,49 +86,19 @@ console.log(values)
 - **Stop bits**: 1
 - **Slave address**: 1-247 (standard Modbus range)
 
-## Configuration Changes and Password Protection
-
-### Password Workflow
-
-According to the device documentation, configuration changes (`device_address` and `baud_rate`) are protected by a password mechanism:
-
-1. **Default password**: `0` (32-bit value at register 0x002C)
-2. **Password reset procedure**:
-   - Write password to register 0x002C using Modbus function code 0x28 (vendor-specific)
-   - Within 10 seconds, write the new configuration value
-   - Changes take effect after device restart
-
-**Example workflow for changing device address:**
-
-```
-Step 1: Reset password (function code 0x28)
-  Send: 00 28 FE 01 00 02 04 00 00 00 00 [CRC16]
-
-Step 2: Within 10 seconds, write new device address (e.g., 100)
-  Send: 01 10 002B 0001 02 0064 [CRC16]
-
-Step 3: Restart device for changes to take effect
-```
-
-**Important Notes:**
-
-- The password mechanism uses Modbus function code 0x28, which is not part of the standard Modbus specification
-- This driver provides access to the password register via `writeDataPoint('password', value)` but does not implement the full vendor-specific password workflow
-- Configuration changes may work without the password workflow on some devices or firmware versions
-- Always verify configuration changes have been applied after device restart
-- Consult the official register map PDF for detailed protocol information
-
-### Making Configuration Changes
+## Configuration Changes
 
 ```typescript
-// Change device address (may require password workflow depending on device firmware)
+// Change device address
 await driver.writeDataPoint('device_address', 5)
 
-// Change baud rate (may require password workflow depending on device firmware)
+// Change baud rate
 await driver.writeDataPoint('baud_rate', 4800)
 
 // Note: Restart the device for changes to take effect
 ```
+
+**Important:** According to the device documentation, configuration changes may require a password unlock mechanism using vendor-specific Modbus function code 0x28. This mechanism is not implemented in the driver. Configuration changes may work without it on some firmware versions, but YMMV. Consult the official register map PDF in `docs/` for details.
 
 ## Device Information
 
