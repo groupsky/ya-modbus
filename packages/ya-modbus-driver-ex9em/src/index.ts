@@ -33,8 +33,9 @@ import {
   readScaledUInt32BE,
   createEnumValidator,
   createRangeValidator,
-  validateInteger,
+  isValidInteger,
   formatEnumError,
+  formatRangeError,
 } from '@ya-modbus/driver-sdk'
 import type {
   DeviceDriver,
@@ -364,8 +365,8 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
       // Validate and write device address (register 0x002B, range 1-247)
       if (id === 'device_address') {
         const [min, max] = SUPPORTED_CONFIG.validAddressRange
-        if (!validateInteger(value) || !isValidAddress(value)) {
-          throw new Error(`Invalid device address: must be an integer between ${min} and ${max}`)
+        if (!isValidInteger(value) || !isValidAddress(value)) {
+          throw new Error(formatRangeError('device address', value, min, max))
         }
         const buffer = Buffer.allocUnsafe(2)
         buffer.writeUInt16BE(value, 0)
