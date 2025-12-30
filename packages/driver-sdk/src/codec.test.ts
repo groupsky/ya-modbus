@@ -181,3 +181,192 @@ describe('writeScaledInt16BE', () => {
     expect(buffer2.readInt16BE(0)).toBe(-109)
   })
 })
+
+describe('Edge case validation', () => {
+  describe('readScaledUInt16BE validation', () => {
+    it('should throw on division by zero (scale=0)', () => {
+      const buffer = Buffer.from([0x00, 0x64])
+      expect(() => readScaledUInt16BE(buffer, 0, 0)).toThrow(
+        'Invalid scale: must be greater than 0'
+      )
+    })
+
+    it('should throw on negative scale', () => {
+      const buffer = Buffer.from([0x00, 0x64])
+      expect(() => readScaledUInt16BE(buffer, 0, -10)).toThrow(
+        'Invalid scale: must be greater than 0'
+      )
+    })
+
+    it('should throw on NaN scale', () => {
+      const buffer = Buffer.from([0x00, 0x64])
+      expect(() => readScaledUInt16BE(buffer, 0, NaN)).toThrow(
+        'Invalid scale: must be a finite number'
+      )
+    })
+
+    it('should throw on Infinity scale', () => {
+      const buffer = Buffer.from([0x00, 0x64])
+      expect(() => readScaledUInt16BE(buffer, 0, Infinity)).toThrow(
+        'Invalid scale: must be a finite number'
+      )
+    })
+
+    it('should throw on -Infinity scale', () => {
+      const buffer = Buffer.from([0x00, 0x64])
+      expect(() => readScaledUInt16BE(buffer, 0, -Infinity)).toThrow(
+        'Invalid scale: must be a finite number'
+      )
+    })
+  })
+
+  describe('readScaledInt16BE validation', () => {
+    it('should throw on division by zero (scale=0)', () => {
+      const buffer = Buffer.from([0x00, 0x64])
+      expect(() => readScaledInt16BE(buffer, 0, 0)).toThrow('Invalid scale: must be greater than 0')
+    })
+
+    it('should throw on negative scale', () => {
+      const buffer = Buffer.from([0x00, 0x64])
+      expect(() => readScaledInt16BE(buffer, 0, -10)).toThrow(
+        'Invalid scale: must be greater than 0'
+      )
+    })
+
+    it('should throw on NaN scale', () => {
+      const buffer = Buffer.from([0x00, 0x64])
+      expect(() => readScaledInt16BE(buffer, 0, NaN)).toThrow(
+        'Invalid scale: must be a finite number'
+      )
+    })
+
+    it('should throw on Infinity scale', () => {
+      const buffer = Buffer.from([0x00, 0x64])
+      expect(() => readScaledInt16BE(buffer, 0, Infinity)).toThrow(
+        'Invalid scale: must be a finite number'
+      )
+    })
+  })
+
+  describe('readScaledUInt32BE validation', () => {
+    it('should throw on division by zero (scale=0)', () => {
+      const buffer = Buffer.from([0x00, 0x00, 0x27, 0x10])
+      expect(() => readScaledUInt32BE(buffer, 0, 0)).toThrow(
+        'Invalid scale: must be greater than 0'
+      )
+    })
+
+    it('should throw on negative scale', () => {
+      const buffer = Buffer.from([0x00, 0x00, 0x27, 0x10])
+      expect(() => readScaledUInt32BE(buffer, 0, -100)).toThrow(
+        'Invalid scale: must be greater than 0'
+      )
+    })
+
+    it('should throw on NaN scale', () => {
+      const buffer = Buffer.from([0x00, 0x00, 0x27, 0x10])
+      expect(() => readScaledUInt32BE(buffer, 0, NaN)).toThrow(
+        'Invalid scale: must be a finite number'
+      )
+    })
+  })
+
+  describe('writeScaledUInt16BE validation', () => {
+    it('should throw on NaN value', () => {
+      expect(() => writeScaledUInt16BE(NaN, 10)).toThrow('Invalid value: must be a finite number')
+    })
+
+    it('should throw on Infinity value', () => {
+      expect(() => writeScaledUInt16BE(Infinity, 10)).toThrow(
+        'Invalid value: must be a finite number'
+      )
+    })
+
+    it('should throw on -Infinity value', () => {
+      expect(() => writeScaledUInt16BE(-Infinity, 10)).toThrow(
+        'Invalid value: must be a finite number'
+      )
+    })
+
+    it('should throw on negative scale', () => {
+      expect(() => writeScaledUInt16BE(10, -10)).toThrow('Invalid scale: must be greater than 0')
+    })
+
+    it('should throw on scale=0', () => {
+      expect(() => writeScaledUInt16BE(10, 0)).toThrow('Invalid scale: must be greater than 0')
+    })
+
+    it('should throw on NaN scale', () => {
+      expect(() => writeScaledUInt16BE(10, NaN)).toThrow('Invalid scale: must be a finite number')
+    })
+
+    it('should throw when scaled value exceeds max uint16', () => {
+      expect(() => writeScaledUInt16BE(6553.6, 10)).toThrow(
+        'Invalid scaled value: 65536 is outside uint16 range (0 to 65535)'
+      )
+    })
+
+    it('should throw when value is negative', () => {
+      expect(() => writeScaledUInt16BE(-1, 10)).toThrow(
+        'Invalid scaled value: -10 is outside uint16 range (0 to 65535)'
+      )
+    })
+
+    it('should allow max valid value', () => {
+      const buffer = writeScaledUInt16BE(6553.5, 10)
+      expect(buffer.readUInt16BE(0)).toBe(65535)
+    })
+  })
+
+  describe('writeScaledInt16BE validation', () => {
+    it('should throw on NaN value', () => {
+      expect(() => writeScaledInt16BE(NaN, 10)).toThrow('Invalid value: must be a finite number')
+    })
+
+    it('should throw on Infinity value', () => {
+      expect(() => writeScaledInt16BE(Infinity, 10)).toThrow(
+        'Invalid value: must be a finite number'
+      )
+    })
+
+    it('should throw on -Infinity value', () => {
+      expect(() => writeScaledInt16BE(-Infinity, 10)).toThrow(
+        'Invalid value: must be a finite number'
+      )
+    })
+
+    it('should throw on negative scale', () => {
+      expect(() => writeScaledInt16BE(10, -10)).toThrow('Invalid scale: must be greater than 0')
+    })
+
+    it('should throw on scale=0', () => {
+      expect(() => writeScaledInt16BE(10, 0)).toThrow('Invalid scale: must be greater than 0')
+    })
+
+    it('should throw on NaN scale', () => {
+      expect(() => writeScaledInt16BE(10, NaN)).toThrow('Invalid scale: must be a finite number')
+    })
+
+    it('should throw when scaled value exceeds max int16', () => {
+      expect(() => writeScaledInt16BE(3276.8, 10)).toThrow(
+        'Invalid scaled value: 32768 is outside int16 range (-32768 to 32767)'
+      )
+    })
+
+    it('should throw when scaled value exceeds min int16', () => {
+      expect(() => writeScaledInt16BE(-3276.9, 10)).toThrow(
+        'Invalid scaled value: -32769 is outside int16 range (-32768 to 32767)'
+      )
+    })
+
+    it('should allow max valid positive value', () => {
+      const buffer = writeScaledInt16BE(3276.7, 10)
+      expect(buffer.readInt16BE(0)).toBe(32767)
+    })
+
+    it('should allow max valid negative value', () => {
+      const buffer = writeScaledInt16BE(-3276.8, 10)
+      expect(buffer.readInt16BE(0)).toBe(-32768)
+    })
+  })
+})

@@ -6,12 +6,57 @@
  */
 
 /**
+ * Validate that a scale parameter is valid
+ *
+ * @param scale - Scale factor to validate
+ * @throws Error if scale is not finite or is not positive
+ */
+function validateScale(scale: number): void {
+  if (!Number.isFinite(scale)) {
+    throw new Error('Invalid scale: must be a finite number')
+  }
+  if (scale <= 0) {
+    throw new Error('Invalid scale: must be greater than 0')
+  }
+}
+
+/**
+ * Validate that a value for writing is valid
+ *
+ * @param value - Value to validate
+ * @throws Error if value is not finite
+ */
+function validateWriteValue(value: number): void {
+  if (!Number.isFinite(value)) {
+    throw new Error('Invalid value: must be a finite number')
+  }
+}
+
+/**
+ * Validate that a scaled value fits within the target integer range
+ *
+ * @param scaledValue - Scaled value to validate
+ * @param min - Minimum allowed value (inclusive)
+ * @param max - Maximum allowed value (inclusive)
+ * @param typeName - Name of the target type for error messages
+ * @throws Error if scaled value is outside the valid range
+ */
+function validateRange(scaledValue: number, min: number, max: number, typeName: string): void {
+  if (scaledValue < min || scaledValue > max) {
+    throw new Error(
+      `Invalid scaled value: ${scaledValue} is outside ${typeName} range (${min} to ${max})`
+    )
+  }
+}
+
+/**
  * Read and scale an unsigned 16-bit integer from a buffer
  *
  * @param buffer - Buffer containing the register data
  * @param offset - Byte offset to start reading from
  * @param scale - Scale factor (e.g., 10 for ×10 values)
  * @returns Scaled floating-point value
+ * @throws Error if scale is not a finite positive number
  *
  * @example
  * ```typescript
@@ -21,6 +66,7 @@
  * ```
  */
 export function readScaledUInt16BE(buffer: Buffer, offset: number, scale: number): number {
+  validateScale(scale)
   const rawValue = buffer.readUInt16BE(offset)
   return rawValue / scale
 }
@@ -32,6 +78,7 @@ export function readScaledUInt16BE(buffer: Buffer, offset: number, scale: number
  * @param offset - Byte offset to start reading from
  * @param scale - Scale factor (e.g., 10 for ×10 values)
  * @returns Scaled floating-point value
+ * @throws Error if scale is not a finite positive number
  *
  * @example
  * ```typescript
@@ -41,6 +88,7 @@ export function readScaledUInt16BE(buffer: Buffer, offset: number, scale: number
  * ```
  */
 export function readScaledInt16BE(buffer: Buffer, offset: number, scale: number): number {
+  validateScale(scale)
   const rawValue = buffer.readInt16BE(offset)
   return rawValue / scale
 }
@@ -52,6 +100,7 @@ export function readScaledInt16BE(buffer: Buffer, offset: number, scale: number)
  * @param offset - Byte offset to start reading from
  * @param scale - Scale factor (e.g., 100 for ×100 values)
  * @returns Scaled floating-point value
+ * @throws Error if scale is not a finite positive number
  *
  * @example
  * ```typescript
@@ -61,6 +110,7 @@ export function readScaledInt16BE(buffer: Buffer, offset: number, scale: number)
  * ```
  */
 export function readScaledUInt32BE(buffer: Buffer, offset: number, scale: number): number {
+  validateScale(scale)
   const rawValue = buffer.readUInt32BE(offset)
   return rawValue / scale
 }
@@ -71,6 +121,7 @@ export function readScaledUInt32BE(buffer: Buffer, offset: number, scale: number
  * @param value - Value to encode
  * @param scale - Scale factor (e.g., 10 for ×10 values)
  * @returns 2-byte buffer containing the scaled value
+ * @throws Error if value is not finite, scale is invalid, or scaled value exceeds uint16 range
  *
  * @example
  * ```typescript
@@ -80,8 +131,13 @@ export function readScaledUInt32BE(buffer: Buffer, offset: number, scale: number
  * ```
  */
 export function writeScaledUInt16BE(value: number, scale: number): Buffer {
-  const buffer = Buffer.allocUnsafe(2)
+  validateWriteValue(value)
+  validateScale(scale)
+
   const scaledValue = Math.trunc(value * scale)
+  validateRange(scaledValue, 0, 0xffff, 'uint16')
+
+  const buffer = Buffer.allocUnsafe(2)
   buffer.writeUInt16BE(scaledValue, 0)
   return buffer
 }
@@ -92,6 +148,7 @@ export function writeScaledUInt16BE(value: number, scale: number): Buffer {
  * @param value - Value to encode
  * @param scale - Scale factor (e.g., 10 for ×10 values)
  * @returns 2-byte buffer containing the scaled value
+ * @throws Error if value is not finite, scale is invalid, or scaled value exceeds int16 range
  *
  * @example
  * ```typescript
@@ -101,9 +158,14 @@ export function writeScaledUInt16BE(value: number, scale: number): Buffer {
  * ```
  */
 export function writeScaledInt16BE(value: number, scale: number): Buffer {
-  const buffer = Buffer.allocUnsafe(2)
+  validateWriteValue(value)
+  validateScale(scale)
+
   // Use Math.trunc for predictable rounding toward zero (avoids floating-point precision issues)
   const scaledValue = Math.trunc(value * scale)
+  validateRange(scaledValue, -0x8000, 0x7fff, 'int16')
+
+  const buffer = Buffer.allocUnsafe(2)
   buffer.writeInt16BE(scaledValue, 0)
   return buffer
 }
