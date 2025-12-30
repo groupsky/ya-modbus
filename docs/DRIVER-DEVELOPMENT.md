@@ -55,7 +55,7 @@ my-modbus-driver/
 - Device family with shared logic but different capabilities
 - Multiple firmware versions with different register layouts
 
-See `packages/devices/` for reference implementations.
+See `packages/ya-modbus-driver-*/` for reference implementations.
 
 **Required**: Implement `DeviceDriver` interface from `@ya-modbus/driver-sdk`.
 
@@ -206,7 +206,7 @@ Driver owns the transformation layer - consumers never see raw registers.
 
 ### Example Driver
 
-See `packages/devices/src/energy-meters/` for complete examples.
+See `packages/ya-modbus-driver-*/src/` for complete examples.
 
 ## Testing
 
@@ -685,9 +685,9 @@ Tests pass with emulator but fail with real device.
 
 Complete driver examples in monorepo:
 
-- `packages/devices/src/energy-meters/sdm630.ts` - Energy meter with float32
-- `packages/devices/src/solar-inverters/sun2000.ts` - Solar inverter with auth
-- `packages/devices/src/generic/` - Generic configurable driver
+- `packages/ya-modbus-driver-xymd1/src/device.ts` - Energy meter reference implementation
+- `packages/ya-modbus-driver-ex9em/src/device.ts` - Energy meter with multiple data points
+- See other `packages/ya-modbus-driver-*/` for additional examples
 
 Study these for patterns and conventions.
 
@@ -703,4 +703,4 @@ Study these for patterns and conventions.
 
 - **GitHub Issues**: Bug reports for SDK/tools
 - **GitHub Discussions**: Questions about driver development
-- **Examples**: Reference implementations in `packages/devices/`
+- **Examples**: Reference implementations in `packages/ya-modbus-driver-*/`

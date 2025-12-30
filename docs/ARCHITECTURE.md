@@ -574,7 +574,7 @@ No cyclic dependencies: SDK is contract, core is runtime, drivers are plugins.
 - Standard transformation helpers (multipliers, BCD, decimal dates, etc.)
 - Constraint types (forbidden ranges, batch limits, timing)
 
-**Implementation**: See `packages/devices/src/` for reference driver implementations.
+**Implementation**: See `packages/ya-modbus-driver-*/src/` for reference driver implementations.
 
 **Key principle**: Drivers transform device-specific encodings to standard data types transparently.
 
@@ -623,7 +623,7 @@ npx ya-modbus characterize --port /dev/ttyUSB0 --slave-id 1 --output profile.jso
 - Assertion helpers (data point validation)
 - Fast test cycles (no hardware required)
 
-**Usage examples**: See `packages/devices/src/**/*.test.ts` for test patterns.
+**Usage examples**: See `packages/ya-modbus-driver-*/src/**/*.test.ts` for test patterns.
 
 ### Versioning & Compatibility
 

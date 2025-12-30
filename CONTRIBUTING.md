@@ -20,7 +20,7 @@ Thank you for your interest in contributing! This document outlines the developm
 
 ```bash
 # 1. Create test file (next to the source file)
-cat > packages/devices/energy-meters/my-meter.test.ts << 'EOF'
+cat > packages/ya-modbus-driver-energymeter/src/my-meter.test.ts << 'EOF'
 import { MyMeter } from '../my-meter';
 import { ModbusEmulator } from '@ya-modbus/emulator';
 
@@ -63,7 +63,7 @@ describe('MyMeter', () => {
 EOF
 
 # 2. Implement device
-cat > packages/devices/energy-meters/my-meter.ts << 'EOF'
+cat > packages/ya-modbus-driver-energymeter/src/my-meter.ts << 'EOF'
 import { ModbusDevice, RegisterDefinition } from '@ya-modbus/core';
 
 export class MyMeter extends ModbusDevice {
@@ -96,7 +96,7 @@ EOF
 npm test --workspace=packages/devices
 
 # 4. Commit with tests
-git add packages/devices/energy-meters/{my-meter.ts,my-meter.test.ts}
+git add packages/ya-modbus-driver-energymeter/src/{my-meter.ts,my-meter.test.ts}
 git commit -m "feat(devices): add MyMeter energy meter driver
 
 - Reads voltage and current from holding registers

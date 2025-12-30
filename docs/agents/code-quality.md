@@ -12,9 +12,17 @@ paths: /**/*.ts
 
 ## File Size Limits
 
-- Code files: target ~500 lines
-- Test files: target ~1500 lines
+- Code files: soft target ~500 lines, refactor when approaching ~400 lines
+- Test files: soft target ~1500 lines, refactor when approaching ~1200 lines
 - REFACTOR BEFORE reaching limits, not after
+
+Refactoring threshold is a signal—not a rule. When a file approaches the threshold:
+
+- Review for extractable utilities, helpers, or sub-classes
+- Split by responsibility if possible
+- Only defer refactoring if design is already optimal
+
+Exceptions require explicit documentation at file top
 
 ## Avoid Over-Engineering
 
