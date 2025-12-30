@@ -57,7 +57,7 @@ my-modbus-driver/
 
 See `packages/ya-modbus-driver-*/` for reference implementations.
 
-**Required**: Implement `DeviceDriver` interface from `@ya-modbus/driver-sdk`.
+**Required**: Implement `DeviceDriver` interface from `@ya-modbus/driver-types`.
 
 **Key responsibilities**:
 
@@ -151,7 +151,7 @@ npx ya-modbus characterize --port /dev/ttyUSB0 --slave-id 1 \
 **Single factory function per package** that handles all device types:
 
 ```typescript
-import type { DeviceDriver, DataPoint } from '@ya-modbus/driver-sdk'
+import type { DeviceDriver, DataPoint } from '@ya-modbus/driver-types'
 
 // Single factory function - handles device type selection
 export const createDriver = async (config): Promise<DeviceDriver> => {
@@ -486,7 +486,7 @@ Document in driver implementation, enforce via function composition.
 
 ### Standard Data Types
 
-See `packages/core/src/types/data-types.ts` for complete list.
+See `packages/driver-types/src/data-types.ts` for complete list.
 
 Common types:
 
@@ -498,7 +498,7 @@ Common types:
 
 ### Standard Units
 
-See `packages/core/src/types/units.ts` for complete list.
+See `packages/driver-types/src/units.ts` for complete list.
 
 Common units:
 
