@@ -1,4 +1,4 @@
-# Contributing to ya-modbus-mqtt-bridge
+# Contributing to ya-modbus
 
 Thank you for your interest in contributing! This document outlines the development workflow and testing practices.
 
@@ -536,8 +536,8 @@ Brief description of changes
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/ya-modbus-mqtt-bridge.git
-cd ya-modbus-mqtt-bridge
+git clone https://github.com/groupsky/ya-modbus.git
+cd ya-modbus
 
 # Install dependencies
 npm install
