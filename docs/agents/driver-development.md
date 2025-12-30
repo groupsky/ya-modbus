@@ -1,5 +1,5 @@
 ---
-paths: packages/devices/**/*.ts
+paths: packages/ya-modbus-driver-*/**/*.ts
 ---
 
 # Driver Development Guidelines
@@ -62,4 +62,4 @@ If exporting configs, add cross-validation tests:
 - `package.json` - Must include `"ya-modbus-driver"` in keywords
 
 See: `docs/DRIVER-DEVELOPMENT.md` for complete guide
-See: `packages/devices/` for reference implementations
+See: `packages/ya-modbus-driver-*/` for reference implementations
