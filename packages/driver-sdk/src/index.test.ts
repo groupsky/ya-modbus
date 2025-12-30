@@ -16,7 +16,7 @@ describe('driver-sdk exports', () => {
   it('should export validator utilities', () => {
     expect(driverSdk.createEnumValidator).toBeDefined()
     expect(driverSdk.createRangeValidator).toBeDefined()
-    expect(driverSdk.validateInteger).toBeDefined()
+    expect(driverSdk.isValidInteger).toBeDefined()
   })
 
   it('should export error formatting utilities', () => {

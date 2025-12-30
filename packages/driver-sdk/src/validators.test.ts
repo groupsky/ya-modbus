@@ -2,7 +2,7 @@
  * Tests for validation utilities
  */
 
-import { createEnumValidator, createRangeValidator, validateInteger } from './validators'
+import { createEnumValidator, createRangeValidator, isValidInteger } from './validators'
 
 describe('createEnumValidator', () => {
   it('should validate valid enum values', () => {
@@ -105,39 +105,39 @@ describe('createRangeValidator', () => {
   })
 })
 
-describe('validateInteger', () => {
+describe('isValidInteger', () => {
   it('should validate integer values', () => {
-    expect(validateInteger(1)).toBe(true)
-    expect(validateInteger(100)).toBe(true)
-    expect(validateInteger(-50)).toBe(true)
-    expect(validateInteger(0)).toBe(true)
+    expect(isValidInteger(1)).toBe(true)
+    expect(isValidInteger(100)).toBe(true)
+    expect(isValidInteger(-50)).toBe(true)
+    expect(isValidInteger(0)).toBe(true)
   })
 
   it('should reject decimal values', () => {
-    expect(validateInteger(1.5)).toBe(false)
-    expect(validateInteger(100.1)).toBe(false)
-    expect(validateInteger(-50.9)).toBe(false)
+    expect(isValidInteger(1.5)).toBe(false)
+    expect(isValidInteger(100.1)).toBe(false)
+    expect(isValidInteger(-50.9)).toBe(false)
   })
 
   it('should reject non-finite numbers', () => {
-    expect(validateInteger(NaN)).toBe(false)
-    expect(validateInteger(Infinity)).toBe(false)
-    expect(validateInteger(-Infinity)).toBe(false)
+    expect(isValidInteger(NaN)).toBe(false)
+    expect(isValidInteger(Infinity)).toBe(false)
+    expect(isValidInteger(-Infinity)).toBe(false)
   })
 
   it('should reject non-number types', () => {
-    expect(validateInteger('100')).toBe(false)
-    expect(validateInteger(null)).toBe(false)
-    expect(validateInteger(undefined)).toBe(false)
-    expect(validateInteger({})).toBe(false)
+    expect(isValidInteger('100')).toBe(false)
+    expect(isValidInteger(null)).toBe(false)
+    expect(isValidInteger(undefined)).toBe(false)
+    expect(isValidInteger({})).toBe(false)
   })
 
   it('should accept large integers', () => {
-    expect(validateInteger(1000000)).toBe(true)
-    expect(validateInteger(-1000000)).toBe(true)
+    expect(isValidInteger(1000000)).toBe(true)
+    expect(isValidInteger(-1000000)).toBe(true)
   })
 
   it('should reject very small decimals', () => {
-    expect(validateInteger(1.0000001)).toBe(false)
+    expect(isValidInteger(1.0000001)).toBe(false)
   })
 })

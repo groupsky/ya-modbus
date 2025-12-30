@@ -80,13 +80,13 @@ export function createRangeValidator(
  *
  * @example
  * ```typescript
- * import { validateInteger } from '@ya-modbus/driver-sdk'
+ * import { isValidInteger } from '@ya-modbus/driver-sdk'
  *
- * if (!validateInteger(value)) {
+ * if (!isValidInteger(value)) {
  *   throw new Error('Device address must be an integer')
  * }
  * ```
  */
-export function validateInteger(value: unknown): value is number {
+export function isValidInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value)
 }
