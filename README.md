@@ -1,11 +1,11 @@
-# ya-modbus-mqtt-bridge
+# ya-modbus
 
 > Production-ready Modbus to MQTT bridge with automatic bus collision prevention, adaptive polling, and runtime reconfiguration
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![Node](https://img.shields.io/badge/Node-24+-green.svg)](https://nodejs.org/)
-[![codecov](https://codecov.io/gh/groupsky/ya-modbus-mqtt-bridge/graph/badge.svg)](https://codecov.io/gh/groupsky/ya-modbus-mqtt-bridge)
+[![codecov](https://codecov.io/gh/groupsky/ya-modbus/graph/badge.svg)](https://codecov.io/gh/groupsky/ya-modbus)
 
 ## Features
 
@@ -25,7 +25,7 @@
 ### Installation
 
 ```bash
-npm install -g ya-modbus-mqtt-bridge
+npm install -g ya-modbus
 ```
 
 ### Basic Usage
@@ -73,7 +73,7 @@ ya-modbus test --device SDM630 --port /dev/ttyUSB0 --slave 1
 }
 ```
 
-## Why ya-modbus-mqtt-bridge?
+## Why ya-modbus?
 
 ### The Multi-Device Problem
 
@@ -178,7 +178,7 @@ Device drivers can be distributed as independent npm packages:
 
 ```bash
 # Install bridge + third-party driver
-npm install -g ya-modbus-mqtt-bridge ya-modbus-driver-solar
+npm install -g ya-modbus ya-modbus-driver-solar
 
 # Use in configuration
 {
@@ -228,8 +228,8 @@ npm install -g ya-modbus-mqtt-bridge ya-modbus-driver-solar
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/ya-modbus-mqtt-bridge.git
-cd ya-modbus-mqtt-bridge
+git clone https://github.com/yourusername/ya-modbus.git
+cd ya-modbus
 
 # Install dependencies
 npm install
@@ -338,7 +338,7 @@ mosquitto_sub -t "modbus/+/errors/#"
 
 ```bash
 # Build image
-docker build -t ya-modbus-mqtt-bridge .
+docker build -t ya-modbus .
 
 # Run with configuration
 docker run -d \
@@ -347,7 +347,7 @@ docker run -d \
   -v $(pwd)/data:/data \
   --device /dev/ttyUSB0:/dev/ttyUSB0 \
   -e MQTT_BROKER=mqtt://mosquitto:1883 \
-  ya-modbus-mqtt-bridge
+  ya-modbus
 ```
 
 ### Docker Compose
@@ -356,7 +356,7 @@ docker run -d \
 version: '3.8'
 services:
   modbus-bridge:
-    image: ya-modbus-mqtt-bridge
+    image: ya-modbus
     volumes:
       - ./config.json:/app/config.json
       - ./data:/data
@@ -431,8 +431,8 @@ Contributions welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
 
 ## Support
 
-- **GitHub Issues**: [Bug reports and features](https://github.com/yourusername/ya-modbus-mqtt-bridge/issues)
-- **GitHub Discussions**: [Questions and ideas](https://github.com/yourusername/ya-modbus-mqtt-bridge/discussions)
+- **GitHub Issues**: [Bug reports and features](https://github.com/yourusername/ya-modbus/issues)
+- **GitHub Discussions**: [Questions and ideas](https://github.com/yourusername/ya-modbus/discussions)
 - **Documentation**: [Full docs](./docs/)
 
 ## Acknowledgments
@@ -443,7 +443,7 @@ Contributions welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
 
 ## Roadmap
 
-See [GitHub Projects](https://github.com/yourusername/ya-modbus-mqtt-bridge/projects) for planned features.
+See [GitHub Projects](https://github.com/yourusername/ya-modbus/projects) for planned features.
 
 Key upcoming features:
 

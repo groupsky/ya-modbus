@@ -1,5 +1,5 @@
 {
-  "name": "ya-modbus-mqtt-bridge",
+  "name": "ya-modbus",
   "version": "0.0.0",
   "private": true,
   "description": "Production-ready Modbus to MQTT bridge with automatic bus collision prevention, adaptive polling, and runtime reconfiguration",
@@ -21,7 +21,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/ya-modbus-mqtt-bridge.git"
+    "url": "https://github.com/yourusername/ya-modbus.git"
   },
   "license": "GPL-3.0-or-later",
   "author": "Your Name <your.email@example.com>",

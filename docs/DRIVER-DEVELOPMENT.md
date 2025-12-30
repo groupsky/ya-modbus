@@ -1,6 +1,6 @@
 # Device Driver Development Guide
 
-Guide for creating third-party device drivers for ya-modbus-mqtt-bridge.
+Guide for creating third-party device drivers for ya-modbus.
 
 ## Overview
 

@@ -2,7 +2,7 @@
 
 ## System Overview
 
-ya-modbus-mqtt-bridge is a TypeScript monorepo that bridges Modbus devices (RTU/TCP) to MQTT, solving critical challenges in multi-device deployments:
+ya-modbus is a TypeScript monorepo that bridges Modbus devices (RTU/TCP) to MQTT, solving critical challenges in multi-device deployments:
 
 1. **Bus collision prevention** - Automatic mutex for RTU serial buses
 2. **Adaptive polling** - Different rates for dynamic vs static registers
