@@ -1,6 +1,6 @@
 # Device Driver Development Guide
 
-Guide for creating third-party device drivers for ya-modbus-mqtt-bridge.
+Guide for creating third-party device drivers for ya-modbus.
 
 ## Overview
 
@@ -593,7 +593,7 @@ Users install driver alongside bridge:
 
 ```bash
 # Install bridge
-npm install -g ya-modbus-mqtt-bridge
+npm install -g ya-modbus
 
 # Install driver (supports multiple device types)
 npm install -g ya-modbus-driver-solar
