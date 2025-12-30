@@ -50,6 +50,30 @@ function validateRange(scaledValue: number, min: number, max: number, typeName: 
 }
 
 /**
+ * Validate that buffer has sufficient bytes for reading at the given offset
+ *
+ * @param buffer - Buffer to validate
+ * @param offset - Byte offset to start reading from
+ * @param bytesNeeded - Number of bytes required
+ * @param typeName - Name of the type being read for error messages
+ * @throws Error if buffer doesn't have enough bytes
+ */
+function validateBufferBounds(
+  buffer: Buffer,
+  offset: number,
+  bytesNeeded: number,
+  typeName: string
+): void {
+  const available = buffer.length - offset
+  if (available < bytesNeeded) {
+    throw new Error(
+      `Insufficient buffer size for ${typeName}: need ${bytesNeeded} bytes at offset ${offset}, ` +
+        `but only ${available} bytes available (buffer length: ${buffer.length})`
+    )
+  }
+}
+
+/**
  * Read and scale an unsigned 16-bit integer from a buffer
  *
  * @param buffer - Buffer containing the register data
@@ -67,6 +91,7 @@ function validateRange(scaledValue: number, min: number, max: number, typeName: 
  */
 export function readScaledUInt16BE(buffer: Buffer, offset: number, scale: number): number {
   validateScale(scale)
+  validateBufferBounds(buffer, offset, 2, 'uint16')
   const rawValue = buffer.readUInt16BE(offset)
   return rawValue / scale
 }
@@ -89,6 +114,7 @@ export function readScaledUInt16BE(buffer: Buffer, offset: number, scale: number
  */
 export function readScaledInt16BE(buffer: Buffer, offset: number, scale: number): number {
   validateScale(scale)
+  validateBufferBounds(buffer, offset, 2, 'int16')
   const rawValue = buffer.readInt16BE(offset)
   return rawValue / scale
 }
@@ -111,6 +137,7 @@ export function readScaledInt16BE(buffer: Buffer, offset: number, scale: number)
  */
 export function readScaledUInt32BE(buffer: Buffer, offset: number, scale: number): number {
   validateScale(scale)
+  validateBufferBounds(buffer, offset, 4, 'uint32')
   const rawValue = buffer.readUInt32BE(offset)
   return rawValue / scale
 }

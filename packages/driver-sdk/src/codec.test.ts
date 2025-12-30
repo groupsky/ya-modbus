@@ -206,6 +206,27 @@ describe('Edge case validation', () => {
       const buffer = Buffer.from([0x00, 0x64])
       expect(() => readScaledUInt16BE(buffer, 0, scale)).toThrow(expected)
     })
+
+    it('should throw when buffer is too small', () => {
+      const buffer = Buffer.from([0x00]) // Only 1 byte, need 2
+      expect(() => readScaledUInt16BE(buffer, 0, 10)).toThrow(
+        'Insufficient buffer size for uint16: need 2 bytes at offset 0, but only 1 bytes available (buffer length: 1)'
+      )
+    })
+
+    it('should throw when offset leaves insufficient bytes', () => {
+      const buffer = Buffer.from([0x00, 0x64, 0x00]) // 3 bytes
+      expect(() => readScaledUInt16BE(buffer, 2, 10)).toThrow(
+        'Insufficient buffer size for uint16: need 2 bytes at offset 2, but only 1 bytes available (buffer length: 3)'
+      )
+    })
+
+    it('should throw when buffer is empty', () => {
+      const buffer = Buffer.from([])
+      expect(() => readScaledUInt16BE(buffer, 0, 10)).toThrow(
+        'Insufficient buffer size for uint16: need 2 bytes at offset 0, but only 0 bytes available (buffer length: 0)'
+      )
+    })
   })
 
   describe('readScaledInt16BE validation', () => {
@@ -226,6 +247,27 @@ describe('Edge case validation', () => {
       const buffer = Buffer.from([0x00, 0x64])
       expect(() => readScaledInt16BE(buffer, 0, scale)).toThrow(expected)
     })
+
+    it('should throw when buffer is too small', () => {
+      const buffer = Buffer.from([0x00]) // Only 1 byte, need 2
+      expect(() => readScaledInt16BE(buffer, 0, 10)).toThrow(
+        'Insufficient buffer size for int16: need 2 bytes at offset 0, but only 1 bytes available (buffer length: 1)'
+      )
+    })
+
+    it('should throw when offset leaves insufficient bytes', () => {
+      const buffer = Buffer.from([0xff, 0x9c, 0x00]) // 3 bytes
+      expect(() => readScaledInt16BE(buffer, 2, 10)).toThrow(
+        'Insufficient buffer size for int16: need 2 bytes at offset 2, but only 1 bytes available (buffer length: 3)'
+      )
+    })
+
+    it('should throw when buffer is empty', () => {
+      const buffer = Buffer.from([])
+      expect(() => readScaledInt16BE(buffer, 0, 10)).toThrow(
+        'Insufficient buffer size for int16: need 2 bytes at offset 0, but only 0 bytes available (buffer length: 0)'
+      )
+    })
   })
 
   describe('readScaledUInt32BE validation', () => {
@@ -240,6 +282,27 @@ describe('Edge case validation', () => {
     ])('should throw on $desc', ({ scale, expected }) => {
       const buffer = Buffer.from([0x00, 0x00, 0x27, 0x10])
       expect(() => readScaledUInt32BE(buffer, 0, scale)).toThrow(expected)
+    })
+
+    it('should throw when buffer is too small', () => {
+      const buffer = Buffer.from([0x00, 0x00, 0x27]) // Only 3 bytes, need 4
+      expect(() => readScaledUInt32BE(buffer, 0, 100)).toThrow(
+        'Insufficient buffer size for uint32: need 4 bytes at offset 0, but only 3 bytes available (buffer length: 3)'
+      )
+    })
+
+    it('should throw when offset leaves insufficient bytes', () => {
+      const buffer = Buffer.from([0x00, 0x00, 0x27, 0x10, 0x00, 0x00]) // 6 bytes
+      expect(() => readScaledUInt32BE(buffer, 3, 100)).toThrow(
+        'Insufficient buffer size for uint32: need 4 bytes at offset 3, but only 3 bytes available (buffer length: 6)'
+      )
+    })
+
+    it('should throw when buffer is empty', () => {
+      const buffer = Buffer.from([])
+      expect(() => readScaledUInt32BE(buffer, 0, 100)).toThrow(
+        'Insufficient buffer size for uint32: need 4 bytes at offset 0, but only 0 bytes available (buffer length: 0)'
+      )
     })
   })
 
