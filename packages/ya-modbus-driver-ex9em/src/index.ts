@@ -339,8 +339,8 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         // Both baud_rate and device_address requested - read in single transaction
         const buffer = await transport.readHoldingRegisters(0x002a, 2)
         const baudValue = buffer.readUInt16BE(0)
-        result.baud_rate = BAUD_RATE_DECODE[baudValue] ?? baudValue
-        result.device_address = buffer.readUInt16BE(2)
+        result['baud_rate'] = BAUD_RATE_DECODE[baudValue] ?? baudValue
+        result['device_address'] = buffer.readUInt16BE(2)
       } else {
         // Single config register requested - read individually
         for (const id of configIds) {
