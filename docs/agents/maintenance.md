@@ -7,15 +7,18 @@ paths: /**/{AGENTS,CLAUDE,.aider}.md, /**/.cursorrules, /.github/copilot-instruc
 ## Core Principles
 
 - No common knowledge
-- ~50 lines max per file
+- ~50 lines max per file (except AGENTS.md if needed for compliance)
 - Reference > copy: point to source files, don't embed
 - Progressive disclosure: load only relevant context per task
+- Effectiveness > brevity: force agents to read docs before acting
 
 ## AGENTS.md Structure
 
-- AGENTS.md = navigation ONLY (~15-20 lines)
-- Points to docs/agents/\*.md for actual guidelines
-- Never embed guidelines directly in AGENTS.md
+- AGENTS.md = navigation + blocking instructions
+- May exceed ~15-20 lines if needed to force compliance
+- Include checklist, consequences, trigger-based instructions
+- Points to docs/agents/\*.md for detailed guidelines
+- Use ALL CAPS for imperative keywords (READ, BEFORE, NEVER, ALWAYS, MUST)
 
 ## File Naming
 

@@ -6,8 +6,8 @@ paths: /**/*.test.ts
 
 ## Methodology
 
-- TDD required: write test first → fail → implement → pass → refactor
-- Tests must be included with feature commits
+- WRITE tests first (TDD): fail → implement → pass → refactor
+- INCLUDE tests in feature commits (NEVER commit untested code)
 
 ## Behavior Over Implementation
 
@@ -19,7 +19,7 @@ paths: /**/*.test.ts
 
 - Mock external boundaries only (APIs, databases, filesystems)
 - Prefer real implementations when feasible
-- Never mock the unit under test
+- NEVER mock the unit under test
 
 ## Test Organization
 

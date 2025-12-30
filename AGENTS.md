@@ -1,28 +1,44 @@
 # ya-modbus-mqtt-bridge
 
+🛑 MANDATORY: DO NOT PROCEED WITHOUT READING FIRST 🛑
+
 TypeScript monorepo using npm workspaces.
 
-## Agent Guidelines (docs/agents/)
+## ⚠️ REQUIRED PRE-TASK CHECKLIST
 
-- `git.md` - Branching, commits, PRs
-- `testing.md` - TDD, behavior tests, mocking
-- `code-quality.md` - DRY, KISS, file limits
-- `driver-development.md` - Driver architecture, data points, testing
-- `package-creation.md` - Creating new packages
-- `maintenance.md` - Updating these docs
-- `workflows.md` - CI workflow patterns
+Before starting ANY work, you MUST:
 
-## Navigation
+1. IDENTIFY your task type from the list below
+2. READ the corresponding documentation file COMPLETELY
+3. VERIFY you understand the requirements
+4. ONLY THEN begin implementation
 
-- `.github/AGENTS.md` - CI/CD, workflows
+Failure to read documentation first WILL result in incorrect implementations.
 
-## Tasks
+---
 
-- create new package - docs/agents/package-creation.md
-- develop a driver - docs/agents/driver-development.md
-- architecture - docs/ARCHITECTURE.md
-- writing code - docs/agents/code-quality.md
-- testing - docs/agents/testing.md
-- git processes - docs/agents/git.md
-- maintain docs - docs/agents/maintenance.md
-- CI workflows - docs/agents/workflows.md
+## Required Reading by Task
+
+**Before making ANY changes (commits, branches, PRs):**
+→ READ docs/agents/git.md (Branching, commits, PRs)
+
+**Before writing ANY test:**
+→ READ docs/agents/testing.md (TDD, behavior tests, mocking)
+
+**Before writing ANY production code:**
+→ READ docs/agents/code-quality.md (DRY, KISS, file limits)
+
+**Before developing a driver:**
+→ READ docs/agents/driver-development.md (Architecture, data points)
+
+**Before creating a new package:**
+→ READ docs/agents/package-creation.md
+
+**Before modifying these docs:**
+→ READ docs/agents/maintenance.md
+
+**Before modifying CI/CD:**
+→ READ docs/agents/workflows.md or .github/AGENTS.md
+
+**For architecture questions:**
+→ READ docs/ARCHITECTURE.md

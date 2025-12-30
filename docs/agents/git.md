@@ -1,10 +1,14 @@
+---
+paths: **/*
+---
+
 # Git Guidelines
 
 ## Branching
 
-- Always use feature branches
-- Branch from main, never from other feature branches
-- Feature branches are always squashed when merged
+- ALWAYS use feature branches
+- Branch from main, NEVER from other feature branches
+- Feature branches are ALWAYS squashed when merged
 
 ## Commits
 
@@ -21,10 +25,11 @@
 
 ## Pull Requests
 
-- PRs are always squash-merged
-- Squash commit message must reference the PR number
-- Squash commit description must reference closed issues
+- PRs are ALWAYS squash-merged
+- Squash commit message MUST reference the PR number
+- Squash commit description MUST reference closed issues
 - Example: `feat(cli): add discover command (#123)\n\nCloses #100, #101`
+- REPLACE auto-generated PR description with single cohesive summary before merging
 
 ## Commit Messages
 

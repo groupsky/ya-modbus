@@ -12,9 +12,9 @@ paths: /**/*.ts
 
 ## File Size Limits
 
-- Code files: ~500 lines max (soft limit)
-- Test files: ~1500 lines max (soft limit)
-- If approaching limit, refactor/split proactively
+- Code files: target ~500 lines
+- Test files: target ~1500 lines
+- REFACTOR BEFORE reaching limits, not after
 
 ## Avoid Over-Engineering
 
