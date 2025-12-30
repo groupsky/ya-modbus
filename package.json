@@ -24,7 +24,7 @@
     "url": "https://github.com/groupsky/ya-modbus.git"
   },
   "license": "GPL-3.0-or-later",
-  "author": "Your Name <your.email@example.com>",
+  "author": "Geno Roupsky <185580+groupsky@users.noreply.github.com>",
   "workspaces": [
     "packages/*"
   ],
