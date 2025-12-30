@@ -19,6 +19,16 @@ paths: packages/ya-modbus-driver-*/**/*.ts
 - Use standard units: `V`, `A`, `W`, `kWh`
 - Use standard types: `float`, `integer`, `boolean`, `timestamp`
 
+## Driver SDK Utilities
+
+Use `@ya-modbus/driver-sdk` for codec functions, validators, and error formatting.
+
+See: `packages/driver-sdk/src/codec.ts` for buffer transformation functions
+See: `packages/driver-sdk/src/validators.ts` for configuration validators
+See: `packages/driver-sdk/src/errors.ts` for error formatting
+See: `packages/driver-sdk/README.md` for API reference
+See: `packages/ya-modbus-driver-ex9em/src/device.ts` for usage examples
+
 ## Naming Conventions
 
 - Package: `ya-modbus-driver-<name>` (e.g., `ya-modbus-driver-solar`)
