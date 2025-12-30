@@ -15,6 +15,15 @@
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/groupsky/ya-modbus.git",
+    "directory": "packages/driver-types"
+  },
+  "homepage": "https://github.com/groupsky/ya-modbus/tree/main/packages/driver-types#readme",
+  "bugs": {
+    "url": "https://github.com/groupsky/ya-modbus/issues"
+  },
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf dist",

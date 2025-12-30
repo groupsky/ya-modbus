@@ -21,7 +21,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/ya-modbus.git"
+    "url": "https://github.com/groupsky/ya-modbus.git"
   },
   "license": "GPL-3.0-or-later",
   "author": "Your Name <your.email@example.com>",

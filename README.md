@@ -228,7 +228,7 @@ npm install -g ya-modbus ya-modbus-driver-solar
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/ya-modbus.git
+git clone https://github.com/groupsky/ya-modbus.git
 cd ya-modbus
 
 # Install dependencies
@@ -431,8 +431,8 @@ Contributions welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
 
 ## Support
 
-- **GitHub Issues**: [Bug reports and features](https://github.com/yourusername/ya-modbus/issues)
-- **GitHub Discussions**: [Questions and ideas](https://github.com/yourusername/ya-modbus/discussions)
+- **GitHub Issues**: [Bug reports and features](https://github.com/groupsky/ya-modbus/issues)
+- **GitHub Discussions**: [Questions and ideas](https://github.com/groupsky/ya-modbus/discussions)
 - **Documentation**: [Full docs](./docs/)
 
 ## Acknowledgments
@@ -443,7 +443,7 @@ Contributions welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
 
 ## Roadmap
 
-See [GitHub Projects](https://github.com/yourusername/ya-modbus/projects) for planned features.
+See [GitHub Projects](https://github.com/groupsky/ya-modbus/projects) for planned features.
 
 Key upcoming features:
 

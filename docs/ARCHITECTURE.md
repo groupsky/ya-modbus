@@ -673,10 +673,10 @@ Benefits:
 
 ```bash
 # User installs bridge + needed drivers
-npm install -g ya-modbus-mqtt-bridge ya-modbus-driver-solar
+npm install -g ya-modbus ya-modbus-driver-solar
 
 # Or via package.json for project
-npm install ya-modbus-mqtt-bridge ya-modbus-driver-solar
+npm install ya-modbus ya-modbus-driver-solar
 ```
 
 **Rationale**:

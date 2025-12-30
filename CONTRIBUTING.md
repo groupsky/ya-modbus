@@ -536,7 +536,7 @@ Brief description of changes
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/ya-modbus.git
+git clone https://github.com/groupsky/ya-modbus.git
 cd ya-modbus
 
 # Install dependencies
