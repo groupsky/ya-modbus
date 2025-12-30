@@ -878,7 +878,7 @@ describe('Ex9EM Driver', () => {
       )
     })
 
-    it('should read config registers with measurement data points', async () => {
+    it('should batch config registers when reading with measurements', async () => {
       const driver = await createDriver({
         transport: mockTransport,
         slaveId: 1,
@@ -912,11 +912,10 @@ describe('Ex9EM Driver', () => {
         ])
       )
 
-      // Mock baud_rate register (value 4 = 9600 bps)
-      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x04]))
-
-      // Mock device_address register
-      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x01]))
+      // Mock both config registers in single buffer
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(
+        Buffer.from([0x00, 0x04, 0x00, 0x01]) // baud_rate=4 (9600), device_address=1
+      )
 
       const values = await driver.readDataPoints(['voltage', 'baud_rate', 'device_address'])
 
@@ -926,23 +925,22 @@ describe('Ex9EM Driver', () => {
         device_address: 1,
       })
 
-      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledTimes(3)
+      // Should use 2 transactions: 1 for measurements, 1 batched for both config registers
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledTimes(2)
       expect(mockTransport.readHoldingRegisters).toHaveBeenNthCalledWith(1, 0x0000, 11)
-      expect(mockTransport.readHoldingRegisters).toHaveBeenNthCalledWith(2, 0x002a, 1)
-      expect(mockTransport.readHoldingRegisters).toHaveBeenNthCalledWith(3, 0x002b, 1)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenNthCalledWith(2, 0x002a, 2)
     })
 
-    it('should read only config data points without measurement data points', async () => {
+    it('should batch read both config registers in single transaction', async () => {
       const driver = await createDriver({
         transport: mockTransport,
         slaveId: 1,
       })
 
-      // Mock baud_rate register (value 4 = 9600 bps)
-      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x04]))
-
-      // Mock device_address register
-      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x34]))
+      // Mock both config registers in single buffer (baud_rate + device_address)
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(
+        Buffer.from([0x00, 0x04, 0x00, 0x34]) // baud_rate=4 (9600), device_address=52
+      )
 
       const values = await driver.readDataPoints(['baud_rate', 'device_address'])
 
@@ -951,10 +949,29 @@ describe('Ex9EM Driver', () => {
         device_address: 52,
       })
 
-      // Should only read config registers, not measurement registers
-      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledTimes(2)
-      expect(mockTransport.readHoldingRegisters).toHaveBeenNthCalledWith(1, 0x002a, 1)
-      expect(mockTransport.readHoldingRegisters).toHaveBeenNthCalledWith(2, 0x002b, 1)
+      // Should batch read both config registers in single transaction
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledTimes(1)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x002a, 2)
+    })
+
+    it('should read single config register individually', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Mock only baud_rate register
+      mockTransport.readHoldingRegisters.mockResolvedValueOnce(Buffer.from([0x00, 0x03]))
+
+      const values = await driver.readDataPoints(['baud_rate'])
+
+      expect(values).toEqual({
+        baud_rate: 4800,
+      })
+
+      // Should read single config register individually
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledTimes(1)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x002a, 1)
     })
 
     it('should throw when reading password in batch', async () => {
