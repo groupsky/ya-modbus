@@ -197,7 +197,7 @@ if (!isValidAddress(value)) {
 // value is a finite number between 1 and 247
 ```
 
-#### `validateInteger(value)`
+#### `isValidInteger(value)`
 
 Validate that a value is a finite integer.
 
@@ -210,9 +210,9 @@ Validate that a value is a finite integer.
 **Example:**
 
 ```typescript
-import { validateInteger } from '@ya-modbus/driver-sdk'
+import { isValidInteger } from '@ya-modbus/driver-sdk'
 
-if (!validateInteger(value)) {
+if (!isValidInteger(value)) {
   throw new Error('Device address must be an integer')
 }
 ```
