@@ -146,7 +146,8 @@ describe('identifyDevice', () => {
 
       const result = await identifyDevice(mockClient as ModbusRTU)
 
-      expect(result.responseTimeMs).toBeGreaterThanOrEqual(100)
+      // Allow for timing precision variations (±1ms)
+      expect(result.responseTimeMs).toBeGreaterThanOrEqual(99)
       expect(result.responseTimeMs).toBeLessThan(200)
     })
   })
