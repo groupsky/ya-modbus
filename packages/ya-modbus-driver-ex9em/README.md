@@ -87,6 +87,50 @@ console.log(values)
 - **Stop bits**: 1
 - **Slave address**: 1-247 (standard Modbus range)
 
+## Configuration Changes and Password Protection
+
+### Password Workflow
+
+According to the device documentation, configuration changes (`device_address` and `baud_rate`) are protected by a password mechanism:
+
+1. **Default password**: `0` (32-bit value at register 0x002C)
+2. **Password reset procedure**:
+   - Write password to register 0x002C using Modbus function code 0x28 (vendor-specific)
+   - Within 10 seconds, write the new configuration value
+   - Changes take effect after device restart
+
+**Example workflow for changing device address:**
+
+```
+Step 1: Reset password (function code 0x28)
+  Send: 00 28 FE 01 00 02 04 00 00 00 00 [CRC16]
+
+Step 2: Within 10 seconds, write new device address (e.g., 100)
+  Send: 01 10 002B 0001 02 0064 [CRC16]
+
+Step 3: Restart device for changes to take effect
+```
+
+**Important Notes:**
+
+- The password mechanism uses Modbus function code 0x28, which is not part of the standard Modbus specification
+- This driver provides access to the password register via `writeDataPoint('password', value)` but does not implement the full vendor-specific password workflow
+- Configuration changes may work without the password workflow on some devices or firmware versions
+- Always verify configuration changes have been applied after device restart
+- Consult the official register map PDF for detailed protocol information
+
+### Making Configuration Changes
+
+```typescript
+// Change device address (may require password workflow depending on device firmware)
+await driver.writeDataPoint('device_address', 5)
+
+// Change baud rate (may require password workflow depending on device firmware)
+await driver.writeDataPoint('baud_rate', 4800)
+
+// Note: Restart the device for changes to take effect
+```
+
 ## Device Information
 
 - **Manufacturer**: NOARK Electric
