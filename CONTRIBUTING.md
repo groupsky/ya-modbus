@@ -93,7 +93,7 @@ export class MyMeter extends ModbusDevice {
 EOF
 
 # 3. Run tests
-npm test --workspace=packages/devices
+npm test --workspace=packages/ya-modbus-driver-energymeter
 
 # 4. Commit with tests
 git add packages/ya-modbus-driver-energymeter/src/{my-meter.ts,my-meter.test.ts}
