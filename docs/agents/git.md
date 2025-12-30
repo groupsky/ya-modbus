@@ -1,5 +1,5 @@
 ---
-paths: **/*
+paths: /**/*
 ---
 
 # Git Guidelines

@@ -26,6 +26,15 @@ Reading task-specific documentation prevents implementation errors and ensures y
 **Before writing ANY production code:**
 → READ docs/agents/code-quality.md (DRY, KISS, file limits)
 
+**Before fixing a bug:**
+→ READ docs/agents/bug-fixing.md (Root cause, regression tests, commit discipline)
+
+**Before refactoring code:**
+→ READ docs/agents/refactoring.md (Coverage, safe patterns, when not to refactor)
+
+**Before updating dependencies:**
+→ READ docs/agents/dependencies.md (Semver, breaking changes, security)
+
 **Before developing a driver:**
 → READ docs/agents/driver-development.md (Architecture, data points)
 
