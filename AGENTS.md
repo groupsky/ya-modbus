@@ -1,19 +1,17 @@
 # ya-modbus-mqtt-bridge
 
-🛑 MANDATORY: DO NOT PROCEED WITHOUT READING FIRST 🛑
-
 TypeScript monorepo using npm workspaces.
 
-## ⚠️ REQUIRED PRE-TASK CHECKLIST
+## Required Pre-Task Checklist
 
-Before starting ANY work, you MUST:
+Before starting work, ensure you've read the relevant documentation to stay aligned with project patterns.
 
 1. IDENTIFY your task type from the list below
 2. READ the corresponding documentation file COMPLETELY
 3. VERIFY you understand the requirements
-4. ONLY THEN begin implementation
+4. BEGIN implementation
 
-Failure to read documentation first WILL result in incorrect implementations.
+Reading task-specific documentation prevents implementation errors and ensures your work aligns with established patterns.
 
 ---
 

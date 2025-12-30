@@ -11,14 +11,16 @@ paths: /**/{AGENTS,CLAUDE,.aider}.md, /**/.cursorrules, /.github/copilot-instruc
 - Reference > copy: point to source files, don't embed
 - Progressive disclosure: load only relevant context per task
 - Effectiveness > brevity: force agents to read docs before acting
+- No inline examples: agents MUST read comprehensive docs and source code
 
 ## AGENTS.md Structure
 
 - AGENTS.md = navigation + blocking instructions
 - May exceed ~15-20 lines if needed to force compliance
-- Include checklist, consequences, trigger-based instructions
+- Include checklist, trigger-based instructions
 - Points to docs/agents/\*.md for detailed guidelines
 - Use ALL CAPS for imperative keywords (READ, BEFORE, NEVER, ALWAYS, MUST)
+- NEVER include code examples or violation demonstrations
 
 ## File Naming
 
@@ -36,10 +38,10 @@ paths: /**/{AGENTS,CLAUDE,.aider}.md, /**/.cursorrules, /.github/copilot-instruc
 - Confusion during development
 - Non-obvious architectural decisions
 
-## When NOT to Update
+## What NOT to Include
 
 - Implementation details (use code comments)
 - Temporary workarounds
 - Information in standard docs
-
-See: Code examples in actual source files, not in docs
+- Code examples or snippets (point to source files instead)
+- Violation demonstrations (agents learn from comprehensive docs)
