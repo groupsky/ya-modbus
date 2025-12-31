@@ -21,4 +21,10 @@ export interface MqttBridge {
   start(): Promise<void>
   stop(): Promise<void>
   getStatus(): BridgeStatus
+  publish(topic: string, payload: string | Buffer, options?: PublishOptions): Promise<void>
+}
+
+export interface PublishOptions {
+  qos?: 0 | 1 | 2
+  retain?: boolean
 }
