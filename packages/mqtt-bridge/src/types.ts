@@ -14,7 +14,7 @@ export interface BridgeStatus {
   state: 'starting' | 'running' | 'stopping' | 'stopped' | 'error'
   timestamp: number
   deviceCount: number
-  mqttConnected: boolean
+  mqttConnected?: boolean
   errors?: string[]
 }
 

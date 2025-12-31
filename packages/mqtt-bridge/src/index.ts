@@ -33,7 +33,6 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
     state: 'stopped',
     timestamp: Date.now(),
     deviceCount: 0,
-    mqttConnected: false,
   }
 
   let client: mqtt.MqttClient | null = null
@@ -49,12 +48,12 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
           state: 'starting',
           timestamp: Date.now(),
           deviceCount: 0,
-          mqttConnected: false,
         }
 
         const mqttOptions: mqtt.IClientOptions = {
           clean: true,
           reconnectPeriod: config.mqtt.reconnectPeriod ?? 5000,
+          resubscribe: true, // Automatic resubscription on reconnect (default: true)
         }
 
         if (config.mqtt.clientId) {
@@ -76,22 +75,9 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
             state: 'running',
             timestamp: Date.now(),
             deviceCount: 0,
-            mqttConnected: true,
           }
 
-          // Re-subscribe to all topics after reconnection
-          if (!isInitialConnection && subscriptions.size > 0) {
-            for (const [topic, _handler] of subscriptions.entries()) {
-              const topicWithoutPrefix = topic.startsWith(`${topicPrefix}/`)
-                ? topic.substring(topicPrefix.length + 1)
-                : topic
-              client?.subscribe(topic, { qos: 0 }, (err) => {
-                if (err) {
-                  console.error(`Failed to re-subscribe to ${topicWithoutPrefix}:`, err)
-                }
-              })
-            }
-          }
+          // Automatic resubscription is handled by mqtt.js (resubscribe: true)
 
           if (isInitialConnection) {
             isInitialConnection = false
@@ -104,25 +90,12 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
             state: 'error',
             timestamp: Date.now(),
             deviceCount: 0,
-            mqttConnected: false,
             errors: [error.message],
           }
           reject(error)
         })
 
-        client.on('disconnect', () => {
-          status = {
-            ...status,
-            mqttConnected: false,
-          }
-        })
-
-        client.on('offline', () => {
-          status = {
-            ...status,
-            mqttConnected: false,
-          }
-        })
+        // No need to track disconnect/offline - client.connected property handles this
 
         client.on('reconnect', () => {
           // Note: reconnect event fires when attempting to reconnect
@@ -150,7 +123,6 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
           state: 'stopping',
           timestamp: Date.now(),
           deviceCount: 0,
-          mqttConnected: false,
         }
 
         if (client) {
@@ -159,7 +131,6 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
               state: 'stopped',
               timestamp: Date.now(),
               deviceCount: 0,
-              mqttConnected: false,
             }
             client = null
             resolve()
@@ -169,7 +140,6 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
             state: 'stopped',
             timestamp: Date.now(),
             deviceCount: 0,
-            mqttConnected: false,
           }
           resolve()
         }
@@ -180,8 +150,8 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
       return {
         ...status,
         deviceCount: deviceManager.getDeviceCount(),
-        // Use client.connected if available to avoid state duplication
-        mqttConnected: client?.connected ?? status.mqttConnected,
+        // Use client.connected property directly
+        mqttConnected: client?.connected ?? false,
       }
     },
 
@@ -192,7 +162,7 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
           return
         }
 
-        if (!status.mqttConnected) {
+        if (!client.connected) {
           reject(new Error('MQTT client not connected'))
           return
         }
@@ -224,7 +194,7 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
           return
         }
 
-        if (!status.mqttConnected) {
+        if (!client.connected) {
           reject(new Error('MQTT client not connected'))
           return
         }
@@ -253,7 +223,7 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
           return
         }
 
-        if (!status.mqttConnected) {
+        if (!client.connected) {
           reject(new Error('MQTT client not connected'))
           return
         }

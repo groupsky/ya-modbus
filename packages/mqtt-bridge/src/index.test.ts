@@ -120,6 +120,7 @@ describe('createBridge', () => {
       password: 'pass',
       clean: true,
       reconnectPeriod: 5000,
+      resubscribe: true,
     })
 
     const status = bridge.getStatus()

@@ -87,4 +87,34 @@ describe('loadConfig', () => {
 
     await expect(loadConfig('/path/to/config.json')).rejects.toThrow()
   })
+
+  it('should load config with optional fields', async () => {
+    const configJson = JSON.stringify({
+      mqtt: {
+        url: 'mqtt://localhost:1883',
+        clientId: 'test',
+        username: 'user',
+        password: 'pass',
+        reconnectPeriod: 10000,
+      },
+      stateDir: '/tmp/state',
+      topicPrefix: 'test',
+    })
+
+    mockedReadFile.mockResolvedValue(configJson)
+
+    const config = await loadConfig('/path/to/config.json')
+
+    expect(config).toEqual({
+      mqtt: {
+        url: 'mqtt://localhost:1883',
+        clientId: 'test',
+        username: 'user',
+        password: 'pass',
+        reconnectPeriod: 10000,
+      },
+      stateDir: '/tmp/state',
+      topicPrefix: 'test',
+    })
+  })
 })
