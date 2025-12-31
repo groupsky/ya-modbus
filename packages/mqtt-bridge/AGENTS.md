@@ -18,30 +18,12 @@ BEFORE writing tests:
 
 ## Purpose
 
-This package provides the core bridge functionality that:
-
-- Manages MQTT connections and topic structure
-- Orchestrates device lifecycle (registration, removal, status)
-- Coordinates polling across multiple devices (future)
-- Publishes device data and status to MQTT topics (future)
-- Handles runtime configuration via MQTT (future)
+See: README.md for package overview and features
 
 ## Key Concepts
 
-### Bridge Orchestration
-
-The MQTT bridge acts as the central coordinator between Modbus devices and MQTT.
-
-See: docs/ARCHITECTURE.md for complete architecture
+See: docs/ARCHITECTURE.md for complete bridge architecture
 See: ../../docs/ARCHITECTURE.md for system architecture
-
-### MQTT Topic Structure
-
-See: docs/ARCHITECTURE.md for topic structure
-
-### State Management
-
-See: docs/ARCHITECTURE.md for state management details
 
 ## Common Tasks
 

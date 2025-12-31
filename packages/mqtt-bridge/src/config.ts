@@ -4,19 +4,22 @@ import { z } from 'zod'
 
 import type { MqttBridgeConfig } from './types.js'
 
+const mqttConfigSchema = z.object({
+  url: z
+    .string()
+    .url()
+    .regex(/^(mqtt|mqtts|ws|wss):\/\//, {
+      message: 'URL must start with mqtt://, mqtts://, ws://, or wss://',
+    })
+    .default('mqtt://localhost:1883'),
+  clientId: z.string().optional(),
+  username: z.string().optional(),
+  password: z.string().optional(),
+  reconnectPeriod: z.number().int().positive().optional(),
+})
+
 const mqttBridgeConfigSchema = z.object({
-  mqtt: z.object({
-    url: z
-      .string()
-      .url()
-      .regex(/^(mqtt|mqtts|ws|wss):\/\//, {
-        message: 'URL must start with mqtt://, mqtts://, ws://, or wss://',
-      }),
-    clientId: z.string().optional(),
-    username: z.string().optional(),
-    password: z.string().optional(),
-    reconnectPeriod: z.number().int().positive().optional(),
-  }),
+  mqtt: mqttConfigSchema.default({ url: 'mqtt://localhost:1883' }),
   stateDir: z.string().optional(),
   topicPrefix: z.string().optional(),
 })
@@ -25,7 +28,7 @@ export async function loadConfig(configPath: string): Promise<MqttBridgeConfig> 
   const content = await readFile(configPath, 'utf-8')
   const json = JSON.parse(content) as unknown
 
-  const result = mqttBridgeConfigSchema.safeParse(json)
+  const result = mqttBridgeConfigSchema.safeParse(json === null ? {} : json)
 
   if (!result.success) {
     const errors = result.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')

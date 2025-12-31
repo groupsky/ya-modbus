@@ -32,22 +32,26 @@ describe('loadConfig', () => {
     expect(mockedReadFile).toHaveBeenCalledWith('/path/to/config.json', 'utf-8')
   })
 
-  it('should throw error if mqtt.url is missing', async () => {
+  it('should default to localhost if mqtt.url is missing', async () => {
     const configJson = JSON.stringify({
       mqtt: {},
     })
 
     mockedReadFile.mockResolvedValue(configJson)
 
-    await expect(loadConfig('/path/to/config.json')).rejects.toThrow('Invalid configuration')
+    const config = await loadConfig('/path/to/config.json')
+
+    expect(config.mqtt.url).toBe('mqtt://localhost:1883')
   })
 
-  it('should throw error if mqtt is missing', async () => {
+  it('should not throw if mqtt is missing', async () => {
     const configJson = JSON.stringify({})
 
     mockedReadFile.mockResolvedValue(configJson)
 
-    await expect(loadConfig('/path/to/config.json')).rejects.toThrow('Invalid configuration')
+    const config = await loadConfig('/path/to/config.json')
+
+    expect(config.mqtt.url).toBe('mqtt://localhost:1883')
   })
 
   it('should throw error for invalid URL protocol', async () => {

@@ -26,6 +26,56 @@ See [Architecture documentation](./docs/ARCHITECTURE.md) for complete details an
 npm install @ya-modbus/mqtt-bridge
 ```
 
+## CLI Reference
+
+The `ya-modbus-bridge` command-line tool provides the following commands:
+
+### Commands
+
+- `run` - Run the MQTT bridge with a configuration file
+
+### Options
+
+**Configuration:**
+
+- `-c, --config <path>` - Path to configuration file (optional if using CLI options)
+- `--mqtt-url <url>` - MQTT broker URL (mqtt://, mqtts://, ws://, wss://)
+- `--mqtt-client-id <id>` - MQTT client identifier
+- `--mqtt-username <username>` - MQTT authentication username
+- `--mqtt-password <password>` - MQTT authentication password
+- `--mqtt-reconnect-period <ms>` - Reconnection interval in milliseconds
+- `--topic-prefix <prefix>` - Topic prefix for all MQTT topics (default: modbus)
+- `--state-dir <path>` - Directory path for state persistence
+
+**General:**
+
+- `-h, --help` - Display help for command
+- `-V, --version` - Output version number
+
+### Examples
+
+```bash
+# Run with config file
+ya-modbus-bridge run --config /path/to/config.json
+
+# Run with CLI options only
+ya-modbus-bridge run --mqtt-url mqtt://localhost:1883
+
+# Run with config file and override options
+ya-modbus-bridge run --config config.json --mqtt-url mqtt://broker.example.com:1883
+
+# Run with authentication
+ya-modbus-bridge run --mqtt-url mqtt://broker.example.com:1883 \
+  --mqtt-username user --mqtt-password pass
+
+# Show help
+ya-modbus-bridge --help
+ya-modbus-bridge run --help
+
+# Show version
+ya-modbus-bridge --version
+```
+
 ## CLI Usage
 
 Run the MQTT bridge using the command-line interface:
@@ -111,7 +161,13 @@ await bridge.stop()
 
 ## Architecture
 
-See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for complete architecture details.
+See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for complete bridge architecture including:
+
+- Component structure
+- MQTT topic structure
+- State management
+- Lifecycle and event handling
+- Data flow and validation
 
 ## Development
 

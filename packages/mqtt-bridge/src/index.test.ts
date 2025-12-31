@@ -63,6 +63,13 @@ describe('createBridge', () => {
   })
 
   const emitEvent = (event: string, ...args: unknown[]): void => {
+    // Update connected state based on events
+    if (event === 'connect') {
+      mockClient.connected = true
+    } else if (event === 'disconnect' || event === 'offline' || event === 'error') {
+      mockClient.connected = false
+    }
+
     const handlers = eventHandlers.get(event) ?? []
     handlers.forEach((handler) => handler(...args))
   }

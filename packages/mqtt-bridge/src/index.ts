@@ -38,6 +38,7 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
 
   let client: mqtt.MqttClient | null = null
   const topicPrefix = config.topicPrefix ?? 'modbus'
+  // Subscriptions map needed because mqtt client doesn't expose handler lookup
   const subscriptions = new Map<string, MessageHandler>()
   const deviceManager = new DeviceManager()
 
@@ -179,6 +180,8 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
       return {
         ...status,
         deviceCount: deviceManager.getDeviceCount(),
+        // Use client.connected if available to avoid state duplication
+        mqttConnected: client?.connected ?? status.mqttConnected,
       }
     },
 
