@@ -74,6 +74,17 @@ This document outlines the planned development phases for the MQTT bridge packag
 - Test data transformation
 - Test error scenarios
 
+### 2.6 Integration Tests
+
+- Set up Aedes MQTT broker for integration testing
+- Test full MQTT bridge lifecycle (connect, publish, subscribe, disconnect)
+- Test CLI signal handlers (SIGTERM, SIGINT) with real process
+- Test MQTT reconnection and resubscription behavior
+- Test end-to-end device data flow (driver → bridge → MQTT)
+- Test concurrent device operations
+- Test bridge behavior under network failures
+- Test message handler error handling with real MQTT messages
+
 **Dependencies**:
 
 - `@ya-modbus/driver-types` (already added)
