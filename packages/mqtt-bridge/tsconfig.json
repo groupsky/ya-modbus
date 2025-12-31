@@ -2,12 +2,14 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "declaration": true,
     "declarationMap": true,
-    "composite": true
+    "composite": true,
+    "module": "ES2022",
+    "moduleResolution": "bundler"
   },
-  "include": ["src"],
+  "include": ["src", "bin"],
   "exclude": ["src/**/*.test.ts"],
   "references": [{ "path": "../driver-types" }, { "path": "../driver-sdk" }]
 }
