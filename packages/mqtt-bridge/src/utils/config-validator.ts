@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import type { MqttBridgeConfig } from './types.js'
+import type { MqttBridgeConfig } from '../types.js'
 
 const mqttConfigSchema = z.object({
   url: z

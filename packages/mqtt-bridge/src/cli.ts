@@ -3,10 +3,10 @@
 import chalk from 'chalk'
 import { Command } from 'commander'
 
-import { validateConfig } from './config-validator.js'
-import { loadConfig } from './config.js'
-import { getPackageInfo } from './package-info.js'
 import type { MqttBridgeConfig } from './types.js'
+import { validateConfig } from './utils/config-validator.js'
+import { loadConfig } from './utils/config.js'
+import { getPackageInfo } from './utils/package-info.js'
 
 import { createBridge } from './index.js'
 

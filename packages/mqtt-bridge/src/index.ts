@@ -4,13 +4,18 @@ import { DeviceManager } from './device-manager.js'
 import type {
   MqttBridgeConfig,
   MqttBridge,
-  BridgeStatus,
   PublishOptions,
   SubscribeOptions,
   MessageHandler,
   MqttMessage,
   DeviceConfig,
 } from './types.js'
+
+interface InternalStatus {
+  state: 'starting' | 'running' | 'stopping' | 'stopped' | 'error'
+  timestamp: number
+  errors?: string[]
+}
 
 export type {
   MqttBridgeConfig,
@@ -26,13 +31,12 @@ export type {
   RTUConnection,
   TCPConnection,
 } from './types.js'
-export { loadConfig } from './config.js'
+export { loadConfig } from './utils/config.js'
 
 export function createBridge(config: MqttBridgeConfig): MqttBridge {
-  let status: BridgeStatus = {
+  let status: InternalStatus = {
     state: 'stopped',
     timestamp: Date.now(),
-    deviceCount: 0,
   }
 
   let client: mqtt.MqttClient | null = null
@@ -47,7 +51,6 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
         status = {
           state: 'starting',
           timestamp: Date.now(),
-          deviceCount: 0,
         }
 
         const mqttOptions: mqtt.IClientOptions = {
@@ -74,7 +77,6 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
           status = {
             state: 'running',
             timestamp: Date.now(),
-            deviceCount: 0,
           }
 
           // Automatic resubscription is handled by mqtt.js (resubscribe: true)
@@ -89,7 +91,6 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
           status = {
             state: 'error',
             timestamp: Date.now(),
-            deviceCount: 0,
             errors: [error.message],
           }
           reject(error)
@@ -122,7 +123,6 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
         status = {
           state: 'stopping',
           timestamp: Date.now(),
-          deviceCount: 0,
         }
 
         if (client) {
@@ -130,7 +130,6 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
             status = {
               state: 'stopped',
               timestamp: Date.now(),
-              deviceCount: 0,
             }
             client = null
             resolve()
@@ -139,7 +138,6 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
           status = {
             state: 'stopped',
             timestamp: Date.now(),
-            deviceCount: 0,
           }
           resolve()
         }

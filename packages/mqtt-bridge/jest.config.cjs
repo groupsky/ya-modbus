@@ -18,15 +18,12 @@ module.exports = {
   moduleNameMapper: {
     '^@ya-modbus/(.*)$': '<rootDir>/../$1/src',
     '^(\\.{1,2}/.*)\\.js$': '$1',
-    '^chalk$': '<rootDir>/src/__mocks__/chalk.ts',
+    '^chalk$': '<rootDir>/__mocks__/chalk.ts',
   },
   collectCoverageFrom: [
     '<rootDir>/src/**/*.ts',
-    '<rootDir>/bin/**/*.ts',
     '!<rootDir>/src/**/*.test.ts',
     '!<rootDir>/src/**/*.d.ts',
-    '!<rootDir>/src/__mocks__/**/*.ts',
-    '!<rootDir>/src/package-info.ts',
   ],
   coverageThreshold: {
     global: {

@@ -1,15 +1,15 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals'
 
 import { program } from './cli.js'
-import * as configValidatorModule from './config-validator.js'
-import * as configModule from './config.js'
+import * as configValidatorModule from './utils/config-validator.js'
+import * as configModule from './utils/config.js'
 
 import * as indexModule from './index.js'
 
-jest.mock('./config.js')
-jest.mock('./config-validator.js')
+jest.mock('./utils/config.js')
+jest.mock('./utils/config-validator.js')
 jest.mock('./index.js')
-jest.mock('./package-info.js', () => ({
+jest.mock('./utils/package-info.js', () => ({
   getPackageInfo: () => ({
     version: '0.0.0',
     description:

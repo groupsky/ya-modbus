@@ -1,5 +1,5 @@
-import { validateDeviceConfig } from './device-validation.js'
 import type { DeviceConfig, DeviceStatus } from './types.js'
+import { validateDeviceConfig } from './utils/device-validation.js'
 
 export class DeviceManager {
   private devices = new Map<string, DeviceStatus>()
