@@ -7,6 +7,7 @@ import type { MqttBridgeConfig } from './types.js'
 import { validateConfig } from './utils/config-validator.js'
 import { loadConfig } from './utils/config.js'
 import { getPackageInfo } from './utils/package-info.js'
+import { processUtils } from './utils/process.js'
 
 import { createBridge } from './index.js'
 
@@ -18,6 +19,7 @@ program.name('ya-modbus-bridge').description(packageInfo.description).version(pa
 // Error handler for command execution
 program.exitOverride() // Prevent automatic exit, let us handle errors
 program.configureOutput({
+  /* istanbul ignore next - commander internal error output */
   writeErr: (str) => process.stderr.write(str),
 })
 
@@ -37,7 +39,7 @@ program
       await runCommand(options)
     } catch (error) {
       console.error(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
-      process.exit(1)
+      processUtils.exit(1)
     }
   })
 
@@ -107,19 +109,19 @@ async function runCommand(options: RunCommandOptions): Promise<void> {
     console.log(chalk.yellow(`\nReceived ${signal}, shutting down...`))
     await bridge.stop()
     console.log(chalk.green('Bridge stopped'))
-    process.exit(0)
+    processUtils.exit(0)
   }
 
-  process.on('SIGINT', () => {
+  processUtils.onSignal('SIGINT', () => {
     handleShutdown('SIGINT').catch((err) => {
       console.error(chalk.red('Shutdown error:'), err)
-      process.exit(1)
+      processUtils.exit(1)
     })
   })
-  process.on('SIGTERM', () => {
+  processUtils.onSignal('SIGTERM', () => {
     handleShutdown('SIGTERM').catch((err) => {
       console.error(chalk.red('Shutdown error:'), err)
-      process.exit(1)
+      processUtils.exit(1)
     })
   })
 }

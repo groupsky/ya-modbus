@@ -2,10 +2,12 @@ import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals
 
 import { program } from './cli.js'
 import * as configModule from './utils/config.js'
+import * as processModule from './utils/process.js'
 
 import * as indexModule from './index.js'
 
 jest.mock('./utils/config.js')
+jest.mock('./utils/process.js')
 jest.mock('./index.js')
 jest.mock('./utils/package-info.js', () => ({
   getPackageInfo: () => ({
@@ -20,30 +22,30 @@ jest.mock('./utils/package-info.js', () => ({
  *
  * Testing Strategy:
  * - Uses program.parseAsync() to simulate command-line usage
- * - Mocks only external boundaries (config loading from files, bridge creation)
+ * - Mocks only external boundaries (config loading, bridge creation, process utils)
  * - Uses real config validation to test behavior
- * - Tests error handling and process.exit behavior
- * - Signal handlers deferred to Phase 2 integration tests with Aedes
+ * - Tests error handling and signal handler registration
  */
 
 describe('CLI - ya-modbus-bridge', () => {
   let consoleLogSpy: jest.SpyInstance
   let consoleErrorSpy: jest.SpyInstance
-  let processExitSpy: jest.SpyInstance
-  let processOnSpy: jest.SpyInstance
   let mockBridge: any
+  let signalHandlers: Map<string, () => void>
 
   beforeEach(() => {
     jest.clearAllMocks()
     consoleLogSpy = jest.spyOn(console, 'log').mockImplementation()
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
-    // Temporarily disable process.exit mock to see actual test failures
-    processExitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {
-      // Don't throw, just prevent actual exit
-      return undefined as never
-    }) as any)
-    // Mock process.on to prevent actual signal handlers from being registered
-    processOnSpy = jest.spyOn(process, 'on').mockImplementation(() => process)
+
+    // Mock processUtils
+    signalHandlers = new Map()
+    jest.mocked(processModule.processUtils.exit).mockImplementation(() => {
+      // Don't actually exit, just track the call
+    })
+    jest.mocked(processModule.processUtils.onSignal).mockImplementation((signal, handler) => {
+      signalHandlers.set(signal, handler)
+    })
 
     // Mock bridge instance
     mockBridge = {
@@ -57,13 +59,6 @@ describe('CLI - ya-modbus-bridge', () => {
   afterEach(() => {
     consoleLogSpy.mockRestore()
     consoleErrorSpy.mockRestore()
-    processExitSpy.mockRestore()
-    processOnSpy.mockRestore()
-  })
-
-  afterAll(() => {
-    // Ensure all mocks are fully restored after all tests
-    jest.restoreAllMocks()
   })
 
   describe('Help Output', () => {
@@ -259,7 +254,7 @@ describe('CLI - ya-modbus-bridge', () => {
         expect.stringContaining('Error:'),
         'Either --config or --mqtt-url must be provided'
       )
-      expect(processExitSpy).toHaveBeenCalledWith(1)
+      expect(processModule.processUtils.exit).toHaveBeenCalledWith(1)
     })
   })
 
@@ -273,7 +268,7 @@ describe('CLI - ya-modbus-bridge', () => {
         expect.stringContaining('Error:'),
         'File not found'
       )
-      expect(processExitSpy).toHaveBeenCalledWith(1)
+      expect(processModule.processUtils.exit).toHaveBeenCalledWith(1)
     })
 
     it('should reject invalid MQTT URL protocol', async () => {
@@ -289,7 +284,7 @@ describe('CLI - ya-modbus-bridge', () => {
         expect.stringContaining('Error:'),
         expect.stringContaining('URL must start with mqtt://')
       )
-      expect(processExitSpy).toHaveBeenCalledWith(1)
+      expect(processModule.processUtils.exit).toHaveBeenCalledWith(1)
     })
 
     it('should reject invalid URL format', async () => {
@@ -299,7 +294,7 @@ describe('CLI - ya-modbus-bridge', () => {
         expect.stringContaining('Error:'),
         expect.stringContaining('Invalid configuration')
       )
-      expect(processExitSpy).toHaveBeenCalledWith(1)
+      expect(processModule.processUtils.exit).toHaveBeenCalledWith(1)
     })
 
     it('should handle bridge start errors', async () => {
@@ -314,7 +309,7 @@ describe('CLI - ya-modbus-bridge', () => {
         expect.stringContaining('Error:'),
         'Connection refused'
       )
-      expect(processExitSpy).toHaveBeenCalledWith(1)
+      expect(processModule.processUtils.exit).toHaveBeenCalledWith(1)
     })
   })
 
@@ -350,7 +345,184 @@ describe('CLI - ya-modbus-bridge', () => {
     })
   })
 
-  // Signal Handlers testing deferred to Phase 2 integration tests
-  // Testing signal handlers requires process-level testing which is complex in unit tests
-  // Will be covered comprehensively in integration tests with Aedes MQTT broker
+  describe('Signal Handlers', () => {
+    it('should register SIGINT handler', async () => {
+      const mockConfig = {
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      }
+
+      jest.mocked(configModule.loadConfig).mockResolvedValue(mockConfig)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(processModule.processUtils.onSignal).toHaveBeenCalledWith(
+        'SIGINT',
+        expect.any(Function)
+      )
+    })
+
+    it('should register SIGTERM handler', async () => {
+      const mockConfig = {
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      }
+
+      jest.mocked(configModule.loadConfig).mockResolvedValue(mockConfig)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(processModule.processUtils.onSignal).toHaveBeenCalledWith(
+        'SIGTERM',
+        expect.any(Function)
+      )
+    })
+
+    it('should handle SIGINT shutdown gracefully', async () => {
+      const mockConfig = {
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      }
+
+      jest.mocked(configModule.loadConfig).mockResolvedValue(mockConfig)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      const sigintHandler = signalHandlers.get('SIGINT')
+      expect(sigintHandler).toBeDefined()
+
+      sigintHandler!()
+      // Wait for async shutdown to complete
+      await new Promise((resolve) => setImmediate(resolve))
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Received SIGINT, shutting down...')
+      )
+      expect(mockBridge.stop).toHaveBeenCalled()
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Bridge stopped'))
+      expect(processModule.processUtils.exit).toHaveBeenCalledWith(0)
+    })
+
+    it('should handle SIGTERM shutdown gracefully', async () => {
+      const mockConfig = {
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      }
+
+      jest.mocked(configModule.loadConfig).mockResolvedValue(mockConfig)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      const sigtermHandler = signalHandlers.get('SIGTERM')
+      expect(sigtermHandler).toBeDefined()
+
+      sigtermHandler!()
+      // Wait for async shutdown to complete
+      await new Promise((resolve) => setImmediate(resolve))
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Received SIGTERM, shutting down...')
+      )
+      expect(mockBridge.stop).toHaveBeenCalled()
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Bridge stopped'))
+      expect(processModule.processUtils.exit).toHaveBeenCalledWith(0)
+    })
+
+    it('should handle SIGINT shutdown errors', async () => {
+      const mockConfig = {
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      }
+
+      jest.mocked(configModule.loadConfig).mockResolvedValue(mockConfig)
+      mockBridge.stop.mockRejectedValue(new Error('Stop failed'))
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      const sigintHandler = signalHandlers.get('SIGINT')
+      expect(sigintHandler).toBeDefined()
+
+      // Call the handler and wait for async error handling to complete
+      sigintHandler!()
+      // Wait for the promise rejection to be handled
+      await new Promise((resolve) => setImmediate(resolve))
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Shutdown error:'),
+        expect.any(Error)
+      )
+      expect(processModule.processUtils.exit).toHaveBeenCalledWith(1)
+    })
+
+    it('should handle SIGTERM shutdown errors', async () => {
+      const mockConfig = {
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      }
+
+      jest.mocked(configModule.loadConfig).mockResolvedValue(mockConfig)
+      mockBridge.stop.mockRejectedValue(new Error('Stop failed'))
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      const sigtermHandler = signalHandlers.get('SIGTERM')
+      expect(sigtermHandler).toBeDefined()
+
+      // Call the handler and wait for async error handling to complete
+      sigtermHandler!()
+      // Wait for the promise rejection to be handled
+      await new Promise((resolve) => setImmediate(resolve))
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Shutdown error:'),
+        expect.any(Error)
+      )
+      expect(processModule.processUtils.exit).toHaveBeenCalledWith(1)
+    })
+
+    it('should prevent multiple simultaneous shutdowns', async () => {
+      const mockConfig = {
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      }
+
+      jest.mocked(configModule.loadConfig).mockResolvedValue(mockConfig)
+
+      // Make stop() slow to test concurrent shutdown prevention
+      let stopResolver: () => void
+      const stopPromise = new Promise<void>((resolve) => {
+        stopResolver = resolve
+      })
+      mockBridge.stop.mockImplementation(() => stopPromise)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      const sigintHandler = signalHandlers.get('SIGINT')
+      expect(sigintHandler).toBeDefined()
+
+      // Start first shutdown (won't complete yet)
+      sigintHandler!()
+
+      // Try second shutdown (should be ignored)
+      sigintHandler!()
+
+      // Complete the stop
+      stopResolver!()
+
+      // Wait for shutdowns to complete
+      await new Promise((resolve) => setImmediate(resolve))
+
+      // Stop should only be called once
+      expect(mockBridge.stop).toHaveBeenCalledTimes(1)
+      // First shutdown should exit with 0
+      expect(processModule.processUtils.exit).toHaveBeenCalledWith(0)
+    })
+  })
 })
