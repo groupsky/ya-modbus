@@ -15,8 +15,9 @@ const mqttBridgeConfigSchema = z.object({
     clientId: z.string().optional(),
     username: z.string().optional(),
     password: z.string().optional(),
+    reconnectPeriod: z.number().int().positive().optional(),
   }),
-  stateFile: z.string().optional(),
+  stateDir: z.string().optional(),
   topicPrefix: z.string().optional(),
 })
 
@@ -38,8 +39,11 @@ export async function loadConfig(configPath: string): Promise<MqttBridgeConfig> 
       ...(result.data.mqtt.clientId !== undefined && { clientId: result.data.mqtt.clientId }),
       ...(result.data.mqtt.username !== undefined && { username: result.data.mqtt.username }),
       ...(result.data.mqtt.password !== undefined && { password: result.data.mqtt.password }),
+      ...(result.data.mqtt.reconnectPeriod !== undefined && {
+        reconnectPeriod: result.data.mqtt.reconnectPeriod,
+      }),
     },
-    ...(result.data.stateFile !== undefined && { stateFile: result.data.stateFile }),
+    ...(result.data.stateDir !== undefined && { stateDir: result.data.stateDir }),
     ...(result.data.topicPrefix !== undefined && { topicPrefix: result.data.topicPrefix }),
   }
 

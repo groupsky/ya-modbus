@@ -15,7 +15,7 @@ describe('loadConfig', () => {
         url: 'mqtt://localhost:1883',
         clientId: 'test-bridge',
       },
-      stateFile: './bridge-state.json',
+      stateDir: './state',
     })
 
     mockedReadFile.mockResolvedValue(configJson)
@@ -27,7 +27,7 @@ describe('loadConfig', () => {
         url: 'mqtt://localhost:1883',
         clientId: 'test-bridge',
       },
-      stateFile: './bridge-state.json',
+      stateDir: './state',
     })
     expect(mockedReadFile).toHaveBeenCalledWith('/path/to/config.json', 'utf-8')
   })

@@ -53,7 +53,7 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
 
         const mqttOptions: mqtt.IClientOptions = {
           clean: true,
-          reconnectPeriod: 5000,
+          reconnectPeriod: config.mqtt.reconnectPeriod ?? 5000,
         }
 
         if (config.mqtt.clientId) {
@@ -68,6 +68,8 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
 
         client = mqtt.connect(config.mqtt.url, mqttOptions)
 
+        let isInitialConnection = true
+
         client.on('connect', () => {
           status = {
             state: 'running',
@@ -75,7 +77,25 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
             deviceCount: 0,
             mqttConnected: true,
           }
-          resolve()
+
+          // Re-subscribe to all topics after reconnection
+          if (!isInitialConnection && subscriptions.size > 0) {
+            for (const [topic, _handler] of subscriptions.entries()) {
+              const topicWithoutPrefix = topic.startsWith(`${topicPrefix}/`)
+                ? topic.substring(topicPrefix.length + 1)
+                : topic
+              client?.subscribe(topic, { qos: 0 }, (err) => {
+                if (err) {
+                  console.error(`Failed to re-subscribe to ${topicWithoutPrefix}:`, err)
+                }
+              })
+            }
+          }
+
+          if (isInitialConnection) {
+            isInitialConnection = false
+            resolve()
+          }
         })
 
         client.on('error', (error) => {

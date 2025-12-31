@@ -1,9 +1,12 @@
+import { validateDeviceConfig } from './device-validation.js'
 import type { DeviceConfig, DeviceStatus } from './types.js'
 
 export class DeviceManager {
   private devices = new Map<string, DeviceStatus>()
 
   addDevice(config: DeviceConfig): void {
+    validateDeviceConfig(config)
+
     if (this.devices.has(config.deviceId)) {
       throw new Error(`Device ${config.deviceId} already exists`)
     }

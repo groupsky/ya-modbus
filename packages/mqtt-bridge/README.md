@@ -63,8 +63,9 @@ Create a `config.json` file:
 - `mqtt.clientId` (optional) - MQTT client identifier
 - `mqtt.username` (optional) - Authentication username
 - `mqtt.password` (optional) - Authentication password
+- `mqtt.reconnectPeriod` (optional) - Reconnection interval in milliseconds (default: 5000)
 - `topicPrefix` (optional) - Topic prefix for all MQTT topics (default: 'modbus')
-- `stateFile` (optional) - Path to state persistence file (future)
+- `stateDir` (optional) - Directory path for state persistence (future)
 
 ## Programmatic Usage
 

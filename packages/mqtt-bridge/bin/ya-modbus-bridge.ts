@@ -38,7 +38,13 @@ program
 
       console.log(chalk.green('Bridge started successfully'))
 
+      let isShuttingDown = false
       const handleShutdown = async (signal: string): Promise<void> => {
+        if (isShuttingDown) {
+          return
+        }
+        isShuttingDown = true
+
         console.log(chalk.yellow(`\nReceived ${signal}, shutting down...`))
         await bridge.stop()
         console.log(chalk.green('Bridge stopped'))

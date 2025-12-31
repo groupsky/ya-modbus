@@ -161,7 +161,22 @@ This document outlines the planned development phases for the MQTT bridge packag
 
 - `src/index.ts` - Integrate state manager and config handler
 - `src/types.ts` - Add state and config types
-- `src/config.ts` - Support state file configuration
+- `src/config.ts` - Support state directory configuration
+
+### 3.4 Systemd Integration
+
+- Create systemd service unit file
+- Support running as system service
+- Automatic restart on failure
+- Logging to journald
+- Service management (start/stop/restart/status)
+- Install/uninstall scripts
+
+**Files to Create**:
+
+- `systemd/ya-modbus-bridge.service` - Systemd unit file
+- `scripts/install-service.sh` - Service installation script
+- `scripts/uninstall-service.sh` - Service removal script
 
 **Estimated Complexity**: Medium (1-2 weeks)
 
