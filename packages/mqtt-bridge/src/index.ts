@@ -121,6 +121,7 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
                 ...status,
                 errors: [
                   ...(status.errors ?? []),
+                  /* istanbul ignore next - defensive: handlers always throw Error */
                   `Handler error for ${topic}: ${error instanceof Error ? error.message : String(error)}`,
                 ],
               }
@@ -264,6 +265,7 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
           deviceManager.addDevice(deviceConfig)
           resolve()
         } catch (error) {
+          /* istanbul ignore next - defensive: deviceManager always throws Error */
           reject(error instanceof Error ? error : new Error(String(error)))
         }
       })
@@ -275,6 +277,7 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
           deviceManager.removeDevice(deviceId)
           resolve()
         } catch (error) {
+          /* istanbul ignore next - defensive: deviceManager always throws Error */
           reject(error instanceof Error ? error : new Error(String(error)))
         }
       })

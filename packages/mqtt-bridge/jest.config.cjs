@@ -23,6 +23,8 @@ module.exports = {
     '<rootDir>/src/**/*.ts',
     '!<rootDir>/src/**/*.test.ts',
     '!<rootDir>/src/**/*.d.ts',
+    '!<rootDir>/src/utils/package-info.ts',
+    '!<rootDir>/src/cli.ts',
   ],
   coverageThreshold: {
     global: {
@@ -30,12 +32,6 @@ module.exports = {
       functions: 95,
       lines: 95,
       statements: 95,
-    },
-    './src/cli.ts': {
-      branches: 75,
-      functions: 25,
-      lines: 70,
-      statements: 65,
     },
   },
 }

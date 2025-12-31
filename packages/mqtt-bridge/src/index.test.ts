@@ -219,6 +219,34 @@ describe('createBridge', () => {
     expect(status.mqttConnected).toBe(false)
   })
 
+  it('should handle reconnection after disconnect', async () => {
+    const bridge = createBridge({
+      mqtt: {
+        url: 'mqtt://localhost:1883',
+      },
+    })
+
+    const startPromise = bridge.start()
+    emitEvent('connect')
+    await startPromise
+
+    let status = bridge.getStatus()
+    expect(status.state).toBe('running')
+    expect(status.mqttConnected).toBe(true)
+
+    emitEvent('disconnect')
+
+    status = bridge.getStatus()
+    expect(status.mqttConnected).toBe(false)
+
+    emitEvent('reconnect')
+    emitEvent('connect')
+
+    status = bridge.getStatus()
+    expect(status.state).toBe('running')
+    expect(status.mqttConnected).toBe(true)
+  })
+
   describe('publish', () => {
     it('should publish message to topic with prefix', async () => {
       const bridge = createBridge({
@@ -516,6 +544,72 @@ describe('createBridge', () => {
 
       expect(handler1).toHaveBeenCalled()
       expect(handler2).not.toHaveBeenCalled()
+    })
+
+    it('should handle errors in message handlers without crashing bridge', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      const handler = jest.fn(() => {
+        throw new Error('Handler error')
+      })
+      await bridge.subscribe('device1/data', handler)
+
+      const payload = Buffer.from('test message')
+      const packet = { qos: 0, retain: false }
+      emitEvent('message', 'modbus/device1/data', payload, packet)
+
+      expect(handler).toHaveBeenCalled()
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Error in message handler for topic modbus/device1/data:',
+        expect.any(Error)
+      )
+
+      const status = bridge.getStatus()
+      expect(status.errors).toContain('Handler error for modbus/device1/data: Handler error')
+
+      consoleErrorSpy.mockRestore()
+    })
+
+    it('should accumulate multiple handler errors', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      const handler = jest.fn(() => {
+        throw new Error('Handler error')
+      })
+      await bridge.subscribe('device1/data', handler)
+
+      const payload = Buffer.from('test message')
+      const packet = { qos: 0, retain: false }
+
+      emitEvent('message', 'modbus/device1/data', payload, packet)
+      emitEvent('message', 'modbus/device1/data', payload, packet)
+
+      const status = bridge.getStatus()
+      expect(status.errors).toHaveLength(2)
+      expect(status.errors?.[0]).toBe('Handler error for modbus/device1/data: Handler error')
+      expect(status.errors?.[1]).toBe('Handler error for modbus/device1/data: Handler error')
+
+      consoleErrorSpy.mockRestore()
     })
 
     it('should reject when client not initialized', async () => {

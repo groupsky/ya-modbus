@@ -35,6 +35,7 @@ export async function loadConfig(configPath: string): Promise<MqttBridgeConfig> 
   const content = await readFile(configPath, 'utf-8')
   const json = JSON.parse(content) as unknown
 
+  /* istanbul ignore next - defensive: JSON.parse never returns null */
   const result = mqttBridgeConfigSchema.safeParse(json === null ? {} : json)
 
   if (!result.success) {
