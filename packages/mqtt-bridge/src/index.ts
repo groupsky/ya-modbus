@@ -1,8 +1,24 @@
 import mqtt from 'mqtt'
 
-import type { MqttBridgeConfig, MqttBridge, BridgeStatus, PublishOptions } from './types.js'
+import type {
+  MqttBridgeConfig,
+  MqttBridge,
+  BridgeStatus,
+  PublishOptions,
+  SubscribeOptions,
+  MessageHandler,
+  MqttMessage,
+} from './types.js'
 
-export type { MqttBridgeConfig, BridgeStatus, MqttBridge, PublishOptions } from './types.js'
+export type {
+  MqttBridgeConfig,
+  BridgeStatus,
+  MqttBridge,
+  PublishOptions,
+  SubscribeOptions,
+  MessageHandler,
+  MqttMessage,
+} from './types.js'
 export { loadConfig } from './config.js'
 
 export function createBridge(config: MqttBridgeConfig): MqttBridge {
@@ -15,6 +31,7 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
 
   let client: mqtt.MqttClient | null = null
   const topicPrefix = config.topicPrefix ?? 'modbus'
+  const subscriptions = new Map<string, MessageHandler>()
 
   return {
     start() {
@@ -84,6 +101,19 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
             mqttConnected: false,
           }
         })
+
+        client.on('message', (topic, payload, packet) => {
+          const handler = subscriptions.get(topic)
+          if (handler) {
+            const message: MqttMessage = {
+              topic,
+              payload,
+              qos: packet.qos as 0 | 1 | 2,
+              retain: packet.retain,
+            }
+            handler(message)
+          }
+        })
       })
     },
 
@@ -149,6 +179,60 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
           if (error) {
             reject(error)
           } else {
+            resolve()
+          }
+        })
+      })
+    },
+
+    subscribe(topic: string, handler: MessageHandler, options?: SubscribeOptions) {
+      return new Promise<void>((resolve, reject) => {
+        if (!client) {
+          reject(new Error('MQTT client not initialized'))
+          return
+        }
+
+        if (!status.mqttConnected) {
+          reject(new Error('MQTT client not connected'))
+          return
+        }
+
+        const fullTopic = `${topicPrefix}/${topic}`
+
+        const subscribeOptions: mqtt.IClientSubscribeOptions = {
+          qos: options?.qos ?? 0,
+        }
+
+        client.subscribe(fullTopic, subscribeOptions, (error) => {
+          if (error) {
+            reject(error)
+          } else {
+            subscriptions.set(fullTopic, handler)
+            resolve()
+          }
+        })
+      })
+    },
+
+    unsubscribe(topic: string) {
+      return new Promise<void>((resolve, reject) => {
+        if (!client) {
+          reject(new Error('MQTT client not initialized'))
+          return
+        }
+
+        if (!status.mqttConnected) {
+          reject(new Error('MQTT client not connected'))
+          return
+        }
+
+        const fullTopic = `${topicPrefix}/${topic}`
+
+        client.unsubscribe(fullTopic, (error) => {
+          if (error) {
+            reject(error)
+          } else {
+            subscriptions.delete(fullTopic)
             resolve()
           }
         })

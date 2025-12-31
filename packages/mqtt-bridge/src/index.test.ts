@@ -14,6 +14,10 @@ interface MockMqttClient extends EventEmitter {
   publish: jest.Mock<
     (topic: string, payload: string | Buffer, opts: object, cb?: (error?: Error) => void) => void
   >
+  subscribe: jest.Mock<
+    (topic: string | string[], opts: object, cb?: (error?: Error) => void) => void
+  >
+  unsubscribe: jest.Mock<(topic: string | string[], cb?: (error?: Error) => void) => void>
   connected: boolean
 }
 
@@ -38,6 +42,16 @@ describe('createBridge', () => {
         }
       }),
       publish: jest.fn((topic, payload, opts, cb) => {
+        if (typeof cb === 'function') {
+          cb()
+        }
+      }),
+      subscribe: jest.fn((topic, opts, cb) => {
+        if (typeof cb === 'function') {
+          cb()
+        }
+      }),
+      unsubscribe: jest.fn((topic, cb) => {
         if (typeof cb === 'function') {
           cb()
         }
@@ -374,6 +388,270 @@ describe('createBridge', () => {
       })
 
       await expect(bridge.publish('device1/data', 'payload')).rejects.toThrow('Publish failed')
+    })
+  })
+
+  describe('subscribe', () => {
+    it('should subscribe to topic with prefix', async () => {
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      const handler = jest.fn()
+      await bridge.subscribe('config/devices/add', handler)
+
+      expect(mockClient.subscribe).toHaveBeenCalledWith(
+        'modbus/config/devices/add',
+        { qos: 0 },
+        expect.any(Function)
+      )
+    })
+
+    it('should subscribe with custom topic prefix', async () => {
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+        topicPrefix: 'custom',
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      const handler = jest.fn()
+      await bridge.subscribe('config/devices/add', handler)
+
+      expect(mockClient.subscribe).toHaveBeenCalledWith(
+        'custom/config/devices/add',
+        { qos: 0 },
+        expect.any(Function)
+      )
+    })
+
+    it('should subscribe with QoS option', async () => {
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      const handler = jest.fn()
+      await bridge.subscribe('device1/data', handler, { qos: 1 })
+
+      expect(mockClient.subscribe).toHaveBeenCalledWith(
+        'modbus/device1/data',
+        { qos: 1 },
+        expect.any(Function)
+      )
+    })
+
+    it('should call handler when message received', async () => {
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      const handler = jest.fn()
+      await bridge.subscribe('device1/data', handler)
+
+      const payload = Buffer.from('test message')
+      const packet = { qos: 1, retain: false }
+      emitEvent('message', 'modbus/device1/data', payload, packet)
+
+      expect(handler).toHaveBeenCalledWith({
+        topic: 'modbus/device1/data',
+        payload,
+        qos: 1,
+        retain: false,
+      })
+    })
+
+    it('should not call handler for unsubscribed topic', async () => {
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      const handler1 = jest.fn()
+      const handler2 = jest.fn()
+      await bridge.subscribe('device1/data', handler1)
+      await bridge.subscribe('device2/data', handler2)
+
+      const payload = Buffer.from('test message')
+      const packet = { qos: 0, retain: false }
+      emitEvent('message', 'modbus/device1/data', payload, packet)
+
+      expect(handler1).toHaveBeenCalled()
+      expect(handler2).not.toHaveBeenCalled()
+    })
+
+    it('should reject when client not initialized', async () => {
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const handler = jest.fn()
+      await expect(bridge.subscribe('device1/data', handler)).rejects.toThrow(
+        'MQTT client not initialized'
+      )
+    })
+
+    it('should reject when client not connected', async () => {
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      emitEvent('disconnect')
+
+      const handler = jest.fn()
+      await expect(bridge.subscribe('device1/data', handler)).rejects.toThrow(
+        'MQTT client not connected'
+      )
+    })
+
+    it('should reject when subscribe fails', async () => {
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      const subscribeError = new Error('Subscribe failed')
+      mockClient.subscribe.mockImplementationOnce((topic, opts, cb) => {
+        if (typeof cb === 'function') {
+          cb(subscribeError)
+        }
+      })
+
+      const handler = jest.fn()
+      await expect(bridge.subscribe('device1/data', handler)).rejects.toThrow('Subscribe failed')
+    })
+  })
+
+  describe('unsubscribe', () => {
+    it('should unsubscribe from topic with prefix', async () => {
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      const handler = jest.fn()
+      await bridge.subscribe('device1/data', handler)
+      await bridge.unsubscribe('device1/data')
+
+      expect(mockClient.unsubscribe).toHaveBeenCalledWith(
+        'modbus/device1/data',
+        expect.any(Function)
+      )
+    })
+
+    it('should not call handler after unsubscribe', async () => {
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      const handler = jest.fn()
+      await bridge.subscribe('device1/data', handler)
+      await bridge.unsubscribe('device1/data')
+
+      const payload = Buffer.from('test message')
+      const packet = { qos: 0, retain: false }
+      emitEvent('message', 'modbus/device1/data', payload, packet)
+
+      expect(handler).not.toHaveBeenCalled()
+    })
+
+    it('should reject when client not initialized', async () => {
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      await expect(bridge.unsubscribe('device1/data')).rejects.toThrow(
+        'MQTT client not initialized'
+      )
+    })
+
+    it('should reject when client not connected', async () => {
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      emitEvent('disconnect')
+
+      await expect(bridge.unsubscribe('device1/data')).rejects.toThrow('MQTT client not connected')
+    })
+
+    it('should reject when unsubscribe fails', async () => {
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      const unsubscribeError = new Error('Unsubscribe failed')
+      mockClient.unsubscribe.mockImplementationOnce((topic, cb) => {
+        if (typeof cb === 'function') {
+          cb(unsubscribeError)
+        }
+      })
+
+      await expect(bridge.unsubscribe('device1/data')).rejects.toThrow('Unsubscribe failed')
     })
   })
 })
