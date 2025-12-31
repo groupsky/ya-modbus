@@ -53,6 +53,66 @@ describe('CLI - ya-modbus-bridge', () => {
     processExitSpy.mockRestore()
   })
 
+  describe('Help Output', () => {
+    let stdoutWriteSpy: jest.SpyInstance
+
+    beforeEach(() => {
+      stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true)
+    })
+
+    afterEach(() => {
+      stdoutWriteSpy.mockRestore()
+    })
+
+    it('should display root help', async () => {
+      await expect(program.parseAsync(['node', 'ya-modbus-bridge', '--help'])).rejects.toThrow()
+
+      const output = stdoutWriteSpy.mock.calls.map((call) => call[0]).join('')
+      expect(output).toMatchInlineSnapshot(`
+        "Usage: ya-modbus-bridge [options] [command]
+
+        MQTT bridge for ya-modbus - orchestrates device management, polling, and MQTT
+        publishing
+
+        Options:
+          -V, --version   output the version number
+          -h, --help      display help for command
+
+        Commands:
+          run [options]   Run the MQTT bridge
+          help [command]  display help for command
+        "
+      `)
+    })
+
+    it('should display run command help', async () => {
+      await expect(
+        program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--help'])
+      ).rejects.toThrow()
+
+      const output = stdoutWriteSpy.mock.calls.map((call) => call[0]).join('')
+      expect(output).toMatchInlineSnapshot(`
+        "Usage: ya-modbus-bridge run [options]
+
+        Run the MQTT bridge
+
+        Options:
+          -c, --config <path>           Path to configuration file
+          --mqtt-url <url>              MQTT broker URL (mqtt://, mqtts://, ws://,
+                                        wss://)
+          --mqtt-client-id <id>         MQTT client identifier
+          --mqtt-username <username>    MQTT authentication username
+          --mqtt-password <password>    MQTT authentication password
+          --mqtt-reconnect-period <ms>  Reconnection interval in milliseconds
+          --topic-prefix <prefix>       Topic prefix for all MQTT topics (default:
+                                        modbus)
+          --state-dir <path>            Directory path for state persistence
+          -h, --help                    display help for command
+        "
+      `)
+    })
+  })
+
   describe('Program Configuration', () => {
     it('should have correct name', () => {
       expect(program.name()).toBe('ya-modbus-bridge')
