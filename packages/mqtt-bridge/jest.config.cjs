@@ -23,6 +23,7 @@ module.exports = {
     '<rootDir>/src/**/*.ts',
     '!<rootDir>/src/**/*.test.ts',
     '!<rootDir>/src/**/*.d.ts',
+    '!<rootDir>/src/__tests__/**/*.ts',
     '!<rootDir>/src/utils/package-info.ts',
   ],
   coverageThreshold: {
