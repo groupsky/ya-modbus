@@ -29,7 +29,9 @@ program
       console.log(chalk.blue('Loading configuration...'))
       const config = await loadConfig(options.config)
 
-      console.log(chalk.blue(`Starting MQTT bridge - connecting to ${config.mqtt.url}...`))
+      // Sanitize URL to hide credentials
+      const sanitizedUrl = config.mqtt.url.replace(/:\/\/([^:]+):([^@]+)@/, '://$1:****@')
+      console.log(chalk.blue(`Starting MQTT bridge - connecting to ${sanitizedUrl}...`))
 
       const bridge = createBridge(config)
       await bridge.start()
@@ -44,10 +46,16 @@ program
       }
 
       process.on('SIGINT', () => {
-        void handleShutdown('SIGINT')
+        handleShutdown('SIGINT').catch((err) => {
+          console.error(chalk.red('Shutdown error:'), err)
+          process.exit(1)
+        })
       })
       process.on('SIGTERM', () => {
-        void handleShutdown('SIGTERM')
+        handleShutdown('SIGTERM').catch((err) => {
+          console.error(chalk.red('Shutdown error:'), err)
+          process.exit(1)
+        })
       })
     } catch (error) {
       console.error(chalk.red('Error:'), error instanceof Error ? error.message : String(error))

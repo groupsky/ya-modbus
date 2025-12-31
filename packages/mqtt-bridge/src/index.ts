@@ -104,10 +104,8 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
         })
 
         client.on('reconnect', () => {
-          status = {
-            ...status,
-            mqttConnected: false,
-          }
+          // Note: reconnect event fires when attempting to reconnect
+          // mqttConnected status is updated by 'connect' event
         })
 
         client.on('message', (topic, payload, packet) => {

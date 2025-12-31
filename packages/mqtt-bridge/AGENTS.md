@@ -2,63 +2,60 @@
 
 MQTT bridge for ya-modbus - orchestrates device management, polling, and MQTT publishing.
 
+## Required Reading by Task
+
+BEFORE making ANY changes:
+→ READ ../../docs/agents/git.md
+→ READ ../../docs/agents/code-quality.md
+→ READ ../../docs/agents/testing.md
+
+BEFORE adding device support:
+→ READ docs/agents/add-device-support.md
+→ READ ../../docs/agents/driver-development.md
+
+BEFORE writing tests:
+→ READ docs/agents/testing.md
+
 ## Purpose
 
 This package provides the core bridge functionality that:
 
 - Manages MQTT connections and topic structure
 - Orchestrates device lifecycle (registration, removal, status)
-- Coordinates polling across multiple devices
-- Publishes device data and status to MQTT topics
-- Handles runtime configuration via MQTT
+- Coordinates polling across multiple devices (future)
+- Publishes device data and status to MQTT topics (future)
+- Handles runtime configuration via MQTT (future)
 
 ## Key Concepts
 
 ### Bridge Orchestration
 
-The MQTT bridge acts as the central coordinator between Modbus devices and MQTT:
+The MQTT bridge acts as the central coordinator between Modbus devices and MQTT.
 
-- Device lifecycle management (add, remove, enable/disable)
-- Polling scheduler coordination
-- State persistence and recovery
-- MQTT topic organization
+See: docs/ARCHITECTURE.md for complete architecture
+See: ../../docs/ARCHITECTURE.md for system architecture
 
 ### MQTT Topic Structure
 
-See docs/ARCHITECTURE.md for complete topic structure:
-
-- `modbus/config/*` - Configuration commands
-- `modbus/{deviceId}/data` - Device data publications
-- `modbus/{deviceId}/status/*` - Device status
-- `modbus/{deviceId}/errors/*` - Device errors
-- `modbus/bridge/status/*` - Bridge health and status
+See: docs/ARCHITECTURE.md for topic structure
 
 ### State Management
 
-- Persistent state storage (JSON format with schema versioning)
-- Auto-save on changes, periodic saves, graceful shutdown
-- Recovery on startup with validation
+See: docs/ARCHITECTURE.md for state management details
 
 ## Common Tasks
 
 ### Adding Device Support
 
-When adding new device types, ensure the bridge can:
-
-- Load drivers dynamically
-- Handle driver-specific configuration
-- Publish driver-specific data points
+See: docs/agents/add-device-support.md
 
 ### Testing
 
-- Mock MQTT client for unit tests
-- Test device lifecycle operations
-- Test polling coordination
-- Test state persistence and recovery
-- Test error handling and reconnection logic
+See: docs/agents/testing.md
 
-## Architecture References
+## References
 
-- docs/ARCHITECTURE.md - Complete system architecture
-- docs/agents/testing.md - Testing patterns
-- docs/agents/code-quality.md - Code quality guidelines
+- docs/ARCHITECTURE.md - Bridge architecture
+- ../../docs/ARCHITECTURE.md - System architecture
+- ../../docs/agents/testing.md - Testing guidelines
+- ../../docs/agents/code-quality.md - Code quality guidelines

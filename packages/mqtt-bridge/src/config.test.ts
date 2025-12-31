@@ -39,9 +39,7 @@ describe('loadConfig', () => {
 
     mockedReadFile.mockResolvedValue(configJson)
 
-    await expect(loadConfig('/path/to/config.json')).rejects.toThrow(
-      'Configuration must include mqtt.url'
-    )
+    await expect(loadConfig('/path/to/config.json')).rejects.toThrow('Invalid configuration')
   })
 
   it('should throw error if mqtt is missing', async () => {
@@ -49,9 +47,35 @@ describe('loadConfig', () => {
 
     mockedReadFile.mockResolvedValue(configJson)
 
+    await expect(loadConfig('/path/to/config.json')).rejects.toThrow('Invalid configuration')
+  })
+
+  it('should throw error for invalid URL protocol', async () => {
+    const configJson = JSON.stringify({
+      mqtt: {
+        url: 'http://localhost:1883',
+      },
+    })
+
+    mockedReadFile.mockResolvedValue(configJson)
+
     await expect(loadConfig('/path/to/config.json')).rejects.toThrow(
-      'Configuration must include mqtt.url'
+      'URL must start with mqtt://, mqtts://, ws://, or wss://'
     )
+  })
+
+  it('should accept mqtts protocol', async () => {
+    const configJson = JSON.stringify({
+      mqtt: {
+        url: 'mqtts://broker.example.com:8883',
+      },
+    })
+
+    mockedReadFile.mockResolvedValue(configJson)
+
+    const config = await loadConfig('/path/to/config.json')
+
+    expect(config.mqtt.url).toBe('mqtts://broker.example.com:8883')
   })
 
   it('should throw error for invalid JSON', async () => {
