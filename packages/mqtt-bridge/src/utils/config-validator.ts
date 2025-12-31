@@ -18,7 +18,14 @@ const mqttConfigSchema = z.object({
 const mqttBridgeConfigSchema = z.object({
   mqtt: mqttConfigSchema,
   stateDir: z.string().optional(),
-  topicPrefix: z.string().optional(),
+  topicPrefix: z
+    .string()
+    // eslint-disable-next-line no-control-regex
+    .regex(/^[^+#/$\x00]+$/, {
+      message:
+        'Topic prefix must not contain MQTT special characters (+, #, /, $) or null character',
+    })
+    .optional(),
 })
 
 export function validateConfig(config: unknown): asserts config is MqttBridgeConfig {
