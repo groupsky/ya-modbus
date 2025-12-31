@@ -1,13 +1,11 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals'
 
 import { program } from './cli.js'
-import * as configValidatorModule from './utils/config-validator.js'
 import * as configModule from './utils/config.js'
 
 import * as indexModule from './index.js'
 
 jest.mock('./utils/config.js')
-jest.mock('./utils/config-validator.js')
 jest.mock('./index.js')
 jest.mock('./utils/package-info.js', () => ({
   getPackageInfo: () => ({
@@ -22,7 +20,8 @@ jest.mock('./utils/package-info.js', () => ({
  *
  * Testing Strategy:
  * - Uses program.parseAsync() to simulate command-line usage
- * - Mocks config loading, validation, and bridge creation
+ * - Mocks only external boundaries (config loading from files, bridge creation)
+ * - Uses real config validation to test behavior
  * - Tests error handling and process.exit behavior
  */
 describe('CLI - ya-modbus-bridge', () => {
@@ -46,7 +45,6 @@ describe('CLI - ya-modbus-bridge', () => {
     }
 
     jest.mocked(indexModule.createBridge).mockReturnValue(mockBridge)
-    jest.mocked(configValidatorModule.validateConfig).mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -85,7 +83,6 @@ describe('CLI - ya-modbus-bridge', () => {
       await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
 
       expect(configModule.loadConfig).toHaveBeenCalledWith('config.json')
-      expect(configValidatorModule.validateConfig).toHaveBeenCalledWith(mockConfig)
       expect(indexModule.createBridge).toHaveBeenCalledWith(mockConfig)
       expect(mockBridge.start).toHaveBeenCalled()
     })
@@ -113,7 +110,7 @@ describe('CLI - ya-modbus-bridge', () => {
         'test',
       ])
 
-      expect(configValidatorModule.validateConfig).toHaveBeenCalledWith(
+      expect(indexModule.createBridge).toHaveBeenCalledWith(
         expect.objectContaining({
           mqtt: expect.objectContaining({
             url: 'mqtt://broker.example.com:1883',
@@ -122,6 +119,7 @@ describe('CLI - ya-modbus-bridge', () => {
           topicPrefix: 'test',
         })
       )
+      expect(mockBridge.start).toHaveBeenCalled()
     })
   })
 
@@ -136,11 +134,12 @@ describe('CLI - ya-modbus-bridge', () => {
       ])
 
       expect(configModule.loadConfig).not.toHaveBeenCalled()
-      expect(configValidatorModule.validateConfig).toHaveBeenCalledWith({
+      expect(indexModule.createBridge).toHaveBeenCalledWith({
         mqtt: {
           url: 'mqtt://localhost:1883',
         },
       })
+      expect(mockBridge.start).toHaveBeenCalled()
     })
 
     it('should build config with all CLI options', async () => {
@@ -164,7 +163,7 @@ describe('CLI - ya-modbus-bridge', () => {
         '/tmp/state',
       ])
 
-      expect(configValidatorModule.validateConfig).toHaveBeenCalledWith({
+      expect(indexModule.createBridge).toHaveBeenCalledWith({
         mqtt: {
           url: 'mqtt://broker:1883',
           clientId: 'cli-client',
@@ -175,6 +174,7 @@ describe('CLI - ya-modbus-bridge', () => {
         topicPrefix: 'test',
         stateDir: '/tmp/state',
       })
+      expect(mockBridge.start).toHaveBeenCalled()
     })
 
     it('should fail when neither config nor mqtt-url provided', async () => {
@@ -205,14 +205,27 @@ describe('CLI - ya-modbus-bridge', () => {
       expect(processExitSpy).toHaveBeenCalledWith(1)
     })
 
-    it('should handle validation errors', async () => {
-      jest.mocked(configModule.loadConfig).mockResolvedValue({ mqtt: { url: 'invalid' } })
-      jest.mocked(configValidatorModule.validateConfig).mockImplementation(() => {
-        throw new Error('Invalid configuration: mqtt.url: URL must start with mqtt://')
-      })
-
+    it('should reject invalid MQTT URL protocol', async () => {
       await expect(
-        program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+        program.parseAsync([
+          'node',
+          'ya-modbus-bridge',
+          'run',
+          '--mqtt-url',
+          'http://localhost:1883',
+        ])
+      ).rejects.toThrow('process.exit called')
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error:'),
+        expect.stringContaining('URL must start with mqtt://')
+      )
+      expect(processExitSpy).toHaveBeenCalledWith(1)
+    })
+
+    it('should reject invalid URL format', async () => {
+      await expect(
+        program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--mqtt-url', 'not-a-url'])
       ).rejects.toThrow('process.exit called')
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
