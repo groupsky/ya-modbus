@@ -112,7 +112,19 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
               qos: packet.qos as 0 | 1 | 2,
               retain: packet.retain,
             }
-            handler(message)
+            try {
+              handler(message)
+            } catch (error) {
+              // Prevent handler errors from crashing the bridge
+              console.error(`Error in message handler for topic ${topic}:`, error)
+              status = {
+                ...status,
+                errors: [
+                  ...(status.errors ?? []),
+                  `Handler error for ${topic}: ${error instanceof Error ? error.message : String(error)}`,
+                ],
+              }
+            }
           }
         })
       })
@@ -125,7 +137,14 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
           timestamp: Date.now(),
         }
 
+        // Cleanup device manager
+        deviceManager.clear()
+
         if (client) {
+          // Cleanup event listeners and subscriptions to prevent memory leaks
+          client.removeAllListeners()
+          subscriptions.clear()
+
           client.end(false, {}, () => {
             status = {
               state: 'stopped',

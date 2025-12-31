@@ -36,6 +36,10 @@ describe('createBridge', () => {
         eventHandlers.get(event)?.push(handler)
         return mockClient
       }),
+      removeAllListeners: jest.fn(() => {
+        eventHandlers.clear()
+        return mockClient
+      }),
       end: jest.fn((force, opts, cb) => {
         if (typeof cb === 'function') {
           cb()
