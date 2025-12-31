@@ -654,4 +654,273 @@ describe('createBridge', () => {
       await expect(bridge.unsubscribe('device1/data')).rejects.toThrow('Unsubscribe failed')
     })
   })
+
+  describe('Device Management', () => {
+    describe('addDevice', () => {
+      it('should add a new device', async () => {
+        const bridge = createBridge({
+          mqtt: {
+            url: 'mqtt://localhost:1883',
+          },
+        })
+        const startPromise = bridge.start()
+        emitEvent('connect')
+        await startPromise
+
+        const deviceConfig: DeviceConfig = {
+          deviceId: 'device1',
+          driver: 'ya-modbus-driver-test',
+          connection: {
+            type: 'rtu',
+            port: '/dev/ttyUSB0',
+            baudRate: 9600,
+            slaveId: 1,
+          },
+        }
+
+        await bridge.addDevice(deviceConfig)
+
+        const device = bridge.getDevice('device1')
+        expect(device).toBeDefined()
+        expect(device?.deviceId).toBe('device1')
+        expect(device?.state).toBe('initializing')
+        expect(device?.enabled).toBe(true)
+        expect(device?.connected).toBe(false)
+      })
+
+      it('should add device with enabled=false', async () => {
+        const bridge = createBridge({
+          mqtt: {
+            url: 'mqtt://localhost:1883',
+          },
+        })
+        const startPromise = bridge.start()
+        emitEvent('connect')
+        await startPromise
+
+        const deviceConfig: DeviceConfig = {
+          deviceId: 'device1',
+          driver: 'ya-modbus-driver-test',
+          connection: {
+            type: 'tcp',
+            host: 'localhost',
+            port: 502,
+            slaveId: 1,
+          },
+          enabled: false,
+        }
+
+        await bridge.addDevice(deviceConfig)
+
+        const device = bridge.getDevice('device1')
+        expect(device?.enabled).toBe(false)
+      })
+
+      it('should reject when device already exists', async () => {
+        const bridge = createBridge({
+          mqtt: {
+            url: 'mqtt://localhost:1883',
+          },
+        })
+        const startPromise = bridge.start()
+        emitEvent('connect')
+        await startPromise
+
+        const deviceConfig: DeviceConfig = {
+          deviceId: 'device1',
+          driver: 'ya-modbus-driver-test',
+          connection: {
+            type: 'rtu',
+            port: '/dev/ttyUSB0',
+            baudRate: 9600,
+            slaveId: 1,
+          },
+        }
+
+        await bridge.addDevice(deviceConfig)
+
+        await expect(bridge.addDevice(deviceConfig)).rejects.toThrow(
+          'Device device1 already exists'
+        )
+      })
+    })
+
+    describe('removeDevice', () => {
+      it('should remove an existing device', async () => {
+        const bridge = createBridge({
+          mqtt: {
+            url: 'mqtt://localhost:1883',
+          },
+        })
+        const startPromise = bridge.start()
+        emitEvent('connect')
+        await startPromise
+
+        const deviceConfig: DeviceConfig = {
+          deviceId: 'device1',
+          driver: 'ya-modbus-driver-test',
+          connection: {
+            type: 'rtu',
+            port: '/dev/ttyUSB0',
+            baudRate: 9600,
+            slaveId: 1,
+          },
+        }
+
+        await bridge.addDevice(deviceConfig)
+        await bridge.removeDevice('device1')
+
+        const device = bridge.getDevice('device1')
+        expect(device).toBeUndefined()
+      })
+
+      it('should reject when device not found', async () => {
+        const bridge = createBridge({
+          mqtt: {
+            url: 'mqtt://localhost:1883',
+          },
+        })
+        const startPromise = bridge.start()
+        emitEvent('connect')
+        await startPromise
+
+        await expect(bridge.removeDevice('nonexistent')).rejects.toThrow(
+          'Device nonexistent not found'
+        )
+      })
+    })
+
+    describe('getDevice', () => {
+      it('should return device status', async () => {
+        const bridge = createBridge({
+          mqtt: {
+            url: 'mqtt://localhost:1883',
+          },
+        })
+        const startPromise = bridge.start()
+        emitEvent('connect')
+        await startPromise
+
+        const deviceConfig: DeviceConfig = {
+          deviceId: 'device1',
+          driver: 'ya-modbus-driver-test',
+          connection: {
+            type: 'rtu',
+            port: '/dev/ttyUSB0',
+            baudRate: 9600,
+            slaveId: 1,
+          },
+        }
+
+        await bridge.addDevice(deviceConfig)
+
+        const device = bridge.getDevice('device1')
+        expect(device).toBeDefined()
+        expect(device?.deviceId).toBe('device1')
+      })
+
+      it('should return undefined for nonexistent device', async () => {
+        const bridge = createBridge({
+          mqtt: {
+            url: 'mqtt://localhost:1883',
+          },
+        })
+        const startPromise = bridge.start()
+        emitEvent('connect')
+        await startPromise
+
+        const device = bridge.getDevice('nonexistent')
+        expect(device).toBeUndefined()
+      })
+    })
+
+    describe('listDevices', () => {
+      it('should return empty array when no devices', async () => {
+        const bridge = createBridge({
+          mqtt: {
+            url: 'mqtt://localhost:1883',
+          },
+        })
+        const startPromise = bridge.start()
+        emitEvent('connect')
+        await startPromise
+
+        const devices = bridge.listDevices()
+        expect(devices).toEqual([])
+      })
+
+      it('should return all devices', async () => {
+        const bridge = createBridge({
+          mqtt: {
+            url: 'mqtt://localhost:1883',
+          },
+        })
+        const startPromise = bridge.start()
+        emitEvent('connect')
+        await startPromise
+
+        const config1: DeviceConfig = {
+          deviceId: 'device1',
+          driver: 'ya-modbus-driver-test',
+          connection: {
+            type: 'rtu',
+            port: '/dev/ttyUSB0',
+            baudRate: 9600,
+            slaveId: 1,
+          },
+        }
+
+        const config2: DeviceConfig = {
+          deviceId: 'device2',
+          driver: 'ya-modbus-driver-test',
+          connection: {
+            type: 'tcp',
+            host: 'localhost',
+            port: 502,
+            slaveId: 2,
+          },
+        }
+
+        await bridge.addDevice(config1)
+        await bridge.addDevice(config2)
+
+        const devices = bridge.listDevices()
+        expect(devices).toHaveLength(2)
+        expect(devices.map((d) => d.deviceId)).toContain('device1')
+        expect(devices.map((d) => d.deviceId)).toContain('device2')
+      })
+    })
+
+    describe('getStatus with devices', () => {
+      it('should include correct deviceCount', async () => {
+        const bridge = createBridge({
+          mqtt: {
+            url: 'mqtt://localhost:1883',
+          },
+        })
+        const startPromise = bridge.start()
+        emitEvent('connect')
+        await startPromise
+
+        let status = bridge.getStatus()
+        expect(status.deviceCount).toBe(0)
+
+        const deviceConfig: DeviceConfig = {
+          deviceId: 'device1',
+          driver: 'ya-modbus-driver-test',
+          connection: {
+            type: 'rtu',
+            port: '/dev/ttyUSB0',
+            baudRate: 9600,
+            slaveId: 1,
+          },
+        }
+
+        await bridge.addDevice(deviceConfig)
+
+        status = bridge.getStatus()
+        expect(status.deviceCount).toBe(1)
+      })
+    })
+  })
 })

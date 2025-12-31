@@ -1,5 +1,6 @@
 import mqtt from 'mqtt'
 
+import { DeviceManager } from './device-manager.js'
 import type {
   MqttBridgeConfig,
   MqttBridge,
@@ -8,6 +9,7 @@ import type {
   SubscribeOptions,
   MessageHandler,
   MqttMessage,
+  DeviceConfig,
 } from './types.js'
 
 export type {
@@ -18,6 +20,11 @@ export type {
   SubscribeOptions,
   MessageHandler,
   MqttMessage,
+  DeviceConfig,
+  DeviceStatus,
+  DeviceConnection,
+  RTUConnection,
+  TCPConnection,
 } from './types.js'
 export { loadConfig } from './config.js'
 
@@ -32,6 +39,7 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
   let client: mqtt.MqttClient | null = null
   const topicPrefix = config.topicPrefix ?? 'modbus'
   const subscriptions = new Map<string, MessageHandler>()
+  const deviceManager = new DeviceManager()
 
   return {
     start() {
@@ -150,7 +158,10 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
     },
 
     getStatus() {
-      return { ...status }
+      return {
+        ...status,
+        deviceCount: deviceManager.getDeviceCount(),
+      }
     },
 
     publish(topic: string, payload: string | Buffer, options?: PublishOptions) {
@@ -237,6 +248,36 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
           }
         })
       })
+    },
+
+    addDevice(deviceConfig: DeviceConfig) {
+      return new Promise<void>((resolve, reject) => {
+        try {
+          deviceManager.addDevice(deviceConfig)
+          resolve()
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error(String(error)))
+        }
+      })
+    },
+
+    removeDevice(deviceId: string) {
+      return new Promise<void>((resolve, reject) => {
+        try {
+          deviceManager.removeDevice(deviceId)
+          resolve()
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error(String(error)))
+        }
+      })
+    },
+
+    getDevice(deviceId: string) {
+      return deviceManager.getDevice(deviceId)
+    },
+
+    listDevices() {
+      return deviceManager.listDevices()
     },
   }
 }
