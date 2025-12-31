@@ -3,6 +3,6 @@
   "compilerOptions": {
     "noEmit": true
   },
-  "include": ["packages/*/src/**/*.ts", "packages/*/bin/**/*.ts"],
+  "include": ["packages/*/src/**/*.ts", "packages/*/bin/**/*.ts", "packages/*/__mocks__/**/*.ts"],
   "exclude": ["node_modules", "dist", "coverage"]
 }
