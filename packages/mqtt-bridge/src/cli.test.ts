@@ -191,6 +191,45 @@ describe('CLI - ya-modbus-bridge', () => {
       )
       expect(mockBridge.start).toHaveBeenCalled()
     })
+
+    it('should override config with authentication and state options', async () => {
+      const mockConfig = {
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      }
+
+      jest.mocked(configModule.loadConfig).mockResolvedValue(mockConfig)
+
+      await program.parseAsync([
+        'node',
+        'ya-modbus-bridge',
+        'run',
+        '--config',
+        'config.json',
+        '--mqtt-username',
+        'testuser',
+        '--mqtt-password',
+        'testpass',
+        '--mqtt-reconnect-period',
+        '5000',
+        '--state-dir',
+        '/tmp/test-state',
+      ])
+
+      expect(indexModule.createBridge).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mqtt: expect.objectContaining({
+            url: 'mqtt://localhost:1883',
+            username: 'testuser',
+            password: 'testpass',
+            reconnectPeriod: 5000,
+          }),
+          stateDir: '/tmp/test-state',
+        })
+      )
+      expect(mockBridge.start).toHaveBeenCalled()
+    })
   })
 
   describe('Run Command - CLI Options Only', () => {
