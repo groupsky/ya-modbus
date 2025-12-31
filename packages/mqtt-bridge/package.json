@@ -1,0 +1,54 @@
+{
+  "name": "@ya-modbus/mqtt-bridge",
+  "version": "0.0.0",
+  "description": "MQTT bridge for ya-modbus - orchestrates device management, polling, and MQTT publishing",
+  "keywords": [
+    "modbus",
+    "mqtt",
+    "bridge",
+    "iot"
+  ],
+  "author": "Geno Roupsky <geno@roupsky.name>",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "bin": {
+    "ya-modbus-bridge": "./dist/bin/ya-modbus-bridge.js"
+  },
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/groupsky/ya-modbus.git",
+    "directory": "packages/mqtt-bridge"
+  },
+  "homepage": "https://github.com/groupsky/ya-modbus/tree/main/packages/mqtt-bridge#readme",
+  "bugs": {
+    "url": "https://github.com/groupsky/ya-modbus/issues"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist",
+    "test": "jest",
+    "lint": "eslint .",
+    "prepublishOnly": "npm run build && chmod +x dist/bin/ya-modbus-bridge.js"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.2",
+    "mqtt": "^5.14.1",
+    "zod": "^4.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.7.2"
+  }
+}
