@@ -405,6 +405,7 @@ describe('MQTT Bridge Integration Tests', () => {
             port: 502,
             slaveId: 1,
           },
+          enabled: false, // Skip driver loading for integration test
         }
 
         await bridge.addDevice(deviceConfig)
@@ -430,6 +431,7 @@ describe('MQTT Bridge Integration Tests', () => {
             port: 502,
             slaveId: 1,
           },
+          enabled: false, // Skip driver loading for integration test
         }
 
         const device2 = {
@@ -441,6 +443,7 @@ describe('MQTT Bridge Integration Tests', () => {
             baudRate: 9600,
             slaveId: 2,
           },
+          enabled: false, // Skip driver loading for integration test
         }
 
         await bridge.addDevice(device1)
