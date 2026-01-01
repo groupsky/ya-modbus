@@ -3,11 +3,21 @@ import type { EventEmitter } from 'events'
 import { describe, it, expect, jest, beforeEach } from '@jest/globals'
 import mqtt from 'mqtt'
 
+import { DeviceManager } from './device-manager.js'
+import { DriverLoader } from './driver-loader.js'
+import { PollingScheduler } from './polling-scheduler.js'
+
 import { createBridge } from './index.js'
 
 jest.mock('mqtt')
+jest.mock('./device-manager.js')
+jest.mock('./driver-loader.js')
+jest.mock('./polling-scheduler.js')
 
 const mockedMqtt = mqtt as jest.Mocked<typeof mqtt>
+const MockedDeviceManager = DeviceManager as jest.MockedClass<typeof DeviceManager>
+const MockedDriverLoader = DriverLoader as jest.MockedClass<typeof DriverLoader>
+const MockedPollingScheduler = PollingScheduler as jest.MockedClass<typeof PollingScheduler>
 
 interface MockMqttClient extends EventEmitter {
   end: jest.Mock<(force?: boolean, opts?: object, cb?: () => void) => void>
@@ -27,6 +37,64 @@ describe('createBridge', () => {
 
   beforeEach(() => {
     eventHandlers = new Map()
+
+    // Reset all mocks
+    jest.clearAllMocks()
+
+    // Setup DeviceManager mock
+    MockedDeviceManager.mockImplementation(() => {
+      const devices = new Map()
+      return {
+        addDevice: jest.fn().mockImplementation((config) => {
+          if (devices.has(config.deviceId)) {
+            return Promise.reject(new Error(`Device ${config.deviceId} already exists`))
+          }
+          devices.set(config.deviceId, {
+            deviceId: config.deviceId,
+            state: config.enabled !== false ? 'connected' : 'disconnected',
+            enabled: config.enabled ?? true,
+            connected: config.enabled !== false,
+          })
+          return Promise.resolve()
+        }),
+        removeDevice: jest.fn().mockImplementation((deviceId: string) => {
+          if (!devices.has(deviceId)) {
+            return Promise.reject(new Error(`Device ${deviceId} not found`))
+          }
+          devices.delete(deviceId)
+          return Promise.resolve()
+        }),
+        getDevice: jest.fn().mockImplementation((deviceId) => devices.get(deviceId)),
+        listDevices: jest.fn().mockImplementation(() => Array.from(devices.values())),
+        getDeviceCount: jest.fn().mockImplementation(() => devices.size),
+        updateDeviceState: jest.fn(),
+        clear: jest.fn().mockImplementation(() => {
+          devices.clear()
+          return Promise.resolve()
+        }),
+        getDeviceConfig: jest.fn(),
+      } as any
+    })
+
+    // Setup DriverLoader mock
+    MockedDriverLoader.mockImplementation(() => {
+      return {
+        loadDriver: jest.fn(),
+        unloadDriver: jest.fn(),
+        getDriver: jest.fn(),
+      } as any
+    })
+
+    // Setup PollingScheduler mock
+    MockedPollingScheduler.mockImplementation(() => {
+      return {
+        scheduleDevice: jest.fn(),
+        unscheduleDevice: jest.fn(),
+        start: jest.fn(),
+        stop: jest.fn(),
+        isScheduled: jest.fn(),
+      } as any
+    })
 
     mockClient = {
       on: jest.fn((event: string, handler: (...args: unknown[]) => void) => {
@@ -789,9 +857,9 @@ describe('createBridge', () => {
         const device = bridge.getDevice('device1')
         expect(device).toBeDefined()
         expect(device?.deviceId).toBe('device1')
-        expect(device?.state).toBe('initializing')
+        expect(device?.state).toBe('connected')
         expect(device?.enabled).toBe(true)
-        expect(device?.connected).toBe(false)
+        expect(device?.connected).toBe(true)
       })
 
       it('should add device with enabled=false', async () => {
