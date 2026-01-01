@@ -10,6 +10,7 @@ import {
   waitForClientReady,
   waitForSubscribe,
   waitForUnsubscribe,
+  withBridge,
   type TestBroker,
 } from './utils/test-utils.js'
 
@@ -59,13 +60,10 @@ describe('MQTT Bridge Integration Tests', () => {
         },
       }
 
-      const bridge = createBridge(config)
-      await bridge.start()
-
-      const status = bridge.getStatus()
-      expect(status.mqttConnected).toBe(true)
-
-      await bridge.stop()
+      await withBridge(config, (bridge) => {
+        const status = bridge.getStatus()
+        expect(status.mqttConnected).toBe(true)
+      })
     })
 
     test('should connect with authentication', async () => {
@@ -77,13 +75,10 @@ describe('MQTT Bridge Integration Tests', () => {
         },
       }
 
-      const bridge = createBridge(config)
-      await bridge.start()
-
-      const status = bridge.getStatus()
-      expect(status.mqttConnected).toBe(true)
-
-      await bridge.stop()
+      await withBridge(config, (bridge) => {
+        const status = bridge.getStatus()
+        expect(status.mqttConnected).toBe(true)
+      })
     })
 
     test('should handle multiple start/stop cycles', async () => {
@@ -111,404 +106,351 @@ describe('MQTT Bridge Integration Tests', () => {
 
   describe('Publish/Subscribe Operations', () => {
     test('should publish and receive messages', async () => {
-      const config = createTestBridgeConfig(broker)
-      const bridge = createBridge(config)
-      await bridge.start()
+      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+        const collector = createMessageCollector()
 
-      const collector = createMessageCollector()
+        await subscribeAndWait(bridge, broker, 'test/topic', collector.handler)
+        await publishAndWait(bridge, broker, 'test/topic', 'Hello, MQTT!')
 
-      await subscribeAndWait(bridge, broker, 'test/topic', collector.handler)
-      await publishAndWait(bridge, broker, 'test/topic', 'Hello, MQTT!')
-
-      expect(collector.messages).toContain('Hello, MQTT!')
-
-      await bridge.stop()
+        expect(collector.messages).toContain('Hello, MQTT!')
+      })
     })
 
     test('should handle multiple subscriptions', async () => {
-      const config = createTestBridgeConfig(broker)
-      const bridge = createBridge(config)
-      await bridge.start()
+      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+        const collector1 = createMessageCollector()
+        const collector2 = createMessageCollector()
 
-      const collector1 = createMessageCollector()
-      const collector2 = createMessageCollector()
+        await subscribeAndWait(bridge, broker, 'topic1', collector1.handler)
+        await subscribeAndWait(bridge, broker, 'topic2', collector2.handler)
 
-      await subscribeAndWait(bridge, broker, 'topic1', collector1.handler)
-      await subscribeAndWait(bridge, broker, 'topic2', collector2.handler)
+        await publishAndWait(bridge, broker, 'topic1', 'Message 1')
+        await publishAndWait(bridge, broker, 'topic2', 'Message 2')
 
-      await publishAndWait(bridge, broker, 'topic1', 'Message 1')
-      await publishAndWait(bridge, broker, 'topic2', 'Message 2')
-
-      expect(collector1.messages).toContain('Message 1')
-      expect(collector2.messages).toContain('Message 2')
-      expect(collector1.messages).not.toContain('Message 2')
-      expect(collector2.messages).not.toContain('Message 1')
-
-      await bridge.stop()
+        expect(collector1.messages).toContain('Message 1')
+        expect(collector2.messages).toContain('Message 2')
+        expect(collector1.messages).not.toContain('Message 2')
+        expect(collector2.messages).not.toContain('Message 1')
+      })
     })
 
     test('should unsubscribe from topics', async () => {
-      const config = createTestBridgeConfig(broker)
-      const bridge = createBridge(config)
-      await bridge.start()
+      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+        const collector = createMessageCollector()
 
-      const collector = createMessageCollector()
+        await subscribeAndWait(bridge, broker, 'test/topic', collector.handler)
+        await publishAndWait(bridge, broker, 'test/topic', 'Before unsubscribe')
 
-      await subscribeAndWait(bridge, broker, 'test/topic', collector.handler)
-      await publishAndWait(bridge, broker, 'test/topic', 'Before unsubscribe')
+        const unsubscribePromise = waitForUnsubscribe(broker, 'modbus/test/topic')
+        await bridge.unsubscribe('test/topic')
+        await unsubscribePromise
 
-      const unsubscribePromise = waitForUnsubscribe(broker, 'modbus/test/topic')
-      await bridge.unsubscribe('test/topic')
-      await unsubscribePromise
+        await publishAndWait(bridge, broker, 'test/topic', 'After unsubscribe')
 
-      await publishAndWait(bridge, broker, 'test/topic', 'After unsubscribe')
-
-      expect(collector.messages).toContain('Before unsubscribe')
-      expect(collector.messages).not.toContain('After unsubscribe')
-      expect(collector.messages).toHaveLength(1)
-
-      await bridge.stop()
+        expect(collector.messages).toContain('Before unsubscribe')
+        expect(collector.messages).not.toContain('After unsubscribe')
+        expect(collector.messages).toHaveLength(1)
+      })
     })
 
     test('should respect topic prefix', async () => {
-      const config = createTestBridgeConfig(broker, { topicPrefix: 'custom' })
-      const bridge = createBridge(config)
-      await bridge.start()
+      await withBridge(
+        createTestBridgeConfig(broker, { topicPrefix: 'custom' }),
+        async (bridge) => {
+          const receivedMessages: Array<{ topic: string; payload: string }> = []
 
-      const receivedMessages: Array<{ topic: string; payload: string }> = []
+          await subscribeAndWait(
+            bridge,
+            broker,
+            'test',
+            (message) => {
+              receivedMessages.push({
+                topic: message.topic,
+                payload: message.payload.toString(),
+              })
+            },
+            { prefix: 'custom' }
+          )
 
-      await subscribeAndWait(
-        bridge,
-        broker,
-        'test',
-        (message) => {
-          receivedMessages.push({
-            topic: message.topic,
-            payload: message.payload.toString(),
-          })
-        },
-        { prefix: 'custom' }
+          await publishAndWait(bridge, broker, 'test', 'Test message', { prefix: 'custom' })
+
+          expect(receivedMessages).toHaveLength(1)
+          expect(receivedMessages[0]!.topic).toBe('custom/test')
+          expect(receivedMessages[0]!.payload).toBe('Test message')
+        }
       )
-
-      await publishAndWait(bridge, broker, 'test', 'Test message', { prefix: 'custom' })
-
-      expect(receivedMessages).toHaveLength(1)
-      expect(receivedMessages[0]!.topic).toBe('custom/test')
-      expect(receivedMessages[0]!.payload).toBe('Test message')
-
-      await bridge.stop()
     })
 
     test('should handle QoS levels', async () => {
-      const config = createTestBridgeConfig(broker)
-      const bridge = createBridge(config)
-      await bridge.start()
+      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+        let messageCount = 0
+        const receivedMessages: Array<{ qos: 0 | 1 | 2; payload: string }> = []
+        const subscribePromise = waitForSubscribe(broker, 'modbus/qos/test')
 
-      let messageCount = 0
-      const receivedMessages: Array<{ qos: 0 | 1 | 2; payload: string }> = []
-      const subscribePromise = waitForSubscribe(broker, 'modbus/qos/test')
+        const messagesPromise = new Promise<void>((resolve) => {
+          const checkMessages = (): void => {
+            if (messageCount === 2) resolve()
+          }
+          void bridge.subscribe(
+            'qos/test',
+            (message) => {
+              receivedMessages.push({
+                qos: message.qos,
+                payload: message.payload.toString(),
+              })
+              messageCount++
+              checkMessages()
+            },
+            { qos: 1 }
+          )
+        })
 
-      const messagesPromise = new Promise<void>((resolve) => {
-        const checkMessages = (): void => {
-          if (messageCount === 2) resolve()
-        }
-        void bridge.subscribe(
-          'qos/test',
-          (message) => {
-            receivedMessages.push({
-              qos: message.qos,
-              payload: message.payload.toString(),
-            })
-            messageCount++
-            checkMessages()
-          },
-          { qos: 1 }
-        )
+        await subscribePromise
+
+        await publishAndWait(bridge, broker, 'qos/test', 'QoS 0 message', { qos: 0 })
+        await publishAndWait(bridge, broker, 'qos/test', 'QoS 1 message', { qos: 1 })
+
+        await messagesPromise
+
+        expect(receivedMessages).toHaveLength(2)
       })
-
-      await subscribePromise
-
-      await publishAndWait(bridge, broker, 'qos/test', 'QoS 0 message', { qos: 0 })
-      await publishAndWait(bridge, broker, 'qos/test', 'QoS 1 message', { qos: 1 })
-
-      await messagesPromise
-
-      expect(receivedMessages).toHaveLength(2)
-
-      await bridge.stop()
     })
 
     test('should handle QoS 2 messages', async () => {
-      const config = createTestBridgeConfig(broker)
-      const bridge = createBridge(config)
-      await bridge.start()
+      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+        const receivedMessages: Array<{ qos: 0 | 1 | 2; payload: string }> = []
+        const subscribePromise = waitForSubscribe(broker, 'modbus/qos/test')
 
-      const receivedMessages: Array<{ qos: 0 | 1 | 2; payload: string }> = []
-      const subscribePromise = waitForSubscribe(broker, 'modbus/qos/test')
+        const messagePromise = new Promise<void>((resolve) => {
+          void bridge.subscribe(
+            'qos/test',
+            (message) => {
+              receivedMessages.push({
+                qos: message.qos,
+                payload: message.payload.toString(),
+              })
+              resolve()
+            },
+            { qos: 2 }
+          )
+        })
 
-      const messagePromise = new Promise<void>((resolve) => {
-        void bridge.subscribe(
-          'qos/test',
-          (message) => {
-            receivedMessages.push({
-              qos: message.qos,
-              payload: message.payload.toString(),
-            })
-            resolve()
-          },
-          { qos: 2 }
-        )
+        await subscribePromise
+
+        await publishAndWait(bridge, broker, 'qos/test', 'QoS 2 message', { qos: 2 })
+        await messagePromise
+
+        expect(receivedMessages).toHaveLength(1)
+        expect(receivedMessages[0]?.qos).toBe(2)
+        expect(receivedMessages[0]?.payload).toBe('QoS 2 message')
       })
-
-      await subscribePromise
-
-      await publishAndWait(bridge, broker, 'qos/test', 'QoS 2 message', { qos: 2 })
-      await messagePromise
-
-      expect(receivedMessages).toHaveLength(1)
-      expect(receivedMessages[0]?.qos).toBe(2)
-      expect(receivedMessages[0]?.payload).toBe('QoS 2 message')
-
-      await bridge.stop()
     })
 
     test('should handle retained messages', async () => {
-      const config = createTestBridgeConfig(broker)
-      const bridge = createBridge(config)
-      await bridge.start()
+      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+        // Publish a retained message before subscribing
+        await publishAndWait(bridge, broker, 'retained/test', 'Retained message', { retain: true })
 
-      // Publish a retained message before subscribing
-      await publishAndWait(bridge, broker, 'retained/test', 'Retained message', { retain: true })
+        const receivedMessages: Array<{ retain: boolean; payload: string }> = []
+        const subscribePromise = waitForSubscribe(broker, 'modbus/retained/test')
 
-      const receivedMessages: Array<{ retain: boolean; payload: string }> = []
-      const subscribePromise = waitForSubscribe(broker, 'modbus/retained/test')
-
-      // Subscribe and receive the retained message
-      const messagePromise = new Promise<void>((resolve) => {
-        void bridge.subscribe('retained/test', (message) => {
-          receivedMessages.push({
-            retain: message.retain,
-            payload: message.payload.toString(),
+        // Subscribe and receive the retained message
+        const messagePromise = new Promise<void>((resolve) => {
+          void bridge.subscribe('retained/test', (message) => {
+            receivedMessages.push({
+              retain: message.retain,
+              payload: message.payload.toString(),
+            })
+            resolve()
           })
-          resolve()
         })
+
+        await subscribePromise
+        await messagePromise
+
+        expect(receivedMessages).toHaveLength(1)
+        expect(receivedMessages[0]!.retain).toBe(true)
+        expect(receivedMessages[0]!.payload).toBe('Retained message')
       })
-
-      await subscribePromise
-      await messagePromise
-
-      expect(receivedMessages).toHaveLength(1)
-      expect(receivedMessages[0]!.retain).toBe(true)
-      expect(receivedMessages[0]!.payload).toBe('Retained message')
-
-      await bridge.stop()
     })
   })
 
   describe('Binary and Empty Payloads', () => {
     test('should handle binary payloads', async () => {
-      const config = createTestBridgeConfig(broker)
-      const bridge = createBridge(config)
-      await bridge.start()
+      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+        const binaryData = Buffer.from([0x01, 0x02, 0x03, 0x04, 0xff])
+        let receivedPayload: Buffer | undefined
+        const subscribePromise = waitForSubscribe(broker, 'modbus/device/binary')
 
-      const binaryData = Buffer.from([0x01, 0x02, 0x03, 0x04, 0xff])
-      let receivedPayload: Buffer | undefined
-      const subscribePromise = waitForSubscribe(broker, 'modbus/device/binary')
-
-      const messagePromise = new Promise<void>((resolve) => {
-        void bridge.subscribe('device/binary', (message) => {
-          receivedPayload = message.payload
-          resolve()
+        const messagePromise = new Promise<void>((resolve) => {
+          void bridge.subscribe('device/binary', (message) => {
+            receivedPayload = message.payload
+            resolve()
+          })
         })
+
+        await subscribePromise
+
+        await publishAndWait(bridge, broker, 'device/binary', binaryData)
+        await messagePromise
+
+        expect(receivedPayload).toBeInstanceOf(Buffer)
+        expect(receivedPayload).toEqual(binaryData)
       })
-
-      await subscribePromise
-
-      await publishAndWait(bridge, broker, 'device/binary', binaryData)
-      await messagePromise
-
-      expect(receivedPayload).toBeInstanceOf(Buffer)
-      expect(receivedPayload).toEqual(binaryData)
-
-      await bridge.stop()
     })
 
     test('should handle empty payloads', async () => {
-      const config = createTestBridgeConfig(broker)
-      const bridge = createBridge(config)
-      await bridge.start()
+      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+        let receivedPayload: Buffer | undefined
+        const subscribePromise = waitForSubscribe(broker, 'modbus/device/clear')
 
-      let receivedPayload: Buffer | undefined
-      const subscribePromise = waitForSubscribe(broker, 'modbus/device/clear')
-
-      const messagePromise = new Promise<void>((resolve) => {
-        void bridge.subscribe('device/clear', (message) => {
-          receivedPayload = message.payload
-          resolve()
+        const messagePromise = new Promise<void>((resolve) => {
+          void bridge.subscribe('device/clear', (message) => {
+            receivedPayload = message.payload
+            resolve()
+          })
         })
+
+        await subscribePromise
+
+        await publishAndWait(bridge, broker, 'device/clear', '')
+        await messagePromise
+
+        expect(receivedPayload).toBeInstanceOf(Buffer)
+        expect(receivedPayload?.length).toBe(0)
       })
-
-      await subscribePromise
-
-      await publishAndWait(bridge, broker, 'device/clear', '')
-      await messagePromise
-
-      expect(receivedPayload).toBeInstanceOf(Buffer)
-      expect(receivedPayload?.length).toBe(0)
-
-      await bridge.stop()
     })
 
     test('should handle large payloads', async () => {
-      const config = createTestBridgeConfig(broker)
-      const bridge = createBridge(config)
-      await bridge.start()
+      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+        const largePayload = Buffer.alloc(1024 * 100) // 100KB
+        largePayload.fill('x')
 
-      const largePayload = Buffer.alloc(1024 * 100) // 100KB
-      largePayload.fill('x')
+        let receivedPayload: Buffer | undefined
+        const subscribePromise = waitForSubscribe(broker, 'modbus/device/large')
 
-      let receivedPayload: Buffer | undefined
-      const subscribePromise = waitForSubscribe(broker, 'modbus/device/large')
-
-      const messagePromise = new Promise<void>((resolve) => {
-        void bridge.subscribe('device/large', (message) => {
-          receivedPayload = message.payload
-          resolve()
+        const messagePromise = new Promise<void>((resolve) => {
+          void bridge.subscribe('device/large', (message) => {
+            receivedPayload = message.payload
+            resolve()
+          })
         })
+
+        await subscribePromise
+
+        await publishAndWait(bridge, broker, 'device/large', largePayload)
+        await messagePromise
+
+        expect(receivedPayload?.length).toBe(largePayload.length)
+        expect(receivedPayload).toEqual(largePayload)
       })
-
-      await subscribePromise
-
-      await publishAndWait(bridge, broker, 'device/large', largePayload)
-      await messagePromise
-
-      expect(receivedPayload?.length).toBe(largePayload.length)
-      expect(receivedPayload).toEqual(largePayload)
-
-      await bridge.stop()
     })
   })
 
   describe('Message Handler Error Handling', () => {
     test('should not crash bridge when handler throws error', async () => {
-      const config = createTestBridgeConfig(broker)
-      const bridge = createBridge(config)
-      await bridge.start()
+      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+        const errorCollector = createMessageCollector()
+        const goodCollector = createMessageCollector()
 
-      const errorCollector = createMessageCollector()
-      const goodCollector = createMessageCollector()
+        // Subscribe with a handler that throws
+        await subscribeAndWait(bridge, broker, 'error/test', (message) => {
+          const msg = message.payload.toString()
+          errorCollector.messages.push(msg)
+          throw new Error('Handler error')
+        })
 
-      // Subscribe with a handler that throws
-      await subscribeAndWait(bridge, broker, 'error/test', (message) => {
-        const msg = message.payload.toString()
-        errorCollector.messages.push(msg)
-        throw new Error('Handler error')
+        // Subscribe to another topic with a good handler
+        await subscribeAndWait(bridge, broker, 'good/test', goodCollector.handler)
+
+        // Publish to error topic
+        await publishAndWait(bridge, broker, 'error/test', 'Error message')
+
+        // Bridge should still be running
+        expect(bridge.getStatus().state).toBe('running')
+        expect(errorCollector.messages).toContain('Error message')
+
+        // Other handlers should still work
+        await publishAndWait(bridge, broker, 'good/test', 'Good message')
+
+        expect(goodCollector.messages).toContain('Good message')
       })
-
-      // Subscribe to another topic with a good handler
-      await subscribeAndWait(bridge, broker, 'good/test', goodCollector.handler)
-
-      // Publish to error topic
-      await publishAndWait(bridge, broker, 'error/test', 'Error message')
-
-      // Bridge should still be running
-      expect(bridge.getStatus().state).toBe('running')
-      expect(errorCollector.messages).toContain('Error message')
-
-      // Other handlers should still work
-      await publishAndWait(bridge, broker, 'good/test', 'Good message')
-
-      expect(goodCollector.messages).toContain('Good message')
-
-      await bridge.stop()
     })
 
     test('should track handler errors in status', async () => {
-      const config = createTestBridgeConfig(broker)
-      const bridge = createBridge(config)
-      await bridge.start()
+      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+        await subscribeAndWait(bridge, broker, 'error/test', () => {
+          throw new Error('Test handler error')
+        })
 
-      await subscribeAndWait(bridge, broker, 'error/test', () => {
-        throw new Error('Test handler error')
+        await publishAndWait(bridge, broker, 'error/test', 'Trigger error')
+
+        const status = bridge.getStatus()
+        expect(status.errors).toBeDefined()
+        expect(status.errors?.length).toBeGreaterThan(0)
+        expect(status.errors?.[0]).toContain('Handler error for modbus/error/test')
       })
-
-      await publishAndWait(bridge, broker, 'error/test', 'Trigger error')
-
-      const status = bridge.getStatus()
-      expect(status.errors).toBeDefined()
-      expect(status.errors?.length).toBeGreaterThan(0)
-      expect(status.errors?.[0]).toContain('Handler error for modbus/error/test')
-
-      await bridge.stop()
     })
   })
 
   describe('Device Management', () => {
     test('should add and remove devices', async () => {
-      const config = createTestBridgeConfig(broker)
-      const bridge = createBridge(config)
-      await bridge.start()
+      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+        const deviceConfig = {
+          deviceId: 'device1',
+          driver: 'test-driver',
+          connection: {
+            type: 'tcp' as const,
+            host: 'localhost',
+            port: 502,
+            slaveId: 1,
+          },
+        }
 
-      const deviceConfig = {
-        deviceId: 'device1',
-        driver: 'test-driver',
-        connection: {
-          type: 'tcp' as const,
-          host: 'localhost',
-          port: 502,
-          slaveId: 1,
-        },
-      }
+        await bridge.addDevice(deviceConfig)
+        expect(bridge.getStatus().deviceCount).toBe(1)
 
-      await bridge.addDevice(deviceConfig)
-      expect(bridge.getStatus().deviceCount).toBe(1)
+        const device = bridge.getDevice('device1')
+        expect(device).toBeDefined()
+        expect(device?.deviceId).toBe('device1')
 
-      const device = bridge.getDevice('device1')
-      expect(device).toBeDefined()
-      expect(device?.deviceId).toBe('device1')
-
-      await bridge.removeDevice('device1')
-      expect(bridge.getStatus().deviceCount).toBe(0)
-
-      await bridge.stop()
+        await bridge.removeDevice('device1')
+        expect(bridge.getStatus().deviceCount).toBe(0)
+      })
     })
 
     test('should list all devices', async () => {
-      const config = createTestBridgeConfig(broker)
-      const bridge = createBridge(config)
-      await bridge.start()
+      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+        const device1 = {
+          deviceId: 'device1',
+          driver: 'driver1',
+          connection: {
+            type: 'tcp' as const,
+            host: 'localhost',
+            port: 502,
+            slaveId: 1,
+          },
+        }
 
-      const device1 = {
-        deviceId: 'device1',
-        driver: 'driver1',
-        connection: {
-          type: 'tcp' as const,
-          host: 'localhost',
-          port: 502,
-          slaveId: 1,
-        },
-      }
+        const device2 = {
+          deviceId: 'device2',
+          driver: 'driver2',
+          connection: {
+            type: 'rtu' as const,
+            port: '/dev/ttyUSB0',
+            baudRate: 9600,
+            slaveId: 2,
+          },
+        }
 
-      const device2 = {
-        deviceId: 'device2',
-        driver: 'driver2',
-        connection: {
-          type: 'rtu' as const,
-          port: '/dev/ttyUSB0',
-          baudRate: 9600,
-          slaveId: 2,
-        },
-      }
+        await bridge.addDevice(device1)
+        await bridge.addDevice(device2)
 
-      await bridge.addDevice(device1)
-      await bridge.addDevice(device2)
-
-      const devices = bridge.listDevices()
-      expect(devices).toHaveLength(2)
-      expect(devices.map((d) => d.deviceId)).toContain('device1')
-      expect(devices.map((d) => d.deviceId)).toContain('device2')
-
-      await bridge.stop()
+        const devices = bridge.listDevices()
+        expect(devices).toHaveLength(2)
+        expect(devices.map((d) => d.deviceId)).toContain('device1')
+        expect(devices.map((d) => d.deviceId)).toContain('device2')
+      })
     })
   })
 
@@ -520,31 +462,29 @@ describe('MQTT Bridge Integration Tests', () => {
           reconnectPeriod: 100,
         },
       }
-      const bridge = createBridge(config)
-      await bridge.start()
 
-      expect(bridge.getStatus().mqttConnected).toBe(true)
+      await withBridge(config, async (bridge) => {
+        expect(bridge.getStatus().mqttConnected).toBe(true)
 
-      // Simulate broker going down
-      const oldBroker = broker
-      const disconnectPromise = waitForClientDisconnect(oldBroker, 1000)
-      await oldBroker.close()
-      await disconnectPromise
+        // Simulate broker going down
+        const oldBroker = broker
+        const disconnectPromise = waitForClientDisconnect(oldBroker, 1000)
+        await oldBroker.close()
+        await disconnectPromise
 
-      // Wait for bridge to detect the disconnection by polling status
-      const startTime = Date.now()
-      while (bridge.getStatus().mqttConnected && Date.now() - startTime < 1000) {
-        await new Promise((resolve) => setImmediate(resolve))
-      }
-      expect(bridge.getStatus().mqttConnected).toBe(false)
+        // Wait for bridge to detect the disconnection by polling status
+        const startTime = Date.now()
+        while (bridge.getStatus().mqttConnected && Date.now() - startTime < 1000) {
+          await new Promise((resolve) => setImmediate(resolve))
+        }
+        expect(bridge.getStatus().mqttConnected).toBe(false)
 
-      // Restart broker on same port
-      broker = await startTestBroker({ port: oldBroker.port })
+        // Restart broker on same port
+        broker = await startTestBroker({ port: oldBroker.port })
 
-      // Wait for client to reconnect
-      await waitForClientReady(broker, 1000)
-
-      await bridge.stop()
+        // Wait for client to reconnect
+        await waitForClientReady(broker, 1000)
+      })
     })
 
     test('should resubscribe to topics after reconnection', async () => {
@@ -554,36 +494,34 @@ describe('MQTT Bridge Integration Tests', () => {
           reconnectPeriod: 100,
         },
       }
-      const bridge = createBridge(config)
-      await bridge.start()
 
-      const collector = createMessageCollector()
+      await withBridge(config, async (bridge) => {
+        const collector = createMessageCollector()
 
-      await subscribeAndWait(bridge, broker, 'test/topic', collector.handler)
-      await publishAndWait(bridge, broker, 'test/topic', 'Before disconnect')
+        await subscribeAndWait(bridge, broker, 'test/topic', collector.handler)
+        await publishAndWait(bridge, broker, 'test/topic', 'Before disconnect')
 
-      expect(collector.messages).toContain('Before disconnect')
+        expect(collector.messages).toContain('Before disconnect')
 
-      // Simulate broker restart
-      const oldBroker = broker
-      const disconnectPromise = waitForAllClientsToDisconnect(oldBroker, 1000)
-      await oldBroker.close()
-      await disconnectPromise
+        // Simulate broker restart
+        const oldBroker = broker
+        const disconnectPromise = waitForAllClientsToDisconnect(oldBroker, 1000)
+        await oldBroker.close()
+        await disconnectPromise
 
-      // Start new broker on same port
-      broker = await startTestBroker({ port: oldBroker.port })
+        // Start new broker on same port
+        broker = await startTestBroker({ port: oldBroker.port })
 
-      // Wait for reconnection and resubscription
-      await waitForClientReady(broker, 1000)
-      const resubscribePromise = waitForSubscribe(broker, 'modbus/test/topic')
-      await resubscribePromise
+        // Wait for reconnection and resubscription
+        await waitForClientReady(broker, 1000)
+        const resubscribePromise = waitForSubscribe(broker, 'modbus/test/topic')
+        await resubscribePromise
 
-      // Publish after reconnection to verify resubscription worked
-      await publishAndWait(bridge, broker, 'test/topic', 'After reconnection')
+        // Publish after reconnection to verify resubscription worked
+        await publishAndWait(bridge, broker, 'test/topic', 'After reconnection')
 
-      expect(collector.messages).toContain('After reconnection')
-
-      await bridge.stop()
+        expect(collector.messages).toContain('After reconnection')
+      })
     })
   })
 

@@ -2,6 +2,7 @@ import { AddressInfo, createServer, Server } from 'node:net'
 
 import Aedes from 'aedes'
 
+import { createBridge } from '../index.js'
 import type {
   MessageHandler,
   MqttBridge,
@@ -400,6 +401,36 @@ export function createMessageCollector(): MessageCollector {
     clear: () => {
       messages.length = 0
     },
+  }
+}
+
+/**
+ * Execute a test function with a running bridge, ensuring proper cleanup
+ *
+ * Automatically starts the bridge before the test and stops it after,
+ * even if the test throws an error. This eliminates boilerplate and
+ * ensures resources are properly cleaned up.
+ *
+ * @param config - Bridge configuration
+ * @param testFn - Test function to execute with the running bridge (can be sync or async)
+ * @returns Promise that resolves when test completes and bridge is stopped
+ *
+ * @example
+ * await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+ *   const status = bridge.getStatus()
+ *   expect(status.state).toBe('running')
+ * })
+ */
+export async function withBridge(
+  config: MqttBridgeConfig,
+  testFn: (bridge: MqttBridge) => Promise<void> | void
+): Promise<void> {
+  const bridge = createBridge(config)
+  await bridge.start()
+  try {
+    await testFn(bridge)
+  } finally {
+    await bridge.stop()
   }
 }
 
