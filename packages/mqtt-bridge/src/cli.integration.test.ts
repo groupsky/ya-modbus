@@ -155,7 +155,7 @@ describe('CLI Integration Tests', () => {
   })
 
   describe('Signal Handling', () => {
-    test('should handle SIGTERM gracefully', async () => {
+    test.each(['SIGTERM', 'SIGINT'])('should handle %s gracefully', async (signal) => {
       const configPath = join(testDir, 'config.json')
       await writeFile(
         configPath,
@@ -179,42 +179,8 @@ describe('CLI Integration Tests', () => {
       // Set up disconnect listener before sending signal
       const disconnectPromise = waitForAllClientsToDisconnect(broker, 2000)
 
-      // Send SIGTERM
-      triggerSignal('SIGTERM')
-
-      // Wait for graceful shutdown
-      await disconnectPromise
-
-      // Verify clean shutdown
-      expect(broker.broker.connectedClients).toBe(0)
-    })
-
-    test('should handle SIGINT gracefully', async () => {
-      const configPath = join(testDir, 'config.json')
-      await writeFile(
-        configPath,
-        JSON.stringify({
-          mqtt: {
-            url: broker.url,
-          },
-        })
-      )
-
-      // Set up client ready listener
-      const clientReadyPromise = waitForClientReady(broker)
-
-      // Start the program
-      await runProgram(['run', '--config', configPath])
-
-      // Wait for bridge to start
-      await clientReadyPromise
-      expect(broker.broker.connectedClients).toBe(1)
-
-      // Set up disconnect listener before sending signal
-      const disconnectPromise = waitForAllClientsToDisconnect(broker, 2000)
-
-      // Send SIGINT (Ctrl+C)
-      triggerSignal('SIGINT')
+      // Send signal
+      triggerSignal(signal)
 
       // Wait for graceful shutdown
       await disconnectPromise

@@ -260,6 +260,8 @@ describe('MQTT Bridge Integration Tests', () => {
 
       let messageCount = 0
       const receivedMessages: Array<{ qos: 0 | 1 | 2; payload: string }> = []
+      const subscribePromise = waitForSubscribe(broker, 'modbus/qos/test')
+
       const messagesPromise = new Promise<void>((resolve) => {
         const checkMessages = (): void => {
           if (messageCount === 2) resolve()
@@ -278,7 +280,6 @@ describe('MQTT Bridge Integration Tests', () => {
         )
       })
 
-      const subscribePromise = waitForSubscribe(broker, 'modbus/qos/test')
       await subscribePromise
 
       const publish1Promise = waitForPublish(broker, 'modbus/qos/test')
@@ -312,6 +313,7 @@ describe('MQTT Bridge Integration Tests', () => {
       await publish1Promise
 
       const receivedMessages: Array<{ retain: boolean; payload: string }> = []
+      const subscribePromise = waitForSubscribe(broker, 'modbus/retained/test')
 
       // Subscribe and receive the retained message
       // Use a promise to wait for the message to be received
@@ -325,7 +327,6 @@ describe('MQTT Bridge Integration Tests', () => {
         })
       })
 
-      const subscribePromise = waitForSubscribe(broker, 'modbus/retained/test')
       await subscribePromise
       await messagePromise
 
@@ -582,7 +583,23 @@ describe('MQTT Bridge Integration Tests', () => {
   })
 
   describe('Error Scenarios', () => {
-    test('should reject publish when not connected', async () => {
+    test.each([
+      {
+        method: 'publish' as const,
+        args: ['test/topic', 'Test'] as const,
+        error: 'MQTT client not initialized',
+      },
+      {
+        method: 'subscribe' as const,
+        args: ['test/topic', () => {}] as const,
+        error: 'MQTT client not initialized',
+      },
+      {
+        method: 'unsubscribe' as const,
+        args: ['test/topic'] as const,
+        error: 'MQTT client not initialized',
+      },
+    ])('should reject $method when not connected', async ({ method, args, error }) => {
       const config: MqttBridgeConfig = {
         mqtt: {
           url: broker.url,
@@ -591,38 +608,8 @@ describe('MQTT Bridge Integration Tests', () => {
 
       const bridge = createBridge(config)
 
-      // Try to publish without starting
-      await expect(bridge.publish('test/topic', 'Test')).rejects.toThrow(
-        'MQTT client not initialized'
-      )
-    })
-
-    test('should reject subscribe when not connected', async () => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: broker.url,
-        },
-      }
-
-      const bridge = createBridge(config)
-
-      // Try to subscribe without starting
-      await expect(bridge.subscribe('test/topic', () => {})).rejects.toThrow(
-        'MQTT client not initialized'
-      )
-    })
-
-    test('should reject unsubscribe when not connected', async () => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: broker.url,
-        },
-      }
-
-      const bridge = createBridge(config)
-
-      // Try to unsubscribe without starting
-      await expect(bridge.unsubscribe('test/topic')).rejects.toThrow('MQTT client not initialized')
+      // Try to call method without starting
+      await expect(bridge[method](...args)).rejects.toThrow(error)
     })
 
     test('should handle connection to invalid broker', async () => {
