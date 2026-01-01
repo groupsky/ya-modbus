@@ -35,6 +35,16 @@ ya-modbus-bridge run --config examples/full-config.json
 - `topicPrefix`: Topic prefix for all MQTT topics (default: "modbus")
 - `stateDir`: Directory path for state persistence
 
+## Security Best Practices
+
+⚠️ **Never commit credentials to version control!**
+
+- Replace placeholder values (`<your-username>`, `<your-password>`) with actual credentials
+- Use environment variables for sensitive data in production
+- Keep configuration files with real credentials in `.gitignore`
+- Prefer passing credentials via CLI flags or environment variables
+- Use TLS/SSL (`mqtts://` or `wss://`) for production deployments
+
 ## CLI Overrides
 
 All configuration options can be overridden via CLI flags:
