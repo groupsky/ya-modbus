@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+// Non-null assertions are used for event handler cleanup where the handlers are guaranteed to be defined
+// by control flow. Using optional chaining would create untestable branches for impossible null cases.
 import { AddressInfo, createServer, Server } from 'node:net'
 
 import Aedes from 'aedes'
@@ -65,9 +68,7 @@ export function withTimeout<T>(
   })
 
   return Promise.race([promise, timeoutPromise]).finally(() => {
-    if (timeoutId !== undefined) {
-      clearTimeout(timeoutId)
-    }
+    clearTimeout(timeoutId)
   })
 }
 
@@ -91,9 +92,7 @@ export function waitForAllClientsToDisconnect(broker: TestBroker, timeoutMs = 50
   const disconnectPromise = new Promise<void>((resolve) => {
     onDisconnect = (): void => {
       if (broker.broker.connectedClients === 0) {
-        if (onDisconnect) {
-          broker.broker.off('clientDisconnect', onDisconnect)
-        }
+        broker.broker.off('clientDisconnect', onDisconnect!)
         resolve()
       }
     }
@@ -106,9 +105,7 @@ export function waitForAllClientsToDisconnect(broker: TestBroker, timeoutMs = 50
     () =>
       `Timeout waiting for clients to disconnect. Still connected: ${broker.broker.connectedClients}`
   ).finally(() => {
-    if (onDisconnect) {
-      broker.broker.off('clientDisconnect', onDisconnect)
-    }
+    broker.broker.off('clientDisconnect', onDisconnect!)
   })
 }
 
@@ -127,9 +124,7 @@ export function waitForClientReady(broker: TestBroker, timeoutMs = 2000): Promis
 
   const clientReadyPromise = new Promise<void>((resolve) => {
     onClientReady = (): void => {
-      if (onClientReady) {
-        broker.broker.off('clientReady', onClientReady)
-      }
+      broker.broker.off('clientReady', onClientReady!)
       resolve()
     }
     broker.broker.on('clientReady', onClientReady)
@@ -140,9 +135,7 @@ export function waitForClientReady(broker: TestBroker, timeoutMs = 2000): Promis
     timeoutMs,
     () => `Timeout waiting for client to be ready (connected: ${broker.broker.connectedClients})`
   ).finally(() => {
-    if (onClientReady) {
-      broker.broker.off('clientReady', onClientReady)
-    }
+    broker.broker.off('clientReady', onClientReady!)
   })
 }
 
@@ -161,9 +154,7 @@ export function waitForClientDisconnect(broker: TestBroker, timeoutMs = 2000): P
 
   const clientDisconnectPromise = new Promise<void>((resolve) => {
     onClientDisconnect = (): void => {
-      if (onClientDisconnect) {
-        broker.broker.off('clientDisconnect', onClientDisconnect)
-      }
+      broker.broker.off('clientDisconnect', onClientDisconnect!)
       resolve()
     }
     broker.broker.on('clientDisconnect', onClientDisconnect)
@@ -174,9 +165,7 @@ export function waitForClientDisconnect(broker: TestBroker, timeoutMs = 2000): P
     timeoutMs,
     () => `Timeout waiting for client to disconnect (connected: ${broker.broker.connectedClients})`
   ).finally(() => {
-    if (onClientDisconnect) {
-      broker.broker.off('clientDisconnect', onClientDisconnect)
-    }
+    broker.broker.off('clientDisconnect', onClientDisconnect!)
   })
 }
 
@@ -201,9 +190,7 @@ export function waitForPublish(
   const publishPromise = new Promise<{ topic: string; payload: Buffer }>((resolve) => {
     onPublish = (packet: AedesPublishPacket, _client: Client | null): void => {
       if (!topicPattern || matchTopic(packet.topic, topicPattern)) {
-        if (onPublish) {
-          broker.broker.off('publish', onPublish)
-        }
+        broker.broker.off('publish', onPublish!)
         const payload =
           typeof packet.payload === 'string' ? Buffer.from(packet.payload) : packet.payload
         resolve({ topic: packet.topic, payload })
@@ -217,9 +204,7 @@ export function waitForPublish(
     timeoutMs,
     `Timeout waiting for publish${topicPattern ? ` on topic ${topicPattern}` : ''}`
   ).finally(() => {
-    if (onPublish) {
-      broker.broker.off('publish', onPublish)
-    }
+    broker.broker.off('publish', onPublish!)
   })
 }
 
@@ -244,9 +229,7 @@ export function waitForSubscribe(
   const subscribePromise = new Promise<Array<{ topic: string }>>((resolve) => {
     onSubscribe = (subscriptions: Array<{ topic: string }>): void => {
       if (!topicPattern || subscriptions.some((s) => matchTopic(s.topic, topicPattern))) {
-        if (onSubscribe) {
-          broker.broker.off('subscribe', onSubscribe)
-        }
+        broker.broker.off('subscribe', onSubscribe!)
         resolve(subscriptions)
       }
     }
@@ -258,9 +241,7 @@ export function waitForSubscribe(
     timeoutMs,
     `Timeout waiting for subscribe${topicPattern ? ` on topic ${topicPattern}` : ''}`
   ).finally(() => {
-    if (onSubscribe) {
-      broker.broker.off('subscribe', onSubscribe)
-    }
+    broker.broker.off('subscribe', onSubscribe!)
   })
 }
 
@@ -285,9 +266,7 @@ export function waitForUnsubscribe(
   const unsubscribePromise = new Promise<Array<string>>((resolve) => {
     onUnsubscribe = (unsubscriptions: Array<string>): void => {
       if (!topicPattern || unsubscriptions.some((topic) => matchTopic(topic, topicPattern))) {
-        if (onUnsubscribe) {
-          broker.broker.off('unsubscribe', onUnsubscribe)
-        }
+        broker.broker.off('unsubscribe', onUnsubscribe!)
         resolve(unsubscriptions)
       }
     }
@@ -299,9 +278,7 @@ export function waitForUnsubscribe(
     timeoutMs,
     `Timeout waiting for unsubscribe${topicPattern ? ` on topic ${topicPattern}` : ''}`
   ).finally(() => {
-    if (onUnsubscribe) {
-      broker.broker.off('unsubscribe', onUnsubscribe)
-    }
+    broker.broker.off('unsubscribe', onUnsubscribe!)
   })
 }
 
