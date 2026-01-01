@@ -297,6 +297,47 @@ describe('MQTT Bridge Integration Tests', () => {
       await bridge.stop()
     })
 
+    test('should handle QoS 2 messages', async () => {
+      const config: MqttBridgeConfig = {
+        mqtt: {
+          url: broker.url,
+        },
+      }
+
+      const bridge = createBridge(config)
+      await bridge.start()
+
+      const receivedMessages: Array<{ qos: 0 | 1 | 2; payload: string }> = []
+      const subscribePromise = waitForSubscribe(broker, 'modbus/qos/test')
+
+      const messagePromise = new Promise<void>((resolve) => {
+        void bridge.subscribe(
+          'qos/test',
+          (message) => {
+            receivedMessages.push({
+              qos: message.qos,
+              payload: message.payload.toString(),
+            })
+            resolve()
+          },
+          { qos: 2 }
+        )
+      })
+
+      await subscribePromise
+
+      const publishPromise = waitForPublish(broker, 'modbus/qos/test')
+      await bridge.publish('qos/test', 'QoS 2 message', { qos: 2 })
+      await publishPromise
+      await messagePromise
+
+      expect(receivedMessages).toHaveLength(1)
+      expect(receivedMessages[0]?.qos).toBe(2)
+      expect(receivedMessages[0]?.payload).toBe('QoS 2 message')
+
+      await bridge.stop()
+    })
+
     test('should handle retained messages', async () => {
       const config: MqttBridgeConfig = {
         mqtt: {
@@ -333,6 +374,75 @@ describe('MQTT Bridge Integration Tests', () => {
       expect(receivedMessages).toHaveLength(1)
       expect(receivedMessages[0]!.retain).toBe(true)
       expect(receivedMessages[0]!.payload).toBe('Retained message')
+
+      await bridge.stop()
+    })
+  })
+
+  describe('Binary and Empty Payloads', () => {
+    test('should handle binary payloads', async () => {
+      const config: MqttBridgeConfig = {
+        mqtt: {
+          url: broker.url,
+        },
+      }
+
+      const bridge = createBridge(config)
+      await bridge.start()
+
+      const binaryData = Buffer.from([0x01, 0x02, 0x03, 0x04, 0xff])
+      let receivedPayload: Buffer | undefined
+      const subscribePromise = waitForSubscribe(broker, 'modbus/device/binary')
+
+      const messagePromise = new Promise<void>((resolve) => {
+        void bridge.subscribe('device/binary', (message) => {
+          receivedPayload = message.payload
+          resolve()
+        })
+      })
+
+      await subscribePromise
+
+      const publishPromise = waitForPublish(broker, 'modbus/device/binary')
+      await bridge.publish('device/binary', binaryData)
+      await publishPromise
+      await messagePromise
+
+      expect(receivedPayload).toBeInstanceOf(Buffer)
+      expect(receivedPayload).toEqual(binaryData)
+
+      await bridge.stop()
+    })
+
+    test('should handle empty payloads', async () => {
+      const config: MqttBridgeConfig = {
+        mqtt: {
+          url: broker.url,
+        },
+      }
+
+      const bridge = createBridge(config)
+      await bridge.start()
+
+      let receivedPayload: Buffer | undefined
+      const subscribePromise = waitForSubscribe(broker, 'modbus/device/clear')
+
+      const messagePromise = new Promise<void>((resolve) => {
+        void bridge.subscribe('device/clear', (message) => {
+          receivedPayload = message.payload
+          resolve()
+        })
+      })
+
+      await subscribePromise
+
+      const publishPromise = waitForPublish(broker, 'modbus/device/clear')
+      await bridge.publish('device/clear', '')
+      await publishPromise
+      await messagePromise
+
+      expect(receivedPayload).toBeInstanceOf(Buffer)
+      expect(receivedPayload?.length).toBe(0)
 
       await bridge.stop()
     })
