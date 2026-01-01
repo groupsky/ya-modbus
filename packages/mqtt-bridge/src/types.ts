@@ -36,11 +36,18 @@ export interface MqttMessage {
 
 export type MessageHandler = (message: MqttMessage) => void
 
+export interface PollingConfig {
+  interval: number
+  maxRetries?: number
+  retryBackoff?: number
+}
+
 export interface DeviceConfig {
   deviceId: string
   driver: string
   connection: DeviceConnection
   enabled?: boolean
+  polling?: PollingConfig
 }
 
 export type DeviceConnection = RTUConnection | TCPConnection
@@ -64,10 +71,12 @@ export interface TCPConnection {
 
 export interface DeviceStatus {
   deviceId: string
-  state: 'initializing' | 'running' | 'stopped' | 'error'
+  state: 'connecting' | 'connected' | 'disconnected' | 'error'
   enabled: boolean
   connected: boolean
   lastUpdate?: number
+  lastPoll?: number
+  consecutiveFailures?: number
   errors?: string[]
 }
 

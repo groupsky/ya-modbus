@@ -13,7 +13,7 @@ export class DeviceManager {
 
     const status: DeviceStatus = {
       deviceId: config.deviceId,
-      state: 'initializing',
+      state: 'disconnected',
       enabled: config.enabled ?? true,
       connected: false,
     }

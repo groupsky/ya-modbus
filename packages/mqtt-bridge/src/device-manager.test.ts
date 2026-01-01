@@ -28,7 +28,7 @@ describe('DeviceManager', () => {
       const device = manager.getDevice('device1')
       expect(device).toBeDefined()
       expect(device?.deviceId).toBe('device1')
-      expect(device?.state).toBe('initializing')
+      expect(device?.state).toBe('disconnected')
       expect(device?.enabled).toBe(true)
       expect(device?.connected).toBe(false)
     })
@@ -197,13 +197,13 @@ describe('DeviceManager', () => {
 
       manager.addDevice(config)
       manager.updateDeviceState('device1', {
-        state: 'running',
+        state: 'connected',
         connected: true,
         lastUpdate: Date.now(),
       })
 
       const device = manager.getDevice('device1')
-      expect(device?.state).toBe('running')
+      expect(device?.state).toBe('connected')
       expect(device?.connected).toBe(true)
       expect(device?.lastUpdate).toBeDefined()
     })
@@ -211,7 +211,7 @@ describe('DeviceManager', () => {
     it('should throw error if device not found', () => {
       expect(() =>
         manager.updateDeviceState('nonexistent', {
-          state: 'running',
+          state: 'connected',
         })
       ).toThrow('Device nonexistent not found')
     })
