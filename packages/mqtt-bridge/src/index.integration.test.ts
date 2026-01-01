@@ -8,7 +8,6 @@ import {
   waitForAllClientsToDisconnect,
   waitForClientDisconnect,
   waitForClientReady,
-  waitForPublish,
   waitForSubscribe,
   waitForUnsubscribe,
   type TestBroker,
@@ -172,31 +171,26 @@ describe('MQTT Bridge Integration Tests', () => {
     })
 
     test('should respect topic prefix', async () => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: broker.url,
-        },
-        topicPrefix: 'custom',
-      }
-
+      const config = createTestBridgeConfig(broker, { topicPrefix: 'custom' })
       const bridge = createBridge(config)
       await bridge.start()
 
       const receivedMessages: Array<{ topic: string; payload: string }> = []
 
-      // Subscribe to the full topic to verify prefix
-      const subscribePromise = waitForSubscribe(broker, 'custom/test')
-      await bridge.subscribe('test', (message) => {
-        receivedMessages.push({
-          topic: message.topic,
-          payload: message.payload.toString(),
-        })
-      })
-      await subscribePromise
+      await subscribeAndWait(
+        bridge,
+        broker,
+        'test',
+        (message) => {
+          receivedMessages.push({
+            topic: message.topic,
+            payload: message.payload.toString(),
+          })
+        },
+        { prefix: 'custom' }
+      )
 
-      const publishPromise = waitForPublish(broker, 'custom/test')
-      await bridge.publish('test', 'Test message')
-      await publishPromise
+      await publishAndWait(bridge, broker, 'test', 'Test message', { prefix: 'custom' })
 
       expect(receivedMessages).toHaveLength(1)
       expect(receivedMessages[0]!.topic).toBe('custom/test')
@@ -206,12 +200,7 @@ describe('MQTT Bridge Integration Tests', () => {
     })
 
     test('should handle QoS levels', async () => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: broker.url,
-        },
-      }
-
+      const config = createTestBridgeConfig(broker)
       const bridge = createBridge(config)
       await bridge.start()
 
@@ -239,13 +228,8 @@ describe('MQTT Bridge Integration Tests', () => {
 
       await subscribePromise
 
-      const publish1Promise = waitForPublish(broker, 'modbus/qos/test')
-      await bridge.publish('qos/test', 'QoS 0 message', { qos: 0 })
-      await publish1Promise
-
-      const publish2Promise = waitForPublish(broker, 'modbus/qos/test')
-      await bridge.publish('qos/test', 'QoS 1 message', { qos: 1 })
-      await publish2Promise
+      await publishAndWait(bridge, broker, 'qos/test', 'QoS 0 message', { qos: 0 })
+      await publishAndWait(bridge, broker, 'qos/test', 'QoS 1 message', { qos: 1 })
 
       await messagesPromise
 
@@ -255,12 +239,7 @@ describe('MQTT Bridge Integration Tests', () => {
     })
 
     test('should handle QoS 2 messages', async () => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: broker.url,
-        },
-      }
-
+      const config = createTestBridgeConfig(broker)
       const bridge = createBridge(config)
       await bridge.start()
 
@@ -283,9 +262,7 @@ describe('MQTT Bridge Integration Tests', () => {
 
       await subscribePromise
 
-      const publishPromise = waitForPublish(broker, 'modbus/qos/test')
-      await bridge.publish('qos/test', 'QoS 2 message', { qos: 2 })
-      await publishPromise
+      await publishAndWait(bridge, broker, 'qos/test', 'QoS 2 message', { qos: 2 })
       await messagePromise
 
       expect(receivedMessages).toHaveLength(1)
@@ -296,25 +273,17 @@ describe('MQTT Bridge Integration Tests', () => {
     })
 
     test('should handle retained messages', async () => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: broker.url,
-        },
-      }
-
+      const config = createTestBridgeConfig(broker)
       const bridge = createBridge(config)
       await bridge.start()
 
       // Publish a retained message before subscribing
-      const publish1Promise = waitForPublish(broker, 'modbus/retained/test')
-      await bridge.publish('retained/test', 'Retained message', { retain: true })
-      await publish1Promise
+      await publishAndWait(bridge, broker, 'retained/test', 'Retained message', { retain: true })
 
       const receivedMessages: Array<{ retain: boolean; payload: string }> = []
       const subscribePromise = waitForSubscribe(broker, 'modbus/retained/test')
 
       // Subscribe and receive the retained message
-      // Use a promise to wait for the message to be received
       const messagePromise = new Promise<void>((resolve) => {
         void bridge.subscribe('retained/test', (message) => {
           receivedMessages.push({
@@ -338,12 +307,7 @@ describe('MQTT Bridge Integration Tests', () => {
 
   describe('Binary and Empty Payloads', () => {
     test('should handle binary payloads', async () => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: broker.url,
-        },
-      }
-
+      const config = createTestBridgeConfig(broker)
       const bridge = createBridge(config)
       await bridge.start()
 
@@ -360,9 +324,7 @@ describe('MQTT Bridge Integration Tests', () => {
 
       await subscribePromise
 
-      const publishPromise = waitForPublish(broker, 'modbus/device/binary')
-      await bridge.publish('device/binary', binaryData)
-      await publishPromise
+      await publishAndWait(bridge, broker, 'device/binary', binaryData)
       await messagePromise
 
       expect(receivedPayload).toBeInstanceOf(Buffer)
@@ -372,12 +334,7 @@ describe('MQTT Bridge Integration Tests', () => {
     })
 
     test('should handle empty payloads', async () => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: broker.url,
-        },
-      }
-
+      const config = createTestBridgeConfig(broker)
       const bridge = createBridge(config)
       await bridge.start()
 
@@ -393,9 +350,7 @@ describe('MQTT Bridge Integration Tests', () => {
 
       await subscribePromise
 
-      const publishPromise = waitForPublish(broker, 'modbus/device/clear')
-      await bridge.publish('device/clear', '')
-      await publishPromise
+      await publishAndWait(bridge, broker, 'device/clear', '')
       await messagePromise
 
       expect(receivedPayload).toBeInstanceOf(Buffer)
@@ -407,72 +362,48 @@ describe('MQTT Bridge Integration Tests', () => {
 
   describe('Message Handler Error Handling', () => {
     test('should not crash bridge when handler throws error', async () => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: broker.url,
-        },
-      }
-
+      const config = createTestBridgeConfig(broker)
       const bridge = createBridge(config)
       await bridge.start()
 
-      const errorMessages: string[] = []
-      const goodMessages: string[] = []
+      const errorCollector = createMessageCollector()
+      const goodCollector = createMessageCollector()
 
       // Subscribe with a handler that throws
-      const subscribe1Promise = waitForSubscribe(broker, 'modbus/error/test')
-      await bridge.subscribe('error/test', (message) => {
+      await subscribeAndWait(bridge, broker, 'error/test', (message) => {
         const msg = message.payload.toString()
-        errorMessages.push(msg)
+        errorCollector.messages.push(msg)
         throw new Error('Handler error')
       })
-      await subscribe1Promise
 
       // Subscribe to another topic with a good handler
-      const subscribe2Promise = waitForSubscribe(broker, 'modbus/good/test')
-      await bridge.subscribe('good/test', (message) => {
-        goodMessages.push(message.payload.toString())
-      })
-      await subscribe2Promise
+      await subscribeAndWait(bridge, broker, 'good/test', goodCollector.handler)
 
       // Publish to error topic
-      const errorPublishPromise = waitForPublish(broker, 'modbus/error/test')
-      await bridge.publish('error/test', 'Error message')
-      await errorPublishPromise
+      await publishAndWait(bridge, broker, 'error/test', 'Error message')
 
       // Bridge should still be running
       expect(bridge.getStatus().state).toBe('running')
-      expect(errorMessages).toContain('Error message')
+      expect(errorCollector.messages).toContain('Error message')
 
       // Other handlers should still work
-      const goodPublishPromise = waitForPublish(broker, 'modbus/good/test')
-      await bridge.publish('good/test', 'Good message')
-      await goodPublishPromise
+      await publishAndWait(bridge, broker, 'good/test', 'Good message')
 
-      expect(goodMessages).toContain('Good message')
+      expect(goodCollector.messages).toContain('Good message')
 
       await bridge.stop()
     })
 
     test('should track handler errors in status', async () => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: broker.url,
-        },
-      }
-
+      const config = createTestBridgeConfig(broker)
       const bridge = createBridge(config)
       await bridge.start()
 
-      const subscribePromise = waitForSubscribe(broker, 'modbus/error/test')
-      await bridge.subscribe('error/test', () => {
+      await subscribeAndWait(bridge, broker, 'error/test', () => {
         throw new Error('Test handler error')
       })
-      await subscribePromise
 
-      const publishPromise = waitForPublish(broker, 'modbus/error/test')
-      await bridge.publish('error/test', 'Trigger error')
-      await publishPromise
+      await publishAndWait(bridge, broker, 'error/test', 'Trigger error')
 
       const status = bridge.getStatus()
       expect(status.errors).toBeDefined()
@@ -485,12 +416,7 @@ describe('MQTT Bridge Integration Tests', () => {
 
   describe('Device Management', () => {
     test('should add and remove devices', async () => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: broker.url,
-        },
-      }
-
+      const config = createTestBridgeConfig(broker)
       const bridge = createBridge(config)
       await bridge.start()
 
@@ -519,12 +445,7 @@ describe('MQTT Bridge Integration Tests', () => {
     })
 
     test('should list all devices', async () => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: broker.url,
-        },
-      }
-
+      const config = createTestBridgeConfig(broker)
       const bridge = createBridge(config)
       await bridge.start()
 
@@ -567,10 +488,9 @@ describe('MQTT Bridge Integration Tests', () => {
       const config: MqttBridgeConfig = {
         mqtt: {
           url: broker.url,
-          reconnectPeriod: 100, // Fast reconnection for testing
+          reconnectPeriod: 100,
         },
       }
-
       const bridge = createBridge(config)
       await bridge.start()
 
@@ -605,24 +525,15 @@ describe('MQTT Bridge Integration Tests', () => {
           reconnectPeriod: 100,
         },
       }
-
       const bridge = createBridge(config)
       await bridge.start()
 
-      const receivedMessages: string[] = []
+      const collector = createMessageCollector()
 
-      const subscribePromise = waitForSubscribe(broker, 'modbus/test/topic')
-      await bridge.subscribe('test/topic', (message) => {
-        receivedMessages.push(message.payload.toString())
-      })
-      await subscribePromise
+      await subscribeAndWait(bridge, broker, 'test/topic', collector.handler)
+      await publishAndWait(bridge, broker, 'test/topic', 'Before disconnect')
 
-      // Publish before disconnect
-      const publishPromise = waitForPublish(broker, 'modbus/test/topic')
-      await bridge.publish('test/topic', 'Before disconnect')
-      await publishPromise
-
-      expect(receivedMessages).toContain('Before disconnect')
+      expect(collector.messages).toContain('Before disconnect')
 
       // Simulate broker restart
       const oldBroker = broker
@@ -639,11 +550,9 @@ describe('MQTT Bridge Integration Tests', () => {
       await resubscribePromise
 
       // Publish after reconnection to verify resubscription worked
-      const publishAfterPromise = waitForPublish(broker, 'modbus/test/topic')
-      await bridge.publish('test/topic', 'After reconnection')
-      await publishAfterPromise
+      await publishAndWait(bridge, broker, 'test/topic', 'After reconnection')
 
-      expect(receivedMessages).toContain('After reconnection')
+      expect(collector.messages).toContain('After reconnection')
 
       await bridge.stop()
     })
@@ -667,12 +576,7 @@ describe('MQTT Bridge Integration Tests', () => {
         error: 'MQTT client not initialized',
       },
     ])('should reject $method when not connected', async ({ method, args, error }) => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: broker.url,
-        },
-      }
-
+      const config = createTestBridgeConfig(broker)
       const bridge = createBridge(config)
 
       // Try to call method without starting
@@ -680,12 +584,9 @@ describe('MQTT Bridge Integration Tests', () => {
     })
 
     test('should handle connection to invalid broker', async () => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: 'mqtt://localhost:99999', // Invalid port
-          reconnectPeriod: 100,
-        },
-      }
+      const config = createTestBridgeConfig(broker, {
+        mqtt: { url: 'mqtt://localhost:99999', reconnectPeriod: 100 },
+      })
 
       const bridge = createBridge(config)
 
