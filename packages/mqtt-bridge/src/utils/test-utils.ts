@@ -74,10 +74,14 @@ export function waitForAllClientsToDisconnect(broker: TestBroker, timeoutMs = 50
     return Promise.resolve()
   }
 
+  let onDisconnect: (() => void) | undefined
+
   const disconnectPromise = new Promise<void>((resolve) => {
-    const onDisconnect = (): void => {
+    onDisconnect = (): void => {
       if (broker.broker.connectedClients === 0) {
-        broker.broker.off('clientDisconnect', onDisconnect)
+        if (onDisconnect) {
+          broker.broker.off('clientDisconnect', onDisconnect)
+        }
         resolve()
       }
     }
@@ -89,7 +93,11 @@ export function waitForAllClientsToDisconnect(broker: TestBroker, timeoutMs = 50
     timeoutMs,
     () =>
       `Timeout waiting for clients to disconnect. Still connected: ${broker.broker.connectedClients}`
-  )
+  ).finally(() => {
+    if (onDisconnect) {
+      broker.broker.off('clientDisconnect', onDisconnect)
+    }
+  })
 }
 
 /**
@@ -148,19 +156,29 @@ export function waitForPublish(
   topicPattern?: string,
   timeoutMs = 1000
 ): Promise<{ topic: string; payload: Buffer }> {
-  return withTimeout(
-    new Promise<{ topic: string; payload: Buffer }>((resolve) => {
-      const onPublish = (packet: { topic: string; payload: Buffer }): void => {
-        if (!topicPattern || matchTopic(packet.topic, topicPattern)) {
+  let onPublish: ((packet: { topic: string; payload: Buffer }) => void) | undefined
+
+  const publishPromise = new Promise<{ topic: string; payload: Buffer }>((resolve) => {
+    onPublish = (packet: { topic: string; payload: Buffer }): void => {
+      if (!topicPattern || matchTopic(packet.topic, topicPattern)) {
+        if (onPublish) {
           broker.broker.off('publish', onPublish)
-          resolve({ topic: packet.topic, payload: packet.payload })
         }
+        resolve({ topic: packet.topic, payload: packet.payload })
       }
-      broker.broker.on('publish', onPublish)
-    }),
+    }
+    broker.broker.on('publish', onPublish)
+  })
+
+  return withTimeout(
+    publishPromise,
     timeoutMs,
     `Timeout waiting for publish${topicPattern ? ` on topic ${topicPattern}` : ''}`
-  )
+  ).finally(() => {
+    if (onPublish) {
+      broker.broker.off('publish', onPublish)
+    }
+  })
 }
 
 /**
@@ -179,19 +197,29 @@ export function waitForSubscribe(
   topicPattern?: string,
   timeoutMs = 1000
 ): Promise<Array<{ topic: string }>> {
-  return withTimeout(
-    new Promise<Array<{ topic: string }>>((resolve) => {
-      const onSubscribe = (subscriptions: Array<{ topic: string }>): void => {
-        if (!topicPattern || subscriptions.some((s) => matchTopic(s.topic, topicPattern))) {
+  let onSubscribe: ((subscriptions: Array<{ topic: string }>) => void) | undefined
+
+  const subscribePromise = new Promise<Array<{ topic: string }>>((resolve) => {
+    onSubscribe = (subscriptions: Array<{ topic: string }>): void => {
+      if (!topicPattern || subscriptions.some((s) => matchTopic(s.topic, topicPattern))) {
+        if (onSubscribe) {
           broker.broker.off('subscribe', onSubscribe)
-          resolve(subscriptions)
         }
+        resolve(subscriptions)
       }
-      broker.broker.on('subscribe', onSubscribe)
-    }),
+    }
+    broker.broker.on('subscribe', onSubscribe)
+  })
+
+  return withTimeout(
+    subscribePromise,
     timeoutMs,
     `Timeout waiting for subscribe${topicPattern ? ` on topic ${topicPattern}` : ''}`
-  )
+  ).finally(() => {
+    if (onSubscribe) {
+      broker.broker.off('subscribe', onSubscribe)
+    }
+  })
 }
 
 /**
@@ -210,19 +238,29 @@ export function waitForUnsubscribe(
   topicPattern?: string,
   timeoutMs = 1000
 ): Promise<Array<string>> {
-  return withTimeout(
-    new Promise<Array<string>>((resolve) => {
-      const onUnsubscribe = (unsubscriptions: Array<string>): void => {
-        if (!topicPattern || unsubscriptions.some((topic) => matchTopic(topic, topicPattern))) {
+  let onUnsubscribe: ((unsubscriptions: Array<string>) => void) | undefined
+
+  const unsubscribePromise = new Promise<Array<string>>((resolve) => {
+    onUnsubscribe = (unsubscriptions: Array<string>): void => {
+      if (!topicPattern || unsubscriptions.some((topic) => matchTopic(topic, topicPattern))) {
+        if (onUnsubscribe) {
           broker.broker.off('unsubscribe', onUnsubscribe)
-          resolve(unsubscriptions)
         }
+        resolve(unsubscriptions)
       }
-      broker.broker.on('unsubscribe', onUnsubscribe)
-    }),
+    }
+    broker.broker.on('unsubscribe', onUnsubscribe)
+  })
+
+  return withTimeout(
+    unsubscribePromise,
     timeoutMs,
     `Timeout waiting for unsubscribe${topicPattern ? ` on topic ${topicPattern}` : ''}`
-  )
+  ).finally(() => {
+    if (onUnsubscribe) {
+      broker.broker.off('unsubscribe', onUnsubscribe)
+    }
+  })
 }
 
 /**
