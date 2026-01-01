@@ -2,6 +2,15 @@ import { AddressInfo, createServer, Server } from 'node:net'
 
 import Aedes from 'aedes'
 
+import type {
+  MessageHandler,
+  MqttBridge,
+  MqttBridgeConfig,
+  MqttMessage,
+  PublishOptions,
+  SubscribeOptions,
+} from '../types.js'
+
 export interface TestBroker {
   address: AddressInfo
   url: string
@@ -286,6 +295,111 @@ function matchTopic(topic: string, pattern: string): boolean {
   }
 
   return topicParts.length === patternParts.length
+}
+
+/**
+ * Create a test bridge configuration with optional overrides
+ *
+ * @param broker - The test broker to connect to
+ * @param overrides - Optional configuration overrides
+ * @returns Bridge configuration for testing
+ *
+ * @example
+ * const config = createTestBridgeConfig(broker, { topicPrefix: 'custom' })
+ */
+export function createTestBridgeConfig(
+  broker: TestBroker,
+  overrides?: Partial<MqttBridgeConfig>
+): MqttBridgeConfig {
+  return {
+    mqtt: {
+      url: broker.url,
+      ...overrides?.mqtt,
+    },
+    ...overrides,
+  }
+}
+
+/**
+ * Subscribe to a topic and wait for the subscription to be registered with the broker
+ *
+ * @param bridge - The MQTT bridge instance
+ * @param broker - The test broker to monitor
+ * @param topic - Topic to subscribe to (without prefix)
+ * @param handler - Message handler function
+ * @param options - Subscribe options and topic prefix
+ * @returns Promise that resolves when subscription is registered
+ *
+ * @example
+ * await subscribeAndWait(bridge, broker, 'test/topic', (msg) => { ... })
+ */
+export async function subscribeAndWait(
+  bridge: MqttBridge,
+  broker: TestBroker,
+  topic: string,
+  handler: MessageHandler,
+  options?: SubscribeOptions & { prefix?: string }
+): Promise<void> {
+  const prefix = options?.prefix ?? 'modbus'
+  const subscribePromise = waitForSubscribe(broker, `${prefix}/${topic}`)
+  await bridge.subscribe(topic, handler, options)
+  await subscribePromise
+}
+
+/**
+ * Publish a message and wait for it to be published to the broker
+ *
+ * @param bridge - The MQTT bridge instance
+ * @param broker - The test broker to monitor
+ * @param topic - Topic to publish to (without prefix)
+ * @param message - Message payload
+ * @param options - Publish options and topic prefix
+ * @returns Promise that resolves when message is published
+ *
+ * @example
+ * await publishAndWait(bridge, broker, 'test/topic', 'Hello', { qos: 1 })
+ */
+export async function publishAndWait(
+  bridge: MqttBridge,
+  broker: TestBroker,
+  topic: string,
+  message: string | Buffer,
+  options?: PublishOptions & { prefix?: string }
+): Promise<void> {
+  const prefix = options?.prefix ?? 'modbus'
+  const publishPromise = waitForPublish(broker, `${prefix}/${topic}`)
+  await bridge.publish(topic, message, options)
+  await publishPromise
+}
+
+/**
+ * Message collector for capturing messages in tests
+ */
+export interface MessageCollector {
+  messages: string[]
+  handler: MessageHandler
+  clear: () => void
+}
+
+/**
+ * Create a message collector for capturing messages in tests
+ *
+ * @returns Message collector with handler and utilities
+ *
+ * @example
+ * const collector = createMessageCollector()
+ * await bridge.subscribe('test/topic', collector.handler)
+ * expect(collector.messages).toContain('Expected message')
+ */
+export function createMessageCollector(): MessageCollector {
+  const messages: string[] = []
+  return {
+    messages,
+    handler: (message: MqttMessage) => messages.push(message.payload.toString()),
+    clear: () => {
+      messages.length = 0
+    },
+  }
 }
 
 /**

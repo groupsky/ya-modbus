@@ -1,6 +1,10 @@
 import type { MqttBridgeConfig } from './types.js'
 import {
+  createMessageCollector,
+  createTestBridgeConfig,
+  publishAndWait,
   startTestBroker,
+  subscribeAndWait,
   waitForAllClientsToDisconnect,
   waitForClientDisconnect,
   waitForClientReady,
@@ -108,108 +112,61 @@ describe('MQTT Bridge Integration Tests', () => {
 
   describe('Publish/Subscribe Operations', () => {
     test('should publish and receive messages', async () => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: broker.url,
-        },
-      }
-
+      const config = createTestBridgeConfig(broker)
       const bridge = createBridge(config)
       await bridge.start()
 
-      const receivedMessages: string[] = []
+      const collector = createMessageCollector()
 
-      // Set up subscription listener before subscribing
-      const subscribePromise = waitForSubscribe(broker, 'modbus/test/topic')
-      await bridge.subscribe('test/topic', (message) => {
-        receivedMessages.push(message.payload.toString())
-      })
-      await subscribePromise
+      await subscribeAndWait(bridge, broker, 'test/topic', collector.handler)
+      await publishAndWait(bridge, broker, 'test/topic', 'Hello, MQTT!')
 
-      // Set up publish listener before publishing
-      const publishPromise = waitForPublish(broker, 'modbus/test/topic')
-      await bridge.publish('test/topic', 'Hello, MQTT!')
-      await publishPromise
-
-      expect(receivedMessages).toContain('Hello, MQTT!')
+      expect(collector.messages).toContain('Hello, MQTT!')
 
       await bridge.stop()
     })
 
     test('should handle multiple subscriptions', async () => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: broker.url,
-        },
-      }
-
+      const config = createTestBridgeConfig(broker)
       const bridge = createBridge(config)
       await bridge.start()
 
-      const topic1Messages: string[] = []
-      const topic2Messages: string[] = []
+      const collector1 = createMessageCollector()
+      const collector2 = createMessageCollector()
 
-      const subscribe1Promise = waitForSubscribe(broker, 'modbus/topic1')
-      await bridge.subscribe('topic1', (message) => {
-        topic1Messages.push(message.payload.toString())
-      })
-      await subscribe1Promise
+      await subscribeAndWait(bridge, broker, 'topic1', collector1.handler)
+      await subscribeAndWait(bridge, broker, 'topic2', collector2.handler)
 
-      const subscribe2Promise = waitForSubscribe(broker, 'modbus/topic2')
-      await bridge.subscribe('topic2', (message) => {
-        topic2Messages.push(message.payload.toString())
-      })
-      await subscribe2Promise
+      await publishAndWait(bridge, broker, 'topic1', 'Message 1')
+      await publishAndWait(bridge, broker, 'topic2', 'Message 2')
 
-      const publish1Promise = waitForPublish(broker, 'modbus/topic1')
-      await bridge.publish('topic1', 'Message 1')
-      await publish1Promise
-
-      const publish2Promise = waitForPublish(broker, 'modbus/topic2')
-      await bridge.publish('topic2', 'Message 2')
-      await publish2Promise
-
-      expect(topic1Messages).toContain('Message 1')
-      expect(topic2Messages).toContain('Message 2')
-      expect(topic1Messages).not.toContain('Message 2')
-      expect(topic2Messages).not.toContain('Message 1')
+      expect(collector1.messages).toContain('Message 1')
+      expect(collector2.messages).toContain('Message 2')
+      expect(collector1.messages).not.toContain('Message 2')
+      expect(collector2.messages).not.toContain('Message 1')
 
       await bridge.stop()
     })
 
     test('should unsubscribe from topics', async () => {
-      const config: MqttBridgeConfig = {
-        mqtt: {
-          url: broker.url,
-        },
-      }
-
+      const config = createTestBridgeConfig(broker)
       const bridge = createBridge(config)
       await bridge.start()
 
-      const receivedMessages: string[] = []
+      const collector = createMessageCollector()
 
-      const subscribePromise = waitForSubscribe(broker, 'modbus/test/topic')
-      await bridge.subscribe('test/topic', (message) => {
-        receivedMessages.push(message.payload.toString())
-      })
-      await subscribePromise
-
-      const publish1Promise = waitForPublish(broker, 'modbus/test/topic')
-      await bridge.publish('test/topic', 'Before unsubscribe')
-      await publish1Promise
+      await subscribeAndWait(bridge, broker, 'test/topic', collector.handler)
+      await publishAndWait(bridge, broker, 'test/topic', 'Before unsubscribe')
 
       const unsubscribePromise = waitForUnsubscribe(broker, 'modbus/test/topic')
       await bridge.unsubscribe('test/topic')
       await unsubscribePromise
 
-      const publish2Promise = waitForPublish(broker, 'modbus/test/topic')
-      await bridge.publish('test/topic', 'After unsubscribe')
-      await publish2Promise
+      await publishAndWait(bridge, broker, 'test/topic', 'After unsubscribe')
 
-      expect(receivedMessages).toContain('Before unsubscribe')
-      expect(receivedMessages).not.toContain('After unsubscribe')
-      expect(receivedMessages).toHaveLength(1)
+      expect(collector.messages).toContain('Before unsubscribe')
+      expect(collector.messages).not.toContain('After unsubscribe')
+      expect(collector.messages).toHaveLength(1)
 
       await bridge.stop()
     })
