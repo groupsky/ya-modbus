@@ -1,0 +1,305 @@
+import { AddressInfo, createServer, Server } from 'node:net'
+
+import Aedes from 'aedes'
+
+export interface TestBroker {
+  address: AddressInfo
+  url: string
+  port: number
+  broker: Aedes
+  server: Server
+  close: () => Promise<void>
+}
+
+/**
+ * Race a promise against a timeout, properly cleaning up the timer
+ *
+ * This ensures Jest can exit cleanly by clearing the timeout when the promise settles.
+ * Always use this instead of bare Promise.race with setTimeout.
+ *
+ * @param promise - The promise to race
+ * @param timeoutMs - Timeout in milliseconds
+ * @param errorMessage - Error message if timeout occurs, or a function that returns the message
+ * @returns Promise that resolves/rejects with the first settled result
+ *
+ * @example
+ * // With static message
+ * await withTimeout(
+ *   clientReadyPromise,
+ *   5000,
+ *   'Client ready timeout'
+ * )
+ *
+ * @example
+ * // With dynamic message (evaluated when timeout occurs)
+ * await withTimeout(
+ *   disconnectPromise,
+ *   5000,
+ *   () => `Still connected: ${broker.connectedClients}`
+ * )
+ */
+export function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  errorMessage: string | (() => string)
+): Promise<T> {
+  let timeoutId: NodeJS.Timeout | undefined
+
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      const message = typeof errorMessage === 'function' ? errorMessage() : errorMessage
+      reject(new Error(message))
+    }, timeoutMs)
+  })
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId)
+    }
+  })
+}
+
+/**
+ * Wait for all MQTT clients to disconnect from a test broker
+ *
+ * @param broker - The test broker to monitor
+ * @param timeoutMs - Maximum time to wait in milliseconds (default: 5000)
+ * @returns Promise that resolves when all clients disconnect or rejects on timeout
+ *
+ * @example
+ * await waitForAllClientsToDisconnect(broker, 5000)
+ */
+export function waitForAllClientsToDisconnect(broker: TestBroker, timeoutMs = 5000): Promise<void> {
+  if (broker.broker.connectedClients === 0) {
+    return Promise.resolve()
+  }
+
+  const disconnectPromise = new Promise<void>((resolve) => {
+    const onDisconnect = (): void => {
+      if (broker.broker.connectedClients === 0) {
+        broker.broker.off('clientDisconnect', onDisconnect)
+        resolve()
+      }
+    }
+    broker.broker.on('clientDisconnect', onDisconnect)
+  })
+
+  return withTimeout(
+    disconnectPromise,
+    timeoutMs,
+    () =>
+      `Timeout waiting for clients to disconnect. Still connected: ${broker.broker.connectedClients}`
+  )
+}
+
+/**
+ * Wait for a client to be ready
+ *
+ * @param broker - The test broker to monitor
+ * @param timeoutMs - Maximum time to wait in milliseconds (default: 2000)
+ * @returns Promise that resolves when a client is ready or rejects on timeout
+ *
+ * @example
+ * await waitForClientReady(broker)
+ */
+export function waitForClientReady(broker: TestBroker, timeoutMs = 2000): Promise<void> {
+  return withTimeout(
+    new Promise<void>((resolve) => {
+      broker.broker.once('clientReady', () => resolve())
+    }),
+    timeoutMs,
+    'Timeout waiting for client to be ready'
+  )
+}
+
+/**
+ * Wait for a client to disconnect
+ *
+ * @param broker - The test broker to monitor
+ * @param timeoutMs - Maximum time to wait in milliseconds (default: 2000)
+ * @returns Promise that resolves when a client disconnects or rejects on timeout
+ *
+ * @example
+ * await waitForClientDisconnect(broker)
+ */
+export function waitForClientDisconnect(broker: TestBroker, timeoutMs = 2000): Promise<void> {
+  return withTimeout(
+    new Promise<void>((resolve) => {
+      broker.broker.once('clientDisconnect', () => resolve())
+    }),
+    timeoutMs,
+    'Timeout waiting for client to disconnect'
+  )
+}
+
+/**
+ * Wait for a publish event on the broker
+ *
+ * @param broker - The test broker to monitor
+ * @param topicPattern - Optional topic to match (supports wildcards)
+ * @param timeoutMs - Maximum time to wait in milliseconds (default: 1000)
+ * @returns Promise that resolves with the published packet or rejects on timeout
+ *
+ * @example
+ * const packet = await waitForPublish(broker, 'test/topic')
+ */
+export function waitForPublish(
+  broker: TestBroker,
+  topicPattern?: string,
+  timeoutMs = 1000
+): Promise<{ topic: string; payload: Buffer }> {
+  return withTimeout(
+    new Promise<{ topic: string; payload: Buffer }>((resolve) => {
+      const onPublish = (packet: { topic: string; payload: Buffer }): void => {
+        if (!topicPattern || matchTopic(packet.topic, topicPattern)) {
+          broker.broker.off('publish', onPublish)
+          resolve({ topic: packet.topic, payload: packet.payload })
+        }
+      }
+      broker.broker.on('publish', onPublish)
+    }),
+    timeoutMs,
+    `Timeout waiting for publish${topicPattern ? ` on topic ${topicPattern}` : ''}`
+  )
+}
+
+/**
+ * Wait for a subscribe event on the broker
+ *
+ * @param broker - The test broker to monitor
+ * @param topicPattern - Optional topic to match
+ * @param timeoutMs - Maximum time to wait in milliseconds (default: 1000)
+ * @returns Promise that resolves with subscriptions or rejects on timeout
+ *
+ * @example
+ * await waitForSubscribe(broker, 'test/topic')
+ */
+export function waitForSubscribe(
+  broker: TestBroker,
+  topicPattern?: string,
+  timeoutMs = 1000
+): Promise<Array<{ topic: string }>> {
+  return withTimeout(
+    new Promise<Array<{ topic: string }>>((resolve) => {
+      const onSubscribe = (subscriptions: Array<{ topic: string }>): void => {
+        if (!topicPattern || subscriptions.some((s) => matchTopic(s.topic, topicPattern))) {
+          broker.broker.off('subscribe', onSubscribe)
+          resolve(subscriptions)
+        }
+      }
+      broker.broker.on('subscribe', onSubscribe)
+    }),
+    timeoutMs,
+    `Timeout waiting for subscribe${topicPattern ? ` on topic ${topicPattern}` : ''}`
+  )
+}
+
+/**
+ * Wait for an unsubscribe event on the broker
+ *
+ * @param broker - The test broker to monitor
+ * @param topicPattern - Optional topic to match
+ * @param timeoutMs - Maximum time to wait in milliseconds (default: 1000)
+ * @returns Promise that resolves with unsubscriptions or rejects on timeout
+ *
+ * @example
+ * await waitForUnsubscribe(broker, 'test/topic')
+ */
+export function waitForUnsubscribe(
+  broker: TestBroker,
+  topicPattern?: string,
+  timeoutMs = 1000
+): Promise<Array<string>> {
+  return withTimeout(
+    new Promise<Array<string>>((resolve) => {
+      const onUnsubscribe = (unsubscriptions: Array<string>): void => {
+        if (!topicPattern || unsubscriptions.some((topic) => matchTopic(topic, topicPattern))) {
+          broker.broker.off('unsubscribe', onUnsubscribe)
+          resolve(unsubscriptions)
+        }
+      }
+      broker.broker.on('unsubscribe', onUnsubscribe)
+    }),
+    timeoutMs,
+    `Timeout waiting for unsubscribe${topicPattern ? ` on topic ${topicPattern}` : ''}`
+  )
+}
+
+/**
+ * Simple topic matcher that supports MQTT wildcards
+ *
+ * @param topic - The actual topic
+ * @param pattern - The pattern to match (supports + and # wildcards)
+ * @returns True if topic matches pattern
+ */
+function matchTopic(topic: string, pattern: string): boolean {
+  if (topic === pattern) return true
+
+  const topicParts = topic.split('/')
+  const patternParts = pattern.split('/')
+
+  for (let i = 0; i < patternParts.length; i++) {
+    if (patternParts[i] === '#') {
+      return true
+    }
+    if (patternParts[i] !== '+' && patternParts[i] !== topicParts[i]) {
+      return false
+    }
+  }
+
+  return topicParts.length === patternParts.length
+}
+
+/**
+ * Start an Aedes MQTT broker on a dynamic port for testing
+ */
+export async function startTestBroker(options?: { port?: number }): Promise<TestBroker> {
+  const broker = new Aedes()
+  const server = createServer(broker.handle)
+
+  return new Promise((resolve, reject) => {
+    server.listen(options?.port, () => {
+      const address = server.address()
+      if (!address || typeof address === 'string') {
+        reject(new Error('Failed to get free port'))
+        return
+      }
+      // Use localhost instead of :: or 0.0.0.0 for valid URL
+      const hostname = address.family === 'IPv6' ? 'localhost' : '127.0.0.1'
+      resolve({
+        address,
+        url: `mqtt://${hostname}:${address.port}`,
+        port: address.port,
+        broker,
+        server,
+        close: () =>
+          new Promise<void>((resolveClose, rejectClose) => {
+            broker.close(() => {
+              server.close((err) => {
+                if (err) {
+                  rejectClose(err)
+                } else {
+                  for (const event of [
+                    'closed',
+                    'client',
+                    'clientReady',
+                    'clientDisconnect',
+                    'keepaliveTimeout',
+                    'clientError',
+                    'connectionError',
+                    'publish',
+                    'subscribe',
+                    'unsubscribe',
+                  ] as const) {
+                    broker.removeAllListeners(event)
+                  }
+                  resolveClose()
+                }
+              })
+            })
+          }),
+      })
+    })
+    server.on('error', reject)
+  })
+}
