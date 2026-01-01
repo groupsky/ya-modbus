@@ -2,20 +2,14 @@ import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals
 
 import { program } from './cli.js'
 import * as configModule from './utils/config.js'
-import * as processModule from './utils/process.js'
+import { processUtils, signalHandlers } from './utils/process.js'
 
 import * as indexModule from './index.js'
 
 jest.mock('./utils/config.js')
 jest.mock('./utils/process.js')
 jest.mock('./index.js')
-jest.mock('./utils/package-info.js', () => ({
-  getPackageInfo: () => ({
-    version: '0.0.0',
-    description:
-      'MQTT bridge for ya-modbus - orchestrates device management, polling, and MQTT publishing',
-  }),
-}))
+jest.mock('./utils/package-info.js')
 
 /**
  * CLI integration tests for ya-modbus-bridge
@@ -31,21 +25,11 @@ describe('CLI - ya-modbus-bridge', () => {
   let consoleLogSpy: jest.SpyInstance
   let consoleErrorSpy: jest.SpyInstance
   let mockBridge: any
-  let signalHandlers: Map<string, () => void>
 
   beforeEach(() => {
     jest.clearAllMocks()
     consoleLogSpy = jest.spyOn(console, 'log').mockImplementation()
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
-
-    // Mock processUtils
-    signalHandlers = new Map()
-    jest.mocked(processModule.processUtils.exit).mockImplementation(() => {
-      // Don't actually exit, just track the call
-    })
-    jest.mocked(processModule.processUtils.onSignal).mockImplementation((signal, handler) => {
-      signalHandlers.set(signal, handler)
-    })
 
     // Mock bridge instance
     mockBridge = {
@@ -293,7 +277,7 @@ describe('CLI - ya-modbus-bridge', () => {
         expect.stringContaining('Error:'),
         'Either --config or --mqtt-url must be provided'
       )
-      expect(processModule.processUtils.exit).toHaveBeenCalledWith(1)
+      expect(processUtils.exit).toHaveBeenCalledWith(1)
     })
   })
 
@@ -307,7 +291,7 @@ describe('CLI - ya-modbus-bridge', () => {
         expect.stringContaining('Error:'),
         'File not found'
       )
-      expect(processModule.processUtils.exit).toHaveBeenCalledWith(1)
+      expect(processUtils.exit).toHaveBeenCalledWith(1)
     })
 
     it('should reject invalid MQTT URL protocol', async () => {
@@ -323,7 +307,7 @@ describe('CLI - ya-modbus-bridge', () => {
         expect.stringContaining('Error:'),
         expect.stringContaining('URL must start with mqtt://')
       )
-      expect(processModule.processUtils.exit).toHaveBeenCalledWith(1)
+      expect(processUtils.exit).toHaveBeenCalledWith(1)
     })
 
     it('should reject invalid URL format', async () => {
@@ -333,7 +317,7 @@ describe('CLI - ya-modbus-bridge', () => {
         expect.stringContaining('Error:'),
         expect.stringContaining('Invalid configuration')
       )
-      expect(processModule.processUtils.exit).toHaveBeenCalledWith(1)
+      expect(processUtils.exit).toHaveBeenCalledWith(1)
     })
 
     it('should handle bridge start errors', async () => {
@@ -348,7 +332,7 @@ describe('CLI - ya-modbus-bridge', () => {
         expect.stringContaining('Error:'),
         'Connection refused'
       )
-      expect(processModule.processUtils.exit).toHaveBeenCalledWith(1)
+      expect(processUtils.exit).toHaveBeenCalledWith(1)
     })
   })
 
@@ -396,10 +380,7 @@ describe('CLI - ya-modbus-bridge', () => {
 
       await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
 
-      expect(processModule.processUtils.onSignal).toHaveBeenCalledWith(
-        'SIGINT',
-        expect.any(Function)
-      )
+      expect(processUtils.onSignal).toHaveBeenCalledWith('SIGINT', expect.any(Function))
     })
 
     it('should register SIGTERM handler', async () => {
@@ -413,10 +394,7 @@ describe('CLI - ya-modbus-bridge', () => {
 
       await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
 
-      expect(processModule.processUtils.onSignal).toHaveBeenCalledWith(
-        'SIGTERM',
-        expect.any(Function)
-      )
+      expect(processUtils.onSignal).toHaveBeenCalledWith('SIGTERM', expect.any(Function))
     })
 
     it('should handle SIGINT shutdown gracefully', async () => {
@@ -442,7 +420,7 @@ describe('CLI - ya-modbus-bridge', () => {
       )
       expect(mockBridge.stop).toHaveBeenCalled()
       expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Bridge stopped'))
-      expect(processModule.processUtils.exit).toHaveBeenCalledWith(0)
+      expect(processUtils.exit).toHaveBeenCalledWith(0)
     })
 
     it('should handle SIGTERM shutdown gracefully', async () => {
@@ -468,7 +446,7 @@ describe('CLI - ya-modbus-bridge', () => {
       )
       expect(mockBridge.stop).toHaveBeenCalled()
       expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Bridge stopped'))
-      expect(processModule.processUtils.exit).toHaveBeenCalledWith(0)
+      expect(processUtils.exit).toHaveBeenCalledWith(0)
     })
 
     it('should handle SIGINT shutdown errors', async () => {
@@ -495,7 +473,7 @@ describe('CLI - ya-modbus-bridge', () => {
         expect.stringContaining('Shutdown error:'),
         expect.any(Error)
       )
-      expect(processModule.processUtils.exit).toHaveBeenCalledWith(1)
+      expect(processUtils.exit).toHaveBeenCalledWith(1)
     })
 
     it('should handle SIGTERM shutdown errors', async () => {
@@ -522,7 +500,7 @@ describe('CLI - ya-modbus-bridge', () => {
         expect.stringContaining('Shutdown error:'),
         expect.any(Error)
       )
-      expect(processModule.processUtils.exit).toHaveBeenCalledWith(1)
+      expect(processUtils.exit).toHaveBeenCalledWith(1)
     })
 
     it('should prevent multiple simultaneous shutdowns', async () => {
@@ -561,7 +539,7 @@ describe('CLI - ya-modbus-bridge', () => {
       // Stop should only be called once
       expect(mockBridge.stop).toHaveBeenCalledTimes(1)
       // First shutdown should exit with 0
-      expect(processModule.processUtils.exit).toHaveBeenCalledWith(0)
+      expect(processUtils.exit).toHaveBeenCalledWith(0)
     })
   })
 })

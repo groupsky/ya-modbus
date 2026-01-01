@@ -1,0 +1,11 @@
+{
+  "mqtt": {
+    "url": "mqtt://localhost:1883",
+    "clientId": "mqtt-bridge-example",
+    "username": "<your-username>",
+    "password": "<your-password>",
+    "reconnectPeriod": 5000
+  },
+  "topicPrefix": "modbus",
+  "stateDir": "./data"
+}
