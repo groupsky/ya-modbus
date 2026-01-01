@@ -91,4 +91,5 @@ export interface MqttBridge {
   removeDevice(deviceId: string): Promise<void>
   getDevice(deviceId: string): DeviceStatus | undefined
   listDevices(): DeviceStatus[]
+  getDeviceConfig(deviceId: string): DeviceConfig | undefined
 }
