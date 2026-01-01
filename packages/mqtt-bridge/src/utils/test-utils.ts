@@ -1,6 +1,8 @@
 import { AddressInfo, createServer, Server } from 'node:net'
 
 import Aedes from 'aedes'
+import type { AedesPublishPacket } from 'aedes'
+import type { Client } from 'aedes'
 
 import { createBridge } from '../index.js'
 import type {
@@ -166,15 +168,17 @@ export function waitForPublish(
   topicPattern?: string,
   timeoutMs = 1000
 ): Promise<{ topic: string; payload: Buffer }> {
-  let onPublish: ((packet: { topic: string; payload: Buffer }) => void) | undefined
+  let onPublish: ((packet: AedesPublishPacket, _client: Client | null) => void) | undefined
 
   const publishPromise = new Promise<{ topic: string; payload: Buffer }>((resolve) => {
-    onPublish = (packet: { topic: string; payload: Buffer }): void => {
+    onPublish = (packet: AedesPublishPacket, _client: Client | null): void => {
       if (!topicPattern || matchTopic(packet.topic, topicPattern)) {
         if (onPublish) {
           broker.broker.off('publish', onPublish)
         }
-        resolve({ topic: packet.topic, payload: packet.payload })
+        const payload =
+          typeof packet.payload === 'string' ? Buffer.from(packet.payload) : packet.payload
+        resolve({ topic: packet.topic, payload })
       }
     }
     broker.broker.on('publish', onPublish)

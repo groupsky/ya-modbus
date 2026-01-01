@@ -37,7 +37,7 @@ beforeEach(() => {
 
 export const processUtils: ProcessUtils = {
   exit: jest.fn(),
-  onSignal: jest.fn((signal, handler) => {
+  onSignal: jest.fn((signal: NodeJS.Signals, handler: () => void) => {
     signalHandlers.set(signal, handler)
   }),
 }
