@@ -28,18 +28,32 @@ describe('Test Utilities', () => {
     })
 
     test('should reject with timeout error when promise takes too long', async () => {
-      const promise = new Promise((resolve) => setTimeout(resolve, 2000))
-      await expect(withTimeout(promise, 100, 'Timeout occurred')).rejects.toThrow(
-        'Timeout occurred'
-      )
+      jest.useFakeTimers()
+      try {
+        const promise = new Promise((resolve) => setTimeout(resolve, 2000))
+        const resultPromise = withTimeout(promise, 100, 'Timeout occurred')
+
+        jest.advanceTimersByTime(100)
+        await expect(resultPromise).rejects.toThrow('Timeout occurred')
+      } finally {
+        jest.useRealTimers()
+      }
     })
 
     test('should call error message function when timeout occurs', async () => {
-      const promise = new Promise((resolve) => setTimeout(resolve, 2000))
-      const errorMessage = jest.fn(() => 'Dynamic error message')
+      jest.useFakeTimers()
+      try {
+        const promise = new Promise((resolve) => setTimeout(resolve, 2000))
+        const errorMessage = jest.fn(() => 'Dynamic error message')
 
-      await expect(withTimeout(promise, 100, errorMessage)).rejects.toThrow('Dynamic error message')
-      expect(errorMessage).toHaveBeenCalledTimes(1)
+        const resultPromise = withTimeout(promise, 100, errorMessage)
+
+        jest.advanceTimersByTime(100)
+        await expect(resultPromise).rejects.toThrow('Dynamic error message')
+        expect(errorMessage).toHaveBeenCalledTimes(1)
+      } finally {
+        jest.useRealTimers()
+      }
     })
 
     test('should cleanup timer when promise resolves', async () => {
@@ -63,13 +77,21 @@ describe('Test Utilities', () => {
     })
 
     test('should cleanup timer when timeout occurs', async () => {
-      const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout')
-      const promise = new Promise((resolve) => setTimeout(resolve, 2000))
+      jest.useFakeTimers()
+      try {
+        const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout')
+        const promise = new Promise((resolve) => setTimeout(resolve, 2000))
 
-      await expect(withTimeout(promise, 100, 'Timeout error')).rejects.toThrow('Timeout error')
+        const resultPromise = withTimeout(promise, 100, 'Timeout error')
 
-      expect(clearTimeoutSpy).toHaveBeenCalled()
-      clearTimeoutSpy.mockRestore()
+        jest.advanceTimersByTime(100)
+        await expect(resultPromise).rejects.toThrow('Timeout error')
+
+        expect(clearTimeoutSpy).toHaveBeenCalled()
+        clearTimeoutSpy.mockRestore()
+      } finally {
+        jest.useRealTimers()
+      }
     })
   })
 
