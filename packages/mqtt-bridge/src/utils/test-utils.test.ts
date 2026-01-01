@@ -392,6 +392,45 @@ describe('Test Utilities', () => {
 
         removeListenerSpy.mockRestore()
       })
+
+      test('should handle string payloads', async () => {
+        const promise = waitForPublish(broker, 'test/topic')
+
+        setImmediate(() => {
+          broker.broker.emit('publish', {
+            topic: 'test/topic',
+            payload: 'string payload',
+          })
+        })
+
+        const result = await promise
+        expect(result.payload).toBeInstanceOf(Buffer)
+        expect(result.payload.toString()).toBe('string payload')
+      })
+
+      test('should ignore non-matching topics when pattern is specified', async () => {
+        const promise = waitForPublish(broker, 'matching/topic', 200)
+
+        setImmediate(() => {
+          // Emit non-matching topic first
+          broker.broker.emit('publish', {
+            topic: 'other/topic',
+            payload: Buffer.from('wrong'),
+          })
+
+          // Then emit matching topic
+          setTimeout(() => {
+            broker.broker.emit('publish', {
+              topic: 'matching/topic',
+              payload: Buffer.from('correct'),
+            })
+          }, 50)
+        })
+
+        const result = await promise
+        expect(result.topic).toBe('matching/topic')
+        expect(result.payload.toString()).toBe('correct')
+      })
     })
 
     describe('waitForSubscribe', () => {
@@ -442,6 +481,23 @@ describe('Test Utilities', () => {
 
         removeListenerSpy.mockRestore()
       })
+
+      test('should ignore non-matching subscription topics', async () => {
+        const promise = waitForSubscribe(broker, 'matching/topic', 200)
+
+        setImmediate(() => {
+          // Emit non-matching subscriptions first
+          broker.broker.emit('subscribe', [{ topic: 'other/topic' }])
+
+          // Then emit matching subscription
+          setTimeout(() => {
+            broker.broker.emit('subscribe', [{ topic: 'matching/topic' }])
+          }, 50)
+        })
+
+        const result = await promise
+        expect(result).toEqual([{ topic: 'matching/topic' }])
+      })
     })
 
     describe('waitForUnsubscribe', () => {
@@ -491,6 +547,23 @@ describe('Test Utilities', () => {
         expect(removeListenerSpy).toHaveBeenCalledWith('unsubscribe', expect.any(Function))
 
         removeListenerSpy.mockRestore()
+      })
+
+      test('should match any topic in unsubscription array', async () => {
+        const promise = waitForUnsubscribe(broker, 'matching/topic', 200)
+
+        setImmediate(() => {
+          // Emit array with non-matching topics first
+          broker.broker.emit('unsubscribe', ['other/topic', 'another/topic'])
+
+          // Then emit array with at least one matching topic
+          setTimeout(() => {
+            broker.broker.emit('unsubscribe', ['other/topic', 'matching/topic', 'another/topic'])
+          }, 50)
+        })
+
+        const result = await promise
+        expect(result).toContain('matching/topic')
       })
     })
   })
