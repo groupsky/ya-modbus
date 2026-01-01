@@ -52,6 +52,18 @@ describe('CLI Integration Tests', () => {
     return program.parseAsync(['node', 'ya-modbus-bridge', ...args])
   }
 
+  /**
+   * Wait for async error handling to complete
+   *
+   * CLI error handling happens asynchronously (in process.nextTick or promises).
+   * This helper waits for the next event loop tick to allow error handlers to execute.
+   *
+   * @returns Promise that resolves after one event loop tick
+   */
+  function waitForAsyncErrors(): Promise<void> {
+    return new Promise((resolve) => setImmediate(resolve))
+  }
+
   describe('Bridge Startup', () => {
     test('should start bridge via CLI with config file', async () => {
       const configPath = join(testDir, 'config.json')
@@ -145,9 +157,7 @@ describe('CLI Integration Tests', () => {
 
       // Run program without required options
       await runProgram(['run'])
-
-      // Wait for async error handling
-      await new Promise((resolve) => setImmediate(resolve))
+      await waitForAsyncErrors()
 
       // Verify exit was called with error code
       expect(mockExit).toHaveBeenCalledWith(1)
@@ -272,7 +282,7 @@ describe('CLI Integration Tests', () => {
       mockExit.mockClear()
 
       await runProgram(['run', '--config', configPath])
-      await new Promise((resolve) => setImmediate(resolve))
+      await waitForAsyncErrors()
 
       expect(mockExit).toHaveBeenCalledWith(1)
       expect(consoleOutput.join('\n')).toMatch(/invalid|malformed|parse|json|expected/i)
@@ -283,7 +293,7 @@ describe('CLI Integration Tests', () => {
       mockExit.mockClear()
 
       await runProgram(['run', '--mqtt-url', 'not-a-valid-url'])
-      await new Promise((resolve) => setImmediate(resolve))
+      await waitForAsyncErrors()
 
       expect(mockExit).toHaveBeenCalledWith(1)
     })

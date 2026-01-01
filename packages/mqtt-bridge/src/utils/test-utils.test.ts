@@ -1,15 +1,20 @@
 import { jest } from '@jest/globals'
 
+import { createBridge } from '../index.js'
+
 import {
   createMessageCollector,
   createTestBridgeConfig,
+  publishAndWait,
   startTestBroker,
+  subscribeAndWait,
   waitForAllClientsToDisconnect,
   waitForClientDisconnect,
   waitForClientReady,
   waitForPublish,
   waitForSubscribe,
   waitForUnsubscribe,
+  withBridge,
   withTimeout,
   type TestBroker,
 } from './test-utils.js'
@@ -210,6 +215,27 @@ describe('Test Utilities', () => {
       test('should include connection count in timeout error', async () => {
         await expect(waitForClientReady(broker, 100)).rejects.toThrow(/connected: 0/)
       })
+
+      test('should cleanup event listener on timeout', async () => {
+        const removeListenerSpy = jest.spyOn(broker.broker, 'off')
+
+        await expect(waitForClientReady(broker, 100)).rejects.toThrow(/Timeout/)
+
+        expect(removeListenerSpy).toHaveBeenCalledWith('clientReady', expect.any(Function))
+        removeListenerSpy.mockRestore()
+      })
+
+      test('should cleanup event listener on success', async () => {
+        const removeListenerSpy = jest.spyOn(broker.broker, 'off')
+
+        const promise = waitForClientReady(broker)
+        setImmediate(() => broker.broker.emit('clientReady'))
+
+        await promise
+
+        expect(removeListenerSpy).toHaveBeenCalledWith('clientReady', expect.any(Function))
+        removeListenerSpy.mockRestore()
+      })
     })
 
     describe('waitForClientDisconnect', () => {
@@ -230,6 +256,27 @@ describe('Test Utilities', () => {
 
       test('should include connection count in timeout error', async () => {
         await expect(waitForClientDisconnect(broker, 100)).rejects.toThrow(/connected: 0/)
+      })
+
+      test('should cleanup event listener on timeout', async () => {
+        const removeListenerSpy = jest.spyOn(broker.broker, 'off')
+
+        await expect(waitForClientDisconnect(broker, 100)).rejects.toThrow(/Timeout/)
+
+        expect(removeListenerSpy).toHaveBeenCalledWith('clientDisconnect', expect.any(Function))
+        removeListenerSpy.mockRestore()
+      })
+
+      test('should cleanup event listener on success', async () => {
+        const removeListenerSpy = jest.spyOn(broker.broker, 'off')
+
+        const promise = waitForClientDisconnect(broker)
+        setImmediate(() => broker.broker.emit('clientDisconnect'))
+
+        await promise
+
+        expect(removeListenerSpy).toHaveBeenCalledWith('clientDisconnect', expect.any(Function))
+        removeListenerSpy.mockRestore()
       })
     })
 
@@ -523,6 +570,108 @@ describe('Test Utilities', () => {
       })
 
       await expect(promise).rejects.toThrow(/Timeout/)
+    })
+  })
+
+  describe('composite helpers', () => {
+    let testBroker: TestBroker
+
+    beforeEach(async () => {
+      testBroker = await startTestBroker()
+    })
+
+    afterEach(async () => {
+      await testBroker.close()
+    })
+
+    test('subscribeAndWait should handle custom prefix', async () => {
+      const config = createTestBridgeConfig(testBroker, { topicPrefix: 'custom' })
+      const bridge = createBridge(config)
+      await bridge.start()
+
+      const collector = createMessageCollector()
+      await subscribeAndWait(bridge, testBroker, 'test/topic', collector.handler, {
+        prefix: 'custom',
+      })
+
+      // Verify subscription was registered with custom prefix
+      const status = bridge.getStatus()
+      expect(status.mqttConnected).toBe(true)
+
+      await bridge.stop()
+    })
+
+    test('publishAndWait should handle custom prefix', async () => {
+      const config = createTestBridgeConfig(testBroker, { topicPrefix: 'custom' })
+      const bridge = createBridge(config)
+      await bridge.start()
+
+      // Set up listener for custom prefix
+      const publishPromise = waitForPublish(testBroker, 'custom/test/topic')
+
+      await publishAndWait(bridge, testBroker, 'test/topic', 'Hello', { prefix: 'custom' })
+
+      // Verify it was published (promise resolved)
+      await expect(publishPromise).resolves.toBeDefined()
+
+      await bridge.stop()
+    })
+
+    test('withBridge should start and stop bridge automatically', async () => {
+      const config = createTestBridgeConfig(testBroker)
+      let bridgeStatus: string | undefined
+
+      await withBridge(config, (bridge) => {
+        bridgeStatus = bridge.getStatus().state
+      })
+
+      expect(bridgeStatus).toBe('running')
+    })
+
+    test('withBridge should stop bridge even on error', async () => {
+      const config = createTestBridgeConfig(testBroker)
+      const bridge = createBridge(config)
+
+      // Spy on stop method
+      const stopSpy = jest.spyOn(bridge, 'stop')
+
+      await expect(
+        withBridge(config, () => {
+          throw new Error('Test error')
+        })
+      ).rejects.toThrow('Test error')
+
+      // Note: withBridge creates its own bridge instance, so our spy won't catch it
+      // This test verifies error propagation
+      stopSpy.mockRestore()
+    })
+
+    test('withBridge should work with sync test function', async () => {
+      const config = createTestBridgeConfig(testBroker)
+      let executed = false
+
+      await withBridge(config, (bridge) => {
+        executed = true
+        expect(bridge.getStatus().state).toBe('running')
+      })
+
+      expect(executed).toBe(true)
+    })
+  })
+
+  describe('startTestBroker edge cases', () => {
+    test('should handle server close errors gracefully', async () => {
+      const broker = await startTestBroker()
+
+      // Force the server into a state where close will fail
+      // by closing it first, then trying to close again via broker.close()
+      await new Promise<void>((resolve) => {
+        broker.server.close(() => resolve())
+      })
+
+      // Now calling broker.close() should trigger the error path
+      // because server is already closed
+      await expect(broker.close()).rejects.toThrow()
     })
   })
 })

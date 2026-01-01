@@ -123,13 +123,27 @@ export function waitForAllClientsToDisconnect(broker: TestBroker, timeoutMs = 50
  * await waitForClientReady(broker)
  */
 export function waitForClientReady(broker: TestBroker, timeoutMs = 2000): Promise<void> {
+  let onClientReady: (() => void) | undefined
+
+  const clientReadyPromise = new Promise<void>((resolve) => {
+    onClientReady = (): void => {
+      if (onClientReady) {
+        broker.broker.off('clientReady', onClientReady)
+      }
+      resolve()
+    }
+    broker.broker.on('clientReady', onClientReady)
+  })
+
   return withTimeout(
-    new Promise<void>((resolve) => {
-      broker.broker.once('clientReady', () => resolve())
-    }),
+    clientReadyPromise,
     timeoutMs,
     () => `Timeout waiting for client to be ready (connected: ${broker.broker.connectedClients})`
-  )
+  ).finally(() => {
+    if (onClientReady) {
+      broker.broker.off('clientReady', onClientReady)
+    }
+  })
 }
 
 /**
@@ -143,13 +157,27 @@ export function waitForClientReady(broker: TestBroker, timeoutMs = 2000): Promis
  * await waitForClientDisconnect(broker)
  */
 export function waitForClientDisconnect(broker: TestBroker, timeoutMs = 2000): Promise<void> {
+  let onClientDisconnect: (() => void) | undefined
+
+  const clientDisconnectPromise = new Promise<void>((resolve) => {
+    onClientDisconnect = (): void => {
+      if (onClientDisconnect) {
+        broker.broker.off('clientDisconnect', onClientDisconnect)
+      }
+      resolve()
+    }
+    broker.broker.on('clientDisconnect', onClientDisconnect)
+  })
+
   return withTimeout(
-    new Promise<void>((resolve) => {
-      broker.broker.once('clientDisconnect', () => resolve())
-    }),
+    clientDisconnectPromise,
     timeoutMs,
     () => `Timeout waiting for client to disconnect (connected: ${broker.broker.connectedClients})`
-  )
+  ).finally(() => {
+    if (onClientDisconnect) {
+      broker.broker.off('clientDisconnect', onClientDisconnect)
+    }
+  })
 }
 
 /**
@@ -447,11 +475,7 @@ export async function startTestBroker(options?: { port?: number }): Promise<Test
 
   return new Promise((resolve, reject) => {
     server.listen(options?.port, () => {
-      const address = server.address()
-      if (!address || typeof address === 'string') {
-        reject(new Error('Failed to get free port'))
-        return
-      }
+      const address = server.address() as AddressInfo
       resolve({
         address,
         url: `mqtt://localhost:${address.port}`,
