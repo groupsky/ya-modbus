@@ -24,7 +24,6 @@ module.exports = {
     '!<rootDir>/src/**/*.test.ts',
     '!<rootDir>/src/**/*.d.ts',
     '!<rootDir>/src/utils/package-info.ts',
-    '!<rootDir>/src/**/test-utils.ts',
   ],
   coverageThreshold: {
     global: {

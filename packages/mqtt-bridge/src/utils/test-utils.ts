@@ -448,11 +448,9 @@ export async function startTestBroker(options?: { port?: number }): Promise<Test
         reject(new Error('Failed to get free port'))
         return
       }
-      // Use localhost instead of :: or 0.0.0.0 for valid URL
-      const hostname = address.family === 'IPv6' ? 'localhost' : '127.0.0.1'
       resolve({
         address,
-        url: `mqtt://${hostname}:${address.port}`,
+        url: `mqtt://localhost:${address.port}`,
         port: address.port,
         broker,
         server,
@@ -463,20 +461,6 @@ export async function startTestBroker(options?: { port?: number }): Promise<Test
                 if (err) {
                   rejectClose(err)
                 } else {
-                  for (const event of [
-                    'closed',
-                    'client',
-                    'clientReady',
-                    'clientDisconnect',
-                    'keepaliveTimeout',
-                    'clientError',
-                    'connectionError',
-                    'publish',
-                    'subscribe',
-                    'unsubscribe',
-                  ] as const) {
-                    broker.removeAllListeners(event)
-                  }
                   resolveClose()
                 }
               })
