@@ -358,6 +358,35 @@ describe('MQTT Bridge Integration Tests', () => {
 
       await bridge.stop()
     })
+
+    test('should handle large payloads', async () => {
+      const config = createTestBridgeConfig(broker)
+      const bridge = createBridge(config)
+      await bridge.start()
+
+      const largePayload = Buffer.alloc(1024 * 100) // 100KB
+      largePayload.fill('x')
+
+      let receivedPayload: Buffer | undefined
+      const subscribePromise = waitForSubscribe(broker, 'modbus/device/large')
+
+      const messagePromise = new Promise<void>((resolve) => {
+        void bridge.subscribe('device/large', (message) => {
+          receivedPayload = message.payload
+          resolve()
+        })
+      })
+
+      await subscribePromise
+
+      await publishAndWait(bridge, broker, 'device/large', largePayload)
+      await messagePromise
+
+      expect(receivedPayload?.length).toBe(largePayload.length)
+      expect(receivedPayload).toEqual(largePayload)
+
+      await bridge.stop()
+    })
   })
 
   describe('Message Handler Error Handling', () => {

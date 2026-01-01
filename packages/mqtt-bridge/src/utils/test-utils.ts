@@ -125,7 +125,7 @@ export function waitForClientReady(broker: TestBroker, timeoutMs = 2000): Promis
       broker.broker.once('clientReady', () => resolve())
     }),
     timeoutMs,
-    'Timeout waiting for client to be ready'
+    () => `Timeout waiting for client to be ready (connected: ${broker.broker.connectedClients})`
   )
 }
 
@@ -145,7 +145,7 @@ export function waitForClientDisconnect(broker: TestBroker, timeoutMs = 2000): P
       broker.broker.once('clientDisconnect', () => resolve())
     }),
     timeoutMs,
-    'Timeout waiting for client to disconnect'
+    () => `Timeout waiting for client to disconnect (connected: ${broker.broker.connectedClients})`
   )
 }
 
@@ -311,12 +311,13 @@ export function createTestBridgeConfig(
   broker: TestBroker,
   overrides?: Partial<MqttBridgeConfig>
 ): MqttBridgeConfig {
+  const { mqtt, ...otherOverrides } = overrides ?? {}
   return {
     mqtt: {
       url: broker.url,
-      ...overrides?.mqtt,
+      ...mqtt,
     },
-    ...overrides,
+    ...otherOverrides,
   }
 }
 

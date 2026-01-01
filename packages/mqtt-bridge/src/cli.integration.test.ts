@@ -263,5 +263,29 @@ describe('CLI Integration Tests', () => {
         await waitForAllClientsToDisconnect(broker, 2000)
       }
     })
+
+    test('should fail gracefully with malformed config', async () => {
+      const configPath = join(testDir, 'invalid.json')
+      await writeFile(configPath, '{ invalid json')
+
+      const mockExit = processUtils.exit as jest.MockedFunction<typeof processUtils.exit>
+      mockExit.mockClear()
+
+      await runProgram(['run', '--config', configPath])
+      await new Promise((resolve) => setImmediate(resolve))
+
+      expect(mockExit).toHaveBeenCalledWith(1)
+      expect(consoleOutput.join('\n')).toMatch(/invalid|malformed|parse|json|expected/i)
+    })
+
+    test('should fail with invalid MQTT URL', async () => {
+      const mockExit = processUtils.exit as jest.MockedFunction<typeof processUtils.exit>
+      mockExit.mockClear()
+
+      await runProgram(['run', '--mqtt-url', 'not-a-valid-url'])
+      await new Promise((resolve) => setImmediate(resolve))
+
+      expect(mockExit).toHaveBeenCalledWith(1)
+    })
   })
 })
