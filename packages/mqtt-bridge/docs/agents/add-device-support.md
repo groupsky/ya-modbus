@@ -1,5 +1,5 @@
 ---
-paths: packages/mqtt-bridge/**/*.ts
+paths: /**/*.ts
 ---
 
 # Adding Device Support
