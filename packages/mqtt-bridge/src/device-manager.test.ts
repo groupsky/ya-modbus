@@ -109,7 +109,7 @@ describe('DeviceManager', () => {
       await expect(manager.addDevice(config)).rejects.toThrow('Device device1 already exists')
     })
 
-    it('should handle driver loading errors', async () => {
+    it('should handle driver loading errors and clean up device state', async () => {
       const config: DeviceConfig = {
         deviceId: 'device1',
         driver: 'ya-modbus-driver-test',
@@ -125,10 +125,46 @@ describe('DeviceManager', () => {
 
       await expect(manager.addDevice(config)).rejects.toThrow('Failed to load driver')
 
+      // Device should be completely removed to allow retry
       const device = manager.getDevice('device1')
-      expect(device?.state).toBe('error')
-      expect(device?.connected).toBe(false)
-      expect(device?.errors).toContain('Failed to load driver')
+      expect(device).toBeUndefined()
+    })
+
+    it('should allow retry after driver loading failure', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'ya-modbus-driver-test',
+        connection: {
+          type: 'rtu',
+          port: '/dev/ttyUSB0',
+          baudRate: 9600,
+          slaveId: 1,
+        },
+      }
+
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      // First attempt fails
+      mockDriverLoader.loadDriver.mockRejectedValueOnce(new Error('Failed to load driver'))
+
+      await expect(manager.addDevice(config)).rejects.toThrow('Failed to load driver')
+
+      // Second attempt succeeds
+      mockDriverLoader.loadDriver.mockResolvedValueOnce(mockDriver)
+
+      await manager.addDevice(config)
+
+      const device = manager.getDevice('device1')
+      expect(device).toBeDefined()
+      expect(device?.state).toBe('connected')
     })
   })
 

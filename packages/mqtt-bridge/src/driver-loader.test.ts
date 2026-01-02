@@ -118,7 +118,7 @@ describe('DriverLoader', () => {
         slaveId: 1,
       }
 
-      await expect(loader.loadDriver('nonexistent-driver', connection)).rejects.toThrow(
+      await expect(loader.loadDriver('ya-modbus-driver-nonexistent', connection)).rejects.toThrow(
         'Failed to load driver'
       )
     })
@@ -134,7 +134,7 @@ describe('DriverLoader', () => {
         slaveId: 1,
       }
 
-      await expect(loader.loadDriver('invalid-driver', connection)).rejects.toThrow(
+      await expect(loader.loadDriver('ya-modbus-driver-invalid', connection)).rejects.toThrow(
         'does not export createDriver function'
       )
     })
@@ -214,9 +214,69 @@ describe('DriverLoader', () => {
         slaveId: 1,
       }
 
-      await expect(loader.loadDriver('bad-driver', connection)).rejects.toThrow(
-        'Failed to load driver package bad-driver: String error'
+      await expect(loader.loadDriver('ya-modbus-driver-bad', connection)).rejects.toThrow(
+        'Failed to load driver package ya-modbus-driver-bad: String error'
       )
+    })
+
+    it('should reject driver package name not starting with ya-modbus-driver-', async () => {
+      const loader = new DriverLoader(undefined, mockTransportFactory)
+
+      const connection: DeviceConnection = {
+        type: 'rtu',
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        slaveId: 1,
+      }
+
+      await expect(loader.loadDriver('malicious-driver', connection)).rejects.toThrow(
+        "Invalid driver package name: must start with 'ya-modbus-driver-'"
+      )
+    })
+
+    it('should reject driver package name with path traversal', async () => {
+      const loader = new DriverLoader(undefined, mockTransportFactory)
+
+      const connection: DeviceConnection = {
+        type: 'rtu',
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        slaveId: 1,
+      }
+
+      await expect(loader.loadDriver('../../malicious-code', connection)).rejects.toThrow(
+        "Invalid driver package name: must start with 'ya-modbus-driver-'"
+      )
+    })
+
+    it('should reject driver package name with forward slash', async () => {
+      const loader = new DriverLoader(undefined, mockTransportFactory)
+
+      const connection: DeviceConnection = {
+        type: 'rtu',
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        slaveId: 1,
+      }
+
+      await expect(loader.loadDriver('ya-modbus-driver-test/../evil', connection)).rejects.toThrow(
+        'path traversal not allowed'
+      )
+    })
+
+    it('should reject driver package name with backslash', async () => {
+      const loader = new DriverLoader(undefined, mockTransportFactory)
+
+      const connection: DeviceConnection = {
+        type: 'rtu',
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        slaveId: 1,
+      }
+
+      await expect(
+        loader.loadDriver('ya-modbus-driver-test\\..\\evil', connection)
+      ).rejects.toThrow('path traversal not allowed')
     })
 
     it('should not cache driver if deviceId is not provided', async () => {
@@ -246,6 +306,88 @@ describe('DriverLoader', () => {
 
       expect(driver).toBe(mockDriver)
       expect(loader.getDriver('device1')).toBeUndefined()
+    })
+
+    it('should close transport when driver creation fails', async () => {
+      const mockClose = jest.fn().mockResolvedValue(undefined)
+      const mockTransport: Transport = {
+        readHoldingRegisters: jest.fn(),
+        readInputRegisters: jest.fn(),
+        readCoils: jest.fn(),
+        readDiscreteInputs: jest.fn(),
+        writeSingleRegister: jest.fn(),
+        writeMultipleRegisters: jest.fn(),
+        writeSingleCoil: jest.fn(),
+        writeMultipleCoils: jest.fn(),
+        close: mockClose,
+      }
+
+      const mockTransportFactory = jest.fn().mockReturnValue(mockTransport)
+      const mockCreateDriver: CreateDriverFunction = jest
+        .fn()
+        .mockRejectedValue(new Error('Driver creation failed'))
+      const mockImport = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
+
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
+
+      const connection: DeviceConnection = {
+        type: 'rtu',
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        slaveId: 1,
+      }
+
+      await expect(
+        loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
+      ).rejects.toThrow('Driver creation failed')
+
+      expect(mockClose).toHaveBeenCalled()
+    })
+
+    it('should close transport when driver initialization fails', async () => {
+      const mockClose = jest.fn().mockResolvedValue(undefined)
+      const mockTransport: Transport = {
+        readHoldingRegisters: jest.fn(),
+        readInputRegisters: jest.fn(),
+        readCoils: jest.fn(),
+        readDiscreteInputs: jest.fn(),
+        writeSingleRegister: jest.fn(),
+        writeMultipleRegisters: jest.fn(),
+        writeSingleCoil: jest.fn(),
+        writeMultipleCoils: jest.fn(),
+        close: mockClose,
+      }
+
+      const mockTransportFactory = jest.fn().mockReturnValue(mockTransport)
+      const mockInitialize = jest.fn().mockRejectedValue(new Error('Initialization failed'))
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test Manufacturer',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+        initialize: mockInitialize,
+      }
+
+      const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
+      const mockImport = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
+
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
+
+      const connection: DeviceConnection = {
+        type: 'rtu',
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        slaveId: 1,
+      }
+
+      await expect(
+        loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
+      ).rejects.toThrow('Initialization failed')
+
+      expect(mockClose).toHaveBeenCalled()
     })
   })
 
@@ -313,6 +455,291 @@ describe('DriverLoader', () => {
       const loader = new DriverLoader()
 
       await expect(loader.unloadDriver('nonexistent')).resolves.not.toThrow()
+    })
+
+    it('should close transport when unloading driver', async () => {
+      const mockClose = jest.fn().mockResolvedValue(undefined)
+      const mockTransport: Transport = {
+        readHoldingRegisters: jest.fn(),
+        readInputRegisters: jest.fn(),
+        readCoils: jest.fn(),
+        readDiscreteInputs: jest.fn(),
+        writeSingleRegister: jest.fn(),
+        writeMultipleRegisters: jest.fn(),
+        writeSingleCoil: jest.fn(),
+        writeMultipleCoils: jest.fn(),
+        close: mockClose,
+      }
+
+      const mockTransportFactory = jest.fn().mockReturnValue(mockTransport)
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test Manufacturer',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
+      const mockImport = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
+
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
+
+      const connection: DeviceConnection = {
+        type: 'rtu',
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        slaveId: 1,
+      }
+
+      await loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
+      await loader.unloadDriver('device1')
+
+      expect(mockClose).toHaveBeenCalled()
+    })
+
+    it('should close transport even if driver has no destroy method', async () => {
+      const mockClose = jest.fn().mockResolvedValue(undefined)
+      const mockTransport: Transport = {
+        readHoldingRegisters: jest.fn(),
+        readInputRegisters: jest.fn(),
+        readCoils: jest.fn(),
+        readDiscreteInputs: jest.fn(),
+        writeSingleRegister: jest.fn(),
+        writeMultipleRegisters: jest.fn(),
+        writeSingleCoil: jest.fn(),
+        writeMultipleCoils: jest.fn(),
+        close: mockClose,
+      }
+
+      const mockTransportFactory = jest.fn().mockReturnValue(mockTransport)
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test Manufacturer',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+        // No destroy method
+      }
+
+      const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
+      const mockImport = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
+
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
+
+      const connection: DeviceConnection = {
+        type: 'rtu',
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        slaveId: 1,
+      }
+
+      await loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
+      await loader.unloadDriver('device1')
+
+      expect(mockClose).toHaveBeenCalled()
+    })
+
+    it('should close transport even if driver destroy fails', async () => {
+      const mockClose = jest.fn().mockResolvedValue(undefined)
+      const mockTransport: Transport = {
+        readHoldingRegisters: jest.fn(),
+        readInputRegisters: jest.fn(),
+        readCoils: jest.fn(),
+        readDiscreteInputs: jest.fn(),
+        writeSingleRegister: jest.fn(),
+        writeMultipleRegisters: jest.fn(),
+        writeSingleCoil: jest.fn(),
+        writeMultipleCoils: jest.fn(),
+        close: mockClose,
+      }
+
+      const mockTransportFactory = jest.fn().mockReturnValue(mockTransport)
+      const mockDestroy = jest.fn().mockRejectedValue(new Error('Destroy failed'))
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test Manufacturer',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+        destroy: mockDestroy,
+      }
+
+      const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
+      const mockImport = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
+
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
+
+      const connection: DeviceConnection = {
+        type: 'rtu',
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        slaveId: 1,
+      }
+
+      await loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
+
+      // Unload should fail due to destroy error, but transport should still be closed
+      await expect(loader.unloadDriver('device1')).rejects.toThrow('Destroy failed')
+      expect(mockClose).toHaveBeenCalled()
+    })
+  })
+
+  describe('factory reference counting', () => {
+    it('should remove factory when last device using it is unloaded', async () => {
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test Manufacturer',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
+      const mockImport = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
+
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
+
+      const connection: DeviceConnection = {
+        type: 'rtu',
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        slaveId: 1,
+      }
+
+      // Load driver for one device
+      await loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
+      expect(mockImport).toHaveBeenCalledTimes(1)
+
+      // Unload the device
+      await loader.unloadDriver('device1')
+
+      // Load the same driver for a new device - should need to import again
+      mockImport.mockClear()
+      await loader.loadDriver('ya-modbus-driver-test', connection, 'device2')
+      expect(mockImport).toHaveBeenCalledTimes(1) // Factory was removed, needs re-import
+    })
+
+    it('should keep factory when other devices are still using it', async () => {
+      const mockDriver1: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test Manufacturer',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      const mockDriver2: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test Manufacturer',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      const mockDriver3: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test Manufacturer',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      const mockCreateDriver: CreateDriverFunction = jest
+        .fn()
+        .mockResolvedValueOnce(mockDriver1)
+        .mockResolvedValueOnce(mockDriver2)
+        .mockResolvedValueOnce(mockDriver3)
+
+      const mockImport = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
+
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
+
+      const connection: DeviceConnection = {
+        type: 'rtu',
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        slaveId: 1,
+      }
+
+      // Load driver for two devices
+      await loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
+      await loader.loadDriver('ya-modbus-driver-test', connection, 'device2')
+      expect(mockImport).toHaveBeenCalledTimes(1) // Factory cached
+
+      // Unload one device
+      await loader.unloadDriver('device1')
+
+      // Load the same driver for a third device - should not need to import
+      mockImport.mockClear()
+      await loader.loadDriver('ya-modbus-driver-test', connection, 'device3')
+      expect(mockImport).not.toHaveBeenCalled() // Factory still cached
+    })
+
+    it('should handle multiple different factories independently', async () => {
+      const mockDriver1: DeviceDriver = {
+        name: 'test-device-1',
+        manufacturer: 'Test Manufacturer',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      const mockDriver2: DeviceDriver = {
+        name: 'test-device-2',
+        manufacturer: 'Test Manufacturer',
+        model: 'TEST-002',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      const mockCreateDriver1: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver1)
+      const mockCreateDriver2: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver2)
+
+      const mockImport = jest
+        .fn()
+        .mockResolvedValueOnce({ createDriver: mockCreateDriver1 })
+        .mockResolvedValueOnce({ createDriver: mockCreateDriver2 })
+        .mockResolvedValueOnce({ createDriver: mockCreateDriver1 })
+
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
+
+      const connection: DeviceConnection = {
+        type: 'rtu',
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        slaveId: 1,
+      }
+
+      // Load two different drivers
+      await loader.loadDriver('ya-modbus-driver-test1', connection, 'device1')
+      await loader.loadDriver('ya-modbus-driver-test2', connection, 'device2')
+      expect(mockImport).toHaveBeenCalledTimes(2)
+
+      // Unload device1 - should remove factory1 but keep factory2
+      await loader.unloadDriver('device1')
+
+      // Load driver1 again - should need to re-import
+      await loader.loadDriver('ya-modbus-driver-test1', connection, 'device3')
+      expect(mockImport).toHaveBeenCalledTimes(3)
     })
   })
 

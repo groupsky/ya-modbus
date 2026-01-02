@@ -11,6 +11,9 @@ type TransportFactory = (connection: DeviceConnection) => Transport
 export class DriverLoader {
   private driverFactories = new Map<string, CreateDriverFunction>()
   private driverInstances = new Map<string, DeviceDriver>()
+  private transports = new Map<string, Transport>()
+  private factoryRefCounts = new Map<string, number>()
+  private devicePackages = new Map<string, string>()
   private importFn: ImportFunction
   private transportFactory: TransportFactory
 
@@ -33,6 +36,14 @@ export class DriverLoader {
     connection: DeviceConnection,
     deviceId?: string
   ): Promise<DeviceDriver> {
+    // Security validation: prevent path traversal and code injection
+    if (!packageName.startsWith('ya-modbus-driver-')) {
+      throw new Error(`Invalid driver package name: must start with 'ya-modbus-driver-'`)
+    }
+    if (packageName.includes('..') || packageName.includes('/') || packageName.includes('\\')) {
+      throw new Error('Invalid driver package name: path traversal not allowed')
+    }
+
     // Load driver factory if not already loaded
     if (!this.driverFactories.has(packageName)) {
       try {
@@ -59,22 +70,34 @@ export class DriverLoader {
 
     const transport = this.transportFactory(connection)
 
-    const driver = await createDriver({
-      transport,
-      slaveId: connection.slaveId,
-    })
+    try {
+      const driver = await createDriver({
+        transport,
+        slaveId: connection.slaveId,
+      })
 
-    // Call initialize if available
-    if (driver.initialize) {
-      await driver.initialize()
+      // Call initialize if available
+      if (driver.initialize) {
+        await driver.initialize()
+      }
+
+      // Cache instance and transport if deviceId provided
+      if (deviceId) {
+        this.driverInstances.set(deviceId, driver)
+        this.transports.set(deviceId, transport)
+        this.devicePackages.set(deviceId, packageName)
+
+        // Increment factory reference count
+        const refCount = this.factoryRefCounts.get(packageName) ?? 0
+        this.factoryRefCounts.set(packageName, refCount + 1)
+      }
+
+      return driver
+    } catch (error) {
+      // Clean up transport on failure to prevent resource leak
+      await transport.close()
+      throw error
     }
-
-    // Cache instance if deviceId provided
-    if (deviceId) {
-      this.driverInstances.set(deviceId, driver)
-    }
-
-    return driver
   }
 
   /**
@@ -84,13 +107,39 @@ export class DriverLoader {
    */
   async unloadDriver(deviceId: string): Promise<void> {
     const driver = this.driverInstances.get(deviceId)
+    const transport = this.transports.get(deviceId)
+    const packageName = this.devicePackages.get(deviceId)
 
-    if (driver) {
-      if (driver.destroy) {
-        await driver.destroy()
+    try {
+      if (driver) {
+        if (driver.destroy) {
+          await driver.destroy()
+        }
+
+        this.driverInstances.delete(deviceId)
+      }
+    } finally {
+      // Always close transport to prevent resource leak
+      if (transport) {
+        await transport.close()
+        this.transports.delete(deviceId)
       }
 
-      this.driverInstances.delete(deviceId)
+      // Decrement factory reference count and cleanup if no longer used
+      if (packageName) {
+        this.devicePackages.delete(deviceId)
+
+        const refCount = this.factoryRefCounts.get(packageName) ?? 0
+        const newRefCount = refCount - 1
+
+        if (newRefCount <= 0) {
+          // No more devices using this factory, remove it
+          this.driverFactories.delete(packageName)
+          this.factoryRefCounts.delete(packageName)
+        } else {
+          this.factoryRefCounts.set(packageName, newRefCount)
+        }
+      }
     }
   }
 

@@ -38,11 +38,9 @@ export class DeviceManager {
           lastUpdate: Date.now(),
         })
       } catch (error) {
-        this.updateDeviceState(config.deviceId, {
-          state: 'error',
-          connected: false,
-          errors: [error instanceof Error ? error.message : String(error)],
-        })
+        // Clean up device state to allow retry (make operation atomic)
+        this.devices.delete(config.deviceId)
+        this.configs.delete(config.deviceId)
         throw error
       }
     }
