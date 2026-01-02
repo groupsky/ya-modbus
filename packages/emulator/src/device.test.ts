@@ -182,4 +182,28 @@ describe('EmulatedDevice register storage', () => {
       expect(device.getHoldingRegister(1001)).toBe(0)
     })
   })
+
+  describe('register validation', () => {
+    beforeEach(() => {
+      device = emulator.addDevice({ slaveId: 1 })
+    })
+
+    it('should throw error for out of range register address', () => {
+      expect(() => device.setHoldingRegister(-1, 100)).toThrow(
+        'Register address -1 out of range (0-65535)'
+      )
+      expect(() => device.setHoldingRegister(65536, 100)).toThrow(
+        'Register address 65536 out of range (0-65535)'
+      )
+    })
+
+    it('should throw error for out of range register value', () => {
+      expect(() => device.setHoldingRegister(0, -1)).toThrow(
+        'Register value -1 at address 0 out of range (0-65535)'
+      )
+      expect(() => device.setHoldingRegister(0, 65536)).toThrow(
+        'Register value 65536 at address 0 out of range (0-65535)'
+      )
+    })
+  })
 })

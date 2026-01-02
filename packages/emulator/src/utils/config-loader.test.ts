@@ -238,5 +238,48 @@ devices: []
         'At least one device must be configured'
       )
     })
+
+    it('should throw for non-object config (string)', async () => {
+      testFilePath = join(testDir, 'config.yaml')
+      await writeFile(testFilePath, '"just a string"', 'utf-8')
+
+      await expect(loadConfig(testFilePath)).rejects.toThrow('Invalid configuration format')
+    })
+
+    it('should throw for non-object transport (null)', async () => {
+      testFilePath = join(testDir, 'config.yaml')
+      const configContent = `
+transport: null
+devices:
+  - slaveId: 1
+`
+      await writeFile(testFilePath, configContent, 'utf-8')
+
+      await expect(loadConfig(testFilePath)).rejects.toThrow('Missing transport configuration')
+    })
+
+    it('should throw for non-object transport (string)', async () => {
+      testFilePath = join(testDir, 'config.yaml')
+      const configContent = `
+transport: "memory"
+devices:
+  - slaveId: 1
+`
+      await writeFile(testFilePath, configContent, 'utf-8')
+
+      await expect(loadConfig(testFilePath)).rejects.toThrow('Invalid transport configuration')
+    })
+
+    it('should throw for non-array devices', async () => {
+      testFilePath = join(testDir, 'config.yaml')
+      const configContent = `
+transport:
+  type: memory
+devices: "not an array"
+`
+      await writeFile(testFilePath, configContent, 'utf-8')
+
+      await expect(loadConfig(testFilePath)).rejects.toThrow('Devices must be an array')
+    })
   })
 })

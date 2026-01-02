@@ -243,5 +243,27 @@ describe('Modbus Function Codes', () => {
       expect(response[1]).toBe(0x90)
       expect(response[2]).toBe(0x03) // ILLEGAL_DATA_VALUE
     })
+
+    it('should catch exceptions from device operations and return error response', () => {
+      // Mock device method to throw an unexpected error
+      jest.spyOn(device, 'getHoldingRegister').mockImplementationOnce(() => {
+        throw new Error('Unexpected device error')
+      })
+
+      const request = Buffer.from([
+        0x01,
+        0x03, // Read holding registers
+        0x00,
+        0x00, // Start address
+        0x00,
+        0x01, // Quantity
+      ])
+
+      const response = handleModbusRequest(device, request)
+
+      // Should return exception response
+      expect(response[1]).toBe(0x83) // 0x03 with error bit
+      expect(response[2]).toBe(0x03) // ILLEGAL_DATA_VALUE
+    })
   })
 })
