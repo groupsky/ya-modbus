@@ -269,7 +269,7 @@ export async function withTransport<T>(
       }
 
   // Create transport
-  const transport = await createTransport(transportConfig)
+  const transport: Transport = await createTransport(transportConfig)
 
   try {
     return await fn(transport)
