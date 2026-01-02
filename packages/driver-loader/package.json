@@ -9,7 +9,6 @@
   ],
   "author": "Geno Roupsky <geno@roupsky.name>",
   "license": "GPL-3.0-or-later",
-  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
