@@ -19,15 +19,27 @@ npm install @ya-modbus/transport
 ## Usage
 
 ```typescript
-import { createModbusTransport } from '@ya-modbus/transport'
+import { createTransport } from '@ya-modbus/transport'
 
-// Auto-detect RTU vs TCP based on connection string
-const transport = await createModbusTransport('/dev/ttyUSB0', 9600, 1)
-// or
-const transport = await createModbusTransport('192.168.1.100:502', 0, 1)
+// RTU (serial) transport
+const rtuTransport = await createTransport({
+  port: '/dev/ttyUSB0',
+  baudRate: 9600,
+  dataBits: 8,
+  parity: 'none',
+  stopBits: 1,
+  slaveId: 1,
+})
+
+// TCP transport
+const tcpTransport = await createTransport({
+  host: '192.168.1.100',
+  port: 502, // optional, defaults to 502
+  slaveId: 1,
+})
 
 // Use transport with driver
-await transport.readHoldingRegisters(0, 10)
+await rtuTransport.readHoldingRegisters(0, 10)
 ```
 
 ## License
