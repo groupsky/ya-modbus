@@ -21,6 +21,7 @@ paths: /**/{AGENTS,CLAUDE,.aider}.md, /**/.cursorrules, /.github/copilot-instruc
 - Points to docs/agents/\*.md for detailed guidelines
 - Use ALL CAPS for imperative keywords (READ, BEFORE, NEVER, ALWAYS, MUST)
 - NEVER include code examples or violation demonstrations
+- NEVER duplicate information from parent directory AGENTS.md files
 
 ## File Naming
 
