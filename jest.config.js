@@ -1,6 +1,7 @@
 module.exports = {
   projects: [
     '<rootDir>/packages/cli',
+    '<rootDir>/packages/driver-loader',
     '<rootDir>/packages/driver-types',
     '<rootDir>/packages/driver-sdk',
     '<rootDir>/packages/mqtt-bridge',

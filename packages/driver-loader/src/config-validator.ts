@@ -24,12 +24,9 @@ export function validateDefaultConfig(config: unknown): DefaultConfig {
 
   const configObj = config as Record<string, unknown>
 
-  // Check if it's a serial config (has baudRate)
   if ('baudRate' in configObj) {
     validateSerialDefaultConfig(configObj)
-  }
-  // Check if it's a TCP config (has defaultPort but not baudRate)
-  else if ('defaultPort' in configObj) {
+  } else if ('defaultPort' in configObj) {
     validateTcpDefaultConfig(configObj)
   } else {
     throw new Error(
@@ -205,7 +202,6 @@ export function validateDevices(devices: unknown): DeviceRegistry {
     )
   }
 
-  // Validate each device entry
   for (const [key, device] of entries) {
     if (device === null || device === undefined || typeof device !== 'object') {
       throw new Error(
@@ -237,7 +233,6 @@ export function validateDevices(devices: unknown): DeviceRegistry {
       )
     }
 
-    // Validate nested defaultConfig if present
     let validatedDefaultConfig: DefaultConfig | undefined
     if ('defaultConfig' in deviceObj && deviceObj['defaultConfig'] !== undefined) {
       try {
@@ -247,7 +242,6 @@ export function validateDevices(devices: unknown): DeviceRegistry {
       }
     }
 
-    // Validate nested supportedConfig if present
     let validatedSupportedConfig: SupportedConfig | undefined
     if ('supportedConfig' in deviceObj && deviceObj['supportedConfig'] !== undefined) {
       try {
@@ -257,7 +251,6 @@ export function validateDevices(devices: unknown): DeviceRegistry {
       }
     }
 
-    // Cross-validate device-specific configs
     if (validatedDefaultConfig && validatedSupportedConfig) {
       const warnings = crossValidateConfigs(validatedDefaultConfig, validatedSupportedConfig)
       if (warnings.length > 0) {
@@ -276,11 +269,6 @@ export function validateDevices(devices: unknown): DeviceRegistry {
 
 /**
  * Helper function to validate if a value is within a numeric range
- *
- * @param value - The value to check
- * @param range - [min, max] range tuple
- * @param fieldName - Name of the field for error message
- * @returns Warning message if value is outside range, undefined otherwise
  */
 function validateAddressRange(
   value: number,
@@ -303,13 +291,6 @@ function validateAddressRange(
  * @param defaultConfig - The validated DEFAULT_CONFIG
  * @param supportedConfig - The validated SUPPORTED_CONFIG
  * @returns Array of warning messages for any inconsistencies found (empty if all valid)
- *
- * @example
- * const warnings = crossValidateConfigs(
- *   { baudRate: 115200, parity: 'even', dataBits: 8, stopBits: 1, defaultAddress: 1 },
- *   { validBaudRates: [9600], validParity: ['even', 'odd'] }
- * )
- * // Returns: ['baudRate: 115200 is not in validBaudRates: [9600]']
  */
 export function crossValidateConfigs(
   defaultConfig: DefaultConfig,
@@ -317,7 +298,6 @@ export function crossValidateConfigs(
 ): string[] {
   const warnings: string[] = []
 
-  // Determine if this is serial or TCP config
   const isSerial = 'baudRate' in defaultConfig
   const isTCP = 'defaultPort' in defaultConfig
 
@@ -325,7 +305,6 @@ export function crossValidateConfigs(
     const serialDefault = defaultConfig
     const serialSupported = supportedConfig as Record<string, unknown>
 
-    // Check baudRate
     if ('validBaudRates' in serialSupported && Array.isArray(serialSupported['validBaudRates'])) {
       const validBaudRates = serialSupported['validBaudRates'] as number[]
       if (!validBaudRates.includes(serialDefault.baudRate)) {
@@ -335,7 +314,6 @@ export function crossValidateConfigs(
       }
     }
 
-    // Check parity
     if (
       'parity' in serialDefault &&
       'validParity' in serialSupported &&
@@ -349,7 +327,6 @@ export function crossValidateConfigs(
       }
     }
 
-    // Check dataBits
     if (
       'dataBits' in serialDefault &&
       'validDataBits' in serialSupported &&
@@ -363,7 +340,6 @@ export function crossValidateConfigs(
       }
     }
 
-    // Check stopBits
     if (
       'stopBits' in serialDefault &&
       'validStopBits' in serialSupported &&
@@ -377,7 +353,6 @@ export function crossValidateConfigs(
       }
     }
 
-    // Check defaultAddress (serial)
     if (
       'defaultAddress' in serialDefault &&
       'validAddressRange' in serialSupported &&
@@ -396,7 +371,6 @@ export function crossValidateConfigs(
     const tcpDefault = defaultConfig
     const tcpSupported = supportedConfig as Record<string, unknown>
 
-    // Check defaultPort
     if ('validPorts' in tcpSupported && Array.isArray(tcpSupported['validPorts'])) {
       const validPorts = tcpSupported['validPorts'] as number[]
       if (!validPorts.includes(tcpDefault.defaultPort)) {
@@ -406,7 +380,6 @@ export function crossValidateConfigs(
       }
     }
 
-    // Check defaultAddress (TCP)
     if (
       'defaultAddress' in tcpDefault &&
       'validAddressRange' in tcpSupported &&

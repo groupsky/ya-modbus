@@ -41,30 +41,93 @@ export interface LoadDriverOptions {
    * e.g., 'ya-modbus-driver-xymd1' or '@org/driver-pkg'
    */
   driverPackage?: string
+}
 
-  /**
-   * Load from current working directory (for development)
-   * Auto-detects driver from package.json
-   */
-  localPackage?: boolean
+/**
+ * System dependencies for driver loading (for dependency injection)
+ */
+export interface SystemDependencies {
+  readFile: (path: string, encoding: 'utf-8') => Promise<string>
+  importModule: (modulePath: string) => Promise<unknown>
+  getCwd: () => string
+}
+
+/**
+ * Default system dependencies using Node.js built-ins
+ */
+/* istanbul ignore next */
+const defaultDeps: SystemDependencies = {
+  /* istanbul ignore next */
+  readFile: (path: string, encoding: 'utf-8') => readFile(path, encoding),
+  /* istanbul ignore next */
+  importModule: (modulePath: string) => import(modulePath),
+  /* istanbul ignore next */
+  getCwd: () => process.cwd(),
+}
+
+/**
+ * Driver cache statistics
+ */
+export interface DriverCacheStats {
+  /** Number of cache hits */
+  hits: number
+  /** Number of cache misses */
+  misses: number
+  /** Number of cached drivers */
+  size: number
+}
+
+/**
+ * LRU cache for loaded drivers
+ */
+const driverCache = new Map<string, LoadedDriver>()
+
+/**
+ * Cache statistics
+ */
+const cacheStats = {
+  hits: 0,
+  misses: 0,
+}
+
+/**
+ * Clear the driver cache
+ * Useful for testing or when you need to reload drivers
+ */
+export function clearDriverCache(): void {
+  driverCache.clear()
+  cacheStats.hits = 0
+  cacheStats.misses = 0
+}
+
+/**
+ * Get cache statistics
+ * @returns Current cache statistics including hits, misses, and size
+ */
+export function getDriverCacheStats(): DriverCacheStats {
+  return {
+    hits: cacheStats.hits,
+    misses: cacheStats.misses,
+    size: driverCache.size,
+  }
 }
 
 /**
  * Auto-detect local driver package from package.json
  *
+ * @param deps - System dependencies
  * @returns Package name if valid driver package
  * @throws Error if not a valid driver package
  */
-async function detectLocalPackage(): Promise<string> {
+async function detectLocalPackage(deps: SystemDependencies): Promise<string> {
   try {
-    const packageJsonPath = join(process.cwd(), 'package.json')
-    const packageJsonContent = await readFile(packageJsonPath, 'utf-8')
+    const packageJsonPath = join(deps.getCwd(), 'package.json')
+    const packageJsonContent = await deps.readFile(packageJsonPath, 'utf-8')
     const packageJson = JSON.parse(packageJsonContent) as {
       name?: string
       keywords?: string[]
     }
 
-    // Check if package has ya-modbus-driver keyword
     const keywords = packageJson.keywords ?? []
     if (!keywords.includes('ya-modbus-driver')) {
       throw new Error(
@@ -86,6 +149,9 @@ async function detectLocalPackage(): Promise<string> {
           'Run this command from a driver package directory or specify --driver'
       )
     }
+    if (error instanceof SyntaxError) {
+      throw new Error('Failed to parse package.json: invalid JSON')
+    }
     throw error
   }
 }
@@ -94,15 +160,16 @@ async function detectLocalPackage(): Promise<string> {
  * Try to import a module with multiple path attempts
  *
  * @param paths - Array of module paths to try
+ * @param deps - System dependencies
  * @returns Imported module
  * @throws Error if all paths fail
  */
-async function tryImport(paths: string[]): Promise<unknown> {
+async function tryImport(paths: string[], deps: SystemDependencies): Promise<unknown> {
   const errors: Error[] = []
 
   for (const path of paths) {
     try {
-      return await import(path)
+      return await deps.importModule(path)
     } catch (error) {
       errors.push(error as Error)
     }
@@ -123,54 +190,68 @@ async function tryImport(paths: string[]): Promise<unknown> {
  * Auto-detection checks for `ya-modbus-driver` keyword in package.json keywords.
  *
  * @example
- * // Auto-detect from current directory (preferred for CLI commands)
+ * // Auto-detect from current directory
  * const driver = await loadDriver({})
  *
  * // Load explicit package
  * const driver = await loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' })
  *
  * @param options - Loading options (defaults to local package detection)
+ * @param deps - System dependencies (for testing, uses Node.js built-ins by default)
  * @returns Loaded driver with createDriver function and optional configuration metadata
  * @throws Error if driver cannot be loaded or is invalid
  */
-export async function loadDriver(options: LoadDriverOptions = {}): Promise<LoadedDriver> {
-  const { driverPackage, localPackage } = options
-
-  // Validate that at most one option is provided
-  if (driverPackage && localPackage) {
-    throw new Error('Cannot specify both localPackage and driverPackage')
-  }
-
-  // Default to local package detection when nothing specified
-  const useLocalPackage = !driverPackage && (localPackage ?? true)
+export async function loadDriver(
+  options: LoadDriverOptions = {},
+  deps: SystemDependencies = defaultDeps
+): Promise<LoadedDriver> {
+  const { driverPackage } = options
 
   try {
+    let packageName: string
     let driverModule: unknown
 
-    if (useLocalPackage) {
-      // Auto-detect and load local package
-      const packageName = await detectLocalPackage()
+    if (driverPackage) {
+      packageName = driverPackage
 
-      // Try multiple import paths for local development
+      const cached = driverCache.get(packageName)
+      if (cached) {
+        cacheStats.hits++
+        return cached
+      }
+
+      cacheStats.misses++
+
+      try {
+        driverModule = await deps.importModule(driverPackage)
+      } catch {
+        throw new Error(
+          `Driver package not found: ${driverPackage}\nInstall it with: npm install ${driverPackage}`
+        )
+      }
+    } else {
+      packageName = await detectLocalPackage(deps)
+
+      const cached = driverCache.get(packageName)
+      if (cached) {
+        cacheStats.hits++
+        return cached
+      }
+
+      cacheStats.misses++
+
+      const cwd = deps.getCwd()
+
       const importPaths = [
-        join(process.cwd(), 'src', 'index.js'), // TypeScript compiled
-        join(process.cwd(), 'src', 'index.ts'), // TypeScript source
-        join(process.cwd(), 'dist', 'index.js'), // Built output
-        packageName, // Fallback to package name (if symlinked)
+        join(cwd, 'src', 'index.js'),
+        join(cwd, 'src', 'index.ts'),
+        join(cwd, 'dist', 'index.js'),
+        packageName,
       ]
 
-      driverModule = await tryImport(importPaths)
-    } else {
-      // Load explicit package (driverPackage is guaranteed to be defined here)
-      const pkg = driverPackage as string
-      try {
-        driverModule = await import(pkg)
-      } catch {
-        throw new Error(`Driver package not found: ${pkg}\nInstall it with: npm install ${pkg}`)
-      }
+      driverModule = await tryImport(importPaths, deps)
     }
 
-    // Validate that module exports createDriver
     if (!driverModule || typeof driverModule !== 'object') {
       throw new Error('Driver package must export a createDriver function')
     }
@@ -187,30 +268,25 @@ export async function loadDriver(options: LoadDriverOptions = {}): Promise<Loade
     }
 
     if (typeof createDriver !== 'function') {
-      throw new Error('createDriver must be a function')
+      throw new Error('Driver package must export a createDriver function')
     }
 
-    // Build result object conditionally to satisfy exactOptionalPropertyTypes
     const result: LoadedDriver = {
       createDriver: createDriver as CreateDriverFunction,
     }
 
-    // Validate and add DEVICES if present
     if (DEVICES !== null && DEVICES !== undefined) {
       result.devices = validateDevices(DEVICES)
     }
 
-    // Validate and add DEFAULT_CONFIG if present
     if (DEFAULT_CONFIG !== null && DEFAULT_CONFIG !== undefined) {
       result.defaultConfig = validateDefaultConfig(DEFAULT_CONFIG)
     }
 
-    // Validate and add SUPPORTED_CONFIG if present
     if (SUPPORTED_CONFIG !== null && SUPPORTED_CONFIG !== undefined) {
       result.supportedConfig = validateSupportedConfig(SUPPORTED_CONFIG)
     }
 
-    // Cross-validate DEFAULT_CONFIG against SUPPORTED_CONFIG if both are present
     if (result.defaultConfig && result.supportedConfig) {
       const warnings = crossValidateConfigs(result.defaultConfig, result.supportedConfig)
       if (warnings.length > 0) {
@@ -223,21 +299,24 @@ export async function loadDriver(options: LoadDriverOptions = {}): Promise<Loade
       }
     }
 
+    driverCache.set(packageName, result)
+
     return result
   } catch (error) {
-    // Re-throw our custom errors (they already have helpful messages)
     if (error instanceof Error) {
       const isCustomError =
         error.message.startsWith('Driver package') ||
         error.message.includes('ya-modbus driver') ||
         error.message.includes('package.json') ||
-        error.message.includes('createDriver')
+        error.message.includes('createDriver') ||
+        error.message.startsWith('Invalid DEFAULT_CONFIG') ||
+        error.message.startsWith('Invalid SUPPORTED_CONFIG') ||
+        error.message.startsWith('Invalid DEVICES')
 
       if (isCustomError) {
         throw error
       }
 
-      // Wrap unexpected errors
       throw new Error(`Failed to load driver: ${error.message}`)
     }
 

@@ -2,9 +2,8 @@
  * Validation utilities for CLI options using driver SUPPORTED_CONFIG
  */
 
+import type { LoadedDriver } from '@ya-modbus/driver-loader'
 import type { DataBits, Parity, StopBits, SupportedSerialConfig } from '@ya-modbus/driver-types'
-
-import type { LoadedDriver } from '../driver-loader/loader.js'
 
 /**
  * Validation error with helpful context
