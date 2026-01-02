@@ -263,6 +263,35 @@ describe('Driver Loader', () => {
       expect(mockDeps.importModule).toHaveBeenCalledTimes(1)
     })
 
+    test('should track cache statistics', async () => {
+      const { getDriverCacheStats } = await import('./loader.js')
+      const driverModule = { createDriver: jest.fn() }
+      mockDeps.importModule = jest.fn().mockResolvedValue(driverModule)
+
+      const statsBeforeLoad = getDriverCacheStats()
+      expect(statsBeforeLoad.hits).toBe(0)
+      expect(statsBeforeLoad.misses).toBe(0)
+      expect(statsBeforeLoad.size).toBe(0)
+
+      await loadDriver({ driverPackage: 'test-driver' }, mockDeps)
+      const statsAfterFirstLoad = getDriverCacheStats()
+      expect(statsAfterFirstLoad.hits).toBe(0)
+      expect(statsAfterFirstLoad.misses).toBe(1)
+      expect(statsAfterFirstLoad.size).toBe(1)
+
+      await loadDriver({ driverPackage: 'test-driver' }, mockDeps)
+      const statsAfterSecondLoad = getDriverCacheStats()
+      expect(statsAfterSecondLoad.hits).toBe(1)
+      expect(statsAfterSecondLoad.misses).toBe(1)
+      expect(statsAfterSecondLoad.size).toBe(1)
+
+      await loadDriver({ driverPackage: 'another-driver' }, mockDeps)
+      const statsAfterThirdLoad = getDriverCacheStats()
+      expect(statsAfterThirdLoad.hits).toBe(1)
+      expect(statsAfterThirdLoad.misses).toBe(2)
+      expect(statsAfterThirdLoad.size).toBe(2)
+    })
+
     test('should cache different drivers separately', async () => {
       const driver1 = { createDriver: jest.fn().mockImplementation(() => 'driver1') }
       const driver2 = { createDriver: jest.fn().mockImplementation(() => 'driver2') }

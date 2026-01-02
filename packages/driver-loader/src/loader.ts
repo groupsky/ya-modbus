@@ -66,9 +66,29 @@ const defaultDeps: SystemDependencies = {
 }
 
 /**
+ * Driver cache statistics
+ */
+export interface DriverCacheStats {
+  /** Number of cache hits */
+  hits: number
+  /** Number of cache misses */
+  misses: number
+  /** Number of cached drivers */
+  size: number
+}
+
+/**
  * LRU cache for loaded drivers
  */
 const driverCache = new Map<string, LoadedDriver>()
+
+/**
+ * Cache statistics
+ */
+const cacheStats = {
+  hits: 0,
+  misses: 0,
+}
 
 /**
  * Clear the driver cache
@@ -76,6 +96,20 @@ const driverCache = new Map<string, LoadedDriver>()
  */
 export function clearDriverCache(): void {
   driverCache.clear()
+  cacheStats.hits = 0
+  cacheStats.misses = 0
+}
+
+/**
+ * Get cache statistics
+ * @returns Current cache statistics including hits, misses, and size
+ */
+export function getDriverCacheStats(): DriverCacheStats {
+  return {
+    hits: cacheStats.hits,
+    misses: cacheStats.misses,
+    size: driverCache.size,
+  }
 }
 
 /**
@@ -182,8 +216,11 @@ export async function loadDriver(
 
       const cached = driverCache.get(packageName)
       if (cached) {
+        cacheStats.hits++
         return cached
       }
+
+      cacheStats.misses++
 
       try {
         driverModule = await deps.importModule(driverPackage)
@@ -197,8 +234,11 @@ export async function loadDriver(
 
       const cached = driverCache.get(packageName)
       if (cached) {
+        cacheStats.hits++
         return cached
       }
+
+      cacheStats.misses++
 
       const cwd = deps.getCwd()
 
