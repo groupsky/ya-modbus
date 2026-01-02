@@ -5,6 +5,7 @@
  * that use driver-loader.
  */
 
+import { jest } from '@jest/globals'
 import type {
   CreateDriverFunction,
   DefaultConfig,
