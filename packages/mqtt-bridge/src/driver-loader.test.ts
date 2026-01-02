@@ -779,4 +779,56 @@ describe('DriverLoader', () => {
       expect(driver).toBeUndefined()
     })
   })
+
+  describe('createMockTransport fallback', () => {
+    it('should use createMockTransport when no transport factory is provided', async () => {
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test Manufacturer',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
+      const mockImport = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
+
+      // Create loader without transport factory - will use createMockTransport
+      const loader = new DriverLoader(mockImport)
+
+      const connection: DeviceConnection = {
+        type: 'rtu',
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        slaveId: 1,
+      }
+
+      // Loading should succeed - createMockTransport is called
+      const driver = await loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
+      expect(driver).toBe(mockDriver)
+
+      // Verify createDriver was called with a transport
+      expect(mockCreateDriver).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slaveId: 1,
+          transport: expect.objectContaining({
+            readHoldingRegisters: expect.any(Function),
+            readInputRegisters: expect.any(Function),
+            close: expect.any(Function),
+          }),
+        })
+      )
+
+      // Get the transport that was passed to createDriver
+      const call = mockCreateDriver.mock.calls[0]
+      const transport = call?.[0]?.transport
+
+      // Try to use the mock transport - should throw error synchronously
+      expect(() => transport.readHoldingRegisters(0, 1)).toThrow(
+        'Transport factory not provided to DriverLoader'
+      )
+    })
+  })
 })

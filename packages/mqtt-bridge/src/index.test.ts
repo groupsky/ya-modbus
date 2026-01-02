@@ -6,6 +6,7 @@ import mqtt from 'mqtt'
 import { DeviceManager } from './device-manager.js'
 import { DriverLoader } from './driver-loader.js'
 import { PollingScheduler } from './polling-scheduler.js'
+import type { DeviceConfig } from './types.js'
 
 import { createBridge } from './index.js'
 
@@ -1095,6 +1096,271 @@ describe('createBridge', () => {
         status = bridge.getStatus()
         expect(status.deviceCount).toBe(1)
       })
+    })
+
+    describe('getDeviceConfig', () => {
+      it('should return device config', async () => {
+        const bridge = createBridge({
+          mqtt: {
+            url: 'mqtt://localhost:1883',
+          },
+        })
+        const startPromise = bridge.start()
+        emitEvent('connect')
+        await startPromise
+
+        const deviceConfig: DeviceConfig = {
+          deviceId: 'device1',
+          driver: 'ya-modbus-driver-test',
+          connection: {
+            type: 'rtu',
+            port: '/dev/ttyUSB0',
+            baudRate: 9600,
+            slaveId: 1,
+          },
+        }
+
+        const mockDeviceManager = new MockedDeviceManager()
+        mockDeviceManager.getDeviceConfig = jest.fn().mockReturnValue(deviceConfig)
+        MockedDeviceManager.mockReturnValue(mockDeviceManager as any)
+
+        const bridge2 = createBridge({
+          mqtt: {
+            url: 'mqtt://localhost:1883',
+          },
+        })
+
+        const config = bridge2.getDeviceConfig('device1')
+        expect(config).toEqual(deviceConfig)
+        expect(mockDeviceManager.getDeviceConfig).toHaveBeenCalledWith('device1')
+      })
+    })
+  })
+
+  describe('stop before start', () => {
+    it('should handle stop when never started', async () => {
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      // Stop without starting - client will be null
+      await expect(bridge.stop()).resolves.not.toThrow()
+
+      const status = bridge.getStatus()
+      expect(status.state).toBe('stopped')
+    })
+  })
+
+  describe('polling callbacks', () => {
+    it('should call handlePollingData and publish data', async () => {
+      let dataCallback: ((deviceId: string, data: Record<string, unknown>) => void) | undefined
+
+      MockedPollingScheduler.mockImplementation((onData) => {
+        dataCallback = onData as (deviceId: string, data: Record<string, unknown>) => void
+        return {
+          scheduleDevice: jest.fn(),
+          unscheduleDevice: jest.fn(),
+          start: jest.fn(),
+          stop: jest.fn(),
+          isScheduled: jest.fn(),
+        } as any
+      })
+
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      // Call the data callback
+      expect(dataCallback).toBeDefined()
+      const testData = { temperature: 25.5, humidity: 60 }
+      dataCallback!('device1', testData)
+
+      // Verify publish was called
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      expect(mockClient.publish).toHaveBeenCalledWith(
+        'modbus/device1/data',
+        expect.stringContaining('"deviceId":"device1"'),
+        expect.objectContaining({ qos: 0 }),
+        expect.any(Function)
+      )
+
+      const publishCall = (mockClient.publish as jest.Mock).mock.calls[0]
+      const payload = JSON.parse(publishCall[1] as string)
+      expect(payload.deviceId).toBe('device1')
+      expect(payload.data).toEqual(testData)
+      expect(payload.timestamp).toBeGreaterThan(0)
+    })
+
+    it('should call handlePollingError and update device state', async () => {
+      let errorCallback: ((deviceId: string, error: Error) => void) | undefined
+
+      const mockDeviceManager = new MockedDeviceManager()
+      MockedDeviceManager.mockReturnValue(mockDeviceManager as any)
+
+      MockedPollingScheduler.mockImplementation((onData, onError) => {
+        errorCallback = onError as (deviceId: string, error: Error) => void
+        return {
+          scheduleDevice: jest.fn(),
+          unscheduleDevice: jest.fn(),
+          start: jest.fn(),
+          stop: jest.fn(),
+          isScheduled: jest.fn(),
+        } as any
+      })
+
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      // Call the error callback
+      expect(errorCallback).toBeDefined()
+      const testError = new Error('Device communication failed')
+      errorCallback!('device1', testError)
+
+      // Verify updateDeviceState was called
+      expect(mockDeviceManager.updateDeviceState).toHaveBeenCalledWith(
+        'device1',
+        expect.objectContaining({
+          consecutiveFailures: expect.any(Number),
+          errors: ['Device communication failed'],
+        })
+      )
+    })
+
+    it('should handle publish error in data callback', async () => {
+      let dataCallback: ((deviceId: string, data: Record<string, unknown>) => void) | undefined
+
+      MockedPollingScheduler.mockImplementation((onData) => {
+        dataCallback = onData as (deviceId: string, data: Record<string, unknown>) => void
+        return {
+          scheduleDevice: jest.fn(),
+          unscheduleDevice: jest.fn(),
+          start: jest.fn(),
+          stop: jest.fn(),
+          isScheduled: jest.fn(),
+        } as any
+      })
+
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      // Make publish fail
+      mockClient.publish.mockImplementation((topic, payload, opts, cb) => {
+        if (cb) {
+          cb(new Error('Publish failed'))
+        }
+      })
+
+      // Call the data callback - should not throw
+      expect(dataCallback).toBeDefined()
+      expect(() => dataCallback!('device1', { test: 'data' })).not.toThrow()
+
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    })
+  })
+
+  describe('device scheduling', () => {
+    it('should schedule device when enabled is true', async () => {
+      const mockDriver = {
+        name: 'test-device',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      const mockDriverLoader = new MockedDriverLoader()
+      mockDriverLoader.getDriver = jest.fn().mockReturnValue(mockDriver)
+      MockedDriverLoader.mockReturnValue(mockDriverLoader as any)
+
+      const mockPollingScheduler = new MockedPollingScheduler()
+      MockedPollingScheduler.mockReturnValue(mockPollingScheduler as any)
+
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      const deviceConfig: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'ya-modbus-driver-test',
+        connection: {
+          type: 'rtu',
+          port: '/dev/ttyUSB0',
+          baudRate: 9600,
+          slaveId: 1,
+        },
+        enabled: true,
+      }
+
+      await bridge.addDevice(deviceConfig)
+
+      // Verify scheduleDevice was called
+      expect(mockPollingScheduler.scheduleDevice).toHaveBeenCalledWith(
+        'device1',
+        deviceConfig,
+        mockDriver
+      )
+    })
+
+    it('should not schedule device when enabled is false', async () => {
+      const mockPollingScheduler = new MockedPollingScheduler()
+      MockedPollingScheduler.mockReturnValue(mockPollingScheduler as any)
+
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      const deviceConfig: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'ya-modbus-driver-test',
+        connection: {
+          type: 'rtu',
+          port: '/dev/ttyUSB0',
+          baudRate: 9600,
+          slaveId: 1,
+        },
+        enabled: false,
+      }
+
+      await bridge.addDevice(deviceConfig)
+
+      // Verify scheduleDevice was NOT called
+      expect(mockPollingScheduler.scheduleDevice).not.toHaveBeenCalled()
     })
   })
 })

@@ -388,4 +388,172 @@ describe('PollingScheduler', () => {
       expect(scheduler.isScheduled('nonexistent')).toBe(false)
     })
   })
+
+  describe('edge cases', () => {
+    it('should handle stop when device has no active timer', () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 1000 },
+      }
+
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      // Schedule device but don't start scheduler - no timer will be set
+      scheduler.scheduleDevice('device1', config, driver)
+
+      // Stop should not throw even though device has no timer
+      expect(() => scheduler.stop()).not.toThrow()
+    })
+
+    it('should handle device being unscheduled before timer fires', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 1000 },
+      }
+
+      const mockReadDataPoints = jest.fn().mockResolvedValue({ temp: 25.5 })
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: mockReadDataPoints,
+      }
+
+      scheduler.scheduleDevice('device1', config, driver)
+      scheduler.start()
+
+      // Unschedule device before timer fires
+      scheduler.unscheduleDevice('device1')
+
+      // Advance time - timer should not fire because device was unscheduled
+      await jest.advanceTimersByTimeAsync(2000)
+      expect(mockReadDataPoints).not.toHaveBeenCalled()
+    })
+
+    it('should handle scheduler being stopped before timer fires', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 1000 },
+      }
+
+      const mockReadDataPoints = jest.fn().mockResolvedValue({ temp: 25.5 })
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: mockReadDataPoints,
+      }
+
+      scheduler.scheduleDevice('device1', config, driver)
+      scheduler.start()
+
+      // Stop scheduler before first poll
+      scheduler.stop()
+
+      // Advance time - timer should not fire because scheduler was stopped
+      await jest.advanceTimersByTimeAsync(2000)
+      expect(mockReadDataPoints).not.toHaveBeenCalled()
+    })
+
+    it('should handle device being removed during polling', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 100 },
+      }
+
+      let pollCount = 0
+      const mockReadDataPoints = jest.fn().mockImplementation(() => {
+        pollCount++
+        if (pollCount === 1) {
+          // Remove device during first poll
+          scheduler.unscheduleDevice('device1')
+        }
+        return Promise.resolve({ temp: 25.5 })
+      })
+
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: mockReadDataPoints,
+      }
+
+      scheduler.scheduleDevice('device1', config, driver)
+      scheduler.start()
+
+      // First poll should happen
+      await jest.advanceTimersByTimeAsync(100)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+
+      // Device was removed, so no second poll should happen
+      await jest.advanceTimersByTimeAsync(200)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not poll if scheduler stopped after scheduling next poll', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 100 },
+      }
+
+      let pollCount = 0
+      const mockReadDataPoints = jest.fn().mockImplementation(() => {
+        pollCount++
+        if (pollCount === 1) {
+          // Stop scheduler after first poll completes
+          // Next poll is already scheduled but shouldn't execute
+          scheduler.stop()
+        }
+        return Promise.resolve({ temp: 25.5 })
+      })
+
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: mockReadDataPoints,
+      }
+
+      scheduler.scheduleDevice('device1', config, driver)
+      scheduler.start()
+
+      // First poll should happen
+      await jest.advanceTimersByTimeAsync(100)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+
+      // Scheduler was stopped, so no second poll should happen
+      await jest.advanceTimersByTimeAsync(200)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+    })
+  })
 })

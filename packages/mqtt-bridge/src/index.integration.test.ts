@@ -398,7 +398,7 @@ describe('MQTT Bridge Integration Tests', () => {
       await withBridge(createTestBridgeConfig(broker), async (bridge) => {
         const deviceConfig = {
           deviceId: 'device1',
-          driver: 'test-driver',
+          driver: 'ya-modbus-driver-test',
           connection: {
             type: 'tcp' as const,
             host: 'localhost',
@@ -424,7 +424,7 @@ describe('MQTT Bridge Integration Tests', () => {
       await withBridge(createTestBridgeConfig(broker), async (bridge) => {
         const device1 = {
           deviceId: 'device1',
-          driver: 'driver1',
+          driver: 'ya-modbus-driver-test1',
           connection: {
             type: 'tcp' as const,
             host: 'localhost',
@@ -436,7 +436,7 @@ describe('MQTT Bridge Integration Tests', () => {
 
         const device2 = {
           deviceId: 'device2',
-          driver: 'driver2',
+          driver: 'ya-modbus-driver-test2',
           connection: {
             type: 'rtu' as const,
             port: '/dev/ttyUSB0',
