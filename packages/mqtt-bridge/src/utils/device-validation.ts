@@ -15,6 +15,17 @@ const deviceIdSchema = z
     message: 'Device ID must not contain MQTT special characters (+, #, /, $) or null character',
   })
 
+const driverNameSchema = z
+  .string()
+  .min(1, 'Driver name must not be empty')
+  .regex(/^ya-modbus-driver-[a-z0-9-]+$/, {
+    message:
+      'Driver must start with ya-modbus-driver- and contain only lowercase letters, numbers, and hyphens',
+  })
+  .refine((name) => !name.includes('..') && !name.includes('/') && !name.includes('\\'), {
+    message: 'Driver name cannot contain path separators',
+  })
+
 const rtuConnectionSchema = z.object({
   type: z.literal('rtu'),
   port: z.string().min(1),
@@ -32,11 +43,30 @@ const tcpConnectionSchema = z.object({
   slaveId: z.number().int().min(0).max(247),
 })
 
+const pollingConfigSchema = z
+  .object({
+    interval: z
+      .number()
+      .int()
+      .positive()
+      .min(100, 'Polling interval must be at least 100ms')
+      .max(86400000, 'Polling interval must not exceed 24 hours'),
+    maxRetries: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(100, 'Max retries should not exceed 100')
+      .optional(),
+    retryBackoff: z.number().int().positive().optional(),
+  })
+  .optional()
+
 export const deviceConfigSchema = z.object({
   deviceId: deviceIdSchema,
-  driver: z.string().min(1, 'Driver name must not be empty'),
+  driver: driverNameSchema,
   connection: z.union([rtuConnectionSchema, tcpConnectionSchema]),
   enabled: z.boolean().optional(),
+  polling: pollingConfigSchema,
 })
 
 export function validateDeviceConfig(config: unknown): void {

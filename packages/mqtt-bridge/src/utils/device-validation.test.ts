@@ -6,7 +6,7 @@ describe('validateDeviceConfig', () => {
   it('should validate valid TCP device config', () => {
     const config = {
       deviceId: 'device1',
-      driver: 'test-driver',
+      driver: 'ya-modbus-driver-test',
       connection: {
         type: 'tcp',
         host: 'localhost',
@@ -21,7 +21,7 @@ describe('validateDeviceConfig', () => {
   it('should validate valid RTU device config', () => {
     const config = {
       deviceId: 'device1',
-      driver: 'test-driver',
+      driver: 'ya-modbus-driver-test',
       connection: {
         type: 'rtu',
         port: '/dev/ttyUSB0',
@@ -39,7 +39,7 @@ describe('validateDeviceConfig', () => {
     invalidIds.forEach((deviceId) => {
       const config = {
         deviceId,
-        driver: 'test-driver',
+        driver: 'ya-modbus-driver-test',
         connection: {
           type: 'tcp',
           host: 'localhost',
@@ -56,7 +56,7 @@ describe('validateDeviceConfig', () => {
   it('should throw error for empty deviceId', () => {
     const config = {
       deviceId: '',
-      driver: 'test-driver',
+      driver: 'ya-modbus-driver-test',
       connection: {
         type: 'tcp',
         host: 'localhost',
@@ -83,15 +83,258 @@ describe('validateDeviceConfig', () => {
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
   })
 
+  it('should throw error for driver not starting with ya-modbus-driver-', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'malicious-driver',
+      connection: {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      },
+    }
+
+    expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
+    expect(() => validateDeviceConfig(config)).toThrow('must start with ya-modbus-driver-')
+  })
+
+  it('should throw error for driver with path traversal attempts', () => {
+    const invalidDrivers = [
+      '../../malicious-code',
+      'ya-modbus-driver-../evil',
+      'ya-modbus-driver-test/../../hack',
+      'ya-modbus-driver-test\\..\\evil',
+    ]
+
+    invalidDrivers.forEach((driver) => {
+      const config = {
+        deviceId: 'device1',
+        driver,
+        connection: {
+          type: 'tcp',
+          host: 'localhost',
+          port: 502,
+          slaveId: 1,
+        },
+      }
+
+      expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
+    })
+  })
+
+  it('should throw error for driver with uppercase letters', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-Test',
+      connection: {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      },
+    }
+
+    expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
+    expect(() => validateDeviceConfig(config)).toThrow('lowercase')
+  })
+
+  it('should accept driver with numbers and hyphens', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-sungrow-sh5k-20',
+      connection: {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      },
+    }
+
+    expect(() => validateDeviceConfig(config)).not.toThrow()
+  })
+
   it('should throw error for invalid slaveId', () => {
     const config = {
       deviceId: 'device1',
-      driver: 'test-driver',
+      driver: 'ya-modbus-driver-test',
       connection: {
         type: 'tcp',
         host: 'localhost',
         port: 502,
         slaveId: 300, // Out of range (max 247)
+      },
+    }
+
+    expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
+  })
+
+  it('should accept valid polling config', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      },
+      polling: {
+        interval: 5000,
+        maxRetries: 3,
+        retryBackoff: 10000,
+      },
+    }
+
+    expect(() => validateDeviceConfig(config)).not.toThrow()
+  })
+
+  it('should throw error for polling interval = 0', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      },
+      polling: {
+        interval: 0,
+      },
+    }
+
+    expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
+    expect(() => validateDeviceConfig(config)).toThrow('at least 100ms')
+  })
+
+  it('should throw error for negative polling interval', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      },
+      polling: {
+        interval: -1000,
+      },
+    }
+
+    expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
+  })
+
+  it('should throw error for polling interval below 100ms', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      },
+      polling: {
+        interval: 50,
+      },
+    }
+
+    expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
+    expect(() => validateDeviceConfig(config)).toThrow('at least 100ms')
+  })
+
+  it('should throw error for polling interval above 24 hours', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      },
+      polling: {
+        interval: 86400001, // Over 24 hours
+      },
+    }
+
+    expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
+    expect(() => validateDeviceConfig(config)).toThrow('24 hours')
+  })
+
+  it('should throw error for negative maxRetries', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      },
+      polling: {
+        interval: 5000,
+        maxRetries: -1,
+      },
+    }
+
+    expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
+  })
+
+  it('should throw error for maxRetries > 100', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      },
+      polling: {
+        interval: 5000,
+        maxRetries: 101,
+      },
+    }
+
+    expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
+    expect(() => validateDeviceConfig(config)).toThrow('not exceed 100')
+  })
+
+  it('should throw error for negative retryBackoff', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      },
+      polling: {
+        interval: 5000,
+        retryBackoff: -1000,
+      },
+    }
+
+    expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
+  })
+
+  it('should throw error for zero retryBackoff', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      },
+      polling: {
+        interval: 5000,
+        retryBackoff: 0,
       },
     }
 
