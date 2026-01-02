@@ -29,5 +29,8 @@
     "build": "tsc --build",
     "clean": "rm -rf dist",
     "test": "jest"
+  },
+  "dependencies": {
+    "modbus-serial": "^8.0.23"
   }
 }

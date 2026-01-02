@@ -131,15 +131,41 @@ describe('ModbusEmulator', () => {
   describe('request handling', () => {
     it('should handle requests through transport', async () => {
       emulator = new ModbusEmulator({ transport: 'memory' })
+      emulator.addDevice({
+        slaveId: 1,
+        registers: {
+          holding: { 0: 100 },
+        },
+      })
       await emulator.start()
 
       const transport = emulator.getTransport()
       const request = Buffer.from([0x01, 0x03, 0x00, 0x00, 0x00, 0x01])
 
-      // For now, emulator just echoes back the request
       // @ts-expect-error - accessing protected method for testing
       const response = await transport.sendRequest(1, request)
-      expect(response).toEqual(request)
+
+      // Should return valid Modbus response
+      expect(response[0]).toBe(0x01) // Slave ID
+      expect(response[1]).toBe(0x03) // Function code
+      expect(response[2]).toBe(0x02) // Byte count
+      expect(response.readUInt16BE(3)).toBe(100) // Register value
+    })
+
+    it('should return exception for non-existent device', async () => {
+      emulator = new ModbusEmulator({ transport: 'memory' })
+      await emulator.start()
+
+      const transport = emulator.getTransport()
+      const request = Buffer.from([0x01, 0x03, 0x00, 0x00, 0x00, 0x01])
+
+      // @ts-expect-error - accessing protected method for testing
+      const response = await transport.sendRequest(1, request)
+
+      // Should return exception response
+      expect(response[0]).toBe(0x01) // Slave ID
+      expect(response[1]).toBe(0x83) // Function code with error bit
+      expect(response[2]).toBe(0x0b) // Gateway Target Device Failed to Respond
     })
   })
 })

@@ -45,9 +45,22 @@ export class ModbusEmulator {
   }
 
   private handleRequest(slaveId: number, request: Buffer): Promise<Buffer> {
-    // For now, just echo back the request
-    // TODO: Implement function code handlers
-    return Promise.resolve(request)
+    // Get the device for this slave ID
+    const device = this.devices.get(slaveId)
+
+    if (!device) {
+      // No device found - return exception
+      const response = Buffer.alloc(3)
+      response[0] = slaveId
+      response[1] = request.length > 1 ? request[1] | 0x80 : 0x80
+      response[2] = 0x0b // Gateway Target Device Failed to Respond
+      return Promise.resolve(response)
+    }
+
+    // Import dynamically to avoid circular dependency issues
+    return import('./behaviors/function-codes.js').then(({ handleModbusRequest }) => {
+      return handleModbusRequest(device, request)
+    })
   }
 
   getTransport(): BaseTransport {
