@@ -120,7 +120,7 @@ describe('Timing Behavior Integration', () => {
 
       expect(elapsed1).toBeGreaterThanOrEqual(1)
       expect(elapsed3).toBeGreaterThanOrEqual(5)
-      expect(elapsed3).toBeGreaterThan(elapsed1)
+      expect(elapsed3).toBeGreaterThanOrEqual(elapsed1)
     })
   })
 

@@ -1,43 +1,56 @@
-# Emulator Package - Development Guide
+# @ya-modbus/emulator
 
 Software Modbus device emulator for testing drivers without physical hardware.
 
-## Purpose
+## Required Pre-Task Checklist
 
-Simulate realistic Modbus devices with configurable behaviors (timing, constraints, errors) to enable:
+BEFORE making ANY changes to this package:
 
-- Testing device drivers without hardware
-- Simulating edge cases and error conditions
-- Accelerating test cycles with deterministic behavior
-- Supporting driver development workflows
+1. IDENTIFY your task type from the list below
+2. READ the corresponding documentation file COMPLETELY
+3. VERIFY you understand the requirements
+4. BEGIN implementation
 
-## Key Concepts
+Reading task-specific documentation prevents implementation errors and ensures alignment with project patterns.
 
-- **Realistic timing**: Simulates polling intervals, processing delays, transmission delays
-- **Register constraints**: Forbidden ranges, batch size limits
-- **Error injection**: Timeouts, CRC errors, exceptions
-- **Multiple transports**: TCP, RTU (virtual/real serial), Memory (for unit tests)
-- **Custom function codes**: Support vendor-specific Modbus extensions
+---
 
-## Architecture
+## Required Reading by Task
 
-Core classes:
+**BEFORE writing ANY test:**
+→ READ ../../docs/agents/testing.md (TDD, behavior tests, mocking)
 
-- `ModbusEmulator`: Main emulator managing devices and transport
-- `EmulatedDevice`: Individual device with registers and behaviors
-- Transport implementations: BaseTransport → TcpTransport, RtuTransport, MemoryTransport
-- Behavior modules: Timing, Constraints, Errors, FunctionCodes
+**BEFORE writing ANY production code:**
+→ READ ../../docs/agents/code-quality.md (DRY, KISS, file limits)
 
-## Testing
+**BEFORE making ANY changes (commits, branches, PRs):**
+→ READ ../../docs/agents/git.md (Branching, commits, PRs)
 
-- TDD approach: Write tests first, then implement
-- Unit tests: Core logic (register storage, timing calculations, constraints)
-- Integration tests: End-to-end communication scenarios
-- Target: 95% coverage across all metrics
+**BEFORE fixing a bug:**
+→ READ ../../docs/agents/bug-fixing.md (Root cause, regression tests)
 
-## Common Tasks
+**BEFORE refactoring code:**
+→ READ ../../docs/agents/refactoring.md (Coverage, safe patterns)
 
-- Adding new function codes: Extend function-codes.ts handlers
-- Transport implementation: Extend BaseTransport abstract class
-- Behavior modification: Update timing.ts, constraints.ts, errors.ts
-- Test patterns: See plan for test structure examples
+**BEFORE updating dependencies:**
+→ READ ../../docs/agents/dependencies.md (Semver, breaking changes)
+
+**For architecture questions:**
+→ READ ../../docs/ARCHITECTURE.md
+
+---
+
+## Package-Specific Guidelines
+
+**Architecture**: Transport abstraction (BaseTransport), device management (EmulatedDevice), behavior composition (timing, function codes)
+
+**Testing**: TDD required. Co-located tests (\*.test.ts). Integration tests for end-to-end scenarios.
+
+**Implementation Plan**: See docs/emulator-implementation-plan.md for phased development approach
+
+**Key Files**:
+
+- src/emulator.ts - Main emulator class
+- src/device.ts - Device with register storage
+- src/transports/ - Transport implementations
+- src/behaviors/ - Timing, function codes
