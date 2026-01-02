@@ -50,6 +50,64 @@ Loads a ya-modbus driver package and validates its exports.
 - Error if driver exports are invalid
 - Error if configuration validation fails
 
+### `clearDriverCache(): void`
+
+Clears the driver cache. Useful for testing or when you need to reload drivers.
+
+### `getDriverCacheStats(): DriverCacheStats`
+
+Returns cache statistics including hits, misses, and current cache size.
+
+**Returns:**
+
+- `DriverCacheStats` object containing:
+  - `hits`: Number of cache hits
+  - `misses`: Number of cache misses
+  - `size`: Number of cached drivers
+
+## Testing Utilities
+
+The package provides testing utilities for applications using driver-loader.
+
+```typescript
+import { createMockDriver, mockSystemDeps } from '@ya-modbus/driver-loader/testing'
+
+// Create a mock driver
+const mockDriver = createMockDriver({
+  defaultConfig: { baudRate: 9600 },
+  devices: { test: { manufacturer: 'Test', model: 'Model' } },
+})
+
+// Create mock system dependencies
+const deps = mockSystemDeps({
+  importModule: jest.fn().mockResolvedValue(mockDriver),
+})
+
+// Use with loadDriver in tests
+const driver = await loadDriver({ driverPackage: 'test-driver' }, deps)
+```
+
+### `createMockDriver(options?: MockDriverOptions): LoadedDriver`
+
+Creates a mock driver for testing.
+
+**Options:**
+
+- `createDriver`: Custom createDriver implementation (default: jest.fn())
+- `defaultConfig`: Mock default configuration
+- `supportedConfig`: Mock supported configuration
+- `devices`: Mock device registry
+
+### `mockSystemDeps(options?: MockSystemDepsOptions): SystemDependencies`
+
+Creates mock system dependencies for testing.
+
+**Options:**
+
+- `readFile`: Custom readFile implementation
+- `importModule`: Custom importModule implementation
+- `getCwd`: Custom getCwd implementation (default: '/mock/cwd')
+
 ## License
 
 GPL-3.0-or-later
