@@ -1,0 +1,34 @@
+# Multiple devices on same bus
+# Usage: ya-modbus-emulator --config multi-device.yaml
+
+transport:
+  type: rtu
+  port: /dev/pts/10
+  baudRate: 9600
+
+devices:
+  # Power meter (slave 1)
+  - slaveId: 1
+    registers:
+      holding:
+        0: 230 # Voltage
+        1: 52 # Current
+    timing:
+      pollingInterval: 10
+
+  # Temperature sensor (slave 2)
+  - slaveId: 2
+    registers:
+      input:
+        0: 250 # Temperature * 10
+        1: 60 # Humidity
+    timing:
+      pollingInterval: 20
+
+  # Relay controller (slave 3)
+  - slaveId: 3
+    registers:
+      coils:
+        0: false # Relay 1 OFF
+        1: false # Relay 2 OFF
+        2: true # Relay 3 ON

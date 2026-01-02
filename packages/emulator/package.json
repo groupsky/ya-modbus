@@ -1,0 +1,45 @@
+{
+  "name": "@ya-modbus/emulator",
+  "version": "0.0.0",
+  "description": "Software Modbus device emulator for testing drivers without physical hardware",
+  "keywords": [
+    "modbus",
+    "emulator",
+    "testing",
+    "simulation"
+  ],
+  "author": "Geno Roupsky <185580+groupsky@users.noreply.github.com>",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "ya-modbus-emulator": "./bin/ya-modbus-emulator.js"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/groupsky/ya-modbus.git",
+    "directory": "packages/emulator"
+  },
+  "homepage": "https://github.com/groupsky/ya-modbus/tree/main/packages/emulator#readme",
+  "bugs": {
+    "url": "https://github.com/groupsky/ya-modbus/issues"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist",
+    "test": "jest"
+  },
+  "dependencies": {
+    "modbus-serial": "^8.0.23",
+    "commander": "^12.1.0",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9"
+  }
+}
