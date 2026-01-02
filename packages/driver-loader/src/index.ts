@@ -4,6 +4,7 @@ export type {
   LoadDriverOptions,
   SystemDependencies,
   DriverCacheStats,
+  Logger,
 } from './loader.js'
 export {
   validateDefaultConfig,
@@ -11,3 +12,4 @@ export {
   validateDevices,
   crossValidateConfigs,
 } from './config-validator.js'
+export { ValidationError, DriverNotFoundError, PackageJsonError } from './errors.js'
