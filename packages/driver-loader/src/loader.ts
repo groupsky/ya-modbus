@@ -10,10 +10,12 @@ import type {
 
 import {
   crossValidateConfigs,
+  outputConfigWarnings,
   validateDefaultConfig,
   validateDevices,
   validateSupportedConfig,
 } from './config-validator.js'
+import { DriverNotFoundError, PackageJsonError, ValidationError } from './errors.js'
 
 /**
  * Loaded driver module with configuration metadata
@@ -33,7 +35,49 @@ export interface LoadedDriver {
 }
 
 /**
+ * Logger interface for driver loading
+ *
+ * @example
+ * ```typescript
+ * import { loadDriver, type Logger } from '@ya-modbus/driver-loader'
+ *
+ * const logger: Logger = {
+ *   warn: (msg) => console.warn('[DRIVER]', msg),
+ *   debug: (msg) => console.debug('[DRIVER]', msg), // Optional
+ * }
+ *
+ * const driver = await loadDriver({ logger })
+ * ```
+ */
+export interface Logger {
+  /** Log warning messages */
+  warn: (message: string) => void
+  /** Log debug messages (optional) */
+  debug?: (message: string) => void
+}
+
+/**
  * Driver loading options
+ *
+ * @example
+ * ```typescript
+ * import { loadDriver } from '@ya-modbus/driver-loader'
+ *
+ * // Auto-detect from current directory
+ * const driver1 = await loadDriver({})
+ *
+ * // Load specific package
+ * const driver2 = await loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' })
+ *
+ * // With custom logger
+ * const driver3 = await loadDriver({
+ *   driverPackage: 'my-driver',
+ *   logger: {
+ *     warn: (msg) => console.warn('[WARN]', msg),
+ *     debug: (msg) => console.debug('[DEBUG]', msg),
+ *   }
+ * })
+ * ```
  */
 export interface LoadDriverOptions {
   /**
@@ -41,6 +85,12 @@ export interface LoadDriverOptions {
    * e.g., 'ya-modbus-driver-xymd1' or '@org/driver-pkg'
    */
   driverPackage?: string
+
+  /**
+   * Custom logger for warnings and debug messages
+   * Defaults to console if not provided
+   */
+  logger?: Logger
 }
 
 /**
@@ -130,7 +180,7 @@ async function detectLocalPackage(deps: SystemDependencies): Promise<string> {
 
     const keywords = packageJson.keywords ?? []
     if (!keywords.includes('ya-modbus-driver')) {
-      throw new Error(
+      throw new PackageJsonError(
         'Current package is not a ya-modbus driver. ' +
           'Add "ya-modbus-driver" to keywords in package.json'
       )
@@ -138,19 +188,19 @@ async function detectLocalPackage(deps: SystemDependencies): Promise<string> {
 
     const name = packageJson.name
     if (!name) {
-      throw new Error('package.json must have a "name" field')
+      throw new PackageJsonError('package.json must have a "name" field')
     }
 
     return name
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      throw new Error(
+      throw new PackageJsonError(
         'package.json not found in current directory. ' +
           'Run this command from a driver package directory or specify --driver'
       )
     }
     if (error instanceof SyntaxError) {
-      throw new Error('Failed to parse package.json: invalid JSON')
+      throw new PackageJsonError('Failed to parse package.json: invalid JSON')
     }
     throw error
   }
@@ -175,8 +225,10 @@ async function tryImport(paths: string[], deps: SystemDependencies): Promise<unk
     }
   }
 
+  const lastError = errors[errors.length - 1]
   throw new Error(
-    `Failed to import module from any path. Tried: ${paths.join(', ')}\nLast error: ${errors[errors.length - 1]?.message}`
+    `Failed to import module from any path. Tried: ${paths.join(', ')}\nLast error: ${lastError?.message}`,
+    { cause: lastError }
   )
 }
 
@@ -205,7 +257,7 @@ export async function loadDriver(
   options: LoadDriverOptions = {},
   deps: SystemDependencies = defaultDeps
 ): Promise<LoadedDriver> {
-  const { driverPackage } = options
+  const { driverPackage, logger = console } = options
 
   try {
     let packageName: string
@@ -225,8 +277,9 @@ export async function loadDriver(
       try {
         driverModule = await deps.importModule(driverPackage)
       } catch {
-        throw new Error(
-          `Driver package not found: ${driverPackage}\nInstall it with: npm install ${driverPackage}`
+        throw new DriverNotFoundError(
+          `Driver package not found: ${driverPackage}\nInstall it with: npm install ${driverPackage}`,
+          driverPackage
         )
       }
     } else {
@@ -253,7 +306,10 @@ export async function loadDriver(
     }
 
     if (!driverModule || typeof driverModule !== 'object') {
-      throw new Error('Driver package must export a createDriver function')
+      throw new ValidationError(
+        'Driver package must export a createDriver function',
+        'createDriver'
+      )
     }
 
     const { createDriver, DEVICES, DEFAULT_CONFIG, SUPPORTED_CONFIG } = driverModule as {
@@ -264,11 +320,17 @@ export async function loadDriver(
     }
 
     if (!createDriver) {
-      throw new Error('Driver package must export a createDriver function')
+      throw new ValidationError(
+        'Driver package must export a createDriver function',
+        'createDriver'
+      )
     }
 
     if (typeof createDriver !== 'function') {
-      throw new Error('Driver package must export a createDriver function')
+      throw new ValidationError(
+        'Driver package must export a createDriver function',
+        'createDriver'
+      )
     }
 
     const result: LoadedDriver = {
@@ -276,7 +338,7 @@ export async function loadDriver(
     }
 
     if (DEVICES !== null && DEVICES !== undefined) {
-      result.devices = validateDevices(DEVICES)
+      result.devices = validateDevices(DEVICES, logger)
     }
 
     if (DEFAULT_CONFIG !== null && DEFAULT_CONFIG !== undefined) {
@@ -290,12 +352,7 @@ export async function loadDriver(
     if (result.defaultConfig && result.supportedConfig) {
       const warnings = crossValidateConfigs(result.defaultConfig, result.supportedConfig)
       if (warnings.length > 0) {
-        console.warn('\nWarning: Driver DEFAULT_CONFIG has inconsistencies:')
-        for (const warning of warnings) {
-          console.warn(`  - ${warning}`)
-        }
-        console.warn('  This may indicate a driver authoring error\n')
-        console.warn('Run: ya-modbus show-defaults --driver <package> to inspect configuration\n')
+        outputConfigWarnings('Driver DEFAULT_CONFIG', warnings, logger)
       }
     }
 
@@ -303,21 +360,16 @@ export async function loadDriver(
 
     return result
   } catch (error) {
+    if (
+      error instanceof ValidationError ||
+      error instanceof DriverNotFoundError ||
+      error instanceof PackageJsonError
+    ) {
+      throw error
+    }
+
     if (error instanceof Error) {
-      const isCustomError =
-        error.message.startsWith('Driver package') ||
-        error.message.includes('ya-modbus driver') ||
-        error.message.includes('package.json') ||
-        error.message.includes('createDriver') ||
-        error.message.startsWith('Invalid DEFAULT_CONFIG') ||
-        error.message.startsWith('Invalid SUPPORTED_CONFIG') ||
-        error.message.startsWith('Invalid DEVICES')
-
-      if (isCustomError) {
-        throw error
-      }
-
-      throw new Error(`Failed to load driver: ${error.message}`)
+      throw new Error(`Failed to load driver: ${error.message}`, { cause: error })
     }
 
     throw new Error('Failed to load driver: Unknown error')
