@@ -43,6 +43,8 @@ program
 
 program.parse()
 
+// Type assertion needed for TypeScript strict mode with noUncheckedIndexedAccess
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 const options = program.opts() as CliOptions
 
 /**
