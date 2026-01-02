@@ -608,116 +608,28 @@ interface MemoryTransportConfig {
    - Baud rate formula
    - Frame size detection
 
-### Phase 3: Register Constraints (TDD)
+### Phase 3: TCP and RTU Transports (TDD)
+
+**Status: NEXT - Critical for v0.1.0 release**
+
+**Enables real network/serial communication**
 
 **Tests first:**
 
-1. **Test**: Forbidden read ranges
-   - Single register in forbidden range
-   - Multi-register spanning forbidden range
-   - Multi-register not touching forbidden range
-   - Exception codes
-
-2. **Implement**: `ForbiddenRangeChecker` class
-   - Range overlap detection
-   - Exception generation
-
-3. **Test**: Forbidden write ranges
-   - Same test cases as read
-   - Different ranges for read vs write
-
-4. **Implement**: Write range checking
-   - Integration with write operations
-
-5. **Test**: Batch size limits
-   - Exact limit (should pass)
-   - Over limit (should fail)
-   - Different limits per operation type
-
-6. **Implement**: Batch size validation
-   - Pre-operation checks
-   - Configurable limits
-
-### Phase 4: Custom Function Codes (TDD)
-
-**Tests first:**
-
-1. **Test**: Custom handler registration
-   - Add custom handler
-   - Replace standard handler
-   - Invalid code rejection
-
-2. **Implement**: Function code registry
-   - Handler storage
-   - Dispatch logic
-
-3. **Test**: Custom handler execution
-   - Request parsing
-   - Response building
-   - Exception handling
-
-4. **Implement**: Handler execution
-   - Buffer passing
-   - Response validation
-
-### Phase 5: Error Simulation (TDD)
-
-**Tests first:**
-
-1. **Test**: Timeout simulation
-   - Probability-based
-   - Forced timeout
-   - No response sent
-
-2. **Implement**: Timeout behavior
-   - Random check
-   - Response suppression
-
-3. **Test**: CRC error simulation
-   - Corrupted response
-   - Probability-based
-   - Forced CRC error
-
-4. **Implement**: CRC corruption
-   - Response modification
-   - CRC recalculation (incorrect)
-
-5. **Test**: Exception injection
-   - Random exceptions
-   - Forced exceptions
-   - Correct exception codes
-
-6. **Implement**: Exception injection
-   - Probability check
-   - Exception response building
-
-### Phase 6: Transport Implementations (TDD)
-
-**Tests first:**
-
-1. **Test**: Memory transport
-   - Send/receive
-   - Multiple devices
-   - Instant responses
-
-2. **Implement**: `MemoryTransport` class
-   - In-memory buffer passing
-   - Device routing
-
-3. **Test**: TCP transport (using modbus-serial)
+1. **Test**: TCP transport (using modbus-serial)
    - Server listen
    - Client connect
    - Multiple connections
    - Connection close
    - Request/response handling
 
-4. **Implement**: `TcpTransport` class
+2. **Implement**: `TcpTransport` class
    - Wrap modbus-serial TCP server
    - Bridge modbus-serial to emulator device layer
    - Connection management
    - Request routing to correct device
 
-5. **Test**: RTU transport (using modbus-serial)
+3. **Test**: RTU transport (using modbus-serial)
    - **Unit tests**: Integration with modbus-serial
    - **Integration tests with virtual serial ports**:
      - Serial port communication
@@ -725,7 +637,7 @@ interface MemoryTransportConfig {
      - Multiple device routing
    - **Manual testing with real serial ports** (optional, for hardware validation)
 
-6. **Implement**: `RtuTransport` class
+4. **Implement**: `RtuTransport` class
    - Wrap modbus-serial RTU server
    - Bridge modbus-serial to emulator device layer
    - Serial port configuration
@@ -733,7 +645,9 @@ interface MemoryTransportConfig {
 
 **Note**: Using `modbus-serial` eliminates need for custom CRC, framing, and protocol implementation. Focus on bridging modbus-serial's request/response model to emulator's device simulation layer.
 
-### Phase 7: CLI Implementation (TDD)
+### Phase 4: CLI Implementation (TDD)
+
+**Status: Critical for v0.1.0 release**
 
 **Tests first:**
 
@@ -776,7 +690,125 @@ interface MemoryTransportConfig {
    - Request logging
    - Error scenarios
 
-### Phase 8: Integration & Documentation
+### Phase 5: Basic Documentation & v0.1.0 Release
+
+**Status: First usable release**
+
+1. **README.md**:
+   - Installation instructions
+   - Quick start example (CLI)
+   - Basic configuration (YAML/JSON)
+   - Command-line options reference
+
+2. **Basic examples**:
+   - `examples/basic-tcp.yaml` - Simple TCP emulator
+   - `examples/basic-rtu.yaml` - Simple RTU emulator
+   - `examples/power-meter.yaml` - Realistic power meter
+
+3. **Package.json**:
+   - Add `bin` entry for CLI
+   - Update version to 0.1.0
+   - Verify dependencies
+
+4. **Release checklist**:
+   - All tests passing
+   - Linting clean
+   - README complete
+   - Examples working
+   - Package installable globally
+
+### Phase 6: Register Constraints (TDD)
+
+**Status: Enhancement for v0.2.0**
+
+**Tests first:**
+
+1. **Test**: Forbidden read ranges
+   - Single register in forbidden range
+   - Multi-register spanning forbidden range
+   - Multi-register not touching forbidden range
+   - Exception codes
+
+2. **Implement**: `ForbiddenRangeChecker` class
+   - Range overlap detection
+   - Exception generation
+
+3. **Test**: Forbidden write ranges
+   - Same test cases as read
+   - Different ranges for read vs write
+
+4. **Implement**: Write range checking
+   - Integration with write operations
+
+5. **Test**: Batch size limits
+   - Exact limit (should pass)
+   - Over limit (should fail)
+   - Different limits per operation type
+
+6. **Implement**: Batch size validation
+   - Pre-operation checks
+   - Configurable limits
+
+### Phase 7: Custom Function Codes (TDD)
+
+**Status: Enhancement for v0.2.0**
+
+**Tests first:**
+
+1. **Test**: Custom handler registration
+   - Add custom handler
+   - Replace standard handler
+   - Invalid code rejection
+
+2. **Implement**: Function code registry
+   - Handler storage
+   - Dispatch logic
+
+3. **Test**: Custom handler execution
+   - Request parsing
+   - Response building
+   - Exception handling
+
+4. **Implement**: Handler execution
+   - Buffer passing
+   - Response validation
+
+### Phase 8: Error Simulation (TDD)
+
+**Status: Enhancement for v0.2.0**
+
+**Tests first:**
+
+1. **Test**: Timeout simulation
+   - Probability-based
+   - Forced timeout
+   - No response sent
+
+2. **Implement**: Timeout behavior
+   - Random check
+   - Response suppression
+
+3. **Test**: CRC error simulation
+   - Corrupted response
+   - Probability-based
+   - Forced CRC error
+
+4. **Implement**: CRC corruption
+   - Response modification
+   - CRC recalculation (incorrect)
+
+5. **Test**: Exception injection
+   - Random exceptions
+   - Forced exceptions
+   - Correct exception codes
+
+6. **Implement**: Exception injection
+   - Probability check
+   - Exception response building
+
+### Phase 9: Advanced Documentation & Examples
+
+**Status: v1.0.0 production ready**
 
 1. **Integration tests**:
    - End-to-end workflows
@@ -1628,18 +1660,61 @@ None - emulator is standalone
 
 ## Implementation Roadmap
 
+**Status: Phase 2 Complete (2/9 phases)**
+
 **Not providing timeline estimates per project guidelines - focus on deliverables:**
 
-### Core Phases
+### Core Phases (Reordered for First Release)
 
-- **Phase 1**: Core infrastructure (emulator, devices, basic function codes, memory transport)
-- **Phase 2**: Timing behaviors (all delay types)
-- **Phase 3**: Register constraints (forbidden ranges, limits)
-- **Phase 4**: Custom function codes
-- **Phase 5**: Error simulation
-- **Phase 6**: TCP and RTU transports (using modbus-serial)
-- **Phase 7**: CLI implementation (commander, config loading, logging)
-- **Phase 8**: Integration, documentation, and examples
+- **Phase 1**: ✅ **COMPLETED** - Core infrastructure (emulator, devices, basic function codes, memory transport)
+  - Commit: e8bd41b
+  - 68 tests passing, 99%+ coverage
+  - EmulatedDevice, ModbusEmulator, MemoryTransport
+  - Function codes: 0x03, 0x04, 0x06, 0x10
+
+- **Phase 2**: ✅ **COMPLETED** - Timing behaviors (all delay types)
+  - Commit: 7c1c345
+  - 116 tests passing, 99.5% statements, 98.8% branches
+  - Command detection, processing, transmission delays
+  - Functional programming, dependency injection
+
+- **Phase 3**: TCP and RTU transports (using modbus-serial)
+  - NEXT: Critical for first release
+  - TCP transport for network communication
+  - RTU transport for serial communication
+  - Integration with modbus-serial library
+
+- **Phase 4**: CLI implementation (commander, config loading, logging)
+  - Critical for first release
+  - Command-line interface
+  - YAML/JSON config file support
+  - Request/response logging
+
+- **Phase 5**: Basic documentation & v0.1.0 release
+  - First usable release
+  - README with CLI usage
+  - Basic examples
+  - Installation instructions
+
+- **Phase 6**: Register constraints (forbidden ranges, limits)
+  - Enhancement: Realistic device limitations
+  - Forbidden read/write ranges
+  - Batch size limits
+
+- **Phase 7**: Custom function codes
+  - Enhancement: Vendor-specific extensions
+  - Custom handler registration
+  - Function code dispatch
+
+- **Phase 8**: Error simulation
+  - Enhancement: Fault injection testing
+  - Timeout, CRC error simulation
+  - Exception injection
+
+- **Phase 9**: Advanced documentation & examples
+  - Comprehensive examples
+  - Integration patterns
+  - Testing best practices
 
 ### Completion Criteria
 
@@ -1652,6 +1727,22 @@ Each phase completes when:
 
 ### Key Milestones
 
-1. **MVP** (Phases 1-3): Basic emulator with memory transport, realistic timing, constraints
-2. **Network-ready** (Phase 6): TCP transport for remote testing
-3. **Production-ready** (Phases 7-8): CLI interface, full documentation, examples
+1. **v0.1.0 - First Release** (Phases 1-5): Working CLI emulator with TCP/RTU support
+   - ✅ Core infrastructure
+   - ✅ Timing behaviors
+   - 🔄 TCP/RTU transports
+   - ⏳ CLI interface
+   - ⏳ Basic documentation
+   - **Goal**: Users can run `ya-modbus-emulator --config device.yaml` and test against it
+
+2. **v0.2.0 - Enhanced Realism** (Phases 6-8): Advanced device simulation
+   - Register constraints
+   - Custom function codes
+   - Error simulation
+   - **Goal**: Comprehensive device behavior testing
+
+3. **v1.0.0 - Production Ready** (Phase 9): Complete package
+   - Advanced examples
+   - Integration guides
+   - Performance testing
+   - **Goal**: Production-grade testing tool
