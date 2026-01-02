@@ -57,16 +57,18 @@ export interface RTUConnection {
   port: string
   baudRate: number
   slaveId: number
-  parity?: 'none' | 'even' | 'odd'
-  dataBits?: 7 | 8
-  stopBits?: 1 | 2
+  parity: 'none' | 'even' | 'odd'
+  dataBits: 7 | 8
+  stopBits: 1 | 2
+  timeout?: number
 }
 
 export interface TCPConnection {
   type: 'tcp'
   host: string
-  port: number
+  port?: number
   slaveId: number
+  timeout?: number
 }
 
 export interface DeviceStatus {

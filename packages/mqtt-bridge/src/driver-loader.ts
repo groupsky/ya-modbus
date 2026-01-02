@@ -1,26 +1,25 @@
-import type { DeviceDriver, CreateDriverFunction, Transport } from '@ya-modbus/driver-types'
+import { loadDriver as loadDriverPackage } from '@ya-modbus/driver-loader'
+import type { DeviceDriver, Transport } from '@ya-modbus/driver-types'
+import { createTransport, type TransportConfig } from '@ya-modbus/transport'
 
 import type { DeviceConnection } from './types.js'
 
-type ImportFunction = (packageName: string) => Promise<{ createDriver: CreateDriverFunction }>
-type TransportFactory = (connection: DeviceConnection) => Transport
+type LoadDriverFunction = typeof loadDriverPackage
+type TransportFactory = (connection: DeviceConnection) => Promise<Transport>
 
 /**
  * Manages dynamic loading and lifecycle of device drivers
  */
 export class DriverLoader {
-  private driverFactories = new Map<string, CreateDriverFunction>()
   private driverInstances = new Map<string, DeviceDriver>()
   private transports = new Map<string, Transport>()
-  private factoryRefCounts = new Map<string, number>()
   private devicePackages = new Map<string, string>()
-  private importFn: ImportFunction
+  private loadDriverFn: LoadDriverFunction
   private transportFactory: TransportFactory
 
-  constructor(importFn?: ImportFunction, transportFactory?: TransportFactory) {
-    this.importFn =
-      importFn ?? ((pkg: string) => import(pkg) as Promise<{ createDriver: CreateDriverFunction }>)
-    this.transportFactory = transportFactory ?? this.createMockTransport.bind(this)
+  constructor(loadDriverFn?: LoadDriverFunction, transportFactory?: TransportFactory) {
+    this.loadDriverFn = loadDriverFn ?? loadDriverPackage
+    this.transportFactory = transportFactory ?? this.createDefaultTransport.bind(this)
   }
 
   /**
@@ -44,34 +43,15 @@ export class DriverLoader {
       throw new Error('Invalid driver package name: path traversal not allowed')
     }
 
-    // Load driver factory if not already loaded
-    if (!this.driverFactories.has(packageName)) {
-      try {
-        // Dynamic import of driver package
-        const driverModule = await this.importFn(packageName)
+    // Load driver package using driver-loader
+    const loadedDriver = await this.loadDriverFn({ driverPackage: packageName })
 
-        if (typeof driverModule.createDriver !== 'function') {
-          throw new Error(`Driver package ${packageName} does not export createDriver function`)
-        }
-
-        this.driverFactories.set(packageName, driverModule.createDriver)
-      } catch (error) {
-        throw new Error(
-          `Failed to load driver package ${packageName}: ${error instanceof Error ? error.message : String(error)}`
-        )
-      }
-    }
-
-    // Create driver instance
-    const createDriver = this.driverFactories.get(packageName)
-    if (!createDriver) {
-      throw new Error(`Driver factory for ${packageName} not found`)
-    }
-
-    const transport = this.transportFactory(connection)
+    // Create transport
+    const transport = await this.transportFactory(connection)
 
     try {
-      const driver = await createDriver({
+      // Create driver instance
+      const driver = await loadedDriver.createDriver({
         transport,
         slaveId: connection.slaveId,
       })
@@ -86,10 +66,6 @@ export class DriverLoader {
         this.driverInstances.set(deviceId, driver)
         this.transports.set(deviceId, transport)
         this.devicePackages.set(deviceId, packageName)
-
-        // Increment factory reference count
-        const refCount = this.factoryRefCounts.get(packageName) ?? 0
-        this.factoryRefCounts.set(packageName, refCount + 1)
       }
 
       return driver
@@ -108,7 +84,6 @@ export class DriverLoader {
   async unloadDriver(deviceId: string): Promise<void> {
     const driver = this.driverInstances.get(deviceId)
     const transport = this.transports.get(deviceId)
-    const packageName = this.devicePackages.get(deviceId)
 
     try {
       if (driver) {
@@ -125,21 +100,7 @@ export class DriverLoader {
         this.transports.delete(deviceId)
       }
 
-      // Decrement factory reference count and cleanup if no longer used
-      if (packageName) {
-        this.devicePackages.delete(deviceId)
-
-        const refCount = this.factoryRefCounts.get(packageName) ?? 0
-        const newRefCount = refCount - 1
-
-        if (newRefCount <= 0) {
-          // No more devices using this factory, remove it
-          this.driverFactories.delete(packageName)
-          this.factoryRefCounts.delete(packageName)
-        } else {
-          this.factoryRefCounts.set(packageName, newRefCount)
-        }
-      }
+      this.devicePackages.delete(deviceId)
     }
   }
 
@@ -154,24 +115,29 @@ export class DriverLoader {
   }
 
   /**
-   * Create a mock transport that throws errors
-   * This is a fallback when no transport factory is provided
+   * Create a transport using the transport package
+   * Converts DeviceConnection to TransportConfig
    */
-  private createMockTransport(_connection: DeviceConnection): Transport {
-    const notImplemented = (): never => {
-      throw new Error('Transport factory not provided to DriverLoader')
-    }
+  private async createDefaultTransport(connection: DeviceConnection): Promise<Transport> {
+    // Convert DeviceConnection to TransportConfig
+    const config: TransportConfig =
+      connection.type === 'rtu'
+        ? {
+            port: connection.port,
+            baudRate: connection.baudRate,
+            dataBits: connection.dataBits,
+            parity: connection.parity,
+            stopBits: connection.stopBits,
+            slaveId: connection.slaveId,
+            timeout: connection.timeout,
+          }
+        : {
+            host: connection.host,
+            port: connection.port,
+            slaveId: connection.slaveId,
+            timeout: connection.timeout,
+          }
 
-    return {
-      readHoldingRegisters: notImplemented,
-      readInputRegisters: notImplemented,
-      readCoils: notImplemented,
-      readDiscreteInputs: notImplemented,
-      writeSingleRegister: notImplemented,
-      writeMultipleRegisters: notImplemented,
-      writeSingleCoil: notImplemented,
-      writeMultipleCoils: notImplemented,
-      close: notImplemented,
-    }
+    return createTransport(config)
   }
 }
