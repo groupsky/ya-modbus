@@ -1,17 +1,26 @@
-import { describe, it, expect, beforeEach } from '@jest/globals'
+import { describe, it, expect, beforeEach, jest } from '@jest/globals'
+import type { DeviceDriver } from '@ya-modbus/driver-types'
 
 import { DeviceManager } from './device-manager.js'
+import { DriverLoader } from './driver-loader.js'
 import type { DeviceConfig } from './types.js'
 
 describe('DeviceManager', () => {
   let manager: DeviceManager
+  let mockDriverLoader: jest.Mocked<DriverLoader>
 
   beforeEach(() => {
-    manager = new DeviceManager()
+    mockDriverLoader = {
+      loadDriver: jest.fn(),
+      unloadDriver: jest.fn(),
+      getDriver: jest.fn(),
+    } as unknown as jest.Mocked<DriverLoader>
+
+    manager = new DeviceManager(mockDriverLoader)
   })
 
   describe('addDevice', () => {
-    it('should add a new device', () => {
+    it('should add a new device', async () => {
       const config: DeviceConfig = {
         deviceId: 'device1',
         driver: 'ya-modbus-driver-test',
@@ -23,17 +32,34 @@ describe('DeviceManager', () => {
         },
       }
 
-      manager.addDevice(config)
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      mockDriverLoader.loadDriver.mockResolvedValue(mockDriver)
+
+      await manager.addDevice(config)
 
       const device = manager.getDevice('device1')
       expect(device).toBeDefined()
       expect(device?.deviceId).toBe('device1')
-      expect(device?.state).toBe('initializing')
+      expect(device?.state).toBe('connected')
       expect(device?.enabled).toBe(true)
-      expect(device?.connected).toBe(false)
+      expect(device?.connected).toBe(true)
+      expect(mockDriverLoader.loadDriver).toHaveBeenCalledWith(
+        'ya-modbus-driver-test',
+        config.connection,
+        'device1'
+      )
     })
 
-    it('should add device with enabled=false', () => {
+    it('should add device with enabled=false and not load driver', async () => {
       const config: DeviceConfig = {
         deviceId: 'device1',
         driver: 'ya-modbus-driver-test',
@@ -46,13 +72,15 @@ describe('DeviceManager', () => {
         enabled: false,
       }
 
-      manager.addDevice(config)
+      await manager.addDevice(config)
 
       const device = manager.getDevice('device1')
       expect(device?.enabled).toBe(false)
+      expect(device?.state).toBe('disconnected')
+      expect(mockDriverLoader.loadDriver).not.toHaveBeenCalled()
     })
 
-    it('should throw error if device already exists', () => {
+    it('should throw error if device already exists', async () => {
       const config: DeviceConfig = {
         deviceId: 'device1',
         driver: 'ya-modbus-driver-test',
@@ -64,14 +92,84 @@ describe('DeviceManager', () => {
         },
       }
 
-      manager.addDevice(config)
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
 
-      expect(() => manager.addDevice(config)).toThrow('Device device1 already exists')
+      mockDriverLoader.loadDriver.mockResolvedValue(mockDriver)
+
+      await manager.addDevice(config)
+
+      await expect(manager.addDevice(config)).rejects.toThrow('Device device1 already exists')
+    })
+
+    it('should handle driver loading errors and clean up device state', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'ya-modbus-driver-test',
+        connection: {
+          type: 'rtu',
+          port: '/dev/ttyUSB0',
+          baudRate: 9600,
+          slaveId: 1,
+        },
+      }
+
+      mockDriverLoader.loadDriver.mockRejectedValue(new Error('Failed to load driver'))
+
+      await expect(manager.addDevice(config)).rejects.toThrow('Failed to load driver')
+
+      // Device should be completely removed to allow retry
+      const device = manager.getDevice('device1')
+      expect(device).toBeUndefined()
+    })
+
+    it('should allow retry after driver loading failure', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'ya-modbus-driver-test',
+        connection: {
+          type: 'rtu',
+          port: '/dev/ttyUSB0',
+          baudRate: 9600,
+          slaveId: 1,
+        },
+      }
+
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      // First attempt fails
+      mockDriverLoader.loadDriver.mockRejectedValueOnce(new Error('Failed to load driver'))
+
+      await expect(manager.addDevice(config)).rejects.toThrow('Failed to load driver')
+
+      // Second attempt succeeds
+      mockDriverLoader.loadDriver.mockResolvedValueOnce(mockDriver)
+
+      await manager.addDevice(config)
+
+      const device = manager.getDevice('device1')
+      expect(device).toBeDefined()
+      expect(device?.state).toBe('connected')
     })
   })
 
   describe('removeDevice', () => {
-    it('should remove an existing device', () => {
+    it('should remove an existing device and unload driver', async () => {
       const config: DeviceConfig = {
         deviceId: 'device1',
         driver: 'ya-modbus-driver-test',
@@ -83,20 +181,35 @@ describe('DeviceManager', () => {
         },
       }
 
-      manager.addDevice(config)
-      manager.removeDevice('device1')
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      mockDriverLoader.loadDriver.mockResolvedValue(mockDriver)
+
+      await manager.addDevice(config)
+      await manager.removeDevice('device1')
 
       const device = manager.getDevice('device1')
       expect(device).toBeUndefined()
+      expect(mockDriverLoader.unloadDriver).toHaveBeenCalledWith('device1')
     })
 
-    it('should throw error if device not found', () => {
-      expect(() => manager.removeDevice('nonexistent')).toThrow('Device nonexistent not found')
+    it('should throw error if device not found', async () => {
+      await expect(manager.removeDevice('nonexistent')).rejects.toThrow(
+        'Device nonexistent not found'
+      )
     })
   })
 
   describe('getDevice', () => {
-    it('should return device status', () => {
+    it('should return device status', async () => {
       const config: DeviceConfig = {
         deviceId: 'device1',
         driver: 'ya-modbus-driver-test',
@@ -108,7 +221,19 @@ describe('DeviceManager', () => {
         },
       }
 
-      manager.addDevice(config)
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      mockDriverLoader.loadDriver.mockResolvedValue(mockDriver)
+
+      await manager.addDevice(config)
 
       const device = manager.getDevice('device1')
       expect(device).toBeDefined()
@@ -127,7 +252,7 @@ describe('DeviceManager', () => {
       expect(devices).toEqual([])
     })
 
-    it('should return all devices', () => {
+    it('should return all devices', async () => {
       const config1: DeviceConfig = {
         deviceId: 'device1',
         driver: 'ya-modbus-driver-test',
@@ -150,8 +275,20 @@ describe('DeviceManager', () => {
         },
       }
 
-      manager.addDevice(config1)
-      manager.addDevice(config2)
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      mockDriverLoader.loadDriver.mockResolvedValue(mockDriver)
+
+      await manager.addDevice(config1)
+      await manager.addDevice(config2)
 
       const devices = manager.listDevices()
       expect(devices).toHaveLength(2)
@@ -165,7 +302,7 @@ describe('DeviceManager', () => {
       expect(manager.getDeviceCount()).toBe(0)
     })
 
-    it('should return correct count', () => {
+    it('should return correct count', async () => {
       const config: DeviceConfig = {
         deviceId: 'device1',
         driver: 'ya-modbus-driver-test',
@@ -177,13 +314,25 @@ describe('DeviceManager', () => {
         },
       }
 
-      manager.addDevice(config)
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      mockDriverLoader.loadDriver.mockResolvedValue(mockDriver)
+
+      await manager.addDevice(config)
       expect(manager.getDeviceCount()).toBe(1)
     })
   })
 
   describe('updateDeviceState', () => {
-    it('should update device state', () => {
+    it('should update device state', async () => {
       const config: DeviceConfig = {
         deviceId: 'device1',
         driver: 'ya-modbus-driver-test',
@@ -193,17 +342,18 @@ describe('DeviceManager', () => {
           baudRate: 9600,
           slaveId: 1,
         },
+        enabled: false,
       }
 
-      manager.addDevice(config)
+      await manager.addDevice(config)
       manager.updateDeviceState('device1', {
-        state: 'running',
+        state: 'connected',
         connected: true,
         lastUpdate: Date.now(),
       })
 
       const device = manager.getDevice('device1')
-      expect(device?.state).toBe('running')
+      expect(device?.state).toBe('connected')
       expect(device?.connected).toBe(true)
       expect(device?.lastUpdate).toBeDefined()
     })
@@ -211,14 +361,14 @@ describe('DeviceManager', () => {
     it('should throw error if device not found', () => {
       expect(() =>
         manager.updateDeviceState('nonexistent', {
-          state: 'running',
+          state: 'connected',
         })
       ).toThrow('Device nonexistent not found')
     })
   })
 
   describe('clear', () => {
-    it('should remove all devices', () => {
+    it('should remove all devices', async () => {
       const config: DeviceConfig = {
         deviceId: 'device1',
         driver: 'ya-modbus-driver-test',
@@ -230,11 +380,61 @@ describe('DeviceManager', () => {
         },
       }
 
-      manager.addDevice(config)
-      manager.clear()
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      mockDriverLoader.loadDriver.mockResolvedValue(mockDriver)
+
+      await manager.addDevice(config)
+      await manager.clear()
 
       expect(manager.getDeviceCount()).toBe(0)
       expect(manager.listDevices()).toEqual([])
+      expect(mockDriverLoader.unloadDriver).toHaveBeenCalledWith('device1')
+    })
+  })
+
+  describe('getDeviceConfig', () => {
+    it('should return device config if it exists', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'ya-modbus-driver-test',
+        connection: {
+          type: 'rtu',
+          port: '/dev/ttyUSB0',
+          baudRate: 9600,
+          slaveId: 1,
+        },
+      }
+
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      mockDriverLoader.loadDriver.mockResolvedValue(mockDriver)
+
+      await manager.addDevice(config)
+
+      const deviceConfig = manager.getDeviceConfig('device1')
+      expect(deviceConfig).toEqual(config)
+    })
+
+    it('should return undefined if device config does not exist', () => {
+      const deviceConfig = manager.getDeviceConfig('nonexistent')
+      expect(deviceConfig).toBeUndefined()
     })
   })
 })

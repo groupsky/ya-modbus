@@ -36,11 +36,18 @@ export interface MqttMessage {
 
 export type MessageHandler = (message: MqttMessage) => void
 
+export interface PollingConfig {
+  interval: number
+  maxRetries?: number
+  retryBackoff?: number
+}
+
 export interface DeviceConfig {
   deviceId: string
   driver: string
   connection: DeviceConnection
   enabled?: boolean
+  polling?: PollingConfig
 }
 
 export type DeviceConnection = RTUConnection | TCPConnection
@@ -50,24 +57,28 @@ export interface RTUConnection {
   port: string
   baudRate: number
   slaveId: number
-  parity?: 'none' | 'even' | 'odd'
-  dataBits?: 7 | 8
-  stopBits?: 1 | 2
+  parity: 'none' | 'even' | 'odd'
+  dataBits: 7 | 8
+  stopBits: 1 | 2
+  timeout?: number
 }
 
 export interface TCPConnection {
   type: 'tcp'
   host: string
-  port: number
+  port?: number
   slaveId: number
+  timeout?: number
 }
 
 export interface DeviceStatus {
   deviceId: string
-  state: 'initializing' | 'running' | 'stopped' | 'error'
+  state: 'connecting' | 'connected' | 'disconnected' | 'error'
   enabled: boolean
   connected: boolean
   lastUpdate?: number
+  lastPoll?: number
+  consecutiveFailures?: number
   errors?: string[]
 }
 
@@ -82,4 +93,5 @@ export interface MqttBridge {
   removeDevice(deviceId: string): Promise<void>
   getDevice(deviceId: string): DeviceStatus | undefined
   listDevices(): DeviceStatus[]
+  getDeviceConfig(deviceId: string): DeviceConfig | undefined
 }
