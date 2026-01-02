@@ -145,6 +145,8 @@ See `examples/config-files/` for more examples.
 
 ### Testing with Virtual Serial Ports
 
+> **⚠️ Note**: RTU transport is currently a placeholder for v0.1.0. Serial port communication will be implemented in v0.2.0. Use the memory transport for testing in this version.
+
 For testing without physical hardware, create virtual serial port pairs:
 
 **Linux/macOS** (using socat):
@@ -190,9 +192,10 @@ emulator.addDevice({
 
 ### Register Constraints
 
-Define forbidden ranges and batch size limits:
+> **🚧 Planned for v0.2.0**: Define forbidden ranges and batch size limits
 
 ```typescript
+// Coming in v0.2.0
 emulator.addDevice({
   slaveId: 1,
   constraints: {
@@ -205,9 +208,10 @@ emulator.addDevice({
 
 ### Error Simulation
 
-Inject errors for testing error handling:
+> **🚧 Planned for v0.2.0**: Inject errors for testing error handling
 
 ```typescript
+// Coming in v0.2.0
 emulator.addDevice({
   slaveId: 1,
   errors: {

@@ -6,6 +6,24 @@ import { TimingSimulator } from './behaviors/timing.js'
 import type { DeviceConfig } from './types/config.js'
 import type { EmulatedDevice as IEmulatedDevice } from './types/device.js'
 
+// Modbus register address and value ranges
+const MIN_REGISTER_ADDRESS = 0
+const MAX_REGISTER_ADDRESS = 65535
+const MIN_REGISTER_VALUE = 0
+const MAX_REGISTER_VALUE = 65535
+
+function validateRegisterAddress(address: number): void {
+  if (address < MIN_REGISTER_ADDRESS || address > MAX_REGISTER_ADDRESS) {
+    throw new Error(`Register address ${address} out of range (0-65535)`)
+  }
+}
+
+function validateRegisterValue(value: number, address: number): void {
+  if (value < MIN_REGISTER_VALUE || value > MAX_REGISTER_VALUE) {
+    throw new Error(`Register value ${value} at address ${address} out of range (0-65535)`)
+  }
+}
+
 export class EmulatedDevice implements IEmulatedDevice {
   public readonly slaveId: number
   private holdingRegisters: Map<number, number> = new Map()
@@ -25,13 +43,19 @@ export class EmulatedDevice implements IEmulatedDevice {
     // Initialize registers from config
     if (config.registers?.holding) {
       for (const [address, value] of Object.entries(config.registers.holding)) {
-        this.holdingRegisters.set(Number(address), value)
+        const addr = Number(address)
+        validateRegisterAddress(addr)
+        validateRegisterValue(value, addr)
+        this.holdingRegisters.set(addr, value)
       }
     }
 
     if (config.registers?.input) {
       for (const [address, value] of Object.entries(config.registers.input)) {
-        this.inputRegisters.set(Number(address), value)
+        const addr = Number(address)
+        validateRegisterAddress(addr)
+        validateRegisterValue(value, addr)
+        this.inputRegisters.set(addr, value)
       }
     }
 
@@ -53,6 +77,8 @@ export class EmulatedDevice implements IEmulatedDevice {
   }
 
   setHoldingRegister(address: number, value: number): void {
+    validateRegisterAddress(address)
+    validateRegisterValue(value, address)
     this.holdingRegisters.set(address, value)
   }
 
@@ -61,6 +87,8 @@ export class EmulatedDevice implements IEmulatedDevice {
   }
 
   setInputRegister(address: number, value: number): void {
+    validateRegisterAddress(address)
+    validateRegisterValue(value, address)
     this.inputRegisters.set(address, value)
   }
 
