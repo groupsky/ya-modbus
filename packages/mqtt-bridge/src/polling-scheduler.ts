@@ -76,7 +76,7 @@ export class PollingScheduler {
     for (const device of this.devices.values()) {
       if (device.timer) {
         clearTimeout(device.timer)
-        device.timer = undefined
+        delete device.timer
       }
     }
   }

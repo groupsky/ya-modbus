@@ -1,8 +1,21 @@
 import { describe, it, expect, jest } from '@jest/globals'
-import type { DeviceDriver, CreateDriverFunction } from '@ya-modbus/driver-types'
+import type { DeviceDriver, CreateDriverFunction, Transport } from '@ya-modbus/driver-types'
 
 import { DriverLoader } from './driver-loader.js'
 import type { DeviceConnection } from './types.js'
+
+// Mock transport factory for tests
+const mockTransportFactory = (_connection: DeviceConnection): Transport => ({
+  readHoldingRegisters: jest.fn().mockResolvedValue(Buffer.alloc(0)),
+  readInputRegisters: jest.fn().mockResolvedValue(Buffer.alloc(0)),
+  readCoils: jest.fn().mockResolvedValue(Buffer.alloc(0)),
+  readDiscreteInputs: jest.fn().mockResolvedValue(Buffer.alloc(0)),
+  writeSingleRegister: jest.fn().mockResolvedValue(undefined),
+  writeMultipleRegisters: jest.fn().mockResolvedValue(undefined),
+  writeSingleCoil: jest.fn().mockResolvedValue(undefined),
+  writeMultipleCoils: jest.fn().mockResolvedValue(undefined),
+  close: jest.fn().mockResolvedValue(undefined),
+})
 
 describe('DriverLoader', () => {
   describe('constructor', () => {
@@ -13,7 +26,7 @@ describe('DriverLoader', () => {
 
     it('should create instance with custom import function', () => {
       const mockImport = jest.fn()
-      const loader = new DriverLoader(mockImport)
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
       expect(loader).toBeInstanceOf(DriverLoader)
     })
   })
@@ -33,7 +46,7 @@ describe('DriverLoader', () => {
       const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
       const mockImport = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
 
-      const loader = new DriverLoader(mockImport)
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
 
       const connection: DeviceConnection = {
         type: 'rtu',
@@ -77,7 +90,7 @@ describe('DriverLoader', () => {
 
       const mockImport = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
 
-      const loader = new DriverLoader(mockImport)
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
 
       const connection: DeviceConnection = {
         type: 'rtu',
@@ -96,7 +109,7 @@ describe('DriverLoader', () => {
 
     it('should throw error if driver package not found', async () => {
       const mockImport = jest.fn().mockRejectedValue(new Error('Cannot find module'))
-      const loader = new DriverLoader(mockImport)
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
 
       const connection: DeviceConnection = {
         type: 'tcp',
@@ -112,7 +125,7 @@ describe('DriverLoader', () => {
 
     it('should throw error if driver does not export createDriver', async () => {
       const mockImport = jest.fn().mockResolvedValue({})
-      const loader = new DriverLoader(mockImport)
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
 
       const connection: DeviceConnection = {
         type: 'rtu',
@@ -142,7 +155,7 @@ describe('DriverLoader', () => {
       const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
       const mockImport = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
 
-      const loader = new DriverLoader(mockImport)
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
 
       const connection: DeviceConnection = {
         type: 'rtu',
@@ -170,7 +183,7 @@ describe('DriverLoader', () => {
       const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
       const mockImport = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
 
-      const loader = new DriverLoader(mockImport)
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
 
       const connection: DeviceConnection = {
         type: 'tcp',
@@ -182,19 +195,17 @@ describe('DriverLoader', () => {
       const driver = await loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
 
       expect(driver).toBe(mockDriver)
-      expect(mockCreateDriver).toHaveBeenCalledWith({
-        transport: {
-          type: 'tcp',
-          host: '192.168.1.100',
-          port: 502,
-        },
-        slaveId: 1,
-      })
+      expect(mockCreateDriver).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slaveId: 1,
+          transport: expect.any(Object),
+        })
+      )
     })
 
     it('should handle non-Error exceptions during driver loading', async () => {
       const mockImport = jest.fn().mockRejectedValue('String error')
-      const loader = new DriverLoader(mockImport)
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
 
       const connection: DeviceConnection = {
         type: 'rtu',
@@ -222,7 +233,7 @@ describe('DriverLoader', () => {
       const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
       const mockImport = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
 
-      const loader = new DriverLoader(mockImport)
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
 
       const connection: DeviceConnection = {
         type: 'rtu',
@@ -255,7 +266,7 @@ describe('DriverLoader', () => {
       const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
       const mockImport = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
 
-      const loader = new DriverLoader(mockImport)
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
 
       const connection: DeviceConnection = {
         type: 'rtu',
@@ -284,7 +295,7 @@ describe('DriverLoader', () => {
       const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
       const mockImport = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
 
-      const loader = new DriverLoader(mockImport)
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
 
       const connection: DeviceConnection = {
         type: 'rtu',
@@ -320,7 +331,7 @@ describe('DriverLoader', () => {
       const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
       const mockImport = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
 
-      const loader = new DriverLoader(mockImport)
+      const loader = new DriverLoader(mockImport, mockTransportFactory)
 
       const connection: DeviceConnection = {
         type: 'rtu',

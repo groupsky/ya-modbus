@@ -3,6 +3,7 @@ import type { DeviceDriver, CreateDriverFunction, Transport } from '@ya-modbus/d
 import type { DeviceConnection } from './types.js'
 
 type ImportFunction = (packageName: string) => Promise<{ createDriver: CreateDriverFunction }>
+type TransportFactory = (connection: DeviceConnection) => Transport
 
 /**
  * Manages dynamic loading and lifecycle of device drivers
@@ -11,10 +12,12 @@ export class DriverLoader {
   private driverFactories = new Map<string, CreateDriverFunction>()
   private driverInstances = new Map<string, DeviceDriver>()
   private importFn: ImportFunction
+  private transportFactory: TransportFactory
 
-  constructor(importFn?: ImportFunction) {
+  constructor(importFn?: ImportFunction, transportFactory?: TransportFactory) {
     this.importFn =
       importFn ?? ((pkg: string) => import(pkg) as Promise<{ createDriver: CreateDriverFunction }>)
+    this.transportFactory = transportFactory ?? this.createMockTransport.bind(this)
   }
 
   /**
@@ -54,7 +57,7 @@ export class DriverLoader {
       throw new Error(`Driver factory for ${packageName} not found`)
     }
 
-    const transport = this.createTransport(connection)
+    const transport = this.transportFactory(connection)
 
     const driver = await createDriver({
       transport,
@@ -102,24 +105,24 @@ export class DriverLoader {
   }
 
   /**
-   * Create a transport instance from connection configuration
+   * Create a mock transport that throws errors
+   * This is a fallback when no transport factory is provided
    */
-  private createTransport(connection: DeviceConnection): Transport {
-    if (connection.type === 'rtu') {
-      return {
-        type: 'rtu',
-        path: connection.port,
-        baudRate: connection.baudRate,
-        parity: connection.parity ?? 'none',
-        dataBits: connection.dataBits ?? 8,
-        stopBits: connection.stopBits ?? 1,
-      }
-    } else {
-      return {
-        type: 'tcp',
-        host: connection.host,
-        port: connection.port,
-      }
+  private createMockTransport(_connection: DeviceConnection): Transport {
+    const notImplemented = (): never => {
+      throw new Error('Transport factory not provided to DriverLoader')
+    }
+
+    return {
+      readHoldingRegisters: notImplemented,
+      readInputRegisters: notImplemented,
+      readCoils: notImplemented,
+      readDiscreteInputs: notImplemented,
+      writeSingleRegister: notImplemented,
+      writeMultipleRegisters: notImplemented,
+      writeSingleCoil: notImplemented,
+      writeMultipleCoils: notImplemented,
+      close: notImplemented,
     }
   }
 }
