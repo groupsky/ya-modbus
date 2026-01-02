@@ -48,6 +48,128 @@ await emulator.start()
 await emulator.stop()
 ```
 
+## CLI Usage
+
+The emulator can be used from the command line for quick testing:
+
+### Basic Usage
+
+```bash
+# Start with config file
+ya-modbus-emulator --config config.yaml
+
+# Or specify parameters directly
+ya-modbus-emulator --transport rtu --port /dev/ttyUSB0 --slave-id 1
+```
+
+### Command Line Options
+
+```
+Options:
+  -c, --config <file>      Configuration file (YAML or JSON)
+  -t, --transport <type>   Transport type: tcp|rtu|memory
+  -p, --port <port>        TCP port number or serial port path
+  -H, --host <host>        TCP host address (default: 0.0.0.0)
+  -b, --baud-rate <rate>   Serial baud rate (default: 9600)
+  --parity <type>          Serial parity: none|even|odd (default: none)
+  -s, --slave-id <id>      Slave ID (required if no config file)
+  -v, --verbose            Enable verbose logging
+  -q, --quiet              Suppress all output except errors
+  --log-requests           Log all Modbus requests/responses
+  -V, --version            output the version number
+  -h, --help               display help for command
+```
+
+### Configuration Files
+
+Create a YAML or JSON configuration file to define devices and behaviors:
+
+**Basic RTU Example** (`basic-rtu.yaml`):
+
+```yaml
+transport:
+  type: rtu
+  port: /dev/ttyUSB0
+  baudRate: 9600
+  parity: none
+
+devices:
+  - slaveId: 1
+    registers:
+      holding:
+        0: 230 # Voltage * 10 = 23.0V
+        1: 52 # Current * 10 = 5.2A
+```
+
+**Power Meter with Timing** (`power-meter.yaml`):
+
+```yaml
+transport:
+  type: rtu
+  port: /dev/ttyUSB0
+
+devices:
+  - slaveId: 1
+    registers:
+      holding:
+        0: 2300 # Voltage * 10 = 230.0V
+        1: 52 # Current * 10 = 5.2A
+        2: 11960 # Power = 1196W
+    timing:
+      pollingInterval: 10
+      commandDetectionDelay: [3, 8]
+      processingDelay: [2, 5]
+      perRegisterDelay: 0.1
+```
+
+**Multiple Devices** (`multi-device.yaml`):
+
+```yaml
+transport:
+  type: rtu
+  port: /dev/ttyUSB0
+
+devices:
+  - slaveId: 1
+    registers:
+      holding: { 0: 100, 1: 200 }
+  - slaveId: 2
+    registers:
+      holding: { 0: 300, 1: 400 }
+  - slaveId: 3
+    registers:
+      holding: { 0: 500, 1: 600 }
+```
+
+See `examples/config-files/` for more examples.
+
+### Testing with Virtual Serial Ports
+
+For testing without physical hardware, create virtual serial port pairs:
+
+**Linux/macOS** (using socat):
+
+```bash
+# Terminal 1: Create virtual serial port pair
+socat -d -d pty,raw,echo=0 pty,raw,echo=0
+# Note the output: /dev/pts/3 <-> /dev/pts/4
+
+# Terminal 2: Start emulator on first port
+ya-modbus-emulator --transport rtu --port /dev/pts/3 --slave-id 1
+
+# Terminal 3: Run your driver tests against second port
+node test-driver.js --port /dev/pts/4
+```
+
+**Windows** (using com0com):
+
+1. Install [com0com](https://sourceforge.net/projects/com0com/)
+2. Create a pair: COM10 <-> COM11
+3. Start emulator: `ya-modbus-emulator --transport rtu --port COM10 --slave-id 1`
+4. Run tests: `node test-driver.js --port COM11`
+
+See `examples/virtual-serial-test.md` for detailed virtual serial port testing guide.
+
 ## Configuration
 
 ### Timing Behaviors
