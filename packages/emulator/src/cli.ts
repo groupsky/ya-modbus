@@ -151,12 +151,9 @@ async function main(): Promise<void> {
   }
 }
 
-// Only run if this is the main module
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((error) => {
-    console.error('[ERROR]', error instanceof Error ? error.message : String(error))
-    process.exit(1)
-  })
-}
+main().catch((error) => {
+  console.error('[ERROR]', error instanceof Error ? error.message : String(error))
+  process.exit(1)
+})
 
 export { main }
