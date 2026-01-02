@@ -1,13 +1,13 @@
 import readline from 'readline/promises'
 
 import type { DeviceDriver, Transport } from '@ya-modbus/driver-types'
+import * as transportFactory from '@ya-modbus/transport'
 
 import * as driverLoader from '../driver-loader/loader.js'
-import * as transportFactory from '../transport/factory.js'
 
 import { writeCommand } from './write.js'
 
-jest.mock('../transport/factory.js')
+jest.mock('@ya-modbus/transport')
 jest.mock('../driver-loader/loader.js')
 jest.mock('readline/promises')
 

@@ -4,6 +4,7 @@ module.exports = {
     '<rootDir>/packages/driver-types',
     '<rootDir>/packages/driver-sdk',
     '<rootDir>/packages/mqtt-bridge',
+    '<rootDir>/packages/transport',
     '<rootDir>/packages/ya-modbus-driver-ex9em',
     '<rootDir>/packages/ya-modbus-driver-xymd1',
   ],
