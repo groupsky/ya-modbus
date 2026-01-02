@@ -8,7 +8,6 @@ import { loadDriver } from '@ya-modbus/driver-loader'
 import type { DefaultSerialConfig, DefaultTCPConfig } from '@ya-modbus/driver-types'
 import Table from 'cli-table3'
 
-
 /**
  * Options for list-devices command
  */

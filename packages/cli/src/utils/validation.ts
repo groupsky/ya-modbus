@@ -5,7 +5,6 @@
 import type { LoadedDriver } from '@ya-modbus/driver-loader'
 import type { DataBits, Parity, StopBits, SupportedSerialConfig } from '@ya-modbus/driver-types'
 
-
 /**
  * Validation error with helpful context
  */

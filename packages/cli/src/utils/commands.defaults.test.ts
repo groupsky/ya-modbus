@@ -1,7 +1,6 @@
 import type { LoadedDriver } from '@ya-modbus/driver-loader'
 import type { DefaultSerialConfig, DefaultTCPConfig } from '@ya-modbus/driver-types'
 
-
 import {
   applyDriverDefaults,
   getEffectiveDefaultConfig,
