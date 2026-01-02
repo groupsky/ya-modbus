@@ -110,6 +110,15 @@ export default tseslint.config(
     },
   },
 
+  // CLI file override (commander opts returns any)
+  {
+    files: ['**/cli.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+    },
+  },
+
   // Prettier config (must be last to override formatting rules)
   prettier
 )

@@ -17,8 +17,11 @@ export function handleModbusRequest(device: EmulatedDevice, request: Buffer): Bu
     return createExceptionResponse(request[0] ?? 0, 0x00, ILLEGAL_DATA_VALUE)
   }
 
-  const slaveId = request[0]
-  const functionCode = request[1]
+  // Buffer access is safe after length check
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const slaveId = request[0]!
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const functionCode = request[1]!
 
   try {
     switch (functionCode) {
@@ -44,10 +47,12 @@ export function handleModbusRequest(device: EmulatedDevice, request: Buffer): Bu
  */
 function handleReadHoldingRegisters(device: EmulatedDevice, request: Buffer): Buffer {
   if (request.length < 6) {
-    return createExceptionResponse(request[0], 0x03, ILLEGAL_DATA_VALUE)
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return createExceptionResponse(request[0]!, 0x03, ILLEGAL_DATA_VALUE)
   }
 
-  const slaveId = request[0]
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const slaveId = request[0]!
   const startAddress = request.readUInt16BE(2)
   const quantity = request.readUInt16BE(4)
 
@@ -71,10 +76,12 @@ function handleReadHoldingRegisters(device: EmulatedDevice, request: Buffer): Bu
  */
 function handleReadInputRegisters(device: EmulatedDevice, request: Buffer): Buffer {
   if (request.length < 6) {
-    return createExceptionResponse(request[0], 0x04, ILLEGAL_DATA_VALUE)
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return createExceptionResponse(request[0]!, 0x04, ILLEGAL_DATA_VALUE)
   }
 
-  const slaveId = request[0]
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const slaveId = request[0]!
   const startAddress = request.readUInt16BE(2)
   const quantity = request.readUInt16BE(4)
 
@@ -98,7 +105,8 @@ function handleReadInputRegisters(device: EmulatedDevice, request: Buffer): Buff
  */
 function handleWriteSingleRegister(device: EmulatedDevice, request: Buffer): Buffer {
   if (request.length < 6) {
-    return createExceptionResponse(request[0], 0x06, ILLEGAL_DATA_VALUE)
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return createExceptionResponse(request[0]!, 0x06, ILLEGAL_DATA_VALUE)
   }
 
   const address = request.readUInt16BE(2)
@@ -115,13 +123,16 @@ function handleWriteSingleRegister(device: EmulatedDevice, request: Buffer): Buf
  */
 function handleWriteMultipleRegisters(device: EmulatedDevice, request: Buffer): Buffer {
   if (request.length < 7) {
-    return createExceptionResponse(request[0], 0x10, ILLEGAL_DATA_VALUE)
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return createExceptionResponse(request[0]!, 0x10, ILLEGAL_DATA_VALUE)
   }
 
-  const slaveId = request[0]
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const slaveId = request[0]!
   const startAddress = request.readUInt16BE(2)
   const quantity = request.readUInt16BE(4)
-  const byteCount = request[6]
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const byteCount = request[6]!
 
   if (request.length < 7 + byteCount) {
     return createExceptionResponse(slaveId, 0x10, ILLEGAL_DATA_VALUE)

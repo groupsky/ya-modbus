@@ -7,17 +7,13 @@ import type { BaseTransport } from './transports/base.js'
 import { MemoryTransport } from './transports/memory.js'
 import { RtuTransport } from './transports/rtu.js'
 import type { EmulatorConfig, DeviceConfig } from './types/config.js'
-import type { EmulatedDevice as IEmulatedDevice } from './types/device.js'
 
 export class ModbusEmulator {
-  private config: EmulatorConfig
-  private devices: Map<number, IEmulatedDevice> = new Map()
+  private devices: Map<number, EmulatedDevice> = new Map()
   private transport: BaseTransport
   private started = false
 
   constructor(config: EmulatorConfig) {
-    this.config = config
-
     // Create transport based on config
     if (config.transport === 'memory') {
       this.transport = new MemoryTransport()
@@ -25,13 +21,21 @@ export class ModbusEmulator {
       if (!config.port || typeof config.port !== 'string') {
         throw new Error('RTU transport requires port (serial port path)')
       }
-      this.transport = new RtuTransport({
+      // Build RTU config with only defined properties (exactOptionalPropertyTypes)
+      const rtuConfig: {
+        port: string
+        baudRate?: number
+        parity?: 'none' | 'even' | 'odd'
+        dataBits?: 7 | 8
+        stopBits?: 1 | 2
+      } = {
         port: config.port,
-        baudRate: config.baudRate,
-        parity: config.parity,
-        dataBits: config.dataBits,
-        stopBits: config.stopBits,
-      })
+        ...(config.baudRate !== undefined && { baudRate: config.baudRate }),
+        ...(config.parity !== undefined && { parity: config.parity }),
+        ...(config.dataBits !== undefined && { dataBits: config.dataBits }),
+        ...(config.stopBits !== undefined && { stopBits: config.stopBits }),
+      }
+      this.transport = new RtuTransport(rtuConfig)
     } else {
       throw new Error(`Unsupported transport: ${config.transport}`)
     }
@@ -64,7 +68,8 @@ export class ModbusEmulator {
       // No device found - return exception
       const response = Buffer.alloc(3)
       response[0] = slaveId
-      response[1] = request.length > 1 ? request[1] | 0x80 : 0x80
+      const functionCode = request[1]
+      response[1] = functionCode !== undefined ? functionCode | 0x80 : 0x80
       response[2] = 0x0b // Gateway Target Device Failed to Respond
       return response
     }
@@ -114,7 +119,7 @@ export class ModbusEmulator {
     return this.transport
   }
 
-  addDevice(config: DeviceConfig): IEmulatedDevice {
+  addDevice(config: DeviceConfig): EmulatedDevice {
     if (this.devices.has(config.slaveId)) {
       throw new Error(`Device with slave ID ${config.slaveId} already exists`)
     }
@@ -131,7 +136,7 @@ export class ModbusEmulator {
     this.devices.delete(slaveId)
   }
 
-  getDevice(slaveId: number): IEmulatedDevice | undefined {
+  getDevice(slaveId: number): EmulatedDevice | undefined {
     return this.devices.get(slaveId)
   }
 }

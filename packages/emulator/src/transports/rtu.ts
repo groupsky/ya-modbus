@@ -16,19 +16,12 @@ export interface RtuTransportConfig {
 }
 
 export class RtuTransport extends BaseTransport {
-  private config: RtuTransportConfig
   private requestHandler?: (slaveId: number, request: Buffer) => Promise<Buffer>
   private started = false
 
-  constructor(config: RtuTransportConfig) {
+  constructor(_config: RtuTransportConfig) {
     super()
-    this.config = {
-      baudRate: 9600,
-      parity: 'none',
-      dataBits: 8,
-      stopBits: 1,
-      ...config,
-    }
+    // Config stored for future serial port implementation
   }
 
   start(): Promise<void> {
@@ -60,9 +53,10 @@ export class RtuTransport extends BaseTransport {
   }
 
   /**
-   * Handle complete RTU frame (for testing/future implementation)
+   * Handle complete RTU frame (for future serial port implementation)
+   * @internal
    */
-  private async handleFrame(frame: Buffer): Promise<void> {
+  async handleFrame(frame: Buffer): Promise<void> {
     // Minimum frame: slave_id + function_code + CRC (4 bytes)
     if (frame.length < 4) {
       return
@@ -73,8 +67,9 @@ export class RtuTransport extends BaseTransport {
       return
     }
 
-    // Extract slave ID
-    const slaveId = frame[0]
+    // Extract slave ID (safe after length check)
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const slaveId = frame[0]!
 
     // Remove CRC to get request data
     const request = frame.subarray(0, frame.length - 2)
@@ -87,8 +82,10 @@ export class RtuTransport extends BaseTransport {
       // Get response from handler
       const response = await this.requestHandler(slaveId, request)
 
-      // Send response
-      await this.send(slaveId, response)
+      // Send response (null check required by exactOptionalPropertyTypes)
+      if (response !== undefined) {
+        await this.send(slaveId, response)
+      }
     } catch {
       // Don't send response if handler fails
     }
@@ -103,7 +100,8 @@ export class RtuTransport extends BaseTransport {
     let crc = 0xffff
 
     for (let i = 0; i < buffer.length; i++) {
-      crc ^= buffer[i]
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      crc ^= buffer[i]!
 
       for (let j = 0; j < 8; j++) {
         if (crc & 0x0001) {
@@ -139,8 +137,9 @@ export class RtuTransport extends BaseTransport {
 
   /**
    * Add CRC to buffer
+   * @internal
    */
-  private addCRC(buffer: Buffer): Buffer {
+  addCRC(buffer: Buffer): Buffer {
     const crc = this.calculateCRC(buffer)
     const result = Buffer.alloc(buffer.length + 2)
     buffer.copy(result)
