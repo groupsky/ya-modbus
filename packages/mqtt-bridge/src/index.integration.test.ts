@@ -2,6 +2,7 @@ import type { MqttBridgeConfig } from './types.js'
 import {
   createMessageCollector,
   createTestBridgeConfig,
+  createTestBridgeWithMockDriver,
   publishAndWait,
   startTestBroker,
   subscribeAndWait,
@@ -395,7 +396,12 @@ describe('MQTT Bridge Integration Tests', () => {
 
   describe('Device Management', () => {
     test('should add and remove devices', async () => {
-      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+      const { config, driverLoader, mockDriver } = createTestBridgeWithMockDriver(broker)
+      const bridge = createBridge(config, { driverLoader })
+
+      await bridge.start()
+
+      try {
         const deviceConfig = {
           deviceId: 'device1',
           driver: 'ya-modbus-driver-test',
@@ -405,11 +411,13 @@ describe('MQTT Bridge Integration Tests', () => {
             port: 502,
             slaveId: 1,
           },
-          enabled: false, // Skip driver loading for integration test
         }
 
         await bridge.addDevice(deviceConfig)
         expect(bridge.getStatus().deviceCount).toBe(1)
+
+        // Verify driver was initialized
+        expect(mockDriver.initialize).toHaveBeenCalled()
 
         const device = bridge.getDevice('device1')
         expect(device).toBeDefined()
@@ -417,11 +425,21 @@ describe('MQTT Bridge Integration Tests', () => {
 
         await bridge.removeDevice('device1')
         expect(bridge.getStatus().deviceCount).toBe(0)
-      })
+
+        // Verify driver was destroyed
+        expect(mockDriver.destroy).toHaveBeenCalled()
+      } finally {
+        await bridge.stop()
+      }
     })
 
     test('should list all devices', async () => {
-      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+      const { config, driverLoader } = createTestBridgeWithMockDriver(broker)
+      const bridge = createBridge(config, { driverLoader })
+
+      await bridge.start()
+
+      try {
         const device1 = {
           deviceId: 'device1',
           driver: 'ya-modbus-driver-test1',
@@ -431,7 +449,6 @@ describe('MQTT Bridge Integration Tests', () => {
             port: 502,
             slaveId: 1,
           },
-          enabled: false, // Skip driver loading for integration test
         }
 
         const device2 = {
@@ -443,7 +460,6 @@ describe('MQTT Bridge Integration Tests', () => {
             baudRate: 9600,
             slaveId: 2,
           },
-          enabled: false, // Skip driver loading for integration test
         }
 
         await bridge.addDevice(device1)
@@ -453,7 +469,9 @@ describe('MQTT Bridge Integration Tests', () => {
         expect(devices).toHaveLength(2)
         expect(devices.map((d) => d.deviceId)).toContain('device1')
         expect(devices.map((d) => d.deviceId)).toContain('device2')
-      })
+      } finally {
+        await bridge.stop()
+      }
     })
   })
 

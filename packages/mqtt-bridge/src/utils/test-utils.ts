@@ -3,10 +3,13 @@
 // by control flow. Using optional chaining would create untestable branches for impossible null cases.
 import { AddressInfo, createServer, Server } from 'node:net'
 
+import { jest } from '@jest/globals'
+import type { Transport, DeviceDriver } from '@ya-modbus/driver-types'
 import Aedes from 'aedes'
 import type { AedesPublishPacket } from 'aedes'
 import type { Client } from 'aedes'
 
+import { DriverLoader } from '../driver-loader.js'
 import { createBridge } from '../index.js'
 import type {
   MessageHandler,
@@ -476,3 +479,132 @@ export async function startTestBroker(options?: { port?: number }): Promise<Test
     server.on('error', reject)
   })
 }
+
+/**
+ * Create a mock transport for testing
+ *
+ * Returns a transport mock that implements the Transport interface
+ * with jest.fn() for all methods, allowing verification of calls.
+ *
+ * @returns Mock transport with trackable method calls
+ *
+ * @example
+ * const mockTransport = createMockTransport()
+ * mockTransport.readHoldingRegisters.mockResolvedValue([1, 2, 3])
+ */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export function createMockTransport(): jest.Mocked<Transport> {
+  return {
+    readHoldingRegisters: jest.fn<any>().mockResolvedValue([0, 0]),
+    readInputRegisters: jest.fn<any>().mockResolvedValue([0, 0]),
+    readCoils: jest.fn<any>().mockResolvedValue([false]),
+    readDiscreteInputs: jest.fn<any>().mockResolvedValue([false]),
+    writeCoil: jest.fn<any>().mockResolvedValue(undefined),
+    writeRegister: jest.fn<any>().mockResolvedValue(undefined),
+    writeRegisters: jest.fn<any>().mockResolvedValue(undefined),
+    writeCoils: jest.fn<any>().mockResolvedValue(undefined),
+    close: jest.fn<any>().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<Transport>
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/**
+ * Create a mock driver for testing
+ *
+ * Returns a mock driver that implements the DeviceDriver interface
+ * with jest.fn() for all methods, allowing verification of calls.
+ *
+ * @param overrides - Optional property overrides
+ * @returns Mock driver with trackable method calls
+ *
+ * @example
+ * const mockDriver = createMockDriver({
+ *   dataPoints: [{ id: 'voltage', name: 'Voltage', type: 'number', unit: 'V' }]
+ * })
+ * mockDriver.readDataPoints.mockResolvedValue({ voltage: 230 })
+ */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment */
+export function createMockDriver(overrides?: {
+  name?: string
+  manufacturer?: string
+  model?: string
+  dataPoints?: Array<{ id: string; name: string; type: string; unit?: string }>
+}): jest.Mocked<DeviceDriver> {
+  return {
+    name: overrides?.name ?? 'test-device',
+    manufacturer: overrides?.manufacturer ?? 'Test Manufacturer',
+    model: overrides?.model ?? 'TEST-001',
+    dataPoints: (overrides?.dataPoints ?? [
+      {
+        id: 'test-value',
+        name: 'Test Value',
+        type: 'number',
+        unit: 'unit',
+      },
+    ]) as any,
+    readDataPoint: jest.fn<any>().mockResolvedValue(123),
+    writeDataPoint: jest.fn<any>().mockResolvedValue(undefined),
+    readDataPoints: jest.fn<any>().mockResolvedValue({ 'test-value': 123 }),
+    initialize: jest.fn<any>().mockResolvedValue(undefined),
+    destroy: jest.fn<any>().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<DeviceDriver>
+}
+/* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment */
+
+/**
+ * Create a test bridge configuration with mock driver injection
+ *
+ * This configures the bridge with dependency injection for testing,
+ * allowing integration tests to verify driver lifecycle without
+ * loading real driver packages.
+ *
+ * @param broker - The test broker to connect to
+ * @param overrides - Optional configuration overrides
+ * @returns Object with bridge config and driver loader
+ *
+ * @example
+ * const { config, driverLoader } = createTestBridgeWithMockDriver(broker)
+ * const bridge = createBridge(config, { driverLoader })
+ * await bridge.addDevice({
+ *   deviceId: 'test-device',
+ *   driver: 'ya-modbus-driver-test',
+ *   connection: { type: 'tcp', host: 'localhost', port: 502, slaveId: 1 },
+ *   enabled: true, // Now we can test actual driver loading!
+ * })
+ */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
+export function createTestBridgeWithMockDriver(
+  broker: TestBroker,
+  overrides?: Partial<MqttBridgeConfig>
+): {
+  config: MqttBridgeConfig
+  driverLoader: DriverLoader
+  mockDriver: jest.Mocked<DeviceDriver>
+  mockTransport: jest.Mocked<Transport>
+  mockLoadDriverFn: jest.Mock
+  mockTransportFactory: jest.Mock
+} {
+  const mockTransport = createMockTransport()
+  const mockDriver = createMockDriver()
+
+  // Mock loadDriverFn that returns a LoadedDriver with createDriver
+  const mockLoadDriverFn = jest.fn<any>().mockResolvedValue({
+    createDriver: jest.fn<any>().mockResolvedValue(mockDriver),
+  })
+
+  // Mock transportFactory that returns the mock transport
+  const mockTransportFactory = jest.fn<any>().mockResolvedValue(mockTransport)
+
+  // Create DriverLoader with mocked dependencies
+  const driverLoader = new DriverLoader(mockLoadDriverFn as any, mockTransportFactory as any)
+
+  return {
+    config: createTestBridgeConfig(broker, overrides),
+    driverLoader,
+    mockDriver,
+    mockTransport,
+    mockLoadDriverFn,
+    mockTransportFactory,
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
