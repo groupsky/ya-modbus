@@ -31,6 +31,11 @@
     "test": "jest"
   },
   "dependencies": {
-    "modbus-serial": "^8.0.23"
+    "modbus-serial": "^8.0.23",
+    "commander": "^12.1.0",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9"
   }
 }
