@@ -1,11 +1,11 @@
-import type { LoadedDriver } from '../driver-loader/loader.js'
+import type { LoadedDriver } from '@ya-modbus/driver-loader'
 
 import { showDefaultsCommand, type ShowDefaultsOptions } from './show-defaults.js'
 
 // Mock dependencies
-jest.mock('../driver-loader/loader.js')
+jest.mock('@ya-modbus/driver-loader')
 
-const { loadDriver } = jest.requireMock('../driver-loader/loader.js')
+const { loadDriver } = jest.requireMock('@ya-modbus/driver-loader')
 
 describe('showDefaultsCommand', () => {
   // Capture console output

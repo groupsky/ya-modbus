@@ -1,11 +1,12 @@
+import * as driverLoader from '@ya-modbus/driver-loader'
+
 import type { DiscoveredDevice } from '../discovery/scanner.js'
 import * as scanner from '../discovery/scanner.js'
-import * as driverLoader from '../driver-loader/loader.js'
 
 import { discoverCommand } from './discover.js'
 
 jest.mock('../discovery/scanner.js')
-jest.mock('../driver-loader/loader.js')
+jest.mock('@ya-modbus/driver-loader')
 
 describe('Discover Command', () => {
   let consoleLogSpy: jest.SpyInstance

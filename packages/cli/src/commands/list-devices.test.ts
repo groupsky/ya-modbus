@@ -1,8 +1,8 @@
-import { loadDriver } from '../driver-loader/loader.js'
+import { loadDriver } from '@ya-modbus/driver-loader'
 
 import { listDevicesCommand } from './list-devices.js'
 
-jest.mock('../driver-loader/loader.js')
+jest.mock('@ya-modbus/driver-loader')
 
 const mockLoadDriver = loadDriver as jest.MockedFunction<typeof loadDriver>
 

@@ -4,10 +4,10 @@
  * Displays supported devices from a driver package's DEVICES export.
  */
 
+import { loadDriver } from '@ya-modbus/driver-loader'
 import type { DefaultSerialConfig, DefaultTCPConfig } from '@ya-modbus/driver-types'
 import Table from 'cli-table3'
 
-import { loadDriver } from '../driver-loader/loader.js'
 
 /**
  * Options for list-devices command

@@ -1,7 +1,8 @@
+import { loadDriver } from '@ya-modbus/driver-loader'
+
 import type { DiscoveryStrategy } from '../discovery/parameter-generator.js'
 import { ProgressTracker } from '../discovery/progress.js'
 import { scanForDevices } from '../discovery/scanner.js'
-import { loadDriver } from '../driver-loader/loader.js'
 import { formatDiscoveryJSON, formatDiscoveryTable } from '../formatters/discovery-results.js'
 
 /**
