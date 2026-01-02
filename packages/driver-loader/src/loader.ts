@@ -308,7 +308,10 @@ export async function loadDriver(
         error.message.startsWith('Driver package') ||
         error.message.includes('ya-modbus driver') ||
         error.message.includes('package.json') ||
-        error.message.includes('createDriver')
+        error.message.includes('createDriver') ||
+        error.message.startsWith('Invalid DEFAULT_CONFIG') ||
+        error.message.startsWith('Invalid SUPPORTED_CONFIG') ||
+        error.message.startsWith('Invalid DEVICES')
 
       if (isCustomError) {
         throw error

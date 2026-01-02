@@ -238,6 +238,40 @@ describe('Driver Loader', () => {
 
       await expect(loadDriver({}, mockDeps)).rejects.toThrow('Failed to parse package.json')
     })
+
+    test('should provide detailed validation errors with examples', async () => {
+      const driverModule = {
+        createDriver: jest.fn(),
+        DEFAULT_CONFIG: 'invalid',
+      }
+      mockDeps.importModule = jest.fn().mockResolvedValue(driverModule)
+
+      await expect(loadDriver({ driverPackage: 'test-driver' }, mockDeps)).rejects.toThrow(
+        expect.objectContaining({
+          message: expect.stringContaining('Invalid DEFAULT_CONFIG'),
+        })
+      )
+
+      await expect(loadDriver({ driverPackage: 'test-driver' }, mockDeps)).rejects.toThrow(
+        expect.objectContaining({
+          message: expect.stringContaining('must be an object'),
+        })
+      )
+
+      await expect(loadDriver({ driverPackage: 'test-driver' }, mockDeps)).rejects.toThrow(
+        expect.objectContaining({
+          message: expect.stringContaining('Fix:'),
+        })
+      )
+    })
+
+    test('should provide actionable error when driver validation fails', async () => {
+      mockDeps.importModule = jest.fn().mockResolvedValue({ notCreateDriver: jest.fn() })
+
+      await expect(loadDriver({ driverPackage: 'test-driver' }, mockDeps)).rejects.toThrow(
+        'Driver package must export a createDriver function'
+      )
+    })
   })
 
   describe('integration with real dependencies', () => {
