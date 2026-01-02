@@ -9,9 +9,9 @@ import { ModbusEmulator } from './emulator.js'
 describe('ModbusEmulator', () => {
   let emulator: ModbusEmulator
 
-  afterEach(() => {
+  afterEach(async () => {
     if (emulator) {
-      emulator.stop()
+      await emulator.stop()
     }
   })
 
@@ -21,19 +21,29 @@ describe('ModbusEmulator', () => {
       expect(emulator).toBeDefined()
     })
 
-    it('should start and stop emulator', () => {
+    it('should start and stop emulator', async () => {
       emulator = new ModbusEmulator({ transport: 'memory' })
-      expect(() => {
-        emulator.start()
-        emulator.stop()
-      }).not.toThrow()
+      await expect(emulator.start()).resolves.not.toThrow()
+      await expect(emulator.stop()).resolves.not.toThrow()
     })
 
-    it('should not throw when stopping already stopped emulator', () => {
+    it('should not throw when stopping already stopped emulator', async () => {
       emulator = new ModbusEmulator({ transport: 'memory' })
-      emulator.start()
-      emulator.stop()
-      expect(() => emulator.stop()).not.toThrow()
+      await emulator.start()
+      await emulator.stop()
+      await expect(emulator.stop()).resolves.not.toThrow()
+    })
+
+    it('should throw when starting already started emulator', async () => {
+      emulator = new ModbusEmulator({ transport: 'memory' })
+      await emulator.start()
+      await expect(emulator.start()).rejects.toThrow('Emulator already started')
+    })
+
+    it('should provide access to transport', () => {
+      emulator = new ModbusEmulator({ transport: 'memory' })
+      const transport = emulator.getTransport()
+      expect(transport).toBeDefined()
     })
   })
 
@@ -48,8 +58,8 @@ describe('ModbusEmulator', () => {
       expect(device.slaveId).toBe(1)
     })
 
-    it('should add device after starting', () => {
-      emulator.start()
+    it('should add device after starting', async () => {
+      await emulator.start()
       const device = emulator.addDevice({ slaveId: 1 })
       expect(device).toBeDefined()
       expect(device.slaveId).toBe(1)
@@ -96,23 +106,40 @@ describe('ModbusEmulator', () => {
   })
 
   describe('configuration', () => {
-    it('should create emulator with TCP transport config', () => {
-      emulator = new ModbusEmulator({
-        transport: 'tcp',
-        port: 5502,
-        host: 'localhost',
-      })
-      expect(emulator).toBeDefined()
+    it('should throw for unsupported TCP transport', () => {
+      expect(() => {
+        emulator = new ModbusEmulator({
+          transport: 'tcp',
+          port: 5502,
+          host: 'localhost',
+        })
+      }).toThrow('Unsupported transport: tcp')
     })
 
-    it('should create emulator with RTU transport config', () => {
-      emulator = new ModbusEmulator({
-        transport: 'rtu',
-        port: '/dev/pts/10',
-        baudRate: 9600,
-        parity: 'even',
-      })
-      expect(emulator).toBeDefined()
+    it('should throw for unsupported RTU transport', () => {
+      expect(() => {
+        emulator = new ModbusEmulator({
+          transport: 'rtu',
+          port: '/dev/pts/10',
+          baudRate: 9600,
+          parity: 'even',
+        })
+      }).toThrow('Unsupported transport: rtu')
+    })
+  })
+
+  describe('request handling', () => {
+    it('should handle requests through transport', async () => {
+      emulator = new ModbusEmulator({ transport: 'memory' })
+      await emulator.start()
+
+      const transport = emulator.getTransport()
+      const request = Buffer.from([0x01, 0x03, 0x00, 0x00, 0x00, 0x01])
+
+      // For now, emulator just echoes back the request
+      // @ts-expect-error - accessing protected method for testing
+      const response = await transport.sendRequest(1, request)
+      expect(response).toEqual(request)
     })
   })
 })

@@ -3,30 +3,55 @@
  */
 
 import { EmulatedDevice } from './device.js'
+import type { BaseTransport } from './transports/base.js'
+import { MemoryTransport } from './transports/memory.js'
 import type { EmulatorConfig, DeviceConfig } from './types/config.js'
 import type { EmulatedDevice as IEmulatedDevice } from './types/device.js'
 
 export class ModbusEmulator {
   private config: EmulatorConfig
   private devices: Map<number, IEmulatedDevice> = new Map()
+  private transport: BaseTransport
   private started = false
 
   constructor(config: EmulatorConfig) {
     this.config = config
+
+    // Create transport based on config
+    if (config.transport === 'memory') {
+      this.transport = new MemoryTransport()
+    } else {
+      throw new Error(`Unsupported transport: ${config.transport}`)
+    }
+
+    // Set up request handler
+    this.transport.onRequest(this.handleRequest.bind(this))
   }
 
-  start(): void {
+  async start(): Promise<void> {
     if (this.started) {
       throw new Error('Emulator already started')
     }
+    await this.transport.start()
     this.started = true
   }
 
-  stop(): void {
+  async stop(): Promise<void> {
     if (!this.started) {
       return
     }
+    await this.transport.stop()
     this.started = false
+  }
+
+  private handleRequest(slaveId: number, request: Buffer): Promise<Buffer> {
+    // For now, just echo back the request
+    // TODO: Implement function code handlers
+    return Promise.resolve(request)
+  }
+
+  getTransport(): BaseTransport {
+    return this.transport
   }
 
   addDevice(config: DeviceConfig): IEmulatedDevice {
