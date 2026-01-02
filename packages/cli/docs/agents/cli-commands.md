@@ -58,7 +58,10 @@ See existing: `src/commands/read.ts`, `src/commands/write.ts`
 
 - `src/utils/` - Command helpers, validation
 - `src/formatters/` - Table/JSON/performance output
-- `src/transport/` - RTU/TCP transport implementations
 - `src/driver-loader/` - Dynamic driver loading
+
+### Related Packages
+
+- `@ya-modbus/transport` - RTU/TCP transport implementations
 
 See: `src/utils/commands.ts`, `src/formatters/table.ts`

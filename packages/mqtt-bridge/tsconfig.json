@@ -10,5 +10,6 @@
     "moduleResolution": "bundler"
   },
   "include": ["src", "bin"],
-  "exclude": ["src/**/*.test.ts"]
+  "exclude": ["src/**/*.test.ts"],
+  "references": [{ "path": "../driver-types" }, { "path": "../transport" }]
 }
