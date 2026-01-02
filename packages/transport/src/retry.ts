@@ -19,16 +19,26 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
+ * Logger function to track retry attempts
+ *
+ * @param attempt - The attempt number (1-indexed)
+ * @param error - The error that caused the retry
+ */
+export type RetryLogger = (attempt: number, error: Error) => void
+
+/**
  * Retry a function with fixed delay between attempts
  *
  * @param fn - The async function to retry
  * @param maxRetries - Maximum number of attempts (default: MAX_RETRIES)
+ * @param logger - Optional callback to log retry attempts
  * @returns Promise resolving to the function's return value
  * @throws The last error encountered if all retries are exhausted
  */
 export async function withRetry<T>(
   fn: () => Promise<T>,
-  maxRetries: number = MAX_RETRIES
+  maxRetries: number = MAX_RETRIES,
+  logger?: RetryLogger
 ): Promise<T> {
   let lastError: Error = new Error('No retry attempts were made')
 
@@ -40,6 +50,10 @@ export async function withRetry<T>(
 
       // Don't retry on the last attempt
       if (attempt < maxRetries) {
+        // Log the retry attempt if logger is provided
+        if (logger) {
+          logger(attempt, lastError)
+        }
         await sleep(RETRY_DELAY_MS)
       }
     }
