@@ -10,6 +10,13 @@ paths: /**/*.ts
 - KISS: Keep It Simple, Stupid
 - YAGNI: Don't add features not explicitly requested
 
+## Architectural Patterns
+
+- Prefer functional programming over class-based
+- Prefer composition over inheritance
+- Use dependency injection for testability
+- Wrap system APIs with thin abstractions to simplify testing
+
 ## File Size Limits
 
 - Code files: soft target ~500 lines, refactor when approaching ~400 lines
