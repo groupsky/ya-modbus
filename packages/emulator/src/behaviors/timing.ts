@@ -71,12 +71,12 @@ export class TimingSimulator {
   calculateTotalDelay(request: Buffer, registerCount: number): number {
     let totalDelay = 0
 
-    // 1. Command detection delay (or half of polling interval)
+    // 1. Command detection delay (or random value in [0, pollingInterval])
     if (this.config.commandDetectionDelay !== undefined) {
       totalDelay += calculateDelay(this.config.commandDetectionDelay)
     } else if (this.config.pollingInterval !== undefined) {
-      // Use half of polling interval as average detection time
-      totalDelay += this.config.pollingInterval / 2
+      // Use random value in range [0, pollingInterval] as detection time
+      totalDelay += calculateDelay([0, this.config.pollingInterval])
     }
 
     // 2. Processing delay

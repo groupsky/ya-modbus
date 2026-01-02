@@ -80,13 +80,24 @@ describe('Timing Behaviors', () => {
       expect(uniqueDelays.size).toBeGreaterThan(1)
     })
 
-    it('should use half of polling interval as detection delay', () => {
+    it('should use random value in [0, pollingInterval] as detection delay', () => {
       const simulator = new TimingSimulator({
         pollingInterval: 10,
       })
 
-      const delay = simulator.calculateTotalDelay(Buffer.from([0x01, 0x03]), 1)
-      expect(delay).toBe(5) // pollingInterval / 2
+      const delays = Array.from({ length: 50 }, () =>
+        simulator.calculateTotalDelay(Buffer.from([0x01, 0x03]), 1)
+      )
+
+      // All delays should be within range [0, pollingInterval]
+      delays.forEach((delay) => {
+        expect(delay).toBeGreaterThanOrEqual(0)
+        expect(delay).toBeLessThanOrEqual(10)
+      })
+
+      // Should have variation (not all the same)
+      const uniqueDelays = new Set(delays)
+      expect(uniqueDelays.size).toBeGreaterThan(1)
     })
 
     it('should prefer commandDetectionDelay over pollingInterval', () => {
@@ -348,10 +359,10 @@ describe('Timing Behaviors', () => {
       // Reading 10 registers
       const delay = simulator.calculateTotalDelay(Buffer.from([0x01, 0x03]), 10)
 
-      // Expected: 5ms (polling/2) + 2-5ms (processing) + 1ms (10*0.1)
-      // Total: 8-11ms
-      expect(delay).toBeGreaterThanOrEqual(8)
-      expect(delay).toBeLessThanOrEqual(11)
+      // Expected: 0-10ms (polling) + 2-5ms (processing) + 1ms (10*0.1)
+      // Total: 3-16ms
+      expect(delay).toBeGreaterThanOrEqual(3)
+      expect(delay).toBeLessThanOrEqual(16)
     })
 
     it('should simulate slow RTU device at 9600 baud', () => {
@@ -385,8 +396,8 @@ describe('Timing Behaviors', () => {
 
       const delay = simulator.calculateTotalDelay(Buffer.from([0x01, 0x03]), 50)
 
-      // Expected: 0.5ms (polling/2) + 0.5ms (processing) + 0.5ms (50*0.01)
-      // Total: ~1.5ms
+      // Expected: 0-1ms (polling) + 0.5ms (processing) + 0.5ms (50*0.01)
+      // Total: 1-2ms
       expect(delay).toBeGreaterThanOrEqual(1)
       expect(delay).toBeLessThanOrEqual(2)
     })
