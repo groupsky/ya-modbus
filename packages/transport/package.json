@@ -1,0 +1,41 @@
+{
+  "name": "@ya-modbus/transport",
+  "version": "0.0.0",
+  "description": "Modbus transport implementations for ya-modbus",
+  "keywords": [
+    "modbus",
+    "transport",
+    "rtu",
+    "tcp",
+    "serial",
+    "ya-modbus"
+  ],
+  "author": "Geno Roupsky <geno@roupsky.name>",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/groupsky/ya-modbus.git",
+    "directory": "packages/transport"
+  },
+  "homepage": "https://github.com/groupsky/ya-modbus/tree/main/packages/transport#readme",
+  "bugs": {
+    "url": "https://github.com/groupsky/ya-modbus/issues"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist",
+    "test": "jest",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@ya-modbus/driver-types": "^0.0.0",
+    "modbus-serial": "^8.0.18"
+  }
+}

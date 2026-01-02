@@ -10,9 +10,9 @@ import type {
   StopBits,
   Transport,
 } from '@ya-modbus/driver-types'
+import { createTransport, type TransportConfig } from '@ya-modbus/transport'
 
 import { loadDriver, type LoadedDriver } from '../driver-loader/loader.js'
-import { createTransport, type TransportConfig } from '../transport/factory.js'
 
 import { omitUndefined } from './object-utils.js'
 import { validateSerialOptions } from './validation.js'
