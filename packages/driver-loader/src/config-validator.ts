@@ -46,11 +46,12 @@ function validateArrayConstraint<T extends string | number>(
   constraintName: string
 ): string | undefined {
   if (!validValues.includes(value)) {
+    // TypeScript narrows the type in each branch, so no need for String() conversions
     const formattedValues =
       typeof value === 'string'
-        ? validValues.map((v) => `"${String(v)}"`).join(', ')
+        ? validValues.map((v) => `"${v}"`).join(', ')
         : validValues.join(', ')
-    const formattedValue = typeof value === 'string' ? `"${String(value)}"` : String(value)
+    const formattedValue = typeof value === 'string' ? `"${value}"` : value
     return `${fieldName}: ${formattedValue} is not in ${constraintName}: [${formattedValues}]`
   }
   return undefined
