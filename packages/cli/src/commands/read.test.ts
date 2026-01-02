@@ -1,12 +1,11 @@
+import * as driverLoader from '@ya-modbus/driver-loader'
 import type { DeviceDriver, Transport } from '@ya-modbus/driver-types'
 import * as transportFactory from '@ya-modbus/transport'
-
-import * as driverLoader from '../driver-loader/loader.js'
 
 import { readCommand } from './read.js'
 
 jest.mock('@ya-modbus/transport')
-jest.mock('../driver-loader/loader.js')
+jest.mock('@ya-modbus/driver-loader')
 
 describe('Read Command', () => {
   let mockTransport: jest.Mocked<Transport>

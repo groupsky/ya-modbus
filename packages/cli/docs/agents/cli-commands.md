@@ -28,7 +28,7 @@ Driver auto-detection when `--driver` not specified:
 
 Detection checks for `ya-modbus-driver` keyword in package.json.
 
-See: `src/driver-loader/loader.ts`, `src/utils/commands.ts`
+See: `@ya-modbus/driver-loader`, `src/utils/commands.ts`
 
 ## Adding a New Command
 
@@ -58,7 +58,6 @@ See existing: `src/commands/read.ts`, `src/commands/write.ts`
 
 - `src/utils/` - Command helpers, validation
 - `src/formatters/` - Table/JSON/performance output
-- `src/driver-loader/` - Dynamic driver loading
 
 ### Related Packages
 

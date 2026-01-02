@@ -11,5 +11,9 @@
   },
   "include": ["src", "bin"],
   "exclude": ["src/**/*.test.ts", "src/__mocks__"],
-  "references": [{ "path": "../driver-types" }, { "path": "../transport" }]
+  "references": [
+    { "path": "../driver-types" },
+    { "path": "../driver-loader" },
+    { "path": "../transport" }
+  ]
 }

@@ -1,0 +1,54 @@
+{
+  "name": "@ya-modbus/driver-loader",
+  "version": "0.0.0",
+  "description": "Dynamic driver loader for ya-modbus device drivers",
+  "keywords": [
+    "modbus",
+    "driver",
+    "loader"
+  ],
+  "author": "Geno Roupsky <geno@roupsky.name>",
+  "license": "GPL-3.0-or-later",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/groupsky/ya-modbus.git",
+    "directory": "packages/driver-loader"
+  },
+  "homepage": "https://github.com/groupsky/ya-modbus/tree/main/packages/driver-loader#readme",
+  "bugs": {
+    "url": "https://github.com/groupsky/ya-modbus/issues"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist",
+    "test": "jest",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@ya-modbus/driver-types": "^0.0.0"
+  },
+  "peerDependencies": {
+    "jest": ">=29.0.0"
+  },
+  "peerDependenciesMeta": {
+    "jest": {
+      "optional": true
+    }
+  }
+}
