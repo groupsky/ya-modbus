@@ -1,4 +1,4 @@
-export { loadDriver } from './loader.js'
+export { loadDriver, clearDriverCache } from './loader.js'
 export type { LoadedDriver, LoadDriverOptions, SystemDependencies } from './loader.js'
 export {
   validateDefaultConfig,

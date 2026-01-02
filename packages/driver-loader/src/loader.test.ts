@@ -1,10 +1,11 @@
-import { loadDriver } from './loader.js'
+import { clearDriverCache, loadDriver } from './loader.js'
 import type { SystemDependencies } from './loader.js'
 
 describe('Driver Loader', () => {
   let mockDeps: SystemDependencies
 
   beforeEach(() => {
+    clearDriverCache()
     mockDeps = {
       readFile: jest.fn(),
       importModule: jest.fn(),
@@ -248,6 +249,66 @@ describe('Driver Loader', () => {
       expect(typeof result.createDriver).toBe('function')
       expect(result.defaultConfig).toBeDefined()
       expect(result.supportedConfig).toBeDefined()
+    })
+  })
+
+  describe('caching', () => {
+    test('should cache loaded drivers by package name', async () => {
+      const driverModule = { createDriver: jest.fn() }
+      mockDeps.importModule = jest.fn().mockResolvedValue(driverModule)
+
+      await loadDriver({ driverPackage: 'test-driver' }, mockDeps)
+      await loadDriver({ driverPackage: 'test-driver' }, mockDeps)
+
+      expect(mockDeps.importModule).toHaveBeenCalledTimes(1)
+    })
+
+    test('should cache different drivers separately', async () => {
+      const driver1 = { createDriver: jest.fn().mockImplementation(() => 'driver1') }
+      const driver2 = { createDriver: jest.fn().mockImplementation(() => 'driver2') }
+
+      mockDeps.importModule = jest
+        .fn()
+        .mockResolvedValueOnce(driver1)
+        .mockResolvedValueOnce(driver2)
+
+      const result1 = await loadDriver({ driverPackage: 'driver-1' }, mockDeps)
+      const result2 = await loadDriver({ driverPackage: 'driver-2' }, mockDeps)
+      const result1Again = await loadDriver({ driverPackage: 'driver-1' }, mockDeps)
+
+      expect(mockDeps.importModule).toHaveBeenCalledTimes(2)
+      expect(result1.createDriver).toBe(driver1.createDriver)
+      expect(result2.createDriver).toBe(driver2.createDriver)
+      expect(result1Again.createDriver).toBe(driver1.createDriver)
+    })
+
+    test('should cache auto-detected drivers by package name', async () => {
+      const packageJson = { name: 'test-driver', keywords: ['ya-modbus-driver'] }
+      mockDeps.readFile = jest.fn().mockResolvedValue(JSON.stringify(packageJson))
+
+      const driverModule = { createDriver: jest.fn() }
+      mockDeps.importModule = jest.fn().mockResolvedValue(driverModule)
+
+      await loadDriver({}, mockDeps)
+      await loadDriver({}, mockDeps)
+
+      expect(mockDeps.readFile).toHaveBeenCalledTimes(2)
+      expect(mockDeps.importModule).toHaveBeenCalledTimes(1)
+    })
+
+    test('should not cache when import fails', async () => {
+      const error = new Error('Module not found')
+      mockDeps.importModule = jest
+        .fn()
+        .mockRejectedValueOnce(error)
+        .mockResolvedValueOnce({ createDriver: jest.fn() })
+
+      await expect(loadDriver({ driverPackage: 'test-driver' }, mockDeps)).rejects.toThrow()
+
+      const result = await loadDriver({ driverPackage: 'test-driver' }, mockDeps)
+
+      expect(mockDeps.importModule).toHaveBeenCalledTimes(2)
+      expect(result.createDriver).toBeDefined()
     })
   })
 })

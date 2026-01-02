@@ -66,6 +66,19 @@ const defaultDeps: SystemDependencies = {
 }
 
 /**
+ * LRU cache for loaded drivers
+ */
+const driverCache = new Map<string, LoadedDriver>()
+
+/**
+ * Clear the driver cache
+ * Useful for testing or when you need to reload drivers
+ */
+export function clearDriverCache(): void {
+  driverCache.clear()
+}
+
+/**
  * Auto-detect local driver package from package.json
  *
  * @param deps - System dependencies
@@ -161,9 +174,17 @@ export async function loadDriver(
   const { driverPackage } = options
 
   try {
+    let packageName: string
     let driverModule: unknown
 
     if (driverPackage) {
+      packageName = driverPackage
+
+      const cached = driverCache.get(packageName)
+      if (cached) {
+        return cached
+      }
+
       try {
         driverModule = await deps.importModule(driverPackage)
       } catch {
@@ -172,7 +193,13 @@ export async function loadDriver(
         )
       }
     } else {
-      const packageName = await detectLocalPackage(deps)
+      packageName = await detectLocalPackage(deps)
+
+      const cached = driverCache.get(packageName)
+      if (cached) {
+        return cached
+      }
+
       const cwd = deps.getCwd()
 
       const importPaths = [
@@ -231,6 +258,8 @@ export async function loadDriver(
         console.warn('Run: ya-modbus show-defaults --driver <package> to inspect configuration\n')
       }
     }
+
+    driverCache.set(packageName, result)
 
     return result
   } catch (error) {
