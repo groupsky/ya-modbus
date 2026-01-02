@@ -14,6 +14,7 @@ import {
   validateDevices,
   validateSupportedConfig,
 } from './config-validator.js'
+import { DriverNotFoundError, PackageJsonError, ValidationError } from './errors.js'
 
 /**
  * Loaded driver module with configuration metadata
@@ -130,7 +131,7 @@ async function detectLocalPackage(deps: SystemDependencies): Promise<string> {
 
     const keywords = packageJson.keywords ?? []
     if (!keywords.includes('ya-modbus-driver')) {
-      throw new Error(
+      throw new PackageJsonError(
         'Current package is not a ya-modbus driver. ' +
           'Add "ya-modbus-driver" to keywords in package.json'
       )
@@ -138,19 +139,19 @@ async function detectLocalPackage(deps: SystemDependencies): Promise<string> {
 
     const name = packageJson.name
     if (!name) {
-      throw new Error('package.json must have a "name" field')
+      throw new PackageJsonError('package.json must have a "name" field')
     }
 
     return name
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      throw new Error(
+      throw new PackageJsonError(
         'package.json not found in current directory. ' +
           'Run this command from a driver package directory or specify --driver'
       )
     }
     if (error instanceof SyntaxError) {
-      throw new Error('Failed to parse package.json: invalid JSON')
+      throw new PackageJsonError('Failed to parse package.json: invalid JSON')
     }
     throw error
   }
@@ -225,8 +226,9 @@ export async function loadDriver(
       try {
         driverModule = await deps.importModule(driverPackage)
       } catch {
-        throw new Error(
-          `Driver package not found: ${driverPackage}\nInstall it with: npm install ${driverPackage}`
+        throw new DriverNotFoundError(
+          `Driver package not found: ${driverPackage}\nInstall it with: npm install ${driverPackage}`,
+          driverPackage
         )
       }
     } else {
@@ -253,7 +255,10 @@ export async function loadDriver(
     }
 
     if (!driverModule || typeof driverModule !== 'object') {
-      throw new Error('Driver package must export a createDriver function')
+      throw new ValidationError(
+        'Driver package must export a createDriver function',
+        'createDriver'
+      )
     }
 
     const { createDriver, DEVICES, DEFAULT_CONFIG, SUPPORTED_CONFIG } = driverModule as {
@@ -264,11 +269,17 @@ export async function loadDriver(
     }
 
     if (!createDriver) {
-      throw new Error('Driver package must export a createDriver function')
+      throw new ValidationError(
+        'Driver package must export a createDriver function',
+        'createDriver'
+      )
     }
 
     if (typeof createDriver !== 'function') {
-      throw new Error('Driver package must export a createDriver function')
+      throw new ValidationError(
+        'Driver package must export a createDriver function',
+        'createDriver'
+      )
     }
 
     const result: LoadedDriver = {
@@ -303,20 +314,15 @@ export async function loadDriver(
 
     return result
   } catch (error) {
+    if (
+      error instanceof ValidationError ||
+      error instanceof DriverNotFoundError ||
+      error instanceof PackageJsonError
+    ) {
+      throw error
+    }
+
     if (error instanceof Error) {
-      const isCustomError =
-        error.message.startsWith('Driver package') ||
-        error.message.includes('ya-modbus driver') ||
-        error.message.includes('package.json') ||
-        error.message.includes('createDriver') ||
-        error.message.startsWith('Invalid DEFAULT_CONFIG') ||
-        error.message.startsWith('Invalid SUPPORTED_CONFIG') ||
-        error.message.startsWith('Invalid DEVICES')
-
-      if (isCustomError) {
-        throw error
-      }
-
       throw new Error(`Failed to load driver: ${error.message}`)
     }
 

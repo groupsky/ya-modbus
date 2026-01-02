@@ -11,3 +11,4 @@ export {
   validateDevices,
   crossValidateConfigs,
 } from './config-validator.js'
+export { ValidationError, DriverNotFoundError, PackageJsonError } from './errors.js'
