@@ -2,6 +2,8 @@
  * Device-related types
  */
 
+import type { TimingSimulator } from '../behaviors/timing.js'
+
 export interface EmulatedDevice {
   /** Slave ID */
   slaveId: number
@@ -21,4 +23,6 @@ export interface EmulatedDevice {
   getDiscreteInput(address: number): boolean
   /** Set discrete input value */
   setDiscreteInput(address: number, value: boolean): void
+  /** Get timing simulator */
+  getTimingSimulator(): TimingSimulator | undefined
 }

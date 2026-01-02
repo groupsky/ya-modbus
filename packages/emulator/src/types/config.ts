@@ -32,9 +32,26 @@ export interface RegisterStorage {
   discreteInputs?: Record<number, boolean>
 }
 
+export interface TimingBehavior {
+  /** Time device takes to notice incoming command (ms) */
+  commandDetectionDelay?: number | [min: number, max: number]
+  /** Internal polling interval (ms) - realistic: 1-100ms */
+  pollingInterval?: number
+  /** Base processing time per command (ms) */
+  processingDelay?: number | [min: number, max: number]
+  /** Additional delay per register read/written (ms) */
+  perRegisterDelay?: number
+  /** Baud rate (affects transmission time for RTU) */
+  baudRate?: number
+  /** Auto-calculate transmission delay based on frame size */
+  autoCalculateTransmissionDelay?: boolean
+}
+
 export interface DeviceConfig {
   /** Slave ID (1-247) */
   slaveId: number
   /** Initial register values */
   registers?: RegisterStorage
+  /** Timing behavior configuration */
+  timing?: TimingBehavior
 }

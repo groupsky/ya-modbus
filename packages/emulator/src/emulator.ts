@@ -44,7 +44,7 @@ export class ModbusEmulator {
     this.started = false
   }
 
-  private handleRequest(slaveId: number, request: Buffer): Promise<Buffer> {
+  private async handleRequest(slaveId: number, request: Buffer): Promise<Buffer> {
     // Get the device for this slave ID
     const device = this.devices.get(slaveId)
 
@@ -54,13 +54,48 @@ export class ModbusEmulator {
       response[0] = slaveId
       response[1] = request.length > 1 ? request[1] | 0x80 : 0x80
       response[2] = 0x0b // Gateway Target Device Failed to Respond
-      return Promise.resolve(response)
+      return response
+    }
+
+    // Apply timing delay if configured
+    const timingSimulator = device.getTimingSimulator()
+    if (timingSimulator !== undefined) {
+      // Parse register count from request
+      const registerCount = this.parseRegisterCount(request)
+      await timingSimulator.delay(request, registerCount)
     }
 
     // Import dynamically to avoid circular dependency issues
-    return import('./behaviors/function-codes.js').then(({ handleModbusRequest }) => {
-      return handleModbusRequest(device, request)
-    })
+    const { handleModbusRequest } = await import('./behaviors/function-codes.js')
+    return handleModbusRequest(device, request)
+  }
+
+  /**
+   * Parse register count from Modbus request
+   */
+  private parseRegisterCount(request: Buffer): number {
+    if (request.length < 6) {
+      return 0
+    }
+
+    const functionCode = request[1]
+
+    // For read operations, register count is in bytes 4-5
+    if (functionCode === 0x03 || functionCode === 0x04) {
+      return request.readUInt16BE(4)
+    }
+
+    // For write single register, count is 1
+    if (functionCode === 0x06) {
+      return 1
+    }
+
+    // For write multiple registers, count is in bytes 4-5
+    if (functionCode === 0x10) {
+      return request.readUInt16BE(4)
+    }
+
+    return 0
   }
 
   getTransport(): BaseTransport {

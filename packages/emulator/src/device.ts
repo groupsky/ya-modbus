@@ -2,6 +2,7 @@
  * EmulatedDevice class implementation
  */
 
+import { TimingSimulator } from './behaviors/timing.js'
 import type { DeviceConfig } from './types/config.js'
 import type { EmulatedDevice as IEmulatedDevice } from './types/device.js'
 
@@ -11,9 +12,15 @@ export class EmulatedDevice implements IEmulatedDevice {
   private inputRegisters: Map<number, number> = new Map()
   private coils: Map<number, boolean> = new Map()
   private discreteInputs: Map<number, boolean> = new Map()
+  private timingSimulator?: TimingSimulator
 
   constructor(config: DeviceConfig) {
     this.slaveId = config.slaveId
+
+    // Initialize timing behavior
+    if (config.timing) {
+      this.timingSimulator = new TimingSimulator(config.timing)
+    }
 
     // Initialize registers from config
     if (config.registers?.holding) {
@@ -71,5 +78,9 @@ export class EmulatedDevice implements IEmulatedDevice {
 
   setDiscreteInput(address: number, value: boolean): void {
     this.discreteInputs.set(address, value)
+  }
+
+  getTimingSimulator(): TimingSimulator | undefined {
+    return this.timingSimulator
   }
 }
