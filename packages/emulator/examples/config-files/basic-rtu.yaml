@@ -1,0 +1,15 @@
+# Basic RTU emulator configuration
+# Usage: ya-modbus-emulator --config basic-rtu.yaml
+
+transport:
+  type: rtu
+  port: /dev/ttyUSB0 # Linux/macOS, use COM3 on Windows
+  baudRate: 9600
+  parity: none
+
+devices:
+  - slaveId: 1
+    registers:
+      holding:
+        0: 230 # Voltage * 10 = 23.0V
+        1: 52 # Current * 10 = 5.2A
