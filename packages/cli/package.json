@@ -39,6 +39,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "@ya-modbus/driver-loader": "^0.0.0",
     "@ya-modbus/driver-types": "^0.0.0",
     "@ya-modbus/transport": "^0.0.0",
     "commander": "^14.0.2",

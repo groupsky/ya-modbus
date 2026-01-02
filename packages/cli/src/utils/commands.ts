@@ -1,5 +1,6 @@
 import readline from 'readline/promises'
 
+import { loadDriver, type LoadedDriver } from '@ya-modbus/driver-loader'
 import type {
   BaudRate,
   DataBits,
@@ -11,8 +12,6 @@ import type {
   Transport,
 } from '@ya-modbus/driver-types'
 import { createTransport, type TransportConfig } from '@ya-modbus/transport'
-
-import { loadDriver, type LoadedDriver } from '../driver-loader/loader.js'
 
 import { omitUndefined } from './object-utils.js'
 import { validateSerialOptions } from './validation.js'

@@ -78,7 +78,7 @@ describe('validateDefaultConfig', () => {
   describe('invalid serial config properties', () => {
     test('should reject non-number baudRate', () => {
       const config = {
-        baudRate: '9600', // string instead of number
+        baudRate: '9600',
       }
 
       expect(() => validateDefaultConfig(config)).toThrow(
@@ -89,7 +89,7 @@ describe('validateDefaultConfig', () => {
     test('should reject non-string parity', () => {
       const config = {
         baudRate: 9600,
-        parity: 1, // number instead of string
+        parity: 1,
       }
 
       expect(() => validateDefaultConfig(config)).toThrow(
@@ -100,7 +100,7 @@ describe('validateDefaultConfig', () => {
     test('should reject non-number dataBits', () => {
       const config = {
         baudRate: 9600,
-        dataBits: '8', // string instead of number
+        dataBits: '8',
       }
 
       expect(() => validateDefaultConfig(config)).toThrow(
@@ -111,7 +111,7 @@ describe('validateDefaultConfig', () => {
     test('should reject non-number stopBits', () => {
       const config = {
         baudRate: 9600,
-        stopBits: '1', // string instead of number
+        stopBits: '1',
       }
 
       expect(() => validateDefaultConfig(config)).toThrow(
@@ -122,7 +122,7 @@ describe('validateDefaultConfig', () => {
     test('should reject non-number defaultAddress in serial config', () => {
       const config = {
         baudRate: 9600,
-        defaultAddress: '1', // string instead of number
+        defaultAddress: '1',
       }
 
       expect(() => validateDefaultConfig(config)).toThrow(
@@ -134,7 +134,7 @@ describe('validateDefaultConfig', () => {
   describe('invalid TCP config properties', () => {
     test('should reject non-number defaultPort', () => {
       const config = {
-        defaultPort: '502', // string instead of number
+        defaultPort: '502',
       }
 
       expect(() => validateDefaultConfig(config)).toThrow(
@@ -145,7 +145,7 @@ describe('validateDefaultConfig', () => {
     test('should reject non-number defaultAddress in TCP config', () => {
       const config = {
         defaultPort: 502,
-        defaultAddress: '1', // string instead of number
+        defaultAddress: '1',
       }
 
       expect(() => validateDefaultConfig(config)).toThrow(
@@ -222,7 +222,7 @@ describe('validateSupportedConfig', () => {
   describe('invalid array properties', () => {
     test('should reject non-array validBaudRates', () => {
       const config = {
-        validBaudRates: 9600, // number instead of array
+        validBaudRates: 9600,
       }
 
       expect(() => validateSupportedConfig(config)).toThrow(
@@ -232,7 +232,7 @@ describe('validateSupportedConfig', () => {
 
     test('should reject non-array validParity', () => {
       const config = {
-        validParity: 'even', // string instead of array
+        validParity: 'even',
       }
 
       expect(() => validateSupportedConfig(config)).toThrow(
@@ -242,7 +242,7 @@ describe('validateSupportedConfig', () => {
 
     test('should reject non-array validDataBits', () => {
       const config = {
-        validDataBits: 8, // number instead of array
+        validDataBits: 8,
       }
 
       expect(() => validateSupportedConfig(config)).toThrow(
@@ -252,7 +252,7 @@ describe('validateSupportedConfig', () => {
 
     test('should reject non-array validStopBits', () => {
       const config = {
-        validStopBits: 1, // number instead of array
+        validStopBits: 1,
       }
 
       expect(() => validateSupportedConfig(config)).toThrow(
@@ -262,7 +262,7 @@ describe('validateSupportedConfig', () => {
 
     test('should reject non-array validAddressRange', () => {
       const config = {
-        validAddressRange: '[1, 247]', // string instead of array
+        validAddressRange: '[1, 247]',
       }
 
       expect(() => validateSupportedConfig(config)).toThrow(
@@ -272,7 +272,7 @@ describe('validateSupportedConfig', () => {
 
     test('should reject validAddressRange with wrong length', () => {
       const configWithOneElement = {
-        validAddressRange: [1], // should be [min, max]
+        validAddressRange: [1],
       }
 
       expect(() => validateSupportedConfig(configWithOneElement)).toThrow(
@@ -280,7 +280,7 @@ describe('validateSupportedConfig', () => {
       )
 
       const configWithThreeElements = {
-        validAddressRange: [1, 100, 247], // should be [min, max]
+        validAddressRange: [1, 100, 247],
       }
 
       expect(() => validateSupportedConfig(configWithThreeElements)).toThrow(
@@ -290,7 +290,7 @@ describe('validateSupportedConfig', () => {
 
     test('should reject non-array validPorts', () => {
       const config = {
-        validPorts: 502, // number instead of array
+        validPorts: 502,
       }
 
       expect(() => validateSupportedConfig(config)).toThrow(
@@ -301,17 +301,16 @@ describe('validateSupportedConfig', () => {
 
   describe('edge cases', () => {
     test('should accept string values for validBaudRates items (runtime values)', () => {
-      // Note: We only validate the array type, not the items
       const config = {
-        validBaudRates: ['9600', '19200'], // This will be caught by validation.ts when used
+        validBaudRates: ['9600', '19200'],
       }
 
       expect(() => validateSupportedConfig(config)).not.toThrow()
     })
 
-    test('should accept object as validParity (wrong but only checks array)', () => {
+    test('should reject object as validParity', () => {
       const config = {
-        validParity: { even: true }, // object instead of array
+        validParity: { even: true },
       }
 
       expect(() => validateSupportedConfig(config)).toThrow(
@@ -440,7 +439,7 @@ describe('validateDevices', () => {
         'device-1': {
           manufacturer: 'Acme',
           model: 'X1',
-          defaultConfig: { baudRate: '9600' }, // string instead of number
+          defaultConfig: { baudRate: '9600' },
         },
       }
 
@@ -452,7 +451,7 @@ describe('validateDevices', () => {
         'device-1': {
           manufacturer: 'Acme',
           model: 'X1',
-          supportedConfig: { validBaudRates: 9600 }, // number instead of array
+          supportedConfig: { validBaudRates: 9600 },
         },
       }
 

@@ -4,7 +4,7 @@
  * Displays DEFAULT_CONFIG and SUPPORTED_CONFIG from a driver package.
  */
 
-import { loadDriver } from '../driver-loader/loader.js'
+import { loadDriver } from '@ya-modbus/driver-loader'
 
 /**
  * Options for show-defaults command

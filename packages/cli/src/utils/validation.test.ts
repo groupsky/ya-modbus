@@ -1,6 +1,5 @@
+import type { LoadedDriver } from '@ya-modbus/driver-loader'
 import type { DefaultSerialConfig, SupportedSerialConfig } from '@ya-modbus/driver-types'
-
-import type { LoadedDriver } from '../driver-loader/loader.js'
 
 import {
   ValidationError,
