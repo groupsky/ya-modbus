@@ -555,5 +555,47 @@ describe('PollingScheduler', () => {
       await jest.advanceTimersByTimeAsync(200)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
     })
+
+    it('should not poll if device removed between scheduling and timer firing', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 100 },
+      }
+
+      let pollCount = 0
+      const mockReadDataPoints = jest.fn().mockImplementation(() => {
+        pollCount++
+        // Schedule removal to happen after first poll completes but before next timer fires
+        if (pollCount === 1) {
+          void Promise.resolve().then(() => {
+            scheduler.unscheduleDevice('device1')
+          })
+        }
+        return Promise.resolve({ temp: 25.5 })
+      })
+
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: mockReadDataPoints,
+      }
+
+      scheduler.scheduleDevice('device1', config, driver)
+      scheduler.start()
+
+      // First poll should happen
+      await jest.advanceTimersByTimeAsync(100)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+
+      // Device was removed, so no second poll should happen
+      await jest.advanceTimersByTimeAsync(200)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+    })
   })
 })

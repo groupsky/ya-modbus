@@ -563,5 +563,33 @@ describe('MQTT Bridge Integration Tests', () => {
       // Should reject on connection failure
       await expect(bridge.start()).rejects.toThrow()
     })
+
+    test('should handle stop when never started', async () => {
+      const config = createTestBridgeConfig(broker)
+      const bridge = createBridge(config)
+
+      // Stop without starting - client will be null
+      await expect(bridge.stop()).resolves.not.toThrow()
+
+      const status = bridge.getStatus()
+      expect(status.state).toBe('stopped')
+    })
+
+    test('should handle multiple concurrent stop calls', async () => {
+      const config = createTestBridgeConfig(broker)
+      const bridge = createBridge(config)
+
+      await bridge.start()
+
+      // Call stop multiple times concurrently
+      const stopPromises = [bridge.stop(), bridge.stop(), bridge.stop()]
+
+      await expect(Promise.all(stopPromises)).resolves.not.toThrow()
+
+      const status = bridge.getStatus()
+      expect(status.state).toBe('stopped')
+
+      await waitForAllClientsToDisconnect(broker)
+    })
   })
 })

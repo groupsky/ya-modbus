@@ -328,6 +328,26 @@ describe('Test Utilities', () => {
 
         removeListenerSpy.mockRestore()
       })
+
+      test('should wait for multiple disconnect events until all clients disconnected', async () => {
+        broker.broker.connectedClients = 2
+
+        const promise = waitForAllClientsToDisconnect(broker, 1000)
+
+        setImmediate(() => {
+          // First disconnect - still has 1 client
+          broker.broker.connectedClients = 1
+          broker.broker.emit('clientDisconnect')
+
+          // Second disconnect - all clients gone
+          setTimeout(() => {
+            broker.broker.connectedClients = 0
+            broker.broker.emit('clientDisconnect')
+          }, 10)
+        })
+
+        await expect(promise).resolves.toBeUndefined()
+      })
     })
 
     describe('waitForPublish', () => {
