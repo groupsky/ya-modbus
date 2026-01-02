@@ -34,6 +34,16 @@ export interface LoadedDriver {
 }
 
 /**
+ * Logger interface for driver loading
+ */
+export interface Logger {
+  /** Log warning messages */
+  warn: (message: string) => void
+  /** Log debug messages (optional) */
+  debug?: (message: string) => void
+}
+
+/**
  * Driver loading options
  */
 export interface LoadDriverOptions {
@@ -42,6 +52,12 @@ export interface LoadDriverOptions {
    * e.g., 'ya-modbus-driver-xymd1' or '@org/driver-pkg'
    */
   driverPackage?: string
+
+  /**
+   * Custom logger for warnings and debug messages
+   * Defaults to console if not provided
+   */
+  logger?: Logger
 }
 
 /**
@@ -206,7 +222,7 @@ export async function loadDriver(
   options: LoadDriverOptions = {},
   deps: SystemDependencies = defaultDeps
 ): Promise<LoadedDriver> {
-  const { driverPackage } = options
+  const { driverPackage, logger = console } = options
 
   try {
     let packageName: string
@@ -287,7 +303,7 @@ export async function loadDriver(
     }
 
     if (DEVICES !== null && DEVICES !== undefined) {
-      result.devices = validateDevices(DEVICES)
+      result.devices = validateDevices(DEVICES, logger)
     }
 
     if (DEFAULT_CONFIG !== null && DEFAULT_CONFIG !== undefined) {
@@ -301,12 +317,12 @@ export async function loadDriver(
     if (result.defaultConfig && result.supportedConfig) {
       const warnings = crossValidateConfigs(result.defaultConfig, result.supportedConfig)
       if (warnings.length > 0) {
-        console.warn('\nWarning: Driver DEFAULT_CONFIG has inconsistencies:')
+        logger.warn('\nWarning: Driver DEFAULT_CONFIG has inconsistencies:')
         for (const warning of warnings) {
-          console.warn(`  - ${warning}`)
+          logger.warn(`  - ${warning}`)
         }
-        console.warn('  This may indicate a driver authoring error\n')
-        console.warn('Run: ya-modbus show-defaults --driver <package> to inspect configuration\n')
+        logger.warn('  This may indicate a driver authoring error\n')
+        logger.warn('Run: ya-modbus show-defaults --driver <package> to inspect configuration\n')
       }
     }
 

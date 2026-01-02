@@ -8,6 +8,7 @@
 import type { DefaultConfig, DeviceRegistry, SupportedConfig } from '@ya-modbus/driver-types'
 
 import { ValidationError } from './errors.js'
+import type { Logger } from './loader.js'
 
 /**
  * Validate DEFAULT_CONFIG export from a driver module
@@ -193,10 +194,11 @@ export function validateSupportedConfig(config: unknown): SupportedConfig {
  * Validate DEVICES export from a driver module
  *
  * @param devices - The DEVICES value to validate
+ * @param logger - Optional logger for warnings (defaults to console)
  * @returns Validated devices registry
  * @throws Error with helpful message if validation fails
  */
-export function validateDevices(devices: unknown): DeviceRegistry {
+export function validateDevices(devices: unknown, logger: Logger = console): DeviceRegistry {
   if (devices === null || devices === undefined || typeof devices !== 'object') {
     throw new ValidationError(
       'Invalid DEVICES: must be an object.\n' +
@@ -292,12 +294,12 @@ export function validateDevices(devices: unknown): DeviceRegistry {
     if (validatedDefaultConfig && validatedSupportedConfig) {
       const warnings = crossValidateConfigs(validatedDefaultConfig, validatedSupportedConfig)
       if (warnings.length > 0) {
-        console.warn(`\nWarning: DEVICES["${key}"] has configuration inconsistencies:`)
+        logger.warn(`\nWarning: DEVICES["${key}"] has configuration inconsistencies:`)
         for (const warning of warnings) {
-          console.warn(`  - ${warning}`)
+          logger.warn(`  - ${warning}`)
         }
-        console.warn('  This may indicate a driver authoring error\n')
-        console.warn('Run: ya-modbus show-defaults --driver <package> to inspect configuration\n')
+        logger.warn('  This may indicate a driver authoring error\n')
+        logger.warn('Run: ya-modbus show-defaults --driver <package> to inspect configuration\n')
       }
     }
   }

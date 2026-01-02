@@ -374,4 +374,48 @@ describe('Driver Loader', () => {
       expect(result.createDriver).toBeDefined()
     })
   })
+
+  describe('custom logger', () => {
+    test('should use custom logger for config warnings', async () => {
+      const mockLogger = {
+        warn: jest.fn(),
+      }
+
+      const driverModule = {
+        createDriver: jest.fn(),
+        DEFAULT_CONFIG: { baudRate: 9600 },
+        SUPPORTED_CONFIG: { validBaudRates: [19200] }, // Mismatch to trigger warning
+      }
+
+      mockDeps.importModule = jest.fn().mockResolvedValue(driverModule)
+
+      await loadDriver({ driverPackage: 'test-driver', logger: mockLogger }, mockDeps)
+
+      expect(mockLogger.warn).toHaveBeenCalled()
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('DEFAULT_CONFIG has inconsistencies')
+      )
+    })
+
+    test('should use console by default when no logger provided', async () => {
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
+
+      const driverModule = {
+        createDriver: jest.fn(),
+        DEFAULT_CONFIG: { baudRate: 9600 },
+        SUPPORTED_CONFIG: { validBaudRates: [19200] },
+      }
+
+      mockDeps.importModule = jest.fn().mockResolvedValue(driverModule)
+
+      await loadDriver({ driverPackage: 'test-driver' }, mockDeps)
+
+      expect(consoleWarnSpy).toHaveBeenCalled()
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('DEFAULT_CONFIG has inconsistencies')
+      )
+
+      consoleWarnSpy.mockRestore()
+    })
+  })
 })

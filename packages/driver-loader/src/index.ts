@@ -4,6 +4,7 @@ export type {
   LoadDriverOptions,
   SystemDependencies,
   DriverCacheStats,
+  Logger,
 } from './loader.js'
 export {
   validateDefaultConfig,
