@@ -1,0 +1,12 @@
+# Memory transport for unit testing
+# Usage: ya-modbus-emulator --config basic-memory.yaml
+
+transport:
+  type: memory
+
+devices:
+  - slaveId: 1
+    registers:
+      holding:
+        0: 100
+        1: 200

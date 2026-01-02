@@ -1,0 +1,28 @@
+# Realistic power meter emulation
+# Usage: ya-modbus-emulator --config power-meter.yaml
+
+transport:
+  type: rtu
+  port: /dev/pts/10 # Virtual serial port for testing
+  baudRate: 9600
+  parity: none
+
+devices:
+  - slaveId: 1
+    # Initial register values
+    registers:
+      holding:
+        0: 230 # Voltage * 10 = 23.0V
+        1: 52 # Current * 10 = 5.2A
+        2: 1196 # Power = 23.0V * 5.2A = 119.6W
+        10: 12345 # Serial number
+        11: 2024 # Firmware version
+      input:
+        0: 500 # Temperature * 10 = 50.0°C
+        1: 60 # Humidity = 60%
+
+    # Timing behavior (simulates realistic device)
+    timing:
+      pollingInterval: 10 # Device polls for commands every 10ms
+      processingDelay: [2, 5] # 2-5ms processing time (variable)
+      perRegisterDelay: 0.1 # 0.1ms per register read/written
