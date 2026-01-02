@@ -11,6 +11,52 @@ import { ValidationError } from './errors.js'
 import type { Logger } from './loader.js'
 
 /**
+ * Output configuration warnings to logger
+ *
+ * @param context - Context description (e.g., "Driver DEFAULT_CONFIG")
+ * @param warnings - Array of warning messages
+ * @param logger - Logger to output warnings to
+ */
+export function outputConfigWarnings(
+  context: string,
+  warnings: string[],
+  logger: Logger = console
+): void {
+  logger.warn(`\nWarning: ${context} has configuration inconsistencies:`)
+  for (const warning of warnings) {
+    logger.warn(`  - ${warning}`)
+  }
+  logger.warn('  This may indicate a driver authoring error\n')
+  logger.warn('Run: ya-modbus show-defaults --driver <package> to inspect configuration\n')
+}
+
+/**
+ * Validate that a value is in an array constraint
+ *
+ * @param value - Value to validate
+ * @param validValues - Array of valid values
+ * @param fieldName - Field name for error message
+ * @param constraintName - Constraint array name for error message
+ * @returns Warning message if validation fails, undefined otherwise
+ */
+function validateArrayConstraint<T extends string | number>(
+  value: T,
+  validValues: readonly T[],
+  fieldName: string,
+  constraintName: string
+): string | undefined {
+  if (!validValues.includes(value)) {
+    const formattedValues =
+      typeof value === 'string'
+        ? validValues.map((v) => `"${String(v)}"`).join(', ')
+        : validValues.join(', ')
+    const formattedValue = typeof value === 'string' ? `"${String(value)}"` : String(value)
+    return `${fieldName}: ${formattedValue} is not in ${constraintName}: [${formattedValues}]`
+  }
+  return undefined
+}
+
+/**
  * Validate DEFAULT_CONFIG export from a driver module
  *
  * @param config - The DEFAULT_CONFIG value to validate
@@ -294,12 +340,7 @@ export function validateDevices(devices: unknown, logger: Logger = console): Dev
     if (validatedDefaultConfig && validatedSupportedConfig) {
       const warnings = crossValidateConfigs(validatedDefaultConfig, validatedSupportedConfig)
       if (warnings.length > 0) {
-        logger.warn(`\nWarning: DEVICES["${key}"] has configuration inconsistencies:`)
-        for (const warning of warnings) {
-          logger.warn(`  - ${warning}`)
-        }
-        logger.warn('  This may indicate a driver authoring error\n')
-        logger.warn('Run: ya-modbus show-defaults --driver <package> to inspect configuration\n')
+        outputConfigWarnings(`DEVICES["${key}"]`, warnings, logger)
       }
     }
   }
@@ -346,12 +387,13 @@ export function crossValidateConfigs(
     const serialSupported = supportedConfig as Record<string, unknown>
 
     if ('validBaudRates' in serialSupported && Array.isArray(serialSupported['validBaudRates'])) {
-      const validBaudRates = serialSupported['validBaudRates'] as number[]
-      if (!validBaudRates.includes(serialDefault.baudRate)) {
-        warnings.push(
-          `baudRate: ${serialDefault.baudRate} is not in validBaudRates: [${validBaudRates.join(', ')}]`
-        )
-      }
+      const warning = validateArrayConstraint(
+        serialDefault.baudRate,
+        serialSupported['validBaudRates'] as number[],
+        'baudRate',
+        'validBaudRates'
+      )
+      if (warning) warnings.push(warning)
     }
 
     if (
@@ -359,12 +401,13 @@ export function crossValidateConfigs(
       'validParity' in serialSupported &&
       Array.isArray(serialSupported['validParity'])
     ) {
-      const validParity = serialSupported['validParity'] as string[]
-      if (!validParity.includes(serialDefault.parity)) {
-        warnings.push(
-          `parity: "${serialDefault.parity}" is not in validParity: [${validParity.map((p) => `"${p}"`).join(', ')}]`
-        )
-      }
+      const warning = validateArrayConstraint(
+        serialDefault.parity,
+        serialSupported['validParity'] as string[],
+        'parity',
+        'validParity'
+      )
+      if (warning) warnings.push(warning)
     }
 
     if (
@@ -372,12 +415,13 @@ export function crossValidateConfigs(
       'validDataBits' in serialSupported &&
       Array.isArray(serialSupported['validDataBits'])
     ) {
-      const validDataBits = serialSupported['validDataBits'] as number[]
-      if (!validDataBits.includes(serialDefault.dataBits)) {
-        warnings.push(
-          `dataBits: ${serialDefault.dataBits} is not in validDataBits: [${validDataBits.join(', ')}]`
-        )
-      }
+      const warning = validateArrayConstraint(
+        serialDefault.dataBits,
+        serialSupported['validDataBits'] as number[],
+        'dataBits',
+        'validDataBits'
+      )
+      if (warning) warnings.push(warning)
     }
 
     if (
@@ -385,12 +429,13 @@ export function crossValidateConfigs(
       'validStopBits' in serialSupported &&
       Array.isArray(serialSupported['validStopBits'])
     ) {
-      const validStopBits = serialSupported['validStopBits'] as number[]
-      if (!validStopBits.includes(serialDefault.stopBits)) {
-        warnings.push(
-          `stopBits: ${serialDefault.stopBits} is not in validStopBits: [${validStopBits.join(', ')}]`
-        )
-      }
+      const warning = validateArrayConstraint(
+        serialDefault.stopBits,
+        serialSupported['validStopBits'] as number[],
+        'stopBits',
+        'validStopBits'
+      )
+      if (warning) warnings.push(warning)
     }
 
     if (
@@ -412,12 +457,13 @@ export function crossValidateConfigs(
     const tcpSupported = supportedConfig as Record<string, unknown>
 
     if ('validPorts' in tcpSupported && Array.isArray(tcpSupported['validPorts'])) {
-      const validPorts = tcpSupported['validPorts'] as number[]
-      if (!validPorts.includes(tcpDefault.defaultPort)) {
-        warnings.push(
-          `defaultPort: ${tcpDefault.defaultPort} is not in validPorts: [${validPorts.join(', ')}]`
-        )
-      }
+      const warning = validateArrayConstraint(
+        tcpDefault.defaultPort,
+        tcpSupported['validPorts'] as number[],
+        'defaultPort',
+        'validPorts'
+      )
+      if (warning) warnings.push(warning)
     }
 
     if (

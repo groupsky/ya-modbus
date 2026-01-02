@@ -214,7 +214,7 @@ describe('Driver Loader', () => {
       await loadDriver({ driverPackage: 'test-driver' }, mockDeps)
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        '\nWarning: Driver DEFAULT_CONFIG has inconsistencies:'
+        '\nWarning: Driver DEFAULT_CONFIG has configuration inconsistencies:'
       )
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         '  - baudRate: 115200 is not in validBaudRates: [9600]'
@@ -393,7 +393,7 @@ describe('Driver Loader', () => {
 
       expect(mockLogger.warn).toHaveBeenCalled()
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('DEFAULT_CONFIG has inconsistencies')
+        expect.stringContaining('DEFAULT_CONFIG has configuration inconsistencies')
       )
     })
 
@@ -412,7 +412,7 @@ describe('Driver Loader', () => {
 
       expect(consoleWarnSpy).toHaveBeenCalled()
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('DEFAULT_CONFIG has inconsistencies')
+        expect.stringContaining('DEFAULT_CONFIG has configuration inconsistencies')
       )
 
       consoleWarnSpy.mockRestore()

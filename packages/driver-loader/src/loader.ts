@@ -10,6 +10,7 @@ import type {
 
 import {
   crossValidateConfigs,
+  outputConfigWarnings,
   validateDefaultConfig,
   validateDevices,
   validateSupportedConfig,
@@ -317,12 +318,7 @@ export async function loadDriver(
     if (result.defaultConfig && result.supportedConfig) {
       const warnings = crossValidateConfigs(result.defaultConfig, result.supportedConfig)
       if (warnings.length > 0) {
-        logger.warn('\nWarning: Driver DEFAULT_CONFIG has inconsistencies:')
-        for (const warning of warnings) {
-          logger.warn(`  - ${warning}`)
-        }
-        logger.warn('  This may indicate a driver authoring error\n')
-        logger.warn('Run: ya-modbus show-defaults --driver <package> to inspect configuration\n')
+        outputConfigWarnings('Driver DEFAULT_CONFIG', warnings, logger)
       }
     }
 
