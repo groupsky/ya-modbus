@@ -7,7 +7,7 @@ import { createBridge } from './index.js'
 
 jest.mock('mqtt')
 
-const mockedMqtt = mqtt
+const mockedMqtt = mqtt as jest.Mocked<typeof mqtt>
 
 interface MockMqttClient extends EventEmitter {
   end: jest.Mock<(force?: boolean, opts?: object, cb?: () => void) => void>
