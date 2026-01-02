@@ -269,7 +269,6 @@ export async function withTransport<T>(
       }
 
   // Create transport
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
   const transport: Transport = await createTransport(transportConfig)
 
   try {

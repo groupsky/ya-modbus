@@ -45,7 +45,7 @@ export interface MockDriverOptions {
  */
 export function createMockDriver(options: MockDriverOptions = {}): LoadedDriver {
   const {
-    createDriver = jest.fn().mockReturnValue({}),
+    createDriver = jest.fn().mockReturnValue({}) as unknown as CreateDriverFunction,
     defaultConfig,
     supportedConfig,
     devices,
@@ -101,8 +101,20 @@ export function mockSystemDeps(options: MockSystemDepsOptions = {}): SystemDepen
   const { readFile, importModule, getCwd } = options
 
   return {
-    readFile: readFile ?? jest.fn().mockResolvedValue('{}'),
-    importModule: importModule ?? jest.fn().mockResolvedValue(createMockDriver()),
-    getCwd: getCwd ?? jest.fn().mockReturnValue('/mock/cwd'),
+    readFile:
+      readFile ??
+      (jest
+        .fn<SystemDependencies['readFile']>()
+        .mockResolvedValue('{}') as SystemDependencies['readFile']),
+    importModule:
+      importModule ??
+      (jest
+        .fn<SystemDependencies['importModule']>()
+        .mockResolvedValue(createMockDriver()) as SystemDependencies['importModule']),
+    getCwd:
+      getCwd ??
+      (jest
+        .fn<SystemDependencies['getCwd']>()
+        .mockReturnValue('/mock/cwd') as SystemDependencies['getCwd']),
   }
 }
