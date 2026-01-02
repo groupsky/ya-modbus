@@ -398,13 +398,14 @@ describe('MQTT Bridge Integration Tests', () => {
       await withBridge(createTestBridgeConfig(broker), async (bridge) => {
         const deviceConfig = {
           deviceId: 'device1',
-          driver: 'test-driver',
+          driver: 'ya-modbus-driver-test',
           connection: {
             type: 'tcp' as const,
             host: 'localhost',
             port: 502,
             slaveId: 1,
           },
+          enabled: false, // Skip driver loading for integration test
         }
 
         await bridge.addDevice(deviceConfig)
@@ -423,24 +424,26 @@ describe('MQTT Bridge Integration Tests', () => {
       await withBridge(createTestBridgeConfig(broker), async (bridge) => {
         const device1 = {
           deviceId: 'device1',
-          driver: 'driver1',
+          driver: 'ya-modbus-driver-test1',
           connection: {
             type: 'tcp' as const,
             host: 'localhost',
             port: 502,
             slaveId: 1,
           },
+          enabled: false, // Skip driver loading for integration test
         }
 
         const device2 = {
           deviceId: 'device2',
-          driver: 'driver2',
+          driver: 'ya-modbus-driver-test2',
           connection: {
             type: 'rtu' as const,
             port: '/dev/ttyUSB0',
             baudRate: 9600,
             slaveId: 2,
           },
+          enabled: false, // Skip driver loading for integration test
         }
 
         await bridge.addDevice(device1)
@@ -559,6 +562,34 @@ describe('MQTT Bridge Integration Tests', () => {
 
       // Should reject on connection failure
       await expect(bridge.start()).rejects.toThrow()
+    })
+
+    test('should handle stop when never started', async () => {
+      const config = createTestBridgeConfig(broker)
+      const bridge = createBridge(config)
+
+      // Stop without starting - client will be null
+      await expect(bridge.stop()).resolves.not.toThrow()
+
+      const status = bridge.getStatus()
+      expect(status.state).toBe('stopped')
+    })
+
+    test('should handle multiple concurrent stop calls', async () => {
+      const config = createTestBridgeConfig(broker)
+      const bridge = createBridge(config)
+
+      await bridge.start()
+
+      // Call stop multiple times concurrently
+      const stopPromises = [bridge.stop(), bridge.stop(), bridge.stop()]
+
+      await expect(Promise.all(stopPromises)).resolves.not.toThrow()
+
+      const status = bridge.getStatus()
+      expect(status.state).toBe('stopped')
+
+      await waitForAllClientsToDisconnect(broker)
     })
   })
 })

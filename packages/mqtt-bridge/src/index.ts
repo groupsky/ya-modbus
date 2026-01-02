@@ -1,6 +1,8 @@
 import mqtt from 'mqtt'
 
 import { DeviceManager } from './device-manager.js'
+import { DriverLoader } from './driver-loader.js'
+import { PollingScheduler } from './polling-scheduler.js'
 import type {
   MqttBridgeConfig,
   MqttBridge,
@@ -33,7 +35,17 @@ export type {
 } from './types.js'
 export { loadConfig } from './utils/config.js'
 
-export function createBridge(config: MqttBridgeConfig): MqttBridge {
+// For dependency injection in tests
+interface BridgeDependencies {
+  driverLoader?: DriverLoader
+  deviceManager?: DeviceManager
+  pollingScheduler?: PollingScheduler
+}
+
+export function createBridge(
+  config: MqttBridgeConfig,
+  dependencies?: BridgeDependencies
+): MqttBridge {
   let status: InternalStatus = {
     state: 'stopped',
     timestamp: Date.now(),
@@ -43,9 +55,44 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
   const topicPrefix = config.topicPrefix ?? 'modbus'
   // Subscriptions map needed because mqtt client doesn't expose handler lookup
   const subscriptions = new Map<string, MessageHandler>()
-  const deviceManager = new DeviceManager()
 
-  return {
+  // Use injected dependencies or create new instances
+  const driverLoader = dependencies?.driverLoader ?? new DriverLoader()
+  const deviceManager = dependencies?.deviceManager ?? new DeviceManager(driverLoader)
+
+  // Will be set after bridge object is created
+  const publishDataRef: { current?: (deviceId: string, data: Record<string, unknown>) => void } = {}
+
+  // Handle data from polling
+  const handlePollingData = (deviceId: string, data: Record<string, unknown>): void => {
+    if (publishDataRef.current) {
+      publishDataRef.current(deviceId, data)
+    }
+
+    // Update device status
+    deviceManager.updateDeviceState(deviceId, {
+      lastPoll: Date.now(),
+      lastUpdate: Date.now(),
+    })
+  }
+
+  // Handle polling errors
+  const handlePollingError = (deviceId: string, error: Error): void => {
+    console.error(`Polling error for device ${deviceId}:`, error)
+
+    const device = deviceManager.getDevice(deviceId)
+    const consecutiveFailures = (device?.consecutiveFailures ?? 0) + 1
+
+    deviceManager.updateDeviceState(deviceId, {
+      consecutiveFailures,
+      errors: [error.message],
+    })
+  }
+
+  const pollingScheduler =
+    dependencies?.pollingScheduler ?? new PollingScheduler(handlePollingData, handlePollingError)
+
+  const bridge: MqttBridge = {
     start() {
       return new Promise<void>((resolve, reject) => {
         status = {
@@ -80,6 +127,9 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
           }
 
           // Automatic resubscription is handled by mqtt.js (resubscribe: true)
+
+          // Start polling scheduler
+          pollingScheduler.start()
 
           if (isInitialConnection) {
             isInitialConnection = false
@@ -131,21 +181,28 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
       })
     },
 
-    stop() {
-      return new Promise<void>((resolve) => {
-        status = {
-          state: 'stopping',
-          timestamp: Date.now(),
-        }
+    async stop() {
+      status = {
+        state: 'stopping',
+        timestamp: Date.now(),
+      }
 
-        // Cleanup device manager
-        deviceManager.clear()
+      // Stop polling first
+      pollingScheduler.stop()
 
-        if (client) {
-          // Cleanup event listeners and subscriptions to prevent memory leaks
-          client.removeAllListeners()
-          subscriptions.clear()
+      // Cleanup device manager (unloads drivers)
+      await deviceManager.clear()
 
+      if (client) {
+        // Cleanup event listeners and subscriptions to prevent memory leaks
+        client.removeAllListeners()
+        subscriptions.clear()
+
+        await new Promise<void>((resolve) => {
+          if (!client) {
+            resolve()
+            return
+          }
           client.end(false, {}, () => {
             status = {
               state: 'stopped',
@@ -154,14 +211,13 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
             client = null
             resolve()
           })
-        } else {
-          status = {
-            state: 'stopped',
-            timestamp: Date.now(),
-          }
-          resolve()
+        })
+      } else {
+        status = {
+          state: 'stopped',
+          timestamp: Date.now(),
         }
-      })
+      }
     },
 
     getStatus() {
@@ -259,28 +315,24 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
       })
     },
 
-    addDevice(deviceConfig: DeviceConfig) {
-      return new Promise<void>((resolve, reject) => {
-        try {
-          deviceManager.addDevice(deviceConfig)
-          resolve()
-        } catch (error) {
-          /* istanbul ignore next - defensive: deviceManager always throws Error */
-          reject(error instanceof Error ? error : new Error(String(error)))
+    async addDevice(deviceConfig: DeviceConfig) {
+      await deviceManager.addDevice(deviceConfig)
+
+      // Schedule device for polling if enabled
+      if (deviceConfig.enabled !== false) {
+        const driver = driverLoader.getDriver(deviceConfig.deviceId)
+        if (driver) {
+          pollingScheduler.scheduleDevice(deviceConfig.deviceId, deviceConfig, driver)
         }
-      })
+      }
     },
 
-    removeDevice(deviceId: string) {
-      return new Promise<void>((resolve, reject) => {
-        try {
-          deviceManager.removeDevice(deviceId)
-          resolve()
-        } catch (error) {
-          /* istanbul ignore next - defensive: deviceManager always throws Error */
-          reject(error instanceof Error ? error : new Error(String(error)))
-        }
-      })
+    async removeDevice(deviceId: string) {
+      // Unschedule polling first
+      pollingScheduler.unscheduleDevice(deviceId)
+
+      // Remove device (unloads driver)
+      await deviceManager.removeDevice(deviceId)
     },
 
     getDevice(deviceId: string) {
@@ -290,5 +342,25 @@ export function createBridge(config: MqttBridgeConfig): MqttBridge {
     listDevices() {
       return deviceManager.listDevices()
     },
+
+    getDeviceConfig(deviceId: string) {
+      return deviceManager.getDeviceConfig(deviceId)
+    },
   }
+
+  // Set the publish function now that bridge is defined
+  publishDataRef.current = (deviceId: string, data: Record<string, unknown>): void => {
+    const payload = JSON.stringify({
+      deviceId,
+      timestamp: Date.now(),
+      data,
+    })
+
+    // Publish to device-specific topic
+    void bridge.publish(`${deviceId}/data`, payload, { qos: 0 }).catch((error: Error) => {
+      console.error(`Failed to publish data for device ${deviceId}:`, error)
+    })
+  }
+
+  return bridge
 }
