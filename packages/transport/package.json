@@ -37,9 +37,5 @@
   "dependencies": {
     "@ya-modbus/driver-types": "^0.0.0",
     "modbus-serial": "^8.0.18"
-  },
-  "devDependencies": {
-    "@types/jest": "^30.0.0",
-    "@types/node": "^20.10.6"
   }
 }
