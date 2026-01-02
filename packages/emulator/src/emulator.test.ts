@@ -116,15 +116,23 @@ describe('ModbusEmulator', () => {
       }).toThrow('Unsupported transport: tcp')
     })
 
-    it('should throw for unsupported RTU transport', () => {
+    it('should create RTU transport with valid config', () => {
+      emulator = new ModbusEmulator({
+        transport: 'rtu',
+        port: '/dev/pts/10',
+        baudRate: 9600,
+        parity: 'even',
+      })
+      expect(emulator).toBeDefined()
+      expect(emulator.getTransport()).toBeDefined()
+    })
+
+    it('should throw for RTU transport without port', () => {
       expect(() => {
         emulator = new ModbusEmulator({
           transport: 'rtu',
-          port: '/dev/pts/10',
-          baudRate: 9600,
-          parity: 'even',
-        })
-      }).toThrow('Unsupported transport: rtu')
+        } as any)
+      }).toThrow('RTU transport requires port')
     })
   })
 

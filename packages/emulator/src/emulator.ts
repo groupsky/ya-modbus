@@ -5,6 +5,7 @@
 import { EmulatedDevice } from './device.js'
 import type { BaseTransport } from './transports/base.js'
 import { MemoryTransport } from './transports/memory.js'
+import { RtuTransport } from './transports/rtu.js'
 import type { EmulatorConfig, DeviceConfig } from './types/config.js'
 import type { EmulatedDevice as IEmulatedDevice } from './types/device.js'
 
@@ -20,6 +21,17 @@ export class ModbusEmulator {
     // Create transport based on config
     if (config.transport === 'memory') {
       this.transport = new MemoryTransport()
+    } else if (config.transport === 'rtu') {
+      if (!config.port || typeof config.port !== 'string') {
+        throw new Error('RTU transport requires port (serial port path)')
+      }
+      this.transport = new RtuTransport({
+        port: config.port,
+        baudRate: config.baudRate,
+        parity: config.parity,
+        dataBits: config.dataBits,
+        stopBits: config.stopBits,
+      })
     } else {
       throw new Error(`Unsupported transport: ${config.transport}`)
     }
