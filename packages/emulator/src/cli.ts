@@ -9,6 +9,19 @@ import { ModbusEmulator } from './emulator.js'
 import type { EmulatorConfig } from './types/config.js'
 import { loadConfig } from './utils/config-loader.js'
 
+interface CliOptions {
+  config?: string
+  transport?: string
+  port?: string
+  host?: string
+  baudRate?: number
+  parity?: string
+  slaveId?: number
+  verbose?: boolean
+  quiet?: boolean
+  logRequests?: boolean
+}
+
 const program = new Command()
 
 program
@@ -30,7 +43,7 @@ program
 
 program.parse()
 
-const options = program.opts()
+const options = program.opts() as CliOptions
 
 /**
  * Main CLI entry point
