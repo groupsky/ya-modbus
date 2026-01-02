@@ -193,8 +193,10 @@ async function tryImport(paths: string[], deps: SystemDependencies): Promise<unk
     }
   }
 
+  const lastError = errors[errors.length - 1]
   throw new Error(
-    `Failed to import module from any path. Tried: ${paths.join(', ')}\nLast error: ${errors[errors.length - 1]?.message}`
+    `Failed to import module from any path. Tried: ${paths.join(', ')}\nLast error: ${lastError?.message}`,
+    { cause: lastError }
   )
 }
 
@@ -335,7 +337,7 @@ export async function loadDriver(
     }
 
     if (error instanceof Error) {
-      throw new Error(`Failed to load driver: ${error.message}`)
+      throw new Error(`Failed to load driver: ${error.message}`, { cause: error })
     }
 
     throw new Error('Failed to load driver: Unknown error')
