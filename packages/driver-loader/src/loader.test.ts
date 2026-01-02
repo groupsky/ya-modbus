@@ -1,3 +1,4 @@
+import { ValidationError, DriverNotFoundError, PackageJsonError } from './errors.js'
 import { clearDriverCache, loadDriver } from './loader.js'
 import type { SystemDependencies } from './loader.js'
 
@@ -271,6 +272,149 @@ describe('Driver Loader', () => {
       await expect(loadDriver({ driverPackage: 'test-driver' }, mockDeps)).rejects.toThrow(
         'Driver package must export a createDriver function'
       )
+    })
+  })
+
+  describe('error type handling (instanceof checks)', () => {
+    test('should throw PackageJsonError for missing package.json', async () => {
+      const error = new Error('ENOENT') as NodeJS.ErrnoException
+      error.code = 'ENOENT'
+      mockDeps.readFile = jest.fn().mockRejectedValue(error)
+
+      await expect(loadDriver({}, mockDeps)).rejects.toThrow(PackageJsonError)
+      await expect(loadDriver({}, mockDeps)).rejects.toThrow('package.json not found')
+
+      // Verify error properties
+      const thrownError = await loadDriver({}, mockDeps).catch((err) => err)
+      expect(thrownError).toBeInstanceOf(Error)
+      expect(thrownError.name).toBe('PackageJsonError')
+    })
+
+    test('should throw PackageJsonError for invalid JSON', async () => {
+      mockDeps.readFile = jest.fn().mockResolvedValue('{ invalid json')
+
+      await expect(loadDriver({}, mockDeps)).rejects.toThrow(PackageJsonError)
+      await expect(loadDriver({}, mockDeps)).rejects.toThrow('Failed to parse package.json')
+    })
+
+    test('should throw PackageJsonError for missing ya-modbus-driver keyword', async () => {
+      const packageJson = { name: 'test-package', keywords: ['other'] }
+      mockDeps.readFile = jest.fn().mockResolvedValue(JSON.stringify(packageJson))
+
+      await expect(loadDriver({}, mockDeps)).rejects.toThrow(PackageJsonError)
+      await expect(loadDriver({}, mockDeps)).rejects.toThrow('not a ya-modbus driver')
+    })
+
+    test('should throw DriverNotFoundError with packageName metadata', async () => {
+      const error = new Error('Cannot find module')
+      mockDeps.importModule = jest.fn().mockRejectedValue(error)
+
+      await expect(loadDriver({ driverPackage: 'missing-driver' }, mockDeps)).rejects.toThrow(
+        DriverNotFoundError
+      )
+
+      // Verify error metadata
+      const thrownError = await loadDriver({ driverPackage: 'missing-driver' }, mockDeps).catch(
+        (err) => err
+      )
+      expect(thrownError).toBeInstanceOf(Error)
+      expect(thrownError.name).toBe('DriverNotFoundError')
+      expect(thrownError.packageName).toBe('missing-driver')
+      expect(thrownError.message).toContain('missing-driver')
+    })
+
+    test('should throw ValidationError with field metadata for missing createDriver', async () => {
+      mockDeps.importModule = jest.fn().mockResolvedValue({ notCreateDriver: jest.fn() })
+
+      await expect(loadDriver({ driverPackage: 'test-driver' }, mockDeps)).rejects.toThrow(
+        ValidationError
+      )
+
+      // Verify error metadata
+      const thrownError = await loadDriver({ driverPackage: 'test-driver' }, mockDeps).catch(
+        (err) => err
+      )
+      expect(thrownError).toBeInstanceOf(Error)
+      expect(thrownError.name).toBe('ValidationError')
+      expect(thrownError.field).toBe('createDriver')
+      expect(thrownError.message).toContain('createDriver')
+    })
+
+    test('should throw ValidationError with field metadata for invalid DEFAULT_CONFIG', async () => {
+      const driverModule = {
+        createDriver: jest.fn(),
+        DEFAULT_CONFIG: 'invalid', // Should be an object
+      }
+      mockDeps.importModule = jest.fn().mockResolvedValue(driverModule)
+
+      await expect(loadDriver({ driverPackage: 'test-driver' }, mockDeps)).rejects.toThrow(
+        ValidationError
+      )
+
+      // Verify error message
+      const thrownError = await loadDriver({ driverPackage: 'test-driver' }, mockDeps).catch(
+        (err) => err
+      )
+      expect(thrownError.message).toContain('Invalid DEFAULT_CONFIG')
+    })
+
+    test('should preserve error cause for better debugging', async () => {
+      const originalError = new Error('Original module error')
+      const errorWithCode = originalError as NodeJS.ErrnoException
+      errorWithCode.code = 'MODULE_NOT_FOUND'
+
+      mockDeps.importModule = jest.fn().mockRejectedValue(originalError)
+
+      await expect(loadDriver({ driverPackage: 'test-driver' }, mockDeps)).rejects.toThrow(
+        DriverNotFoundError
+      )
+
+      // Verify error was thrown with message
+      const thrownError = await loadDriver({ driverPackage: 'test-driver' }, mockDeps).catch(
+        (err) => err
+      )
+      expect(thrownError).toBeInstanceOf(DriverNotFoundError)
+      expect(thrownError.message).toBeTruthy()
+    })
+
+    test('should allow type-safe error handling patterns', async () => {
+      const scenarios = [
+        {
+          name: 'PackageJsonError',
+          setup: () => {
+            const error = new Error('ENOENT') as NodeJS.ErrnoException
+            error.code = 'ENOENT'
+            mockDeps.readFile = jest.fn().mockRejectedValue(error)
+          },
+          loadOptions: {}, // Auto-detect mode to trigger readFile
+          expectedType: PackageJsonError,
+        },
+        {
+          name: 'DriverNotFoundError',
+          setup: () => {
+            mockDeps.importModule = jest.fn().mockRejectedValue(new Error('Not found'))
+          },
+          loadOptions: { driverPackage: 'test' },
+          expectedType: DriverNotFoundError,
+        },
+        {
+          name: 'ValidationError',
+          setup: () => {
+            mockDeps.importModule = jest.fn().mockResolvedValue({})
+          },
+          loadOptions: { driverPackage: 'test' },
+          expectedType: ValidationError,
+        },
+      ]
+
+      for (const scenario of scenarios) {
+        clearDriverCache()
+        scenario.setup()
+
+        await expect(loadDriver(scenario.loadOptions, mockDeps)).rejects.toThrow(
+          scenario.expectedType
+        )
+      }
     })
   })
 

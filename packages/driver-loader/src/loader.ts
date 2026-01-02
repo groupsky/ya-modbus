@@ -36,6 +36,18 @@ export interface LoadedDriver {
 
 /**
  * Logger interface for driver loading
+ *
+ * @example
+ * ```typescript
+ * import { loadDriver, type Logger } from '@ya-modbus/driver-loader'
+ *
+ * const logger: Logger = {
+ *   warn: (msg) => console.warn('[DRIVER]', msg),
+ *   debug: (msg) => console.debug('[DRIVER]', msg), // Optional
+ * }
+ *
+ * const driver = await loadDriver({ logger })
+ * ```
  */
 export interface Logger {
   /** Log warning messages */
@@ -46,6 +58,26 @@ export interface Logger {
 
 /**
  * Driver loading options
+ *
+ * @example
+ * ```typescript
+ * import { loadDriver } from '@ya-modbus/driver-loader'
+ *
+ * // Auto-detect from current directory
+ * const driver1 = await loadDriver({})
+ *
+ * // Load specific package
+ * const driver2 = await loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' })
+ *
+ * // With custom logger
+ * const driver3 = await loadDriver({
+ *   driverPackage: 'my-driver',
+ *   logger: {
+ *     warn: (msg) => console.warn('[WARN]', msg),
+ *     debug: (msg) => console.debug('[DEBUG]', msg),
+ *   }
+ * })
+ * ```
  */
 export interface LoadDriverOptions {
   /**

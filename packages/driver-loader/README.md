@@ -26,6 +26,67 @@ import { loadDriver } from '@ya-modbus/driver-loader'
 const driver = await loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' })
 ```
 
+### Error Handling
+
+The driver-loader exports custom error classes for type-safe error handling:
+
+```typescript
+import {
+  loadDriver,
+  ValidationError,
+  DriverNotFoundError,
+  PackageJsonError,
+} from '@ya-modbus/driver-loader'
+
+try {
+  const driver = await loadDriver({ driverPackage: 'my-driver' })
+} catch (error) {
+  // Type-safe error handling with instanceof
+  if (error instanceof DriverNotFoundError) {
+    console.error(`Package not found: ${error.packageName}`)
+    console.error(`Install with: npm install ${error.packageName}`)
+  } else if (error instanceof ValidationError) {
+    console.error(`Validation failed for field: ${error.field}`)
+    console.error(`Error: ${error.message}`)
+  } else if (error instanceof PackageJsonError) {
+    console.error('package.json issue:', error.message)
+  } else {
+    console.error('Unexpected error:', error)
+  }
+}
+```
+
+**Error Types:**
+
+- **`ValidationError`**: Driver configuration validation failed
+  - `field?: string` - The configuration field that failed validation
+  - Example: Invalid DEFAULT_CONFIG, missing createDriver function
+
+- **`DriverNotFoundError`**: Driver package not found or cannot be loaded
+  - `packageName: string` - The package that couldn't be found
+  - Example: Package not installed, wrong package name
+
+- **`PackageJsonError`**: package.json not found or invalid
+  - Example: Missing package.json, invalid JSON, missing ya-modbus-driver keyword
+
+### Custom Logging
+
+You can provide a custom logger to control warning and debug output:
+
+```typescript
+import { loadDriver, type Logger } from '@ya-modbus/driver-loader'
+
+const logger: Logger = {
+  warn: (msg) => myLogger.warning('[DRIVER]', msg),
+  debug: (msg) => myLogger.debug('[DRIVER]', msg), // Optional
+}
+
+const driver = await loadDriver({
+  driverPackage: 'my-driver',
+  logger,
+})
+```
+
 ## API
 
 ### `loadDriver(options?: LoadDriverOptions): Promise<LoadedDriver>`
@@ -54,6 +115,25 @@ Loads a ya-modbus driver package and validates its exports.
 
 Clears the driver cache. Useful for testing or when you need to reload drivers.
 
+**When to use:**
+
+- **In tests:** Clear cache between test cases to ensure isolation
+- **After package updates:** Force reload of updated driver packages
+- **During development:** Reload drivers after making changes
+
+```typescript
+import { clearDriverCache } from '@ya-modbus/driver-loader'
+
+// In test setup
+beforeEach(() => {
+  clearDriverCache() // Ensure each test starts with clean cache
+})
+
+// After updating a driver package
+await updateDriver('my-driver')
+clearDriverCache() // Force reload on next loadDriver call
+```
+
 ### `getDriverCacheStats(): DriverCacheStats`
 
 Returns cache statistics including hits, misses, and current cache size.
@@ -64,6 +144,28 @@ Returns cache statistics including hits, misses, and current cache size.
   - `hits`: Number of cache hits
   - `misses`: Number of cache misses
   - `size`: Number of cached drivers
+
+**Cache Behavior:**
+
+- **Automatic caching:** Drivers are cached by package name after first load
+- **Cache key:** Package name (e.g., 'ya-modbus-driver-xymd1')
+- **Cache lifetime:** Persists for the lifetime of the Node.js process
+- **Auto-detect mode:** Even auto-detected drivers are cached by their package name
+- **No cache on errors:** Failed loads are not cached, allowing retry
+
+**Example:**
+
+```typescript
+import { loadDriver, getDriverCacheStats } from '@ya-modbus/driver-loader'
+
+// First load - cache miss
+await loadDriver({ driverPackage: 'my-driver' })
+console.log(getDriverCacheStats()) // { hits: 0, misses: 1, size: 1 }
+
+// Second load - cache hit
+await loadDriver({ driverPackage: 'my-driver' })
+console.log(getDriverCacheStats()) // { hits: 1, misses: 1, size: 1 }
+```
 
 ## Testing Utilities
 
