@@ -601,6 +601,9 @@ export function createMockDriver(overrides?: {
  * allowing integration tests to verify driver lifecycle without
  * loading real driver packages.
  *
+ * **Note**: Returns fresh mock instances on each call. Mock state does
+ * not persist between invocations. Each test gets independent mocks.
+ *
  * @param broker - The test broker to connect to
  * @param overrides - Optional configuration overrides
  * @returns Object with bridge config and driver loader

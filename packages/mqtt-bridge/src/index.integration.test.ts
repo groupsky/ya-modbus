@@ -470,6 +470,52 @@ describe('MQTT Bridge Integration Tests', () => {
         expect(devices.map((d) => d.deviceId)).toContain('device2')
       })
     })
+
+    test('should create independent driver instances for multiple devices', async () => {
+      await withBridgeAndMockDriver(broker, async (bridge, mocks) => {
+        const device1 = {
+          deviceId: 'device1',
+          driver: 'ya-modbus-driver-test1',
+          connection: {
+            type: 'tcp' as const,
+            host: 'localhost',
+            port: 502,
+            slaveId: 1,
+          },
+        }
+
+        const device2 = {
+          deviceId: 'device2',
+          driver: 'ya-modbus-driver-test2',
+          connection: {
+            type: 'tcp' as const,
+            host: 'localhost',
+            port: 503,
+            slaveId: 2,
+          },
+        }
+
+        await bridge.addDevice(device1)
+        await bridge.addDevice(device2)
+
+        // Verify each device triggered independent driver and transport creation
+        expect(mocks.mockLoadDriverFn).toHaveBeenCalledTimes(2)
+        expect(mocks.mockLoadDriverFn).toHaveBeenCalledWith(
+          expect.objectContaining({ driverPackage: 'ya-modbus-driver-test1' })
+        )
+        expect(mocks.mockLoadDriverFn).toHaveBeenCalledWith(
+          expect.objectContaining({ driverPackage: 'ya-modbus-driver-test2' })
+        )
+
+        expect(mocks.mockTransportFactory).toHaveBeenCalledTimes(2)
+        expect(mocks.mockTransportFactory).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'tcp', port: 502, slaveId: 1 })
+        )
+        expect(mocks.mockTransportFactory).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'tcp', port: 503, slaveId: 2 })
+        )
+      })
+    })
   })
 
   describe('Reconnection Behavior', () => {
