@@ -8,7 +8,20 @@
       "changelogPreset": "angular",
       "createRelease": "github",
       "message": "chore(release): publish %s",
-      "ignoreChanges": ["**/__tests__/**", "**/*.md", "**/jest.config.cjs", "**/tsconfig*.json"]
+      "ignoreChanges": [
+        "**/__tests__/**",
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "**/*.md",
+        "**/CLAUDE.md",
+        "**/AGENTS.md",
+        "**/jest.config.cjs",
+        "**/tsconfig*.json",
+        "**/.eslintrc*",
+        "**/.prettierrc*",
+        ".github/**",
+        "docs/**"
+      ]
     },
     "publish": {
       "registry": "https://registry.npmjs.org/"

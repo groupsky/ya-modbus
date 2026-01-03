@@ -63,27 +63,19 @@ Automatic on push to main (after PR merge). No manual action needed.
 
 ### Pre-release (Feature Branch Testing)
 
-Trigger manually using `gh` CLI or GitHub Actions UI.
+Trigger manually via workflow_dispatch. Pre-release publishes to custom dist-tag.
 
-Using `gh` CLI:
+Options:
 
-- Auto-generate dist-tag: `gh workflow run release.yml --ref feat/my-branch`
-- Custom dist-tag: `gh workflow run release.yml --ref feat/my-branch --field dist-tag=beta`
-
-Using GitHub Actions UI: Actions → Release → Run workflow
-
-Results in pre-release version with custom dist-tag (e.g., `0.1.0-feat-xyz.0`)
+- Empty dist-tag input: auto-generates from branch name
+- Specified dist-tag: uses provided value (must be valid npm dist-tag format)
+- Dry-run: validates without publishing
 
 ### Manual/Emergency Release
 
-For local releases only when automation unavailable.
+For local releases when automation unavailable: build → test → version → publish
 
-Order: build → test → version → publish
-
-See: `package.json` for lerna scripts
-See: `docs/PUBLISHING-SETUP.md` for environment setup
-
-See: `docs/PUBLISHING-SETUP.md` for first-time configuration
-See: `lerna.json` for Lerna configuration
 See: `.github/workflows/release.yml` for workflow implementation
+See: `docs/PUBLISHING-SETUP.md` for first-time configuration and manual release setup
+See: `lerna.json` for Lerna configuration
 See: `docs/agents/git.md` for commit message format

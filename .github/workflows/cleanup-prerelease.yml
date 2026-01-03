@@ -4,13 +4,14 @@ on:
   pull_request:
     types: [closed]
 
+permissions:
+  contents: read # Only need to read the repository
+
 jobs:
   cleanup:
     name: Remove Pre-release dist-tags
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Only run if there was a pre-release for this PR
-    if: github.event.pull_request.head.ref != 'main'
 
     steps:
       - name: Checkout code
@@ -26,15 +27,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Determine dist-tag from branch name
-        id: dist-tag
+      - name: Extract dist-tags from PR comments
+        id: dist-tags
         run: |
-          BRANCH="${{ github.event.pull_request.head.ref }}"
-          DIST_TAG=$(echo "$BRANCH" | sed 's/[^a-zA-Z0-9-]/-/g' | sed 's/^-*//' | sed 's/-*$//')
-          echo "dist_tag=$DIST_TAG" >> $GITHUB_OUTPUT
-          echo "📦 Checking for dist-tag: $DIST_TAG"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+
+          # Get all comments on this PR and extract dist-tags from our special marker
+          DIST_TAGS=$(gh pr view $PR_NUMBER --json comments --jq '.comments[].body' | \
+            grep -o 'ya-modbus-prerelease: [a-zA-Z0-9-]*' | \
+            sed 's/ya-modbus-prerelease: //' | \
+            sort -u | \
+            tr '\n' ' ')
+
+          if [ -z "$DIST_TAGS" ]; then
+            echo "ℹ️ No pre-release dist-tags found in PR comments"
+            echo "has_tags=false" >> $GITHUB_OUTPUT
+            echo "dist_tags=" >> $GITHUB_OUTPUT
+          else
+            echo "has_tags=true" >> $GITHUB_OUTPUT
+            echo "dist_tags=$DIST_TAGS" >> $GITHUB_OUTPUT
+            echo "📦 Found dist-tags to remove: $DIST_TAGS"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get package list
+        if: steps.dist-tags.outputs.has_tags == 'true'
         id: packages
         run: |
           # Extract non-private package names from workspace using npm query
@@ -43,25 +61,30 @@ jobs:
           echo "📦 Packages: $PACKAGES"
 
       - name: Remove dist-tags
+        if: steps.dist-tags.outputs.has_tags == 'true'
         run: |
-          DIST_TAG="${{ steps.dist-tag.outputs.dist_tag }}"
+          DIST_TAGS="${{ steps.dist-tags.outputs.dist_tags }}"
           EXIT_CODE=0
 
-          for pkg in ${{ steps.packages.outputs.packages }}; do
-            echo "Checking $pkg for dist-tag $DIST_TAG..."
+          for DIST_TAG in $DIST_TAGS; do
+            echo "Processing dist-tag: $DIST_TAG"
 
-            # Check if dist-tag exists
-            if npm dist-tag ls "$pkg" 2>/dev/null | grep -q "^$DIST_TAG:"; then
-              echo "  ✓ Found dist-tag $DIST_TAG for $pkg, removing..."
-              if npm dist-tag rm "$pkg" "$DIST_TAG"; then
-                echo "  ✅ Successfully removed dist-tag"
+            for pkg in ${{ steps.packages.outputs.packages }}; do
+              echo "  Checking $pkg..."
+
+              # Check if dist-tag exists
+              if npm dist-tag ls "$pkg" 2>/dev/null | grep -q "^$DIST_TAG:"; then
+                echo "    ✓ Found dist-tag $DIST_TAG for $pkg, removing..."
+                if npm dist-tag rm "$pkg" "$DIST_TAG"; then
+                  echo "    ✅ Successfully removed dist-tag"
+                else
+                  echo "    ❌ Failed to remove dist-tag"
+                  EXIT_CODE=1
+                fi
               else
-                echo "  ❌ Failed to remove dist-tag"
-                EXIT_CODE=1
+                echo "    ℹ️ No dist-tag $DIST_TAG for $pkg"
               fi
-            else
-              echo "  ℹ️ No dist-tag $DIST_TAG for $pkg"
-            fi
+            done
           done
 
           exit $EXIT_CODE
@@ -75,7 +98,13 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- PR: #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
           echo "- Branch: ${{ github.event.pull_request.head.ref }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Dist-tag: ${{ steps.dist-tag.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
           echo "- Status: ${{ github.event.pull_request.merged && 'Merged' || 'Closed without merge' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Pre-release versions remain available but the dist-tag has been removed." >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.dist-tags.outputs.has_tags }}" == "true" ]; then
+            echo "**Dist-tags removed**: \`${{ steps.dist-tags.outputs.dist_tags }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Pre-release versions remain available but the dist-tags have been removed." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**No pre-release dist-tags found** - nothing to clean up." >> $GITHUB_STEP_SUMMARY
+          fi
