@@ -40,7 +40,6 @@
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
-    "typecheck": "tsc --noEmit",
     "prepare": "husky",
     "prerelease": "npm run build && npm run test",
     "release": "semantic-release"
