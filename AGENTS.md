@@ -41,6 +41,9 @@ Reading task-specific documentation prevents implementation errors and ensures y
 **Before creating a new package:**
 → READ docs/agents/package-creation.md
 
+**Before publishing/releasing packages:**
+→ READ docs/agents/release.md (Lerna-Lite, versioning, npm publishing)
+
 **Before modifying these docs:**
 → READ docs/agents/maintenance.md
 

@@ -10,13 +10,18 @@ on:
         required: false
         default: 'latest'
 
+permissions:
+  contents: write # For creating tags and pushing commits
+  issues: write # For creating GitHub releases
+  pull-requests: write # For release notes
+
 jobs:
   release:
     name: Release Packages
     runs-on: ubuntu-latest
-    # CI enforcement: Relies on branch protection rules requiring CI to pass before merge to main
-    # Production releases only trigger on main branch pushes (after PR merge)
     # Don't run on version bump commits to avoid infinite loop
+    # Note: For push events on main, branch protection should require CI to pass before merge
+    # For manual triggers, tests run inline below as a safety check
     if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
 
     steps:
