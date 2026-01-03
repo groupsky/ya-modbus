@@ -1371,8 +1371,10 @@ describe('createBridge', () => {
       // Verify scheduleDevice was NOT called
       expect(mockPollingScheduler.scheduleDevice).not.toHaveBeenCalled()
     })
+  })
 
-    it('should throw error if driver not found after loading (race condition)', async () => {
+  describe('race conditions', () => {
+    it('should throw error if driver not found after loading', async () => {
       const mockDriverLoader = new MockedDriverLoader()
       // Simulate race condition: driver is unloaded between addDevice and getDriver
       mockDriverLoader.getDriver = jest.fn().mockReturnValue(undefined)
@@ -1402,16 +1404,14 @@ describe('createBridge', () => {
 
       // Should throw error instead of silently failing
       await expect(bridge.addDevice(deviceConfig)).rejects.toThrow(
-        'Driver for device1 not found after loading'
+        'Driver for device1 not found after loading. This may indicate the device was removed during initialization.'
       )
     })
-  })
 
-  describe('race conditions', () => {
-    it('should handle polling data callback before publishDataRef is set', async () => {
+    it('should handle polling data callback before bridge is fully initialized', async () => {
       let dataCallback: ((deviceId: string, data: Record<string, unknown>) => void) | undefined
 
-      // Capture the data callback BEFORE bridge is fully initialized
+      // Capture the data callback when scheduler is created
       MockedPollingScheduler.mockImplementation((onData) => {
         dataCallback = onData as (deviceId: string, data: Record<string, unknown>) => void
         return {
@@ -1429,21 +1429,36 @@ describe('createBridge', () => {
         },
       })
 
-      // Call the data callback BEFORE start() is called
-      // This simulates the race condition where polling starts before publishDataRef.current is set
+      // Call the data callback BEFORE bridge.start() is called
+      // This simulates polling starting before bridge is fully initialized
+      // The publishData function should safely return early when bridgeRef is null
       expect(dataCallback).toBeDefined()
       const testData = { temperature: 25.5 }
 
-      // Should not throw error even if called before bridge.start()
+      // Should not throw error even if called before bridge is initialized
       expect(() => dataCallback!('device1', testData)).not.toThrow()
+
+      // Verify publish was NOT called (bridge not initialized)
+      expect(mockClient.publish).not.toHaveBeenCalled()
 
       // Now start the bridge
       const startPromise = bridge.start()
       emitEvent('connect')
       await startPromise
 
-      // Verify publish is NOT called (since we weren't connected yet)
-      expect(mockClient.publish).not.toHaveBeenCalled()
+      // Call callback again after bridge is initialized
+      dataCallback!('device1', testData)
+
+      // Wait for async publish
+      await new Promise((resolve) => setTimeout(resolve, 10))
+
+      // Verify publish WAS called this time (bridge initialized)
+      expect(mockClient.publish).toHaveBeenCalledWith(
+        'modbus/device1/data',
+        expect.stringContaining('"temperature":25.5'),
+        expect.objectContaining({ qos: 0 }),
+        expect.any(Function)
+      )
     })
   })
 })

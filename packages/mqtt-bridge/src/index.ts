@@ -339,7 +339,10 @@ export function createBridge(
       if (deviceConfig.enabled !== false) {
         const driver = driverLoader.getDriver(deviceConfig.deviceId)
         if (!driver) {
-          throw new Error(`Driver for ${deviceConfig.deviceId} not found after loading`)
+          throw new Error(
+            `Driver for ${deviceConfig.deviceId} not found after loading. ` +
+              `This may indicate the device was removed during initialization.`
+          )
         }
         pollingScheduler.scheduleDevice(deviceConfig.deviceId, deviceConfig, driver)
       }
