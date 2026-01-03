@@ -2,7 +2,6 @@ import type { MqttBridgeConfig } from './types.js'
 import {
   createMessageCollector,
   createTestBridgeConfig,
-  createTestBridgeWithMockDriver,
   publishAndWait,
   startTestBroker,
   subscribeAndWait,
@@ -12,6 +11,7 @@ import {
   waitForSubscribe,
   waitForUnsubscribe,
   withBridge,
+  withBridgeAndMockDriver,
   type TestBroker,
 } from './utils/test-utils.js'
 
@@ -396,12 +396,7 @@ describe('MQTT Bridge Integration Tests', () => {
 
   describe('Device Management', () => {
     test('should add and remove devices', async () => {
-      const { config, driverLoader, mockDriver } = createTestBridgeWithMockDriver(broker)
-      const bridge = createBridge(config, { driverLoader })
-
-      await bridge.start()
-
-      try {
+      await withBridgeAndMockDriver(broker, async (bridge, mocks) => {
         const deviceConfig = {
           deviceId: 'device1',
           driver: 'ya-modbus-driver-test',
@@ -416,8 +411,19 @@ describe('MQTT Bridge Integration Tests', () => {
         await bridge.addDevice(deviceConfig)
         expect(bridge.getStatus().deviceCount).toBe(1)
 
-        // Verify driver was initialized
-        expect(mockDriver.initialize).toHaveBeenCalled()
+        // Verify complete DI chain: driver loader → transport factory → driver
+        expect(mocks.mockLoadDriverFn).toHaveBeenCalledWith(
+          expect.objectContaining({ driverPackage: 'ya-modbus-driver-test' })
+        )
+        expect(mocks.mockTransportFactory).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'tcp',
+            host: 'localhost',
+            port: 502,
+            slaveId: 1,
+          })
+        )
+        expect(mocks.mockDriver.initialize).toHaveBeenCalled()
 
         const device = bridge.getDevice('device1')
         expect(device).toBeDefined()
@@ -427,19 +433,12 @@ describe('MQTT Bridge Integration Tests', () => {
         expect(bridge.getStatus().deviceCount).toBe(0)
 
         // Verify driver was destroyed
-        expect(mockDriver.destroy).toHaveBeenCalled()
-      } finally {
-        await bridge.stop()
-      }
+        expect(mocks.mockDriver.destroy).toHaveBeenCalled()
+      })
     })
 
     test('should list all devices', async () => {
-      const { config, driverLoader } = createTestBridgeWithMockDriver(broker)
-      const bridge = createBridge(config, { driverLoader })
-
-      await bridge.start()
-
-      try {
+      await withBridgeAndMockDriver(broker, async (bridge) => {
         const device1 = {
           deviceId: 'device1',
           driver: 'ya-modbus-driver-test1',
@@ -469,9 +468,7 @@ describe('MQTT Bridge Integration Tests', () => {
         expect(devices).toHaveLength(2)
         expect(devices.map((d) => d.deviceId)).toContain('device1')
         expect(devices.map((d) => d.deviceId)).toContain('device2')
-      } finally {
-        await bridge.stop()
-      }
+      })
     })
   })
 

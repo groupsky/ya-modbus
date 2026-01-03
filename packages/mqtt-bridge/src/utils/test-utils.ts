@@ -446,6 +446,54 @@ export async function withBridge(
 }
 
 /**
+ * Execute a test function with a running bridge using mock driver DI
+ *
+ * Automatically sets up the bridge with injected mocks, starts it before the test,
+ * and stops it after. This eliminates boilerplate for tests that need to verify
+ * driver lifecycle with dependency injection.
+ *
+ * @param broker - The test broker to connect to
+ * @param testFn - Test function with bridge and mocks
+ * @param overrides - Optional configuration overrides
+ * @returns Promise that resolves when test completes and bridge is stopped
+ *
+ * @example
+ * await withBridgeAndMockDriver(broker, async (bridge, mocks) => {
+ *   await bridge.addDevice({ deviceId: 'test', driver: 'mock', connection: {...} })
+ *   expect(mocks.mockDriver.initialize).toHaveBeenCalled()
+ * })
+ */
+export async function withBridgeAndMockDriver(
+  broker: TestBroker,
+  testFn: (
+    bridge: MqttBridge,
+    mocks: {
+      mockDriver: jest.Mocked<DeviceDriver>
+      mockTransport: jest.Mocked<Transport>
+      mockLoadDriverFn: jest.Mock
+      mockTransportFactory: jest.Mock
+    }
+  ) => Promise<void> | void,
+  overrides?: Partial<MqttBridgeConfig>
+): Promise<void> {
+  const {
+    config,
+    driverLoader,
+    mockDriver,
+    mockTransport,
+    mockLoadDriverFn,
+    mockTransportFactory,
+  } = createTestBridgeWithMockDriver(broker, overrides)
+  const bridge = createBridge(config, { driverLoader })
+  await bridge.start()
+  try {
+    await testFn(bridge, { mockDriver, mockTransport, mockLoadDriverFn, mockTransportFactory })
+  } finally {
+    await bridge.stop()
+  }
+}
+
+/**
  * Start an Aedes MQTT broker on a dynamic port for testing
  */
 export async function startTestBroker(options?: { port?: number }): Promise<TestBroker> {
