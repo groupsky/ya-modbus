@@ -31,20 +31,25 @@ Options:
 - `--slave-id` - Modbus slave ID
 - `--baud` - Baud rate for RTU (default: 9600)
 - `--start` - Start register address (default: 0)
-- `--end` - End register address (default: 65535)
+- `--end` - End register address (default: 100)
+- `--batch` - Batch size for reads (default: 10)
 
 ### Programmatic
 
 ```typescript
-import { scanRegisters } from '@ya-modbus/device-profiler'
+import { scanRegisters, RegisterType } from '@ya-modbus/device-profiler'
 
-const results = await scanRegisters({
+await scanRegisters({
   transport,
-  slaveId: 1,
-  start: 0,
-  end: 100,
+  type: RegisterType.Holding,
+  startAddress: 0,
+  endAddress: 100,
+  batchSize: 10,
   onProgress: (current, total) => {
     console.log(`${current}/${total}`)
+  },
+  onResult: (result) => {
+    console.log(result)
   },
 })
 ```
@@ -61,4 +66,4 @@ The scanner produces a summary showing:
 
 ## License
 
-MIT
+GPL-3.0-or-later
