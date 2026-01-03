@@ -140,4 +140,19 @@ describe('withRetry', () => {
     const result = await promise
     expect(result).toBe('success')
   })
+
+  test('should use default parameters when only function is provided', async () => {
+    const operation = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('Error'))
+      .mockResolvedValueOnce('success')
+
+    // Call with only the function parameter - tests both default parameters
+    const promise = withRetry(operation)
+    await jest.runAllTimersAsync()
+    const result = await promise
+
+    expect(result).toBe('success')
+    expect(operation).toHaveBeenCalledTimes(2)
+  })
 })
