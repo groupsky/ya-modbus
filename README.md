@@ -336,37 +336,105 @@ mosquitto_sub -t "modbus/+/errors/#"
 
 ## Docker Deployment
 
+Two container variants are available:
+
+- **`ya-modbus:complete`** - Includes mqtt-bridge + all built-in drivers (recommended)
+- **`ya-modbus:base`** - mqtt-bridge only, install drivers separately
+
+### Quick Start (Complete Variant)
+
 ```bash
-# Build image
-docker build -t ya-modbus .
+# Build complete image with all drivers
+docker build -t ya-modbus:complete --build-arg VARIANT=complete .
 
 # Run with configuration
 docker run -d \
   --name modbus-bridge \
-  -v $(pwd)/config.json:/app/config.json \
+  -v $(pwd)/config:/config:ro \
   -v $(pwd)/data:/data \
   --device /dev/ttyUSB0:/dev/ttyUSB0 \
-  -e MQTT_BROKER=mqtt://mosquitto:1883 \
-  ya-modbus
+  ya-modbus:complete
+```
+
+### Using Base Variant (Custom Drivers)
+
+```bash
+# Build base image (bridge only)
+docker build -t ya-modbus:base --build-arg VARIANT=base .
+
+# Create Dockerfile to add custom drivers
+cat > Dockerfile.custom <<EOF
+FROM ya-modbus:base
+USER root
+RUN npm install ya-modbus-driver-custom-device
+USER modbus
+EOF
+
+# Build and run
+docker build -f Dockerfile.custom -t ya-modbus:custom .
+docker run -d --name modbus-bridge ya-modbus:custom
 ```
 
 ### Docker Compose
 
-```yaml
-version: '3.8'
-services:
-  modbus-bridge:
-    image: ya-modbus
-    volumes:
-      - ./config.json:/app/config.json
-      - ./data:/data
-      - /dev/ttyUSB0:/dev/ttyUSB0
-    devices:
-      - /dev/ttyUSB0
-    environment:
-      MQTT_BROKER: mqtt://mosquitto:1883
-      STATE_FILE: /data/bridge-state.json
-    restart: unless-stopped
+```bash
+# Copy example configuration
+cp config/config.example.json config/config.json
+
+# Edit config.json with your devices and MQTT settings
+# Then start the bridge
+docker compose up -d
+
+# View logs
+docker compose logs -f mqtt-bridge-complete
+
+# Stop
+docker compose down
+```
+
+See `docker-compose.yml` for complete example with MQTT broker.
+
+### Configuration
+
+Mount configuration file at `/config/config.json`:
+
+```json
+{
+  "mqtt": {
+    "url": "mqtt://mosquitto:1883",
+    "clientId": "ya-modbus-bridge"
+  },
+  "devices": [
+    {
+      "id": "temp_sensor_1",
+      "driver": "ya-modbus-driver-xymd1",
+      "transport": "rtu",
+      "port": "/dev/ttyUSB0",
+      "slaveId": 1
+    }
+  ]
+}
+```
+
+### Serial Device Access
+
+For RTU devices, pass through the serial device:
+
+```bash
+docker run -d \
+  --name modbus-bridge \
+  --device /dev/ttyUSB0:/dev/ttyUSB0 \
+  ya-modbus:complete
+```
+
+### Persistence
+
+Bridge state is saved to `/data` by default:
+
+```bash
+docker run -d \
+  -v $(pwd)/data:/data \
+  ya-modbus:complete
 ```
 
 ## Companion Package: modbus-herdsman-converters

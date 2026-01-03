@@ -1,0 +1,75 @@
+services:
+  # Complete variant - includes all built-in drivers
+  mqtt-bridge-complete:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VARIANT: complete
+    image: ya-modbus:complete
+    container_name: modbus-bridge
+    restart: unless-stopped
+
+    # Mount serial devices for RTU communication
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+
+    # Volumes for persistent state and configuration
+    volumes:
+      - ./data:/data
+      - ./config:/config:ro
+
+    # Environment variables (optional, can also use config file)
+    environment:
+      - NODE_ENV=production
+      - STATE_DIR=/data
+
+    # Network mode for MQTT connectivity
+    network_mode: bridge
+
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  # Base variant - bridge only, drivers installed separately
+  mqtt-bridge-base:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VARIANT: base
+    image: ya-modbus:base
+    container_name: modbus-bridge-custom
+    restart: unless-stopped
+    profiles:
+      - custom
+
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+
+    volumes:
+      - ./data:/data
+      - ./config:/config:ro
+
+    environment:
+      - NODE_ENV=production
+      - STATE_DIR=/data
+
+  # Example MQTT broker (Mosquitto) for testing
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mqtt-broker
+    restart: unless-stopped
+    profiles:
+      - with-broker
+    ports:
+      - '1883:1883'
+      - '9001:9001'
+    volumes:
+      - ./mosquitto/config:/mosquitto/config:ro
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    command: mosquitto -c /mosquitto/config/mosquitto.conf
