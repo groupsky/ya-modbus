@@ -10,7 +10,7 @@ describe('withRetry', () => {
     jest.useRealTimers()
   })
 
-  test('should succeed on first attempt without calling logger', async () => {
+  test('should not call logger when operation succeeds on first attempt', async () => {
     const logger = jest.fn()
     const operation = jest.fn().mockResolvedValue('success')
 
@@ -154,5 +154,34 @@ describe('withRetry', () => {
 
     expect(result).toBe('success')
     expect(operation).toHaveBeenCalledTimes(2)
+  })
+
+  test('should not call logger when maxRetries is 1', async () => {
+    const logger = jest.fn()
+    const error = new Error('Failed')
+    const operation = jest.fn().mockRejectedValue(error)
+
+    const promise = withRetry(operation, 1, logger)
+    const resultPromise = promise.catch((err) => err)
+    await jest.runAllTimersAsync()
+    const result = await resultPromise
+
+    expect(result).toBeInstanceOf(Error)
+    expect(result.message).toBe('Failed')
+    expect(operation).toHaveBeenCalledTimes(1)
+    expect(logger).not.toHaveBeenCalled()
+  })
+
+  test('should convert non-Error thrown values to Error instances', async () => {
+    const operation = jest.fn().mockRejectedValue('string error')
+
+    const promise = withRetry(operation, MAX_RETRIES)
+    const resultPromise = promise.catch((err) => err)
+    await jest.runAllTimersAsync()
+    const result = await resultPromise
+
+    expect(result).toBeInstanceOf(Error)
+    expect(result.message).toBe('string error')
+    expect(operation).toHaveBeenCalledTimes(MAX_RETRIES)
   })
 })

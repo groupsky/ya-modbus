@@ -46,7 +46,7 @@ export async function withRetry<T>(
     try {
       return await fn()
     } catch (error) {
-      lastError = error as Error
+      lastError = error instanceof Error ? error : new Error(String(error))
 
       // Don't retry on the last attempt
       if (attempt < maxRetries) {
