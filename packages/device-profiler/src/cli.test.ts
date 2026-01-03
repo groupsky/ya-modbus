@@ -3,6 +3,9 @@ import type { Transport } from '@ya-modbus/driver-types'
 import { runProfileScan } from './cli.js'
 import { RegisterType } from './read-tester.js'
 
+jest.mock('chalk')
+jest.mock('cli-table3')
+
 describe('runProfileScan', () => {
   let mockConsoleLog: jest.SpyInstance
   let mockConsoleError: jest.SpyInstance

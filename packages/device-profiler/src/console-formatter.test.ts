@@ -3,6 +3,9 @@ import { ErrorType } from './error-classifier.js'
 import { RegisterType } from './read-tester.js'
 import type { ScanResult } from './register-scanner.js'
 
+jest.mock('chalk')
+jest.mock('cli-table3')
+
 describe('formatProgress', () => {
   it('should format progress with percentage', () => {
     const output = formatProgress(50, 100)
