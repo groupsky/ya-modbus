@@ -558,14 +558,15 @@ export function createMockDriver(overrides?: {
  * @returns Object with bridge config and driver loader
  *
  * @example
- * const { config, driverLoader } = createTestBridgeWithMockDriver(broker)
+ * const { config, driverLoader, mockDriver } = createTestBridgeWithMockDriver(broker)
  * const bridge = createBridge(config, { driverLoader })
  * await bridge.addDevice({
  *   deviceId: 'test-device',
  *   driver: 'ya-modbus-driver-test',
  *   connection: { type: 'tcp', host: 'localhost', port: 502, slaveId: 1 },
- *   enabled: true, // Now we can test actual driver loading!
  * })
+ * // Verify driver lifecycle with injected mocks
+ * expect(mockDriver.initialize).toHaveBeenCalled()
  */
 export function createTestBridgeWithMockDriver(
   broker: TestBroker,
