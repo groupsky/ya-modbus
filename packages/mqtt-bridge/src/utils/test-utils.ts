@@ -1,12 +1,14 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 // Non-null assertions are used for event handler cleanup where the handlers are guaranteed to be defined
 // by control flow. Using optional chaining would create untestable branches for impossible null cases.
 import { AddressInfo, createServer, Server } from 'node:net'
 
+import { jest } from '@jest/globals'
+import type { Transport, DeviceDriver } from '@ya-modbus/driver-types'
 import Aedes from 'aedes'
 import type { AedesPublishPacket } from 'aedes'
 import type { Client } from 'aedes'
 
+import { DriverLoader } from '../driver-loader.js'
 import { createBridge } from '../index.js'
 import type {
   MessageHandler,
@@ -444,6 +446,54 @@ export async function withBridge(
 }
 
 /**
+ * Execute a test function with a running bridge using mock driver DI
+ *
+ * Automatically sets up the bridge with injected mocks, starts it before the test,
+ * and stops it after. This eliminates boilerplate for tests that need to verify
+ * driver lifecycle with dependency injection.
+ *
+ * @param broker - The test broker to connect to
+ * @param testFn - Test function with bridge and mocks
+ * @param overrides - Optional configuration overrides
+ * @returns Promise that resolves when test completes and bridge is stopped
+ *
+ * @example
+ * await withBridgeAndMockDriver(broker, async (bridge, mocks) => {
+ *   await bridge.addDevice({ deviceId: 'test', driver: 'mock', connection: {...} })
+ *   expect(mocks.mockDriver.initialize).toHaveBeenCalled()
+ * })
+ */
+export async function withBridgeAndMockDriver(
+  broker: TestBroker,
+  testFn: (
+    bridge: MqttBridge,
+    mocks: {
+      mockDriver: jest.Mocked<DeviceDriver>
+      mockTransport: jest.Mocked<Transport>
+      mockLoadDriverFn: jest.Mock
+      mockTransportFactory: jest.Mock
+    }
+  ) => Promise<void> | void,
+  overrides?: Partial<MqttBridgeConfig>
+): Promise<void> {
+  const {
+    config,
+    driverLoader,
+    mockDriver,
+    mockTransport,
+    mockLoadDriverFn,
+    mockTransportFactory,
+  } = createTestBridgeWithMockDriver(broker, overrides)
+  const bridge = createBridge(config, { driverLoader })
+  await bridge.start()
+  try {
+    await testFn(bridge, { mockDriver, mockTransport, mockLoadDriverFn, mockTransportFactory })
+  } finally {
+    await bridge.stop()
+  }
+}
+
+/**
  * Start an Aedes MQTT broker on a dynamic port for testing
  */
 export async function startTestBroker(options?: { port?: number }): Promise<TestBroker> {
@@ -475,4 +525,150 @@ export async function startTestBroker(options?: { port?: number }): Promise<Test
     })
     server.on('error', reject)
   })
+}
+
+/**
+ * Create a mock transport for testing
+ *
+ * Returns a transport mock that implements the Transport interface
+ * with jest.fn() for all methods, allowing verification of calls.
+ *
+ * @returns Mock transport with trackable method calls
+ *
+ * @example
+ * const mockTransport = createMockTransport()
+ * mockTransport.readHoldingRegisters.mockResolvedValue([1, 2, 3])
+ */
+export function createMockTransport(): jest.Mocked<Transport> {
+  return {
+    readHoldingRegisters: jest.fn<any>().mockResolvedValue([0, 0]),
+    readInputRegisters: jest.fn<any>().mockResolvedValue([0, 0]),
+    readCoils: jest.fn<any>().mockResolvedValue([false]),
+    readDiscreteInputs: jest.fn<any>().mockResolvedValue([false]),
+    writeCoil: jest.fn<any>().mockResolvedValue(undefined),
+    writeRegister: jest.fn<any>().mockResolvedValue(undefined),
+    writeRegisters: jest.fn<any>().mockResolvedValue(undefined),
+    writeCoils: jest.fn<any>().mockResolvedValue(undefined),
+    close: jest.fn<any>().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<Transport>
+}
+
+/**
+ * Create a mock driver for testing
+ *
+ * Returns a mock driver that implements the DeviceDriver interface
+ * with jest.fn() for all methods, allowing verification of calls.
+ *
+ * @param overrides - Optional property overrides
+ * @returns Mock driver with trackable method calls
+ *
+ * @example
+ * const mockDriver = createMockDriver({
+ *   dataPoints: [{ id: 'voltage', name: 'Voltage', type: 'number', unit: 'V' }]
+ * })
+ * mockDriver.readDataPoints.mockResolvedValue({ voltage: 230 })
+ */
+export function createMockDriver(overrides?: {
+  name?: string
+  manufacturer?: string
+  model?: string
+  dataPoints?: Array<{ id: string; name: string; type: string; unit?: string }>
+}): jest.Mocked<DeviceDriver> {
+  return {
+    name: overrides?.name ?? 'test-device',
+    manufacturer: overrides?.manufacturer ?? 'Test Manufacturer',
+    model: overrides?.model ?? 'TEST-001',
+    dataPoints: (overrides?.dataPoints ?? [
+      {
+        id: 'test-value',
+        name: 'Test Value',
+        type: 'number',
+        unit: 'unit',
+      },
+    ]) as any,
+    readDataPoint: jest.fn<any>().mockResolvedValue(123),
+    writeDataPoint: jest.fn<any>().mockResolvedValue(undefined),
+    readDataPoints: jest.fn<any>().mockResolvedValue({ 'test-value': 123 }),
+    initialize: jest.fn<any>().mockResolvedValue(undefined),
+    destroy: jest.fn<any>().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<DeviceDriver>
+}
+
+/**
+ * Create a test bridge configuration with mock driver injection
+ *
+ * This configures the bridge with dependency injection for testing,
+ * allowing integration tests to verify driver lifecycle without
+ * loading real driver packages.
+ *
+ * **Note**: Returns fresh mock instances on each call. Mock state does
+ * not persist between invocations. Each test gets independent mocks.
+ *
+ * @param broker - The test broker to connect to
+ * @param overrides - Optional configuration overrides
+ * @returns Object with bridge config and driver loader
+ *
+ * @example
+ * const { config, driverLoader, mockDriver } = createTestBridgeWithMockDriver(broker)
+ * const bridge = createBridge(config, { driverLoader })
+ * await bridge.addDevice({
+ *   deviceId: 'test-device',
+ *   driver: 'ya-modbus-driver-test',
+ *   connection: { type: 'tcp', host: 'localhost', port: 502, slaveId: 1 },
+ * })
+ * // Verify driver lifecycle with injected mocks
+ * expect(mockDriver.initialize).toHaveBeenCalled()
+ */
+export function createTestBridgeWithMockDriver(
+  broker: TestBroker,
+  overrides?: Partial<MqttBridgeConfig>
+): {
+  config: MqttBridgeConfig
+  driverLoader: DriverLoader
+  mockDriver: jest.Mocked<DeviceDriver>
+  mockTransport: jest.Mocked<Transport>
+  mockLoadDriverFn: jest.Mock
+  mockTransportFactory: jest.Mock
+} {
+  // Create first instances for single-device test convenience
+  const mockDriver = createMockDriver()
+  const mockTransport = createMockTransport()
+
+  // Mock loadDriverFn that creates NEW instances on each call for driver isolation
+  // First call returns the pre-created mockDriver for backward compatibility
+  let isFirstDriverCall = true
+  const mockLoadDriverFn = jest.fn<any>().mockImplementation(() => {
+    return Promise.resolve({
+      createDriver: jest.fn<any>().mockImplementation(() => {
+        if (isFirstDriverCall) {
+          isFirstDriverCall = false
+          return Promise.resolve(mockDriver)
+        }
+        return Promise.resolve(createMockDriver())
+      }),
+    })
+  })
+
+  // Mock transportFactory that creates NEW instances on each call for transport isolation
+  // First call returns the pre-created mockTransport for backward compatibility
+  let isFirstTransportCall = true
+  const mockTransportFactory = jest.fn<any>().mockImplementation(() => {
+    if (isFirstTransportCall) {
+      isFirstTransportCall = false
+      return Promise.resolve(mockTransport)
+    }
+    return Promise.resolve(createMockTransport())
+  })
+
+  // Create DriverLoader with mocked dependencies
+  const driverLoader = new DriverLoader(mockLoadDriverFn as any, mockTransportFactory as any)
+
+  return {
+    config: createTestBridgeConfig(broker, overrides),
+    driverLoader,
+    mockDriver,
+    mockTransport,
+    mockLoadDriverFn,
+    mockTransportFactory,
+  }
 }
