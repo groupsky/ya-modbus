@@ -9,6 +9,7 @@ import { createTransport } from '@ya-modbus/transport'
 import { Command, Option } from 'commander'
 
 import { runProfileScan } from '../src/cli.js'
+import { MAX_PORT, MIN_PORT } from '../src/constants.js'
 import { RegisterType } from '../src/read-tester.js'
 
 interface CliOptions {
@@ -62,8 +63,10 @@ program
           throw new Error('Invalid TCP address format. Expected host:port')
         }
         const port = parseInt(portStr, 10)
-        if (isNaN(port) || port < 1 || port > 65535) {
-          throw new Error(`Invalid port number: ${portStr}. Must be between 1 and 65535`)
+        if (isNaN(port) || port < MIN_PORT || port > MAX_PORT) {
+          throw new Error(
+            `Invalid port number: ${portStr}. Must be between ${MIN_PORT} and ${MAX_PORT}`
+          )
         }
         transport = await createTransport({
           host,

@@ -4,6 +4,7 @@
 
 import type { Transport } from '@ya-modbus/driver-types'
 
+import { BYTES_PER_REGISTER, DEFAULT_BATCH_SIZE } from './constants.js'
 import type { ErrorType } from './error-classifier.js'
 import { testRead, RegisterType } from './read-tester.js'
 
@@ -58,7 +59,7 @@ export async function scanRegisters(options: ScanOptions): Promise<void> {
     type,
     startAddress,
     endAddress,
-    batchSize = 10,
+    batchSize = DEFAULT_BATCH_SIZE,
     onProgress,
     onResult,
   } = options
@@ -77,7 +78,10 @@ export async function scanRegisters(options: ScanOptions): Promise<void> {
       // Batch read succeeded, split results
       for (let i = 0; i < count; i++) {
         const regAddress = address + i
-        const value = batchResult.data.subarray(i * 2, (i + 1) * 2)
+        const value = batchResult.data.subarray(
+          i * BYTES_PER_REGISTER,
+          (i + 1) * BYTES_PER_REGISTER
+        )
 
         const result: ScanResult = {
           address: regAddress,

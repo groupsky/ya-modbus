@@ -5,6 +5,7 @@
 import type { Transport } from '@ya-modbus/driver-types'
 
 import { formatProgress, formatSummary } from './console-formatter.js'
+import { PROGRESS_UPDATE_INTERVAL_MS } from './constants.js'
 import { RegisterType } from './read-tester.js'
 import { scanRegisters, type ScanResult } from './register-scanner.js'
 
@@ -37,6 +38,7 @@ export async function runProfileScan(options: ProfileScanOptions): Promise<void>
     console.log(`Scanning ${type} registers from ${startAddress} to ${endAddress}...`)
     console.log()
 
+    let lastProgressUpdate = 0
     await scanRegisters({
       transport,
       type,
@@ -44,7 +46,11 @@ export async function runProfileScan(options: ProfileScanOptions): Promise<void>
       endAddress,
       ...(batchSize !== undefined && { batchSize }),
       onProgress: (current, total) => {
-        process.stdout.write(`\r${formatProgress(current, total)}`)
+        const now = Date.now()
+        if (now - lastProgressUpdate >= PROGRESS_UPDATE_INTERVAL_MS || current === total) {
+          process.stdout.write(`\r${formatProgress(current, total)}`)
+          lastProgressUpdate = now
+        }
       },
       onResult: (result) => {
         results.push(result)
