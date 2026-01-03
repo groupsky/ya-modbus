@@ -10,6 +10,10 @@ on:
         required: false
         default: 'latest'
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write # For creating tags and pushing commits
   issues: write # For creating GitHub releases
@@ -19,6 +23,7 @@ jobs:
   release:
     name: Release Packages
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     # Don't run on version bump commits to avoid infinite loop
     # Note: For push events on main, branch protection should require CI to pass before merge
     # For manual triggers, tests run inline below as a safety check

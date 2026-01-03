@@ -11,7 +11,6 @@
       "ignoreChanges": ["**/__tests__/**", "**/*.md", "**/jest.config.cjs", "**/tsconfig*.json"]
     },
     "publish": {
-      "message": "chore(release): publish %s",
       "registry": "https://registry.npmjs.org/"
     }
   }

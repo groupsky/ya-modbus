@@ -8,6 +8,7 @@ jobs:
   cleanup:
     name: Remove Pre-release dist-tags
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Only run if there was a pre-release for this PR
     if: github.event.pull_request.head.ref != 'main'
 
