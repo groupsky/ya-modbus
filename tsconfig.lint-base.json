@@ -1,8 +1,18 @@
 {
+  // Shared base configuration for linting (ESLint type-aware)
+  // Extended by: tsconfig.lint.json and packages/*/tsconfig.lint.json
+  //
+  // This config enables linting without requiring a build by:
+  // 1. Mapping package names to source directories (paths)
+  // 2. Setting noEmit: true (linting only, no output)
+  // 3. Providing default includes for test files and mocks
+
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
     "baseUrl": ".",
+    // Map package names to source directories (not dist/)
+    // This allows ESLint to resolve types without requiring a build
     "paths": {
       "@ya-modbus/driver-types": ["packages/driver-types/src"],
       "@ya-modbus/driver-sdk": ["packages/driver-sdk/src"],
@@ -15,6 +25,7 @@
       "ya-modbus-driver-xymd1": ["packages/ya-modbus-driver-xymd1/src"]
     }
   },
+  // Default includes for package-level configs (package-relative paths)
   "include": ["src/**/*.test.ts", "src/**/__mocks__/**/*.ts", "__mocks__/**/*.ts"],
   "exclude": ["node_modules", "dist", "coverage"]
 }

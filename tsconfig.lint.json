@@ -1,0 +1,10 @@
+{
+  // Root-level linting configuration for ESLint
+  // Used directly by ESLint to lint all source files from the repository root
+  // Extends tsconfig.lint-base.json to get path mappings and noEmit setting
+
+  "extends": "./tsconfig.lint-base.json",
+
+  // Root-relative includes (lints all source files across all packages)
+  "include": ["packages/*/src/**/*.ts", "packages/*/bin/**/*.ts", "packages/*/__mocks__/**/*.ts"]
+}
