@@ -60,14 +60,32 @@ export function createBridge(
   const driverLoader = dependencies?.driverLoader ?? new DriverLoader()
   const deviceManager = dependencies?.deviceManager ?? new DeviceManager(driverLoader)
 
-  // Will be set after bridge object is created
-  const publishDataRef: { current?: (deviceId: string, data: Record<string, unknown>) => void } = {}
+  // Bridge reference to be set after bridge object is created
+  // This ensures publishData is always defined before PollingScheduler starts
+  let bridgeRef: MqttBridge | null = null
+
+  // Publish function that will be called from polling
+  const publishData = (deviceId: string, data: Record<string, unknown>): void => {
+    if (!bridgeRef) {
+      // Bridge not fully initialized yet - skip publishing
+      return
+    }
+
+    const payload = JSON.stringify({
+      deviceId,
+      timestamp: Date.now(),
+      data,
+    })
+
+    // Publish to device-specific topic
+    void bridgeRef.publish(`${deviceId}/data`, payload, { qos: 0 }).catch((error: Error) => {
+      console.error(`Failed to publish data for device ${deviceId}:`, error)
+    })
+  }
 
   // Handle data from polling
   const handlePollingData = (deviceId: string, data: Record<string, unknown>): void => {
-    if (publishDataRef.current) {
-      publishDataRef.current(deviceId, data)
-    }
+    publishData(deviceId, data)
 
     // Update device status
     deviceManager.updateDeviceState(deviceId, {
@@ -321,9 +339,13 @@ export function createBridge(
       // Schedule device for polling if enabled
       if (deviceConfig.enabled !== false) {
         const driver = driverLoader.getDriver(deviceConfig.deviceId)
-        if (driver) {
-          pollingScheduler.scheduleDevice(deviceConfig.deviceId, deviceConfig, driver)
+        if (!driver) {
+          throw new Error(
+            `Driver for ${deviceConfig.deviceId} not found after loading. ` +
+              `This may indicate the device was removed during initialization.`
+          )
         }
+        pollingScheduler.scheduleDevice(deviceConfig.deviceId, deviceConfig, driver)
       }
     },
 
@@ -348,19 +370,8 @@ export function createBridge(
     },
   }
 
-  // Set the publish function now that bridge is defined
-  publishDataRef.current = (deviceId: string, data: Record<string, unknown>): void => {
-    const payload = JSON.stringify({
-      deviceId,
-      timestamp: Date.now(),
-      data,
-    })
-
-    // Publish to device-specific topic
-    void bridge.publish(`${deviceId}/data`, payload, { qos: 0 }).catch((error: Error) => {
-      console.error(`Failed to publish data for device ${deviceId}:`, error)
-    })
-  }
+  // Set bridge reference now that bridge is defined
+  bridgeRef = bridge
 
   return bridge
 }
