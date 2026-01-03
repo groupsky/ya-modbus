@@ -28,6 +28,8 @@ Before publishing packages to npm:
 4. Value: Paste your npm token
 5. Click "Add secret"
 
+**Note**: After first publish, migrate to npm Trusted Publishers for enhanced security. Trusted Publishers eliminate the need for long-lived tokens by using OIDC. See: https://docs.npmjs.com/trusted-publishers
+
 ## GitHub Token (Automatic)
 
 For automated releases:
