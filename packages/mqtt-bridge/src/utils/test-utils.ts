@@ -630,16 +630,35 @@ export function createTestBridgeWithMockDriver(
   mockLoadDriverFn: jest.Mock
   mockTransportFactory: jest.Mock
 } {
-  const mockTransport = createMockTransport()
+  // Create first instances for single-device test convenience
   const mockDriver = createMockDriver()
+  const mockTransport = createMockTransport()
 
-  // Mock loadDriverFn that returns a LoadedDriver with createDriver
-  const mockLoadDriverFn = jest.fn<any>().mockResolvedValue({
-    createDriver: jest.fn<any>().mockResolvedValue(mockDriver),
+  // Mock loadDriverFn that creates NEW instances on each call for driver isolation
+  // First call returns the pre-created mockDriver for backward compatibility
+  let isFirstDriverCall = true
+  const mockLoadDriverFn = jest.fn<any>().mockImplementation(() => {
+    return Promise.resolve({
+      createDriver: jest.fn<any>().mockImplementation(() => {
+        if (isFirstDriverCall) {
+          isFirstDriverCall = false
+          return Promise.resolve(mockDriver)
+        }
+        return Promise.resolve(createMockDriver())
+      }),
+    })
   })
 
-  // Mock transportFactory that returns the mock transport
-  const mockTransportFactory = jest.fn<any>().mockResolvedValue(mockTransport)
+  // Mock transportFactory that creates NEW instances on each call for transport isolation
+  // First call returns the pre-created mockTransport for backward compatibility
+  let isFirstTransportCall = true
+  const mockTransportFactory = jest.fn<any>().mockImplementation(() => {
+    if (isFirstTransportCall) {
+      isFirstTransportCall = false
+      return Promise.resolve(mockTransport)
+    }
+    return Promise.resolve(createMockTransport())
+  })
 
   // Create DriverLoader with mocked dependencies
   const driverLoader = new DriverLoader(mockLoadDriverFn as any, mockTransportFactory as any)
