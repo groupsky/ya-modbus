@@ -1,25 +1,24 @@
 import { loadDriver as loadDriverPackage } from '@ya-modbus/driver-loader'
-import type { DeviceDriver, Transport } from '@ya-modbus/driver-types'
-import { createTransport, type TransportConfig } from '@ya-modbus/transport'
+import type { DeviceDriver } from '@ya-modbus/driver-types'
+import { TransportManager, type TransportConfig } from '@ya-modbus/transport'
 
 import type { DeviceConnection } from './types.js'
 
 type LoadDriverFunction = typeof loadDriverPackage
-type TransportFactory = (connection: DeviceConnection) => Promise<Transport>
 
 /**
  * Manages dynamic loading and lifecycle of device drivers
+ * Uses TransportManager to pool RTU transports and prevent bus collisions
  */
 export class DriverLoader {
-  private driverInstances = new Map<string, DeviceDriver>()
-  private transports = new Map<string, Transport>()
-  private devicePackages = new Map<string, string>()
-  private loadDriverFn: LoadDriverFunction
-  private transportFactory: TransportFactory
+  private readonly driverInstances = new Map<string, DeviceDriver>()
+  private readonly devicePackages = new Map<string, string>()
+  private readonly loadDriverFn: LoadDriverFunction
+  private readonly transportManager: TransportManager
 
-  constructor(loadDriverFn?: LoadDriverFunction, transportFactory?: TransportFactory) {
+  constructor(loadDriverFn?: LoadDriverFunction, transportManager?: TransportManager) {
     this.loadDriverFn = loadDriverFn ?? loadDriverPackage
-    this.transportFactory = transportFactory ?? this.createDefaultTransport.bind(this)
+    this.transportManager = transportManager ?? new TransportManager()
   }
 
   /**
@@ -46,62 +45,53 @@ export class DriverLoader {
     // Load driver package using driver-loader
     const loadedDriver = await this.loadDriverFn({ driverPackage: packageName })
 
-    // Create transport
-    const transport = await this.transportFactory(connection)
+    // Get transport from manager (shared for RTU, unique for TCP)
+    const config = this.connectionToTransportConfig(connection)
+    const transport = await this.transportManager.getTransport(config)
 
-    try {
-      // Create driver instance
-      const driver = await loadedDriver.createDriver({
-        transport,
-        slaveId: connection.slaveId,
-      })
+    // Create driver instance
+    const driver = await loadedDriver.createDriver({
+      transport,
+      slaveId: connection.slaveId,
+    })
 
-      // Call initialize if available
-      if (driver.initialize) {
-        await driver.initialize()
-      }
-
-      // Cache instance and transport if deviceId provided
-      if (deviceId) {
-        this.driverInstances.set(deviceId, driver)
-        this.transports.set(deviceId, transport)
-        this.devicePackages.set(deviceId, packageName)
-      }
-
-      return driver
-    } catch (error) {
-      // Clean up transport on failure to prevent resource leak
-      await transport.close()
-      throw error
+    // Call initialize if available
+    if (driver.initialize) {
+      await driver.initialize()
     }
+
+    // Cache instance if deviceId provided
+    if (deviceId) {
+      this.driverInstances.set(deviceId, driver)
+      this.devicePackages.set(deviceId, packageName)
+    }
+
+    // Note: Don't close transport on failure - it may be shared by other devices
+    // The transport manager will handle cleanup when closeAll() is called
+    return driver
   }
 
   /**
    * Unload a driver instance and clean up resources
+   * Note: Transport is managed by TransportManager and not closed here
    *
    * @param deviceId - Device identifier
    */
   async unloadDriver(deviceId: string): Promise<void> {
     const driver = this.driverInstances.get(deviceId)
-    const transport = this.transports.get(deviceId)
 
     try {
-      if (driver) {
-        if (driver.destroy) {
-          await driver.destroy()
-        }
-
-        this.driverInstances.delete(deviceId)
+      if (driver?.destroy) {
+        await driver.destroy()
       }
     } finally {
-      // Always close transport to prevent resource leak
-      if (transport) {
-        await transport.close()
-        this.transports.delete(deviceId)
-      }
-
+      // Always remove from cache, even if destroy fails
+      this.driverInstances.delete(deviceId)
       this.devicePackages.delete(deviceId)
     }
+
+    // Note: Transport is managed by TransportManager and shared across devices
+    // It will be closed when the entire bridge shuts down via closeAll()
   }
 
   /**
@@ -115,29 +105,35 @@ export class DriverLoader {
   }
 
   /**
-   * Create a transport using the transport package
-   * Converts DeviceConnection to TransportConfig
+   * Close all managed transports
+   * Should be called when shutting down the bridge
    */
-  private async createDefaultTransport(connection: DeviceConnection): Promise<Transport> {
-    // Convert DeviceConnection to TransportConfig
-    const config: TransportConfig =
-      connection.type === 'rtu'
-        ? {
-            port: connection.port,
-            baudRate: connection.baudRate,
-            dataBits: connection.dataBits,
-            parity: connection.parity,
-            stopBits: connection.stopBits,
-            slaveId: connection.slaveId,
-            timeout: connection.timeout,
-          }
-        : {
-            host: connection.host,
-            port: connection.port,
-            slaveId: connection.slaveId,
-            timeout: connection.timeout,
-          }
+  async closeAllTransports(): Promise<void> {
+    await this.transportManager.closeAll()
+  }
 
-    return createTransport(config)
+  /**
+   * Convert DeviceConnection to TransportConfig
+   *
+   * @param connection - Device connection configuration
+   * @returns Transport configuration
+   */
+  private connectionToTransportConfig(connection: DeviceConnection): TransportConfig {
+    return connection.type === 'rtu'
+      ? {
+          port: connection.port,
+          baudRate: connection.baudRate,
+          dataBits: connection.dataBits,
+          parity: connection.parity,
+          stopBits: connection.stopBits,
+          slaveId: connection.slaveId,
+          timeout: connection.timeout,
+        }
+      : {
+          host: connection.host,
+          port: connection.port,
+          slaveId: connection.slaveId,
+          timeout: connection.timeout,
+        }
   }
 }

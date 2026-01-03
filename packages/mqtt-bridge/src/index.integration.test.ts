@@ -411,13 +411,12 @@ describe('MQTT Bridge Integration Tests', () => {
         await bridge.addDevice(deviceConfig)
         expect(bridge.getStatus().deviceCount).toBe(1)
 
-        // Verify complete DI chain: driver loader → transport factory → driver
+        // Verify complete DI chain: driver loader → transport manager → driver
         expect(mocks.mockLoadDriverFn).toHaveBeenCalledWith(
           expect.objectContaining({ driverPackage: 'ya-modbus-driver-test' })
         )
-        expect(mocks.mockTransportFactory).toHaveBeenCalledWith(
+        expect(mocks.mockTransportManager.getTransport).toHaveBeenCalledWith(
           expect.objectContaining({
-            type: 'tcp',
             host: 'localhost',
             port: 502,
             slaveId: 1,
@@ -507,12 +506,12 @@ describe('MQTT Bridge Integration Tests', () => {
           expect.objectContaining({ driverPackage: 'ya-modbus-driver-test2' })
         )
 
-        expect(mocks.mockTransportFactory).toHaveBeenCalledTimes(2)
-        expect(mocks.mockTransportFactory).toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'tcp', port: 502, slaveId: 1 })
+        expect(mocks.mockTransportManager.getTransport).toHaveBeenCalledTimes(2)
+        expect(mocks.mockTransportManager.getTransport).toHaveBeenCalledWith(
+          expect.objectContaining({ port: 502, slaveId: 1 })
         )
-        expect(mocks.mockTransportFactory).toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'tcp', port: 503, slaveId: 2 })
+        expect(mocks.mockTransportManager.getTransport).toHaveBeenCalledWith(
+          expect.objectContaining({ port: 503, slaveId: 2 })
         )
       })
     })
