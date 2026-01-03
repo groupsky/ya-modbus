@@ -59,96 +59,29 @@ Conventional commit types determine version bump:
 - `BREAKING CHANGE:` → MAJOR version bump (0.1.0 → 1.0.0)
 - `docs:`, `chore:`, `test:`, `ci:` → NO release
 
-## Release Workflow
+## Automated Release Workflow
 
-GitHub Actions workflow (`.github/workflows/release.yml`):
+Production releases trigger automatically on push to main.
 
-1. Checkout with full git history (fetch-depth: 0)
-2. Install dependencies and build
-3. Run tests to verify quality
-4. `lerna version` - analyzes commits, bumps versions, creates tags
-5. `lerna publish from-git` - publishes packages to npm
+Workflow steps:
 
-## First-Time Setup
+1. Install dependencies and build
+2. Run tests to verify quality
+3. `lerna version` - analyzes commits, bumps versions, creates tags
+4. `lerna publish from-git` - publishes packages to npm
 
-Before publishing packages:
-
-1. **NPM Organization**: Ensure `@ya-modbus` scope exists on npm
-2. **Package Registration**: First publish creates packages (no pre-registration needed)
-3. **User Permissions**: Publisher needs appropriate npm access to the scope
-4. **Secrets Configuration**: Configure NPM_TOKEN and verify GH_TOKEN
-
-## Token Configuration
-
-### NPM_TOKEN (Required for Publishing)
-
-Add NPM_TOKEN secret to GitHub repository:
-
-1. Create npm access token at https://www.npmjs.com/settings/tokens
-2. Token type: "Automation" (for CI/CD)
-3. Add to GitHub: Settings → Secrets → Actions → New repository secret
-4. Name: `NPM_TOKEN`
-5. Value: Your npm token
-
-### GH_TOKEN (Automatic for GitHub Releases)
-
-For automated releases: `GITHUB_TOKEN` is automatically available in workflows
-
-For manual releases: Set environment variable `GH_TOKEN` with Personal Access Token (scope: repo)
+Pre-release workflow runs manually via workflow_dispatch.
 
 ## Manual Release
 
-IMPORTANT: Verify clean working tree and environment before manual release
+For emergency releases only. Requires environment configuration.
 
-See: `package.json` scripts section for available commands
+Order: build → test → version → publish
 
-- `npm run build` - Build all packages
-- `npm run test` - Run test suite
-- `npm run version` - Bump versions and create tags (requires GH_TOKEN)
-- `npm run publish` - Publish to npm (requires NPM_TOKEN)
+Scripts: See `package.json` for lerna commands
+Configuration: See `docs/PUBLISHING-SETUP.md`
 
-Manual release order: build → test → version → publish
-
-For detailed workflow steps, see: `.github/workflows/release.yml`
-
-## Package Privacy
-
-Root package is private (version 0.0.0) and NEVER published.
-
-All workspace packages use `--no-private` flag to skip private packages.
-
-## Changelog Generation
-
-Changelogs generated automatically using Angular preset.
-
-Generated files: `CHANGELOG.md` in each package directory.
-
-## GitHub Releases
-
-Created automatically by lerna version using `GH_TOKEN`.
-
-Release notes generated from conventional commits.
-
-## Installing Pre-release Versions
-
-Use dist-tag: `npm install @ya-modbus/cli@beta`
-Use exact version: `npm install @ya-modbus/cli@0.1.0-beta.0`
-List dist-tags: `npm dist-tag ls @ya-modbus/cli`
-
-## Verification
-
-After production release:
-
-- Check npm for published versions
-- Check GitHub releases for tags
-- Verify CHANGELOG.md updated in packages
-
-After pre-release:
-
-- List versions: `npm view @ya-modbus/cli versions`
-- Check dist-tag: `npm dist-tag ls @ya-modbus/cli`
-- Install and test using dist-tag or exact version
-
-See: `lerna.json` for configuration
-See: `.github/workflows/release.yml` for workflow
-See: `docs/agents/git.md` for commit format
+See: `docs/PUBLISHING-SETUP.md` for first-time configuration
+See: `lerna.json` for Lerna configuration
+See: `.github/workflows/release.yml` for workflow implementation
+See: `docs/agents/git.md` for commit message format
