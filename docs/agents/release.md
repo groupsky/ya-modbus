@@ -22,20 +22,14 @@ Releases are SKIPPED when:
 
 ### Feature Branch Releases (Pre-release)
 
-For testing unreleased features, manually trigger from GitHub Actions:
+Manually triggered via GitHub Actions workflow_dispatch.
 
-1. Go to Actions → Release workflow
-2. Click "Run workflow"
-3. Select your feature branch
-4. Optionally specify dist-tag (e.g., `beta`, `next`, `feat-xyz`)
-5. Click "Run workflow"
+Results:
 
-The workflow will:
-
-- Publish with pre-release version (e.g., `0.1.0-beta.0`)
-- Use specified dist-tag (or auto-generate from branch name)
-- NOT create git tags or GitHub releases
-- NOT affect the `latest` npm dist-tag
+- Pre-release version (e.g., `0.1.0-beta.0`)
+- Custom dist-tag (auto-generated from branch name or specified)
+- NO git tags or GitHub releases
+- Does NOT affect `latest` npm dist-tag
 
 ### Pre-release Cleanup
 
@@ -59,27 +53,32 @@ Conventional commit types determine version bump:
 - `BREAKING CHANGE:` → MAJOR version bump (0.1.0 → 1.0.0)
 - `docs:`, `chore:`, `test:`, `ci:` → NO release
 
-## Automated Release Workflow
+## Triggering Releases
 
-Production releases trigger automatically on push to main.
+### Production Release
 
-Workflow steps:
+Automatic on push to main (after PR merge). No manual action needed.
 
-1. Install dependencies and build
-2. Run tests to verify quality
-3. `lerna version` - analyzes commits, bumps versions, creates tags
-4. `lerna publish from-git` - publishes packages to npm
+### Pre-release (Feature Branch Testing)
 
-Pre-release workflow runs manually via workflow_dispatch.
+Trigger manually via GitHub Actions:
 
-## Manual Release
+1. Navigate to Actions → Release workflow
+2. Click "Run workflow" button
+3. Select your feature branch from dropdown
+4. (Optional) Specify custom dist-tag or leave empty for auto-generation
+5. Click "Run workflow"
 
-For emergency releases only. Requires environment configuration.
+Results in pre-release version with custom dist-tag (e.g., `0.1.0-feat-xyz.0`)
+
+### Manual/Emergency Release
+
+For local releases only when automation unavailable.
 
 Order: build → test → version → publish
 
-Scripts: See `package.json` for lerna commands
-Configuration: See `docs/PUBLISHING-SETUP.md`
+See: `package.json` for lerna scripts
+See: `docs/PUBLISHING-SETUP.md` for environment setup
 
 See: `docs/PUBLISHING-SETUP.md` for first-time configuration
 See: `lerna.json` for Lerna configuration
