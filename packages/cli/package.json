@@ -26,6 +26,8 @@
   "bugs": {
     "url": "https://github.com/groupsky/ya-modbus/issues"
   },
+  "license": "GPL-3.0-or-later",
+  "author": "Geno Roupsky <geno@roupsky.name>",
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf dist",

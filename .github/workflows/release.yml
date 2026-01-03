@@ -14,8 +14,8 @@ jobs:
   release:
     name: Release Packages
     runs-on: ubuntu-latest
-    # Only run after CI passes
-    needs: []
+    # CI enforcement: Relies on branch protection rules requiring CI to pass before merge to main
+    # Production releases only trigger on main branch pushes (after PR merge)
     # Don't run on version bump commits to avoid infinite loop
     if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
 
@@ -100,6 +100,7 @@ jobs:
         run: npx lerna publish from-git --yes --no-private
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
 
       - name: Publish to npm (pre-release)
         if: steps.release-type.outputs.is_prerelease == 'true'
@@ -111,6 +112,7 @@ jobs:
             --no-private
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
 
       - name: Summary
         if: always()

@@ -32,33 +32,15 @@ jobs:
       - name: Get package list
         id: packages
         run: |
-          # Extract package names from workspace
-          PACKAGES=$(node -p "
-            const fs = require('fs');
-            const workspaces = require('./package.json').workspaces;
-            const glob = require('glob');
-
-            const packages = [];
-            workspaces.forEach(pattern => {
-              glob.sync(pattern).forEach(dir => {
-                const pkgPath = dir + '/package.json';
-                if (fs.existsSync(pkgPath)) {
-                  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-                  if (!pkg.private) {
-                    packages.push(pkg.name);
-                  }
-                }
-              });
-            });
-
-            packages.join(' ');
-          ")
+          # Extract non-private package names from workspace using npm query
+          PACKAGES=$(npm query ".workspace:not([private])" | jq -r '.[].name' | tr '\n' ' ')
           echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
           echo "📦 Packages: $PACKAGES"
 
       - name: Remove dist-tags
         run: |
           DIST_TAG="${{ steps.dist-tag.outputs.dist_tag }}"
+          EXIT_CODE=0
 
           for pkg in ${{ steps.packages.outputs.packages }}; do
             echo "Checking $pkg for dist-tag $DIST_TAG..."
@@ -66,11 +48,18 @@ jobs:
             # Check if dist-tag exists
             if npm dist-tag ls "$pkg" 2>/dev/null | grep -q "^$DIST_TAG:"; then
               echo "  ✓ Found dist-tag $DIST_TAG for $pkg, removing..."
-              npm dist-tag rm "$pkg" "$DIST_TAG" || echo "  ⚠️ Failed to remove (may not exist)"
+              if npm dist-tag rm "$pkg" "$DIST_TAG"; then
+                echo "  ✅ Successfully removed dist-tag"
+              else
+                echo "  ❌ Failed to remove dist-tag"
+                EXIT_CODE=1
+              fi
             else
               echo "  ℹ️ No dist-tag $DIST_TAG for $pkg"
             fi
           done
+
+          exit $EXIT_CODE
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
