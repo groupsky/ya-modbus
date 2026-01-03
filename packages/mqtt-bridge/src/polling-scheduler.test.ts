@@ -8,15 +8,10 @@ describe('PollingScheduler', () => {
   let scheduler: PollingScheduler
   let onDataCallback: jest.Mock
   let onErrorCallback: jest.Mock
-  let failureCount: number
 
   beforeEach(() => {
-    failureCount = 0
     onDataCallback = jest.fn()
-    onErrorCallback = jest.fn().mockImplementation(() => {
-      failureCount++
-      return failureCount
-    })
+    onErrorCallback = jest.fn()
     scheduler = new PollingScheduler(onDataCallback, onErrorCallback)
     jest.useFakeTimers()
   })
@@ -159,7 +154,7 @@ describe('PollingScheduler', () => {
 
       // First poll - error
       await jest.advanceTimersByTimeAsync(1000)
-      expect(onErrorCallback).toHaveBeenCalledWith('device1', expect.any(Error))
+      expect(onErrorCallback).toHaveBeenCalledWith('device1', expect.any(Error), 1)
 
       // Second poll - success
       await jest.advanceTimersByTimeAsync(1000)
@@ -289,7 +284,7 @@ describe('PollingScheduler', () => {
       scheduler.start()
 
       await jest.advanceTimersByTimeAsync(1000)
-      expect(onErrorCallback).toHaveBeenCalledWith('device1', expect.any(Error))
+      expect(onErrorCallback).toHaveBeenCalledWith('device1', expect.any(Error), 1)
       expect(onErrorCallback.mock.calls[0][1].message).toBe('String error')
     })
   })
@@ -666,6 +661,128 @@ describe('PollingScheduler', () => {
       expect(mockReadDataPoints).toHaveBeenCalledTimes(2)
 
       consoleErrorSpy.mockRestore()
+    })
+
+    it('should exit backoff when polling succeeds even if data callback throws', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 1000, maxRetries: 3, retryBackoff: 3000 },
+      }
+
+      const mockReadDataPoints = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('Read timeout'))
+        .mockRejectedValueOnce(new Error('Read timeout'))
+        .mockRejectedValueOnce(new Error('Read timeout'))
+        .mockRejectedValueOnce(new Error('Read timeout'))
+        .mockResolvedValue({ temp: 25.5 }) // Fifth poll succeeds
+
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: mockReadDataPoints,
+      }
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+
+      scheduler.scheduleDevice('device1', config, driver)
+      scheduler.start()
+
+      // First three failures at normal interval (lastFailureCount: 1, 2, 3)
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(2)
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(3)
+
+      // Fourth poll enters backoff (lastFailureCount 3 >= maxRetries 3)
+      await jest.advanceTimersByTimeAsync(3000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(4)
+
+      // Fifth poll still in backoff - but succeeds, callback throws
+      onDataCallback.mockImplementationOnce(() => {
+        throw new Error('Data callback error')
+      })
+
+      await jest.advanceTimersByTimeAsync(3000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(5)
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Error in data callback for device device1:',
+        expect.objectContaining({ message: 'Data callback error' })
+      )
+
+      // CRITICAL TEST: Next poll should use NORMAL interval (1000ms), NOT backoff (3000ms)
+      // because the device polling succeeded (even though callback threw)
+      onDataCallback.mockRestore()
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(6)
+
+      consoleErrorSpy.mockRestore()
+    })
+
+    it('should increment lastFailureCount even when error callback throws', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 1000, maxRetries: 3, retryBackoff: 3000 },
+      }
+
+      const mockReadDataPoints = jest.fn().mockRejectedValue(new Error('Read timeout'))
+
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: mockReadDataPoints,
+      }
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+
+      // Make error callback throw every time
+      onErrorCallback.mockImplementation(() => {
+        throw new Error('Error callback error')
+      })
+
+      scheduler.scheduleDevice('device1', config, driver)
+      scheduler.start()
+
+      // First failure (lastFailureCount = 1) - error callback throws
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Error in error callback for device device1:',
+        expect.objectContaining({ message: 'Error callback error' })
+      )
+
+      // Second failure (lastFailureCount = 2) - error callback throws again
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(2)
+
+      // Third failure (lastFailureCount = 3) - error callback throws again
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(3)
+
+      // CRITICAL TEST: Should enter backoff despite callback throwing
+      // Fourth poll should wait 3000ms (backoff) because lastFailureCount (3) >= maxRetries (3)
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(3) // Still 3, waiting for backoff
+
+      await jest.advanceTimersByTimeAsync(2000) // Complete backoff delay
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(4) // Now 4
+
+      consoleErrorSpy.mockRestore()
+      onErrorCallback.mockRestore()
     })
 
     it('should not poll if scheduler stopped after scheduling next poll', async () => {

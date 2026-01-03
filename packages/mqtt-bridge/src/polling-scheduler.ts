@@ -11,7 +11,7 @@ interface ScheduledDevice {
 }
 
 type DataCallback = (deviceId: string, data: Record<string, unknown>) => void
-type ErrorCallback = (deviceId: string, error: Error) => number
+type ErrorCallback = (deviceId: string, error: Error, failureCount: number) => void
 
 const DEFAULT_POLLING_INTERVAL = 5000 // 5 seconds
 
@@ -131,9 +131,11 @@ export class PollingScheduler {
       const dataPointIds = device.driver.dataPoints.map((dp) => dp.id)
       const data = await device.driver.readDataPoints(dataPointIds)
 
+      // Reset failure count BEFORE callback - polling succeeded regardless of callback result
+      device.lastFailureCount = 0
+
       try {
         this.onData(deviceId, data)
-        device.lastFailureCount = 0
       } catch (callbackError) {
         // Data callback threw - log but don't count as polling failure
         console.error(
@@ -142,14 +144,17 @@ export class PollingScheduler {
         )
       }
     } catch (error) {
+      // Increment failure count - scheduler owns this state
+      device.lastFailureCount++
+
       try {
-        const failureCount = this.onError(
+        this.onError(
           deviceId,
-          error instanceof Error ? error : new Error(String(error))
+          error instanceof Error ? error : new Error(String(error)),
+          device.lastFailureCount
         )
-        device.lastFailureCount = failureCount
       } catch (callbackError) {
-        // Error callback threw - log and keep last known failure count
+        // Error callback threw - log but state already updated
         console.error(
           `Error in error callback for device ${deviceId}:`,
           callbackError instanceof Error ? callbackError : new Error(String(callbackError))

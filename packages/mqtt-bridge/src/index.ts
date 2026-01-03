@@ -96,18 +96,13 @@ export function createBridge(
   }
 
   // Handle polling errors
-  const handlePollingError = (deviceId: string, error: Error): number => {
+  const handlePollingError = (deviceId: string, error: Error, failureCount: number): void => {
     console.error(`Polling error for device ${deviceId}:`, error)
 
-    const device = deviceManager.getDevice(deviceId)
-    const consecutiveFailures = (device?.consecutiveFailures ?? 0) + 1
-
     deviceManager.updateDeviceState(deviceId, {
-      consecutiveFailures,
+      consecutiveFailures: failureCount,
       errors: [error.message],
     })
-
-    return consecutiveFailures
   }
 
   const pollingScheduler =
