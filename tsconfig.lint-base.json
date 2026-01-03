@@ -15,6 +15,6 @@
       "ya-modbus-driver-xymd1": ["packages/ya-modbus-driver-xymd1/src"]
     }
   },
-  "include": ["src/**/*.test.ts"],
+  "include": ["src/**/*.test.ts", "src/**/__mocks__/**/*.ts", "__mocks__/**/*.ts"],
   "exclude": ["node_modules", "dist", "coverage"]
 }
