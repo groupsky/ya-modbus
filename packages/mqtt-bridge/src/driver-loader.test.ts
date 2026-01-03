@@ -12,9 +12,9 @@ const createMockTransport = (): jest.Mocked<Transport> => ({
   readInputRegisters: jest.fn().mockResolvedValue(Buffer.alloc(0)),
   readCoils: jest.fn().mockResolvedValue(Buffer.alloc(0)),
   readDiscreteInputs: jest.fn().mockResolvedValue(Buffer.alloc(0)),
-  writeRegister: jest.fn().mockResolvedValue(undefined),
+  writeSingleRegister: jest.fn().mockResolvedValue(undefined),
   writeMultipleRegisters: jest.fn().mockResolvedValue(undefined),
-  writeCoil: jest.fn().mockResolvedValue(undefined),
+  writeSingleCoil: jest.fn().mockResolvedValue(undefined),
   writeMultipleCoils: jest.fn().mockResolvedValue(undefined),
   close: jest.fn().mockResolvedValue(undefined),
 })
