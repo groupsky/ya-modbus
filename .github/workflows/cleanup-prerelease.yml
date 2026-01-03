@@ -1,0 +1,87 @@
+name: Cleanup Pre-release
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup:
+    name: Remove Pre-release dist-tags
+    runs-on: ubuntu-latest
+    # Only run if there was a pre-release for this PR
+    if: github.event.pull_request.head.ref != 'main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js from .nvmrc
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Determine dist-tag from branch name
+        id: dist-tag
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          DIST_TAG=$(echo "$BRANCH" | sed 's/[^a-zA-Z0-9-]/-/g' | sed 's/^-*//' | sed 's/-*$//')
+          echo "dist_tag=$DIST_TAG" >> $GITHUB_OUTPUT
+          echo "📦 Checking for dist-tag: $DIST_TAG"
+
+      - name: Get package list
+        id: packages
+        run: |
+          # Extract package names from workspace
+          PACKAGES=$(node -p "
+            const fs = require('fs');
+            const workspaces = require('./package.json').workspaces;
+            const glob = require('glob');
+
+            const packages = [];
+            workspaces.forEach(pattern => {
+              glob.sync(pattern).forEach(dir => {
+                const pkgPath = dir + '/package.json';
+                if (fs.existsSync(pkgPath)) {
+                  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+                  if (!pkg.private) {
+                    packages.push(pkg.name);
+                  }
+                }
+              });
+            });
+
+            packages.join(' ');
+          ")
+          echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
+          echo "📦 Packages: $PACKAGES"
+
+      - name: Remove dist-tags
+        run: |
+          DIST_TAG="${{ steps.dist-tag.outputs.dist_tag }}"
+
+          for pkg in ${{ steps.packages.outputs.packages }}; do
+            echo "Checking $pkg for dist-tag $DIST_TAG..."
+
+            # Check if dist-tag exists
+            if npm dist-tag ls "$pkg" 2>/dev/null | grep -q "^$DIST_TAG:"; then
+              echo "  ✓ Found dist-tag $DIST_TAG for $pkg, removing..."
+              npm dist-tag rm "$pkg" "$DIST_TAG" || echo "  ⚠️ Failed to remove (may not exist)"
+            else
+              echo "  ℹ️ No dist-tag $DIST_TAG for $pkg"
+            fi
+          done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Pre-release Cleanup Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- PR: #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: ${{ github.event.pull_request.head.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Dist-tag: ${{ steps.dist-tag.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: ${{ github.event.pull_request.merged && 'Merged' || 'Closed without merge' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Pre-release versions remain available but the dist-tag has been removed." >> $GITHUB_STEP_SUMMARY

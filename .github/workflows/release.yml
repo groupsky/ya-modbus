@@ -1,0 +1,129 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dist-tag:
+        description: 'NPM dist-tag (e.g., beta, next, feature-name)'
+        required: false
+        default: 'latest'
+
+jobs:
+  release:
+    name: Release Packages
+    runs-on: ubuntu-latest
+    # Only run after CI passes
+    needs: []
+    # Don't run on version bump commits to avoid infinite loop
+    if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          # Fetch all history and tags for lerna to detect changes
+          fetch-depth: 0
+          # Use a token that can trigger workflows
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js from .nvmrc
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Detect release type
+        id: release-type
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+          # Determine if this is a feature branch release
+          if [ "$BRANCH" != "main" ] || [ "${{ github.event.inputs.dist-tag }}" != "latest" ]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+
+            # Determine dist-tag
+            if [ -n "${{ github.event.inputs.dist-tag }}" ]; then
+              DIST_TAG="${{ github.event.inputs.dist-tag }}"
+            else
+              # Auto-generate dist-tag from branch name
+              DIST_TAG=$(echo "$BRANCH" | sed 's/[^a-zA-Z0-9-]/-/g' | sed 's/^-*//' | sed 's/-*$//')
+            fi
+            echo "dist_tag=$DIST_TAG" >> $GITHUB_OUTPUT
+
+            # Determine preid for versioning
+            PREID=$(echo "$DIST_TAG" | sed 's/-[0-9]*$//')
+            echo "preid=$PREID" >> $GITHUB_OUTPUT
+
+            echo "📦 Pre-release mode: dist-tag=$DIST_TAG, preid=$PREID"
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "dist_tag=latest" >> $GITHUB_OUTPUT
+            echo "📦 Production release mode"
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Run tests
+        run: npm run test:ci
+
+      - name: Version packages (production)
+        if: steps.release-type.outputs.is_prerelease == 'false'
+        run: npx lerna version --yes --no-private
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Version packages (pre-release)
+        if: steps.release-type.outputs.is_prerelease == 'true'
+        run: |
+          npx lerna version prerelease \
+            --preid ${{ steps.release-type.outputs.preid }} \
+            --no-git-tag-version \
+            --no-push \
+            --yes \
+            --no-private
+
+      - name: Publish to npm (production)
+        if: steps.release-type.outputs.is_prerelease == 'false'
+        run: npx lerna publish from-git --yes --no-private
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to npm (pre-release)
+        if: steps.release-type.outputs.is_prerelease == 'true'
+        run: |
+          npx lerna publish from-package \
+            --dist-tag ${{ steps.release-type.outputs.dist_tag }} \
+            --no-git-reset \
+            --yes \
+            --no-private
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: ${{ steps.release-type.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Pre-release: ${{ steps.release-type.outputs.is_prerelease }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Dist-tag: ${{ steps.release-type.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.release-type.outputs.is_prerelease }}" == "true" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Installation" >> $GITHUB_STEP_SUMMARY
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo "npm install @ya-modbus/cli@${{ steps.release-type.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi

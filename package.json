@@ -41,10 +41,14 @@
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
     "prepare": "husky",
-    "prerelease": "npm run build && npm run test",
-    "release": "semantic-release"
+    "version": "lerna version --no-private",
+    "publish": "lerna publish from-git --no-private",
+    "release": "npm run build && npm run test && npm run version && npm run publish"
   },
   "devDependencies": {
+    "@lerna-lite/cli": "^4.10.3",
+    "@lerna-lite/publish": "^4.10.3",
+    "@lerna-lite/version": "^4.10.3",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.10.6",
     "@typescript-eslint/eslint-plugin": "^8.50.1",
