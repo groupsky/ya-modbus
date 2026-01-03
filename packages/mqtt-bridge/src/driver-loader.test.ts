@@ -640,7 +640,9 @@ describe('DriverLoader', () => {
       const mockTransportManager = {
         getTransport: jest.fn().mockResolvedValue(createMockTransport()),
         executeWithLock: jest.fn().mockImplementation((_transport, fn) => fn()),
-        getStats: jest.fn().mockReturnValue({ totalTransports: 0, rtuTransports: 0, tcpTransports: 0 }),
+        getStats: jest
+          .fn()
+          .mockReturnValue({ totalTransports: 0, rtuTransports: 0, tcpTransports: 0 }),
         closeAll: mockCloseAll,
       } as unknown as jest.Mocked<TransportManager>
 
@@ -649,144 +651,6 @@ describe('DriverLoader', () => {
       await loader.closeAllTransports()
 
       expect(mockCloseAll).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  // Note: Old createDefaultTransport tests removed - transport creation is now
-  // handled by TransportManager which has its own comprehensive test suite
-  describe.skip('removed: createDefaultTransport fallback', () => {
-    it('should use createDefaultTransport when no transport factory is provided', async () => {
-      const mockClose = jest.fn().mockResolvedValue(undefined)
-      const mockTransport: Transport = {
-        readHoldingRegisters: jest.fn(),
-        readInputRegisters: jest.fn(),
-        readCoils: jest.fn(),
-        readDiscreteInputs: jest.fn(),
-        writeSingleRegister: jest.fn(),
-        writeMultipleRegisters: jest.fn(),
-        writeSingleCoil: jest.fn(),
-        writeMultipleCoils: jest.fn(),
-        close: mockClose,
-      }
-
-      // Mock the createTransport function from transport package
-      const mockCreateTransport = jest.fn().mockResolvedValue(mockTransport)
-      jest.spyOn(transportModule, 'createTransport').mockImplementation(mockCreateTransport)
-
-      const mockDriver: DeviceDriver = {
-        name: 'test-device',
-        manufacturer: 'Test Manufacturer',
-        model: 'TEST-001',
-        dataPoints: [],
-        readDataPoint: jest.fn(),
-        writeDataPoint: jest.fn(),
-        readDataPoints: jest.fn(),
-      }
-
-      const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
-      const mockLoadDriver = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
-
-      // Create loader without transport factory - will use createDefaultTransport
-      const loader = new DriverLoader(mockLoadDriver)
-
-      const connection: DeviceConnection = {
-        type: 'rtu',
-        port: '/dev/ttyUSB0',
-        baudRate: 9600,
-        slaveId: 1,
-        parity: 'none',
-        dataBits: 8,
-        stopBits: 1,
-      }
-
-      // Loading should succeed - createDefaultTransport is called
-      const driver = await loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
-      expect(driver).toBe(mockDriver)
-
-      // Verify createTransport was called with correct config
-      expect(mockCreateTransport).toHaveBeenCalledWith(
-        expect.objectContaining({
-          port: '/dev/ttyUSB0',
-          baudRate: 9600,
-          parity: 'none',
-          dataBits: 8,
-          stopBits: 1,
-          slaveId: 1,
-        })
-      )
-
-      // Verify createDriver was called with a transport
-      expect(mockCreateDriver).toHaveBeenCalledWith(
-        expect.objectContaining({
-          slaveId: 1,
-          transport: mockTransport,
-        })
-      )
-    })
-
-    it('should use createDefaultTransport for TCP connections when no transport factory is provided', async () => {
-      const mockClose = jest.fn().mockResolvedValue(undefined)
-      const mockTransport: Transport = {
-        readHoldingRegisters: jest.fn(),
-        readInputRegisters: jest.fn(),
-        readCoils: jest.fn(),
-        readDiscreteInputs: jest.fn(),
-        writeSingleRegister: jest.fn(),
-        writeMultipleRegisters: jest.fn(),
-        writeSingleCoil: jest.fn(),
-        writeMultipleCoils: jest.fn(),
-        close: mockClose,
-      }
-
-      // Mock the createTransport function from transport package
-      const mockCreateTransport = jest.fn().mockResolvedValue(mockTransport)
-      jest.spyOn(transportModule, 'createTransport').mockImplementation(mockCreateTransport)
-
-      const mockDriver: DeviceDriver = {
-        name: 'test-device',
-        manufacturer: 'Test Manufacturer',
-        model: 'TEST-001',
-        dataPoints: [],
-        readDataPoint: jest.fn(),
-        writeDataPoint: jest.fn(),
-        readDataPoints: jest.fn(),
-      }
-
-      const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
-      const mockLoadDriver = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
-
-      // Create loader without transport factory - will use createDefaultTransport
-      const loader = new DriverLoader(mockLoadDriver)
-
-      const connection: DeviceConnection = {
-        type: 'tcp',
-        host: '192.168.1.100',
-        port: 502,
-        slaveId: 1,
-        timeout: 5000,
-      }
-
-      // Loading should succeed - createDefaultTransport is called
-      const driver = await loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
-      expect(driver).toBe(mockDriver)
-
-      // Verify createTransport was called with correct config for TCP
-      expect(mockCreateTransport).toHaveBeenCalledWith(
-        expect.objectContaining({
-          host: '192.168.1.100',
-          port: 502,
-          slaveId: 1,
-          timeout: 5000,
-        })
-      )
-
-      // Verify createDriver was called with a transport
-      expect(mockCreateDriver).toHaveBeenCalledWith(
-        expect.objectContaining({
-          slaveId: 1,
-          transport: mockTransport,
-        })
-      )
     })
   })
 })

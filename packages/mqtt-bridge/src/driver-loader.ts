@@ -81,7 +81,7 @@ export class DriverLoader {
     const driver = this.driverInstances.get(deviceId)
 
     try {
-      if (driver && driver.destroy) {
+      if (driver?.destroy) {
         await driver.destroy()
       }
     } finally {

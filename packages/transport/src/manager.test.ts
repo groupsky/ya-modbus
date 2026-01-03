@@ -1,7 +1,8 @@
-import { TransportManager } from './manager.js'
-import { createTransport } from './factory.js'
 import type { Transport } from '@ya-modbus/driver-types'
+
+import { createTransport } from './factory.js'
 import type { RTUConfig, TCPConfig } from './factory.js'
+import { TransportManager } from './manager.js'
 
 jest.mock('./factory.js')
 
