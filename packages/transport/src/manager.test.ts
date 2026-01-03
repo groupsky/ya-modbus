@@ -138,7 +138,7 @@ describe('TransportManager', () => {
       expect(transport1).not.toBe(transport2)
     })
 
-    test('should create unique transport for each TCP connection', async () => {
+    test('should pool TCP transports for same host:port', async () => {
       const config: TCPConfig = {
         host: '192.168.1.100',
         port: 502,
@@ -146,14 +146,13 @@ describe('TransportManager', () => {
       }
 
       jest.mocked(createTransport).mockResolvedValueOnce(mockTransport1)
-      jest.mocked(createTransport).mockResolvedValueOnce(mockTransport2)
 
       const transport1 = await manager.getTransport(config)
       const transport2 = await manager.getTransport(config)
 
-      // TCP should NOT be pooled - each gets unique transport
-      expect(createTransport).toHaveBeenCalledTimes(2)
-      expect(transport1).not.toBe(transport2)
+      // TCP transports should be pooled - same instance for same host:port
+      expect(createTransport).toHaveBeenCalledTimes(1)
+      expect(transport1).toBe(transport2)
     })
   })
 
@@ -199,7 +198,7 @@ describe('TransportManager', () => {
       expect(executionOrder).toEqual(['op1-start', 'op1-end', 'op2-start', 'op2-end'])
     })
 
-    test('should allow concurrent TCP operations without mutex', async () => {
+    test('should allow concurrent operations on different TCP connections', async () => {
       const config1: TCPConfig = {
         host: '192.168.1.100',
         port: 502,
@@ -236,15 +235,53 @@ describe('TransportManager', () => {
       const transport1 = await manager.getTransport(config1)
       const transport2 = await manager.getTransport(config2)
 
-      // Start two TCP operations concurrently
-      // TCP transports are not wrapped with mutex, so they execute concurrently
-      const promise1 = transport1.readHoldingRegisters(1, 0, 2)
-      const promise2 = transport2.readHoldingRegisters(1, 0, 2)
+      // Start two TCP operations concurrently on different connections
+      // Different connections have separate mutexes, so they execute concurrently
+      const promise1 = transport1.readHoldingRegisters(0, 2)
+      const promise2 = transport2.readHoldingRegisters(0, 2)
 
       await Promise.all([promise1, promise2])
 
-      // TCP operations should be interleaved (concurrent)
+      // Operations on different connections should be interleaved (concurrent)
       expect(executionOrder).toEqual(['tcp1-start', 'tcp2-start', 'tcp2-end', 'tcp1-end'])
+    })
+
+    test('should serialize TCP operations on same connection', async () => {
+      const config: TCPConfig = {
+        host: '192.168.1.100',
+        port: 502,
+        slaveId: 1,
+      }
+
+      const executionOrder: string[] = []
+
+      mockTransport1.readHoldingRegisters.mockImplementation(async () => {
+        executionOrder.push('op1-start')
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        executionOrder.push('op1-end')
+        return Buffer.alloc(4)
+      })
+
+      mockTransport1.readInputRegisters.mockImplementation(async () => {
+        executionOrder.push('op2-start')
+        await new Promise((resolve) => setTimeout(resolve, 10))
+        executionOrder.push('op2-end')
+        return Buffer.alloc(4)
+      })
+
+      jest.mocked(createTransport).mockResolvedValue(mockTransport1)
+
+      const transport = await manager.getTransport(config)
+
+      // Start two operations concurrently on the same TCP transport
+      // The mutex wrapper should serialize them automatically
+      const promise1 = transport.readHoldingRegisters(0, 2)
+      const promise2 = transport.readInputRegisters(0, 2)
+
+      await Promise.all([promise1, promise2])
+
+      // Operations should be serialized (not interleaved)
+      expect(executionOrder).toEqual(['op1-start', 'op1-end', 'op2-start', 'op2-end'])
     })
 
     test('should propagate errors from mutex-wrapped operations', async () => {

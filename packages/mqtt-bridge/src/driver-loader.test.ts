@@ -24,7 +24,6 @@ const createMockTransportManager = (): jest.Mocked<TransportManager> => {
   const mockTransport = createMockTransport()
   return {
     getTransport: jest.fn().mockResolvedValue(mockTransport),
-    executeWithLock: jest.fn().mockImplementation((_transport, fn) => fn()),
     getStats: jest.fn().mockReturnValue({ totalTransports: 0, rtuTransports: 0, tcpTransports: 0 }),
     closeAll: jest.fn().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<TransportManager>
@@ -639,7 +638,6 @@ describe('DriverLoader', () => {
       const mockCloseAll = jest.fn().mockResolvedValue(undefined)
       const mockTransportManager = {
         getTransport: jest.fn().mockResolvedValue(createMockTransport()),
-        executeWithLock: jest.fn().mockImplementation((_transport, fn) => fn()),
         getStats: jest
           .fn()
           .mockReturnValue({ totalTransports: 0, rtuTransports: 0, tcpTransports: 0 }),
