@@ -1,6 +1,7 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "noEmit": true,
     "baseUrl": ".",
     "paths": {
       "@ya-modbus/driver-types": ["packages/driver-types/src"],
@@ -14,5 +15,6 @@
       "ya-modbus-driver-xymd1": ["packages/ya-modbus-driver-xymd1/src"]
     }
   },
+  "include": ["src/**/*.test.ts"],
   "exclude": ["node_modules", "dist", "coverage"]
 }

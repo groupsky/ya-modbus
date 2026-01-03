@@ -1,7 +1,4 @@
 {
   "extends": "../../tsconfig.lint-base.json",
-  "compilerOptions": {
-    "noEmit": true
-  },
   "include": ["src/**/*.test.ts", "__mocks__/**/*.ts"]
 }
