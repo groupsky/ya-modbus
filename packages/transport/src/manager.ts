@@ -35,6 +35,12 @@ export interface TransportStats {
  * - TCP transports are pooled by host and port
  * - Multiple devices on the same connection share a single transport instance
  * - All operations are serialized using async-mutex to prevent race conditions
+ *
+ * Why TCP needs mutex protection:
+ * - Many Modbus devices allow only one or a limited number of TCP connections
+ * - Even with multiple connections, devices often process requests sequentially
+ * - Concurrent requests can cause timeouts, dropped packets, or incorrect responses
+ * - Serialization ensures reliable communication regardless of device limitations
  */
 export class TransportManager {
   private readonly transports = new Map<string, TransportEntry>()
@@ -74,12 +80,15 @@ export class TransportManager {
     }
 
     // For TCP, reuse existing transport if available
+    // TCP is pooled like RTU because many devices support only one connection
+    // or process requests sequentially even with multiple connections
     const entry = this.transports.get(key)
     if (entry) {
       return entry.wrappedTransport
     }
 
     // Create new TCP transport with mutex wrapper
+    // Mutex prevents concurrent requests that could cause timeouts or errors
     const rawTransport = await createTransport(config)
     const mutex = new Mutex()
     const wrappedTransport = new MutexTransport(rawTransport, mutex)

@@ -3,9 +3,12 @@ import { Mutex } from 'async-mutex'
 
 /**
  * Wraps a transport with mutex-based serialization.
- * All operations are executed sequentially to prevent bus collisions.
+ * All operations are executed sequentially to prevent concurrent access issues.
  *
- * Used for RTU transports where multiple devices share the same serial bus.
+ * Used for:
+ * - RTU transports: Prevents bus collisions when multiple devices share a serial bus
+ * - TCP transports: Many Modbus devices support only one connection or process
+ *   requests sequentially. Serialization prevents timeouts and communication errors.
  */
 export class MutexTransport implements Transport {
   constructor(
