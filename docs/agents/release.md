@@ -61,13 +61,14 @@ Automatic on push to main (after PR merge). No manual action needed.
 
 ### Pre-release (Feature Branch Testing)
 
-Trigger manually via GitHub Actions:
+Trigger manually using `gh` CLI or GitHub Actions UI.
 
-1. Navigate to Actions → Release workflow
-2. Click "Run workflow" button
-3. Select your feature branch from dropdown
-4. (Optional) Specify custom dist-tag or leave empty for auto-generation
-5. Click "Run workflow"
+Using `gh` CLI:
+
+- Auto-generate dist-tag: `gh workflow run release.yml --ref feat/my-branch`
+- Custom dist-tag: `gh workflow run release.yml --ref feat/my-branch --field dist-tag=beta`
+
+Using GitHub Actions UI: Actions → Release → Run workflow
 
 Results in pre-release version with custom dist-tag (e.g., `0.1.0-feat-xyz.0`)
 
