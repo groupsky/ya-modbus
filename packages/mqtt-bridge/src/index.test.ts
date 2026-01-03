@@ -10,6 +10,25 @@ import type { DeviceConfig } from './types.js'
 
 import { createBridge } from './index.js'
 
+/**
+ * Wait for a Jest mock to be called with retry
+ * More deterministic than arbitrary setTimeout
+ */
+async function waitForMockCall(
+  mockFn: jest.Mock,
+  timeoutMs = 1000,
+  intervalMs = 10
+): Promise<void> {
+  const startTime = Date.now()
+  while (Date.now() - startTime < timeoutMs) {
+    if (mockFn.mock.calls.length > 0) {
+      return
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs))
+  }
+  throw new Error(`Mock was not called within ${timeoutMs}ms`)
+}
+
 jest.mock('mqtt')
 jest.mock('./device-manager.js')
 jest.mock('./driver-loader.js')
@@ -1374,6 +1393,12 @@ describe('createBridge', () => {
   })
 
   describe('race conditions', () => {
+    beforeEach(() => {
+      // Reset all mocks before each test to ensure clean state
+      // This prevents mock pollution between tests
+      jest.clearAllMocks()
+    })
+
     it('should throw error if driver not found after loading', async () => {
       const mockDriverLoader = new MockedDriverLoader()
       // Simulate race condition: driver is unloaded between addDevice and getDriver
@@ -1449,8 +1474,8 @@ describe('createBridge', () => {
       // Call callback again after bridge is initialized
       dataCallback!('device1', testData)
 
-      // Wait for async publish
-      await new Promise((resolve) => setTimeout(resolve, 10))
+      // Wait for async publish to be called (more deterministic than setTimeout)
+      await waitForMockCall(mockClient.publish as jest.Mock)
 
       // Verify publish WAS called this time (bridge initialized)
       expect(mockClient.publish).toHaveBeenCalledWith(
