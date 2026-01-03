@@ -1,4 +1,11 @@
 {
+  // Root TypeScript configuration for building all packages
+  // Used by: npm run build (runs tsc --build)
+  //
+  // Project references ensure packages build in dependency order
+  // IMPORTANT: When adding a new package, add it to references array
+  // See: docs/agents/package-creation.md
+
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",

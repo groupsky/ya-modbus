@@ -13,6 +13,9 @@
     "baseUrl": ".",
     // Map package names to source directories (not dist/)
     // This allows ESLint to resolve types without requiring a build
+    //
+    // IMPORTANT: When adding a new package, add its path mapping here
+    // See: docs/agents/package-creation.md
     "paths": {
       "@ya-modbus/driver-types": ["packages/driver-types/src"],
       "@ya-modbus/driver-sdk": ["packages/driver-sdk/src"],
