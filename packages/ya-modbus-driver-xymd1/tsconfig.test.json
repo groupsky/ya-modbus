@@ -1,8 +1,7 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.lint-base.json",
   "compilerOptions": {
     "noEmit": true
   },
-  "include": ["src/**/*.test.ts"],
-  "references": [{ "path": "./tsconfig.json" }]
+  "include": ["src/**/*.test.ts"]
 }

@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@ya-modbus/driver-types": ["packages/driver-types/src"],
+      "@ya-modbus/driver-sdk": ["packages/driver-sdk/src"],
+      "@ya-modbus/transport": ["packages/transport/src"],
+      "@ya-modbus/driver-loader": ["packages/driver-loader/src"],
+      "@ya-modbus/cli": ["packages/cli/src"],
+      "@ya-modbus/mqtt-bridge": ["packages/mqtt-bridge/src"],
+      "@ya-modbus/emulator": ["packages/emulator/src"],
+      "ya-modbus-driver-ex9em": ["packages/ya-modbus-driver-ex9em/src"],
+      "ya-modbus-driver-xymd1": ["packages/ya-modbus-driver-xymd1/src"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "coverage"]
+}
