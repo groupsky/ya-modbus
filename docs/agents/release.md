@@ -31,6 +31,8 @@ Results:
 - NO git tags or GitHub releases
 - Does NOT affect `latest` npm dist-tag
 
+**Note**: Pre-release version changes are NOT committed back to the branch. Each manual trigger increments the pre-release counter (`.0`, `.1`, `.2`, etc.).
+
 ### Pre-release Cleanup
 
 When a PR is closed or merged, the cleanup workflow automatically:
