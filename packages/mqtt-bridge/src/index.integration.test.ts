@@ -11,6 +11,7 @@ import {
   waitForSubscribe,
   waitForUnsubscribe,
   withBridge,
+  withBridgeAndMockDriver,
   type TestBroker,
 } from './utils/test-utils.js'
 
@@ -395,7 +396,7 @@ describe('MQTT Bridge Integration Tests', () => {
 
   describe('Device Management', () => {
     test('should add and remove devices', async () => {
-      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+      await withBridgeAndMockDriver(broker, async (bridge, mocks) => {
         const deviceConfig = {
           deviceId: 'device1',
           driver: 'ya-modbus-driver-test',
@@ -405,11 +406,24 @@ describe('MQTT Bridge Integration Tests', () => {
             port: 502,
             slaveId: 1,
           },
-          enabled: false, // Skip driver loading for integration test
         }
 
         await bridge.addDevice(deviceConfig)
         expect(bridge.getStatus().deviceCount).toBe(1)
+
+        // Verify complete DI chain: driver loader → transport factory → driver
+        expect(mocks.mockLoadDriverFn).toHaveBeenCalledWith(
+          expect.objectContaining({ driverPackage: 'ya-modbus-driver-test' })
+        )
+        expect(mocks.mockTransportFactory).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'tcp',
+            host: 'localhost',
+            port: 502,
+            slaveId: 1,
+          })
+        )
+        expect(mocks.mockDriver.initialize).toHaveBeenCalled()
 
         const device = bridge.getDevice('device1')
         expect(device).toBeDefined()
@@ -417,11 +431,14 @@ describe('MQTT Bridge Integration Tests', () => {
 
         await bridge.removeDevice('device1')
         expect(bridge.getStatus().deviceCount).toBe(0)
+
+        // Verify driver was destroyed
+        expect(mocks.mockDriver.destroy).toHaveBeenCalled()
       })
     })
 
     test('should list all devices', async () => {
-      await withBridge(createTestBridgeConfig(broker), async (bridge) => {
+      await withBridgeAndMockDriver(broker, async (bridge) => {
         const device1 = {
           deviceId: 'device1',
           driver: 'ya-modbus-driver-test1',
@@ -431,7 +448,6 @@ describe('MQTT Bridge Integration Tests', () => {
             port: 502,
             slaveId: 1,
           },
-          enabled: false, // Skip driver loading for integration test
         }
 
         const device2 = {
@@ -443,7 +459,6 @@ describe('MQTT Bridge Integration Tests', () => {
             baudRate: 9600,
             slaveId: 2,
           },
-          enabled: false, // Skip driver loading for integration test
         }
 
         await bridge.addDevice(device1)
@@ -453,6 +468,52 @@ describe('MQTT Bridge Integration Tests', () => {
         expect(devices).toHaveLength(2)
         expect(devices.map((d) => d.deviceId)).toContain('device1')
         expect(devices.map((d) => d.deviceId)).toContain('device2')
+      })
+    })
+
+    test('should create independent driver instances for multiple devices', async () => {
+      await withBridgeAndMockDriver(broker, async (bridge, mocks) => {
+        const device1 = {
+          deviceId: 'device1',
+          driver: 'ya-modbus-driver-test1',
+          connection: {
+            type: 'tcp' as const,
+            host: 'localhost',
+            port: 502,
+            slaveId: 1,
+          },
+        }
+
+        const device2 = {
+          deviceId: 'device2',
+          driver: 'ya-modbus-driver-test2',
+          connection: {
+            type: 'tcp' as const,
+            host: 'localhost',
+            port: 503,
+            slaveId: 2,
+          },
+        }
+
+        await bridge.addDevice(device1)
+        await bridge.addDevice(device2)
+
+        // Verify each device triggered independent driver and transport creation
+        expect(mocks.mockLoadDriverFn).toHaveBeenCalledTimes(2)
+        expect(mocks.mockLoadDriverFn).toHaveBeenCalledWith(
+          expect.objectContaining({ driverPackage: 'ya-modbus-driver-test1' })
+        )
+        expect(mocks.mockLoadDriverFn).toHaveBeenCalledWith(
+          expect.objectContaining({ driverPackage: 'ya-modbus-driver-test2' })
+        )
+
+        expect(mocks.mockTransportFactory).toHaveBeenCalledTimes(2)
+        expect(mocks.mockTransportFactory).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'tcp', port: 502, slaveId: 1 })
+        )
+        expect(mocks.mockTransportFactory).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'tcp', port: 503, slaveId: 2 })
+        )
       })
     })
   })
