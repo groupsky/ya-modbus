@@ -96,16 +96,13 @@ jobs:
         if: matrix.node-version == '20.x'
         run: npm install -g npm@latest
 
+      - name: Clean packages
+        run: npm run clean
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Build packages
-        run: npm run build
-
-      - name: Type check
-        run: npm run typecheck
-
-      - name: Lint
+      - name: Lint code
         run: npm run lint
 
       - name: Run tests
