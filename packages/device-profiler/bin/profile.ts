@@ -25,6 +25,8 @@ interface CliOptions {
   timeout: number
 }
 
+const parseNumber = (value: string): number => parseInt(value, 10)
+
 const program = new Command()
 
 program
@@ -32,16 +34,16 @@ program
   .description('Profile Modbus devices by scanning register ranges')
   .version('0.1.0')
   .requiredOption('--port <port>', 'Serial port (e.g., /dev/ttyUSB0) or TCP host:port')
-  .requiredOption('--slave-id <id>', 'Modbus slave ID (1-247)', parseInt)
+  .requiredOption('--slave-id <id>', 'Modbus slave ID (1-247)', parseNumber)
   .option('--type <type>', 'Register type: holding or input', 'holding')
-  .option('--start <address>', 'Start register address', parseInt, 0)
-  .option('--end <address>', 'End register address', parseInt, 100)
-  .option('--batch <size>', 'Batch size for reads', parseInt, 10)
-  .option('--baud <rate>', 'Baud rate for RTU', parseInt, 9600)
+  .option('--start <address>', 'Start register address', parseNumber, 0)
+  .option('--end <address>', 'End register address', parseNumber, 100)
+  .option('--batch <size>', 'Batch size for reads', parseNumber, 10)
+  .option('--baud <rate>', 'Baud rate for RTU', parseNumber, 9600)
   .option('--parity <parity>', 'Parity for RTU (none, even, odd)', 'none')
-  .option('--data-bits <bits>', 'Data bits for RTU', parseInt, 8)
-  .option('--stop-bits <bits>', 'Stop bits for RTU', parseInt, 1)
-  .option('--timeout <ms>', 'Response timeout in milliseconds', parseInt, 1000)
+  .option('--data-bits <bits>', 'Data bits for RTU', parseNumber, 8)
+  .option('--stop-bits <bits>', 'Stop bits for RTU', parseNumber, 1)
+  .option('--timeout <ms>', 'Response timeout in milliseconds', parseNumber, 1000)
   .action(async (options: CliOptions) => {
     try {
       const registerType = options.type === 'input' ? RegisterType.Input : RegisterType.Holding
