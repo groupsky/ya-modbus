@@ -368,4 +368,55 @@ describe('RTU Transport', () => {
 
     expect(mockModbus.close).toHaveBeenCalled()
   })
+
+  test('should respect custom maxRetries config option', async () => {
+    const config = {
+      port: '/dev/ttyUSB0',
+      baudRate: 9600 as const,
+      dataBits: 8 as const,
+      parity: 'even' as const,
+      stopBits: 1 as const,
+      slaveId: 1,
+      maxRetries: 5,
+    }
+
+    mockModbus.connectRTUBuffered.mockResolvedValue(undefined)
+    mockModbus.readHoldingRegisters.mockRejectedValue(new Error('Failed'))
+
+    const transport = await createRTUTransport(config)
+
+    await expect(transport.readHoldingRegisters(0, 1)).rejects.toThrow('Failed')
+    expect(mockModbus.readHoldingRegisters).toHaveBeenCalledTimes(5)
+  })
+
+  test('should call logger on retry attempts', async () => {
+    const logger = jest.fn()
+    const config = {
+      port: '/dev/ttyUSB0',
+      baudRate: 9600 as const,
+      dataBits: 8 as const,
+      parity: 'even' as const,
+      stopBits: 1 as const,
+      slaveId: 1,
+      logger,
+    }
+
+    mockModbus.connectRTUBuffered.mockResolvedValue(undefined)
+    mockModbus.readHoldingRegisters
+      .mockRejectedValueOnce(new Error('Error 1'))
+      .mockRejectedValueOnce(new Error('Error 2'))
+      .mockResolvedValueOnce({
+        data: [0x1234],
+        buffer: Buffer.from([0x12, 0x34]),
+      } as never)
+
+    const transport = await createRTUTransport(config)
+    const result = await transport.readHoldingRegisters(0, 1)
+
+    expect(result).toBeInstanceOf(Buffer)
+    expect(mockModbus.readHoldingRegisters).toHaveBeenCalledTimes(3)
+    expect(logger).toHaveBeenCalledTimes(2)
+    expect(logger).toHaveBeenNthCalledWith(1, 1, expect.objectContaining({ message: 'Error 1' }))
+    expect(logger).toHaveBeenNthCalledWith(2, 2, expect.objectContaining({ message: 'Error 2' }))
+  })
 })

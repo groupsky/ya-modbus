@@ -2,6 +2,7 @@ import type { Transport } from '@ya-modbus/driver-types'
 import ModbusRTU from 'modbus-serial'
 
 import { createModbusTransport } from './create-modbus-transport.js'
+import type { RetryLogger } from './retry.js'
 
 /**
  * TCP transport configuration
@@ -15,6 +16,10 @@ export interface TCPConfig {
   slaveId: number
   /** Response timeout in milliseconds (default: 1000) */
   timeout?: number | undefined
+  /** Maximum retry attempts (default: 3, use 1 to disable retries) */
+  maxRetries?: number | undefined
+  /** Optional callback to log retry attempts for debugging */
+  logger?: RetryLogger | undefined
 }
 
 /**
@@ -35,5 +40,5 @@ export async function createTCPTransport(config: TCPConfig): Promise<Transport> 
   // Set timeout
   client.setTimeout(config.timeout ?? 1000)
 
-  return createModbusTransport(client)
+  return createModbusTransport(client, config.maxRetries, config.logger)
 }
