@@ -97,7 +97,7 @@ export default tseslint.config(
 
   // Test files override (replaces overrides from legacy config)
   {
-    files: ['**/*.test.ts', '**/*.integration.test.ts', '**/*.e2e.test.ts'],
+    files: ['**/*.test.ts', '**/*.integration.test.ts', '**/*.e2e.test.ts', '**/test-utils.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 // Non-null assertions are used for event handler cleanup where the handlers are guaranteed to be defined
 // by control flow. Using optional chaining would create untestable branches for impossible null cases.
 import { AddressInfo, createServer, Server } from 'node:net'
@@ -492,7 +491,6 @@ export async function startTestBroker(options?: { port?: number }): Promise<Test
  * const mockTransport = createMockTransport()
  * mockTransport.readHoldingRegisters.mockResolvedValue([1, 2, 3])
  */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export function createMockTransport(): jest.Mocked<Transport> {
   return {
     readHoldingRegisters: jest.fn<any>().mockResolvedValue([0, 0]),
@@ -506,7 +504,6 @@ export function createMockTransport(): jest.Mocked<Transport> {
     close: jest.fn<any>().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<Transport>
 }
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
  * Create a mock driver for testing
@@ -523,7 +520,6 @@ export function createMockTransport(): jest.Mocked<Transport> {
  * })
  * mockDriver.readDataPoints.mockResolvedValue({ voltage: 230 })
  */
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment */
 export function createMockDriver(overrides?: {
   name?: string
   manufacturer?: string
@@ -549,7 +545,6 @@ export function createMockDriver(overrides?: {
     destroy: jest.fn<any>().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<DeviceDriver>
 }
-/* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment */
 
 /**
  * Create a test bridge configuration with mock driver injection
@@ -572,7 +567,6 @@ export function createMockDriver(overrides?: {
  *   enabled: true, // Now we can test actual driver loading!
  * })
  */
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 export function createTestBridgeWithMockDriver(
   broker: TestBroker,
   overrides?: Partial<MqttBridgeConfig>
@@ -607,4 +601,3 @@ export function createTestBridgeWithMockDriver(
     mockTransportFactory,
   }
 }
-/* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
