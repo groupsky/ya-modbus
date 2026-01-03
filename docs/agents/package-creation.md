@@ -12,9 +12,10 @@ Every new package MUST include:
 
 1. **package.json** - Standard scripts: build, clean, test, lint
 2. **jest.config.cjs** - 95% coverage thresholds (all metrics)
-3. **tsconfig.json** - Extends tsconfig.base.json
-4. **AGENTS.md** - Package-specific agent guidance
-5. **README.md** - User documentation
+3. **tsconfig.json** - Extends tsconfig.base.json (for build)
+4. **tsconfig.lint.json** - Extends tsconfig.lint-base.json (for ESLint)
+5. **AGENTS.md** - Package-specific agent guidance
+6. **README.md** - User documentation
 
 ## Critical Requirements
 
@@ -24,9 +25,16 @@ All packages require 95% coverage (branches, functions, lines, statements).
 
 See: `packages/ya-modbus-driver-xymd1/jest.config.cjs:23-30` for required `coverageThreshold` configuration.
 
-### Root Jest Configuration
+### Root Configuration Updates
 
-CRITICAL: Add package to `/jest.config.js` projects array or tests won't run from root.
+CRITICAL: When creating a new package, update these root files:
+
+1. **jest.config.js** - Add package to projects array (tests won't run from root otherwise)
+2. **tsconfig.json** - Add package to references array (build won't include package)
+3. **tsconfig.lint-base.json** - Add package to paths mapping (ESLint won't resolve imports)
+
+See: Root `tsconfig.json:24-32` for references format
+See: Root `tsconfig.lint-base.json:19-27` for paths format
 
 ### Naming Patterns
 
