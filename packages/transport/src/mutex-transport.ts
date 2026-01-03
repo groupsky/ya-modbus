@@ -13,55 +13,51 @@ export class MutexTransport implements Transport {
     private readonly mutex: Mutex
   ) {}
 
-  async readHoldingRegisters(slaveId: number, address: number, count: number): Promise<Buffer> {
+  async readHoldingRegisters(address: number, count: number): Promise<Buffer> {
     return this.mutex.runExclusive(() => {
-      return this.transport.readHoldingRegisters(slaveId, address, count)
+      return this.transport.readHoldingRegisters(address, count)
     })
   }
 
-  async readInputRegisters(slaveId: number, address: number, count: number): Promise<Buffer> {
+  async readInputRegisters(address: number, count: number): Promise<Buffer> {
     return this.mutex.runExclusive(() => {
-      return this.transport.readInputRegisters(slaveId, address, count)
+      return this.transport.readInputRegisters(address, count)
     })
   }
 
-  async readCoils(slaveId: number, address: number, count: number): Promise<Buffer> {
+  async readCoils(address: number, count: number): Promise<Buffer> {
     return this.mutex.runExclusive(() => {
-      return this.transport.readCoils(slaveId, address, count)
+      return this.transport.readCoils(address, count)
     })
   }
 
-  async readDiscreteInputs(slaveId: number, address: number, count: number): Promise<Buffer> {
+  async readDiscreteInputs(address: number, count: number): Promise<Buffer> {
     return this.mutex.runExclusive(() => {
-      return this.transport.readDiscreteInputs(slaveId, address, count)
+      return this.transport.readDiscreteInputs(address, count)
     })
   }
 
-  async writeRegister(slaveId: number, address: number, value: number): Promise<void> {
+  async writeSingleRegister(address: number, value: number): Promise<void> {
     await this.mutex.runExclusive(async () => {
-      await this.transport.writeRegister(slaveId, address, value)
+      await this.transport.writeSingleRegister(address, value)
     })
   }
 
-  async writeCoil(slaveId: number, address: number, value: boolean): Promise<void> {
+  async writeSingleCoil(address: number, value: boolean): Promise<void> {
     await this.mutex.runExclusive(async () => {
-      await this.transport.writeCoil(slaveId, address, value)
+      await this.transport.writeSingleCoil(address, value)
     })
   }
 
-  async writeMultipleRegisters(
-    slaveId: number,
-    address: number,
-    values: Buffer
-  ): Promise<void> {
+  async writeMultipleRegisters(address: number, values: Buffer): Promise<void> {
     return this.mutex.runExclusive(() => {
-      return this.transport.writeMultipleRegisters(slaveId, address, values)
+      return this.transport.writeMultipleRegisters(address, values)
     })
   }
 
-  async writeMultipleCoils(slaveId: number, address: number, values: Buffer): Promise<void> {
+  async writeMultipleCoils(address: number, values: Buffer): Promise<void> {
     return this.mutex.runExclusive(() => {
-      return this.transport.writeMultipleCoils(slaveId, address, values)
+      return this.transport.writeMultipleCoils(address, values)
     })
   }
 

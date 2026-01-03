@@ -1,7 +1,8 @@
-import { Mutex } from 'async-mutex'
 import type { Transport } from '@ya-modbus/driver-types'
+import { Mutex } from 'async-mutex'
+
 import { createTransport, type TransportConfig } from './factory.js'
-import type { RTUConfig, TCPConfig } from './factory.js'
+import type { RTUConfig } from './factory.js'
 import { MutexTransport } from './mutex-transport.js'
 
 /**
@@ -99,12 +100,12 @@ export class TransportManager {
    * NOTE: This method is deprecated - RTU transports now automatically
    * apply mutex through MutexTransport wrapper. Kept for backward compatibility.
    *
-   * @param transport - The transport to execute operation on
+   * @param _transport - The transport to execute operation on (unused, kept for API compatibility)
    * @param fn - Async function to execute
    * @returns Result of the operation
    * @deprecated RTU transports are now automatically wrapped with mutex
    */
-  async executeWithLock<T>(transport: Transport, fn: () => Promise<T>): Promise<T> {
+  async executeWithLock<T>(_transport: Transport, fn: () => Promise<T>): Promise<T> {
     // For backward compatibility, just execute the function
     // The mutex is now applied automatically via MutexTransport wrapper
     return fn()
@@ -155,10 +156,8 @@ export class TransportManager {
       return `rtu:${config.port}:${config.baudRate}:${config.dataBits}:${config.parity}:${config.stopBits}`
     }
 
-    // TCP config - cast is safe because isRTUConfig returned false
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const tcpConfig = config as TCPConfig
-    return `tcp:${tcpConfig.host}:${tcpConfig.port ?? 502}`
+    // TCP config - safe to access host/port because isRTUConfig returned false
+    return `tcp:${config.host}:${config.port ?? 502}`
   }
 
   /**
