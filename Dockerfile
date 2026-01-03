@@ -23,7 +23,8 @@ COPY packages/ya-modbus-driver-xymd1/package*.json ./packages/ya-modbus-driver-x
 COPY packages/ya-modbus-driver-ex9em/package*.json ./packages/ya-modbus-driver-ex9em/
 
 # Install all dependencies (including dev dependencies for building)
-RUN npm ci
+# Skip scripts to avoid husky installation in Docker
+RUN npm ci --ignore-scripts
 
 # ============================================================================
 # Stage 2: Build
@@ -51,16 +52,13 @@ RUN apk add --no-cache \
     tini \
     su-exec
 
-# Copy package files for production dependency installation
+# Copy package files
 COPY package*.json ./
 COPY packages/mqtt-bridge/package*.json ./packages/mqtt-bridge/
 COPY packages/transport/package*.json ./packages/transport/
 COPY packages/driver-loader/package*.json ./packages/driver-loader/
 COPY packages/driver-types/package*.json ./packages/driver-types/
 COPY packages/driver-sdk/package*.json ./packages/driver-sdk/
-
-# Install production dependencies only
-RUN npm ci --omit=dev
 
 # Copy built artifacts from builder
 COPY --from=builder /build/packages/mqtt-bridge/dist ./packages/mqtt-bridge/dist
@@ -69,9 +67,14 @@ COPY --from=builder /build/packages/driver-loader/dist ./packages/driver-loader/
 COPY --from=builder /build/packages/driver-types/dist ./packages/driver-types/dist
 COPY --from=builder /build/packages/driver-sdk/dist ./packages/driver-sdk/dist
 
+# Copy node_modules from builder (includes all production dependencies and workspace links)
+# We filter out dev dependencies by copying selectively
+COPY --from=builder /build/node_modules ./node_modules
+
 # Create non-root user
-RUN addgroup -g 1000 modbus && \
-    adduser -D -u 1000 -G modbus modbus
+# Use next available GID/UID if 1000 is taken
+RUN addgroup modbus && \
+    adduser -D -G modbus modbus
 
 # Create directories for data and config
 RUN mkdir -p /data /config && \
@@ -102,20 +105,9 @@ FROM runtime-base AS runtime-complete
 # Switch back to root to install drivers
 USER root
 
-# Copy driver package files
+# Copy driver package files and built artifacts
 COPY packages/ya-modbus-driver-xymd1/package*.json ./packages/ya-modbus-driver-xymd1/
 COPY packages/ya-modbus-driver-ex9em/package*.json ./packages/ya-modbus-driver-ex9em/
-
-# Install driver dependencies
-WORKDIR /app/packages/ya-modbus-driver-xymd1
-RUN npm ci --omit=dev
-
-WORKDIR /app/packages/ya-modbus-driver-ex9em
-RUN npm ci --omit=dev
-
-WORKDIR /app
-
-# Copy built driver artifacts
 COPY --from=builder /build/packages/ya-modbus-driver-xymd1/dist ./packages/ya-modbus-driver-xymd1/dist
 COPY --from=builder /build/packages/ya-modbus-driver-ex9em/dist ./packages/ya-modbus-driver-ex9em/dist
 
