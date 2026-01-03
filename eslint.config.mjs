@@ -44,7 +44,7 @@ export default tseslint.config(
       parserOptions: {
         ecmaVersion: 2023,
         sourceType: 'module',
-        project: ['./tsconfig.lint.json', './packages/*/tsconfig.lint.json'],
+        project: './packages/*/tsconfig.lint.json',
         tsconfigRootDir: import.meta.dirname,
       },
     },
