@@ -354,21 +354,7 @@ describe('DriverLoader', () => {
       expect(loader.getDriver('device1')).toBeUndefined()
     })
 
-    it('should close transport when driver creation fails', async () => {
-      const mockClose = jest.fn().mockResolvedValue(undefined)
-      const mockTransport: Transport = {
-        readHoldingRegisters: jest.fn(),
-        readInputRegisters: jest.fn(),
-        readCoils: jest.fn(),
-        readDiscreteInputs: jest.fn(),
-        writeSingleRegister: jest.fn(),
-        writeMultipleRegisters: jest.fn(),
-        writeSingleCoil: jest.fn(),
-        writeMultipleCoils: jest.fn(),
-        close: mockClose,
-      }
-
-      const _mockTransportManager = jest.fn().mockResolvedValue(mockTransport)
+    it('should propagate errors when driver creation fails', async () => {
       const mockCreateDriver: CreateDriverFunction = jest
         .fn()
         .mockRejectedValue(new Error('Driver creation failed'))
@@ -390,24 +376,11 @@ describe('DriverLoader', () => {
         loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
       ).rejects.toThrow('Driver creation failed')
 
-      expect(mockClose).toHaveBeenCalled()
+      // Note: Transport is NOT closed on failure since it may be shared by other devices
+      // TransportManager handles cleanup via closeAllTransports()
     })
 
-    it('should close transport when driver initialization fails', async () => {
-      const mockClose = jest.fn().mockResolvedValue(undefined)
-      const mockTransport: Transport = {
-        readHoldingRegisters: jest.fn(),
-        readInputRegisters: jest.fn(),
-        readCoils: jest.fn(),
-        readDiscreteInputs: jest.fn(),
-        writeSingleRegister: jest.fn(),
-        writeMultipleRegisters: jest.fn(),
-        writeSingleCoil: jest.fn(),
-        writeMultipleCoils: jest.fn(),
-        close: mockClose,
-      }
-
-      const _mockTransportManager = jest.fn().mockResolvedValue(mockTransport)
+    it('should propagate errors when driver initialization fails', async () => {
       const mockInitialize = jest.fn().mockRejectedValue(new Error('Initialization failed'))
       const mockDriver: DeviceDriver = {
         name: 'test-device',
@@ -439,7 +412,8 @@ describe('DriverLoader', () => {
         loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
       ).rejects.toThrow('Initialization failed')
 
-      expect(mockClose).toHaveBeenCalled()
+      // Note: Transport is NOT closed on failure since it may be shared by other devices
+      // TransportManager handles cleanup via closeAllTransports()
     })
   })
 
@@ -515,21 +489,7 @@ describe('DriverLoader', () => {
       await expect(loader.unloadDriver('nonexistent')).resolves.not.toThrow()
     })
 
-    it('should close transport when unloading driver', async () => {
-      const mockClose = jest.fn().mockResolvedValue(undefined)
-      const mockTransport: Transport = {
-        readHoldingRegisters: jest.fn(),
-        readInputRegisters: jest.fn(),
-        readCoils: jest.fn(),
-        readDiscreteInputs: jest.fn(),
-        writeSingleRegister: jest.fn(),
-        writeMultipleRegisters: jest.fn(),
-        writeSingleCoil: jest.fn(),
-        writeMultipleCoils: jest.fn(),
-        close: mockClose,
-      }
-
-      const _mockTransportManager = jest.fn().mockResolvedValue(mockTransport)
+    it('should remove driver but not close shared transport', async () => {
       const mockDriver: DeviceDriver = {
         name: 'test-device',
         manufacturer: 'Test Manufacturer',
@@ -558,24 +518,12 @@ describe('DriverLoader', () => {
       await loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
       await loader.unloadDriver('device1')
 
-      expect(mockClose).toHaveBeenCalled()
+      expect(loader.getDriver('device1')).toBeUndefined()
+      // Note: Transport is NOT closed on unload - it's managed by TransportManager
+      // and may be shared by other devices
     })
 
-    it('should close transport even if driver has no destroy method', async () => {
-      const mockClose = jest.fn().mockResolvedValue(undefined)
-      const mockTransport: Transport = {
-        readHoldingRegisters: jest.fn(),
-        readInputRegisters: jest.fn(),
-        readCoils: jest.fn(),
-        readDiscreteInputs: jest.fn(),
-        writeSingleRegister: jest.fn(),
-        writeMultipleRegisters: jest.fn(),
-        writeSingleCoil: jest.fn(),
-        writeMultipleCoils: jest.fn(),
-        close: mockClose,
-      }
-
-      const _mockTransportManager = jest.fn().mockResolvedValue(mockTransport)
+    it('should handle driver without destroy method on unload', async () => {
       const mockDriver: DeviceDriver = {
         name: 'test-device',
         manufacturer: 'Test Manufacturer',
@@ -603,26 +551,11 @@ describe('DriverLoader', () => {
       }
 
       await loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
-      await loader.unloadDriver('device1')
-
-      expect(mockClose).toHaveBeenCalled()
+      await expect(loader.unloadDriver('device1')).resolves.not.toThrow()
+      expect(loader.getDriver('device1')).toBeUndefined()
     })
 
-    it('should close transport even if driver destroy fails', async () => {
-      const mockClose = jest.fn().mockResolvedValue(undefined)
-      const mockTransport: Transport = {
-        readHoldingRegisters: jest.fn(),
-        readInputRegisters: jest.fn(),
-        readCoils: jest.fn(),
-        readDiscreteInputs: jest.fn(),
-        writeSingleRegister: jest.fn(),
-        writeMultipleRegisters: jest.fn(),
-        writeSingleCoil: jest.fn(),
-        writeMultipleCoils: jest.fn(),
-        close: mockClose,
-      }
-
-      const _mockTransportManager = jest.fn().mockResolvedValue(mockTransport)
+    it('should propagate driver destroy errors but still remove driver', async () => {
       const mockDestroy = jest.fn().mockRejectedValue(new Error('Destroy failed'))
       const mockDriver: DeviceDriver = {
         name: 'test-device',
@@ -652,9 +585,9 @@ describe('DriverLoader', () => {
 
       await loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
 
-      // Unload should fail due to destroy error, but transport should still be closed
       await expect(loader.unloadDriver('device1')).rejects.toThrow('Destroy failed')
-      expect(mockClose).toHaveBeenCalled()
+      expect(loader.getDriver('device1')).toBeUndefined()
+      // Note: Transport is NOT closed on unload - it's managed by TransportManager
     })
   })
 
@@ -701,7 +634,27 @@ describe('DriverLoader', () => {
     })
   })
 
-  describe('createDefaultTransport fallback', () => {
+  describe('closeAllTransports', () => {
+    it('should close all transports via TransportManager', async () => {
+      const mockCloseAll = jest.fn().mockResolvedValue(undefined)
+      const mockTransportManager = {
+        getTransport: jest.fn().mockResolvedValue(createMockTransport()),
+        executeWithLock: jest.fn().mockImplementation((_transport, fn) => fn()),
+        getStats: jest.fn().mockReturnValue({ totalTransports: 0, rtuTransports: 0, tcpTransports: 0 }),
+        closeAll: mockCloseAll,
+      } as unknown as jest.Mocked<TransportManager>
+
+      const loader = new DriverLoader(undefined, mockTransportManager)
+
+      await loader.closeAllTransports()
+
+      expect(mockCloseAll).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  // Note: Old createDefaultTransport tests removed - transport creation is now
+  // handled by TransportManager which has its own comprehensive test suite
+  describe.skip('removed: createDefaultTransport fallback', () => {
     it('should use createDefaultTransport when no transport factory is provided', async () => {
       const mockClose = jest.fn().mockResolvedValue(undefined)
       const mockTransport: Transport = {

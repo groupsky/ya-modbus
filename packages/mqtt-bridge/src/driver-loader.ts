@@ -80,12 +80,15 @@ export class DriverLoader {
   async unloadDriver(deviceId: string): Promise<void> {
     const driver = this.driverInstances.get(deviceId)
 
-    if (driver && driver.destroy) {
-      await driver.destroy()
+    try {
+      if (driver && driver.destroy) {
+        await driver.destroy()
+      }
+    } finally {
+      // Always remove from cache, even if destroy fails
+      this.driverInstances.delete(deviceId)
+      this.devicePackages.delete(deviceId)
     }
-
-    this.driverInstances.delete(deviceId)
-    this.devicePackages.delete(deviceId)
 
     // Note: Transport is managed by TransportManager and shared across devices
     // It will be closed when the entire bridge shuts down via closeAll()
