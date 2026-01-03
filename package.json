@@ -29,8 +29,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "clean": "npm run clean --workspaces --if-present && rm -rf node_modules dist coverage",
+    "build": "tsc --build",
+    "clean": "npm run clean --workspaces --if-present && rm -f tsconfig.tsbuildinfo && find packages -name 'tsconfig.tsbuildinfo' -delete && rm -rf node_modules dist coverage",
     "dev": "npm run dev --workspaces --if-present",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
@@ -40,7 +40,6 @@
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
-    "typecheck": "tsc --noEmit",
     "prepare": "husky",
     "prerelease": "npm run build && npm run test",
     "release": "semantic-release"
