@@ -4,6 +4,7 @@ import { AddressInfo, createServer, Server } from 'node:net'
 
 import { jest } from '@jest/globals'
 import type { Transport, DeviceDriver } from '@ya-modbus/driver-types'
+import { TransportManager } from '@ya-modbus/transport'
 import Aedes from 'aedes'
 import type { AedesPublishPacket } from 'aedes'
 import type { Client } from 'aedes'
@@ -471,7 +472,7 @@ export async function withBridgeAndMockDriver(
       mockDriver: jest.Mocked<DeviceDriver>
       mockTransport: jest.Mocked<Transport>
       mockLoadDriverFn: jest.Mock
-      mockTransportFactory: jest.Mock
+      mockTransportManager: jest.Mocked<TransportManager>
     }
   ) => Promise<void> | void,
   overrides?: Partial<MqttBridgeConfig>
@@ -482,12 +483,12 @@ export async function withBridgeAndMockDriver(
     mockDriver,
     mockTransport,
     mockLoadDriverFn,
-    mockTransportFactory,
+    mockTransportManager,
   } = createTestBridgeWithMockDriver(broker, overrides)
   const bridge = createBridge(config, { driverLoader })
   await bridge.start()
   try {
-    await testFn(bridge, { mockDriver, mockTransport, mockLoadDriverFn, mockTransportFactory })
+    await testFn(bridge, { mockDriver, mockTransport, mockLoadDriverFn, mockTransportManager })
   } finally {
     await bridge.stop()
   }
@@ -545,12 +546,35 @@ export function createMockTransport(): jest.Mocked<Transport> {
     readInputRegisters: jest.fn<any>().mockResolvedValue([0, 0]),
     readCoils: jest.fn<any>().mockResolvedValue([false]),
     readDiscreteInputs: jest.fn<any>().mockResolvedValue([false]),
-    writeCoil: jest.fn<any>().mockResolvedValue(undefined),
-    writeRegister: jest.fn<any>().mockResolvedValue(undefined),
-    writeRegisters: jest.fn<any>().mockResolvedValue(undefined),
-    writeCoils: jest.fn<any>().mockResolvedValue(undefined),
+    writeSingleCoil: jest.fn<any>().mockResolvedValue(undefined),
+    writeSingleRegister: jest.fn<any>().mockResolvedValue(undefined),
+    writeMultipleRegisters: jest.fn<any>().mockResolvedValue(undefined),
+    writeMultipleCoils: jest.fn<any>().mockResolvedValue(undefined),
     close: jest.fn<any>().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<Transport>
+}
+
+/**
+ * Create a mock TransportManager for testing
+ *
+ * Returns a TransportManager mock that implements the TransportManager interface
+ * with jest.fn() for all methods, allowing verification of calls.
+ *
+ * @returns Mock TransportManager with trackable method calls
+ *
+ * @example
+ * const mockTransportManager = createMockTransportManager()
+ * const loader = new DriverLoader(mockLoadDriver, mockTransportManager)
+ */
+export function createMockTransportManager(): jest.Mocked<TransportManager> {
+  const mockTransport = createMockTransport()
+  return {
+    getTransport: jest.fn<any>().mockResolvedValue(mockTransport),
+    getStats: jest
+      .fn<any>()
+      .mockReturnValue({ totalTransports: 0, rtuTransports: 0, tcpTransports: 0 }),
+    closeAll: jest.fn<any>().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<TransportManager>
 }
 
 /**
@@ -628,7 +652,7 @@ export function createTestBridgeWithMockDriver(
   mockDriver: jest.Mocked<DeviceDriver>
   mockTransport: jest.Mocked<Transport>
   mockLoadDriverFn: jest.Mock
-  mockTransportFactory: jest.Mock
+  mockTransportManager: jest.Mocked<TransportManager>
 } {
   // Create first instances for single-device test convenience
   const mockDriver = createMockDriver()
@@ -649,10 +673,11 @@ export function createTestBridgeWithMockDriver(
     })
   })
 
-  // Mock transportFactory that creates NEW instances on each call for transport isolation
+  // Create mock TransportManager that returns NEW transport instances for isolation
   // First call returns the pre-created mockTransport for backward compatibility
   let isFirstTransportCall = true
-  const mockTransportFactory = jest.fn<any>().mockImplementation(() => {
+  const mockTransportManager = createMockTransportManager()
+  mockTransportManager.getTransport.mockImplementation(() => {
     if (isFirstTransportCall) {
       isFirstTransportCall = false
       return Promise.resolve(mockTransport)
@@ -661,7 +686,7 @@ export function createTestBridgeWithMockDriver(
   })
 
   // Create DriverLoader with mocked dependencies
-  const driverLoader = new DriverLoader(mockLoadDriverFn as any, mockTransportFactory as any)
+  const driverLoader = new DriverLoader(mockLoadDriverFn as any, mockTransportManager)
 
   return {
     config: createTestBridgeConfig(broker, overrides),
@@ -669,6 +694,6 @@ export function createTestBridgeWithMockDriver(
     mockDriver,
     mockTransport,
     mockLoadDriverFn,
-    mockTransportFactory,
+    mockTransportManager,
   }
 }

@@ -211,6 +211,9 @@ export function createBridge(
       // Cleanup device manager (unloads drivers)
       await deviceManager.clear()
 
+      // Close all transports managed by the transport manager
+      await driverLoader.closeAllTransports()
+
       if (client) {
         // Cleanup event listeners and subscriptions to prevent memory leaks
         client.removeAllListeners()
