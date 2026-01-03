@@ -96,7 +96,7 @@ ya-modbus is a TypeScript monorepo that bridges Modbus devices (RTU/TCP) to MQTT
 
 **Solution**: Transport-aware locking - mutex only applied to RTU/RTU-over-TCP operations, TCP operations execute directly without locking.
 
-**Implementation**: `packages/core/src/transport/manager.ts`
+**Implementation**: `packages/transport/src/manager.ts`
 
 **Rationale**: Maximizes throughput for TCP devices while ensuring RTU safety.
 

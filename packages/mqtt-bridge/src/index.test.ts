@@ -111,6 +111,7 @@ describe('createBridge', () => {
         loadDriver: jest.fn(),
         unloadDriver: jest.fn(),
         getDriver: jest.fn().mockReturnValue(mockDriver),
+        closeAllTransports: jest.fn(),
       } as any
     })
 

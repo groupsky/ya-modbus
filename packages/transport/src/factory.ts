@@ -3,6 +3,9 @@ import type { Transport } from '@ya-modbus/driver-types'
 import { createRTUTransport, type RTUConfig } from './rtu-transport.js'
 import { createTCPTransport, type TCPConfig } from './tcp-transport.js'
 
+// Re-export config types for use by other modules
+export type { RTUConfig, TCPConfig }
+
 /**
  * Combined transport configuration
  * Can be either RTU or TCP, but not both
