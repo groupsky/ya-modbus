@@ -6,12 +6,12 @@ interface ScheduledDevice {
   config: DeviceConfig
   driver: DeviceDriver
   timer?: NodeJS.Timeout
-  consecutiveFailures: number
   interval: number
+  lastFailureCount: number
 }
 
 type DataCallback = (deviceId: string, data: Record<string, unknown>) => void
-type ErrorCallback = (deviceId: string, error: Error) => void
+type ErrorCallback = (deviceId: string, error: Error, failureCount: number) => void
 
 const DEFAULT_POLLING_INTERVAL = 5000 // 5 seconds
 
@@ -36,8 +36,8 @@ export class PollingScheduler {
     this.devices.set(deviceId, {
       config,
       driver,
-      consecutiveFailures: 0,
       interval,
+      lastFailureCount: 0,
     })
 
     if (this.running) {
@@ -110,7 +110,7 @@ export class PollingScheduler {
     const retryBackoff = device.config.polling?.retryBackoff ?? device.interval * 2
 
     // Use backoff if we've exceeded max retries
-    const delay = device.consecutiveFailures >= maxRetries ? retryBackoff : device.interval
+    const delay = device.lastFailureCount >= maxRetries ? retryBackoff : device.interval
 
     device.timer = setTimeout(() => {
       const currentDevice = this.devices.get(deviceId)
@@ -131,11 +131,35 @@ export class PollingScheduler {
       const dataPointIds = device.driver.dataPoints.map((dp) => dp.id)
       const data = await device.driver.readDataPoints(dataPointIds)
 
-      device.consecutiveFailures = 0
-      this.onData(deviceId, data)
+      // Reset failure count BEFORE callback - polling succeeded regardless of callback result
+      device.lastFailureCount = 0
+
+      try {
+        this.onData(deviceId, data)
+      } catch (callbackError) {
+        // Data callback threw - log but don't count as polling failure
+        console.error(
+          `Error in data callback for device ${deviceId}:`,
+          callbackError instanceof Error ? callbackError : new Error(String(callbackError))
+        )
+      }
     } catch (error) {
-      device.consecutiveFailures++
-      this.onError(deviceId, error instanceof Error ? error : new Error(String(error)))
+      // Increment failure count - scheduler owns this state
+      device.lastFailureCount++
+
+      try {
+        this.onError(
+          deviceId,
+          error instanceof Error ? error : new Error(String(error)),
+          device.lastFailureCount
+        )
+      } catch (callbackError) {
+        // Error callback threw - log but state already updated
+        console.error(
+          `Error in error callback for device ${deviceId}:`,
+          callbackError instanceof Error ? callbackError : new Error(String(callbackError))
+        )
+      }
     }
 
     this.scheduleNextPoll(deviceId)
