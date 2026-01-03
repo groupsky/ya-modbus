@@ -1186,6 +1186,9 @@ describe('createBridge', () => {
     it('should call handlePollingData and publish data', async () => {
       let dataCallback: ((deviceId: string, data: Record<string, unknown>) => void) | undefined
 
+      const mockDeviceManager = new MockedDeviceManager()
+      MockedDeviceManager.mockReturnValue(mockDeviceManager as any)
+
       MockedPollingScheduler.mockImplementation((onData) => {
         dataCallback = onData as (deviceId: string, data: Record<string, unknown>) => void
         return {
@@ -1226,16 +1229,28 @@ describe('createBridge', () => {
       expect(payload.deviceId).toBe('device1')
       expect(payload.data).toEqual(testData)
       expect(payload.timestamp).toBeGreaterThan(0)
+
+      // Verify device state is updated with reset consecutiveFailures
+      expect(mockDeviceManager.updateDeviceState).toHaveBeenCalledWith(
+        'device1',
+        expect.objectContaining({
+          consecutiveFailures: 0,
+          lastPoll: expect.any(Number),
+          lastUpdate: expect.any(Number),
+        })
+      )
     })
 
     it('should call handlePollingError and update device state', async () => {
-      let errorCallback: ((deviceId: string, error: Error) => void) | undefined
+      let errorCallback:
+        | ((deviceId: string, error: Error, failureCount: number) => void)
+        | undefined
 
       const mockDeviceManager = new MockedDeviceManager()
       MockedDeviceManager.mockReturnValue(mockDeviceManager as any)
 
       MockedPollingScheduler.mockImplementation((onData, onError) => {
-        errorCallback = onError as (deviceId: string, error: Error) => void
+        errorCallback = onError as (deviceId: string, error: Error, failureCount: number) => void
         return {
           scheduleDevice: jest.fn(),
           unscheduleDevice: jest.fn(),
@@ -1255,16 +1270,16 @@ describe('createBridge', () => {
       emitEvent('connect')
       await startPromise
 
-      // Call the error callback
+      // Call the error callback with failureCount = 1
       expect(errorCallback).toBeDefined()
       const testError = new Error('Device communication failed')
-      errorCallback!('device1', testError)
+      errorCallback!('device1', testError, 1)
 
-      // Verify updateDeviceState was called
+      // Verify updateDeviceState was called with the provided failure count
       expect(mockDeviceManager.updateDeviceState).toHaveBeenCalledWith(
         'device1',
         expect.objectContaining({
-          consecutiveFailures: expect.any(Number),
+          consecutiveFailures: 1,
           errors: ['Device communication failed'],
         })
       )
