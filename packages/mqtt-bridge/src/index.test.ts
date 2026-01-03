@@ -10,6 +10,25 @@ import type { DeviceConfig } from './types.js'
 
 import { createBridge } from './index.js'
 
+/**
+ * Wait for a Jest mock to be called with retry
+ * More deterministic than arbitrary setTimeout
+ */
+async function waitForMockCall(
+  mockFn: jest.Mock,
+  timeoutMs = 1000,
+  intervalMs = 10
+): Promise<void> {
+  const startTime = Date.now()
+  while (Date.now() - startTime < timeoutMs) {
+    if (mockFn.mock.calls.length > 0) {
+      return
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs))
+  }
+  throw new Error(`Mock was not called within ${timeoutMs}ms`)
+}
+
 jest.mock('mqtt')
 jest.mock('./device-manager.js')
 jest.mock('./driver-loader.js')
@@ -79,10 +98,19 @@ describe('createBridge', () => {
 
     // Setup DriverLoader mock
     MockedDriverLoader.mockImplementation(() => {
+      const mockDriver = {
+        name: 'test-device',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
       return {
         loadDriver: jest.fn(),
         unloadDriver: jest.fn(),
-        getDriver: jest.fn(),
+        getDriver: jest.fn().mockReturnValue(mockDriver),
       } as any
     })
 
@@ -1361,6 +1389,101 @@ describe('createBridge', () => {
 
       // Verify scheduleDevice was NOT called
       expect(mockPollingScheduler.scheduleDevice).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('race conditions', () => {
+    beforeEach(() => {
+      // Reset all mocks before each test to ensure clean state
+      // This prevents mock pollution between tests
+      jest.clearAllMocks()
+    })
+
+    it('should throw error if driver not found after loading', async () => {
+      const mockDriverLoader = new MockedDriverLoader()
+      // Simulate race condition: driver is unloaded between addDevice and getDriver
+      mockDriverLoader.getDriver = jest.fn().mockReturnValue(undefined)
+      MockedDriverLoader.mockReturnValue(mockDriverLoader as any)
+
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      const deviceConfig: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'ya-modbus-driver-test',
+        connection: {
+          type: 'rtu',
+          port: '/dev/ttyUSB0',
+          baudRate: 9600,
+          slaveId: 1,
+        },
+        enabled: true,
+      }
+
+      // Should throw error instead of silently failing
+      await expect(bridge.addDevice(deviceConfig)).rejects.toThrow(
+        'Driver for device1 not found after loading. This may indicate the device was removed during initialization.'
+      )
+    })
+
+    it('should handle polling data callback before bridge is fully initialized', async () => {
+      let dataCallback: ((deviceId: string, data: Record<string, unknown>) => void) | undefined
+
+      // Capture the data callback when scheduler is created
+      MockedPollingScheduler.mockImplementation((onData) => {
+        dataCallback = onData as (deviceId: string, data: Record<string, unknown>) => void
+        return {
+          scheduleDevice: jest.fn(),
+          unscheduleDevice: jest.fn(),
+          start: jest.fn(),
+          stop: jest.fn(),
+          isScheduled: jest.fn(),
+        } as any
+      })
+
+      const bridge = createBridge({
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      })
+
+      // Call the data callback BEFORE bridge.start() is called
+      // This simulates polling starting before bridge is fully initialized
+      // The publishData function should safely return early when bridgeRef is null
+      expect(dataCallback).toBeDefined()
+      const testData = { temperature: 25.5 }
+
+      // Should not throw error even if called before bridge is initialized
+      expect(() => dataCallback!('device1', testData)).not.toThrow()
+
+      // Verify publish was NOT called (bridge not initialized)
+      expect(mockClient.publish).not.toHaveBeenCalled()
+
+      // Now start the bridge
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+
+      // Call callback again after bridge is initialized
+      dataCallback!('device1', testData)
+
+      // Wait for async publish to be called (more deterministic than setTimeout)
+      await waitForMockCall(mockClient.publish as jest.Mock)
+
+      // Verify publish WAS called this time (bridge initialized)
+      expect(mockClient.publish).toHaveBeenCalledWith(
+        'modbus/device1/data',
+        expect.stringContaining('"temperature":25.5'),
+        expect.objectContaining({ qos: 0 }),
+        expect.any(Function)
+      )
     })
   })
 })
