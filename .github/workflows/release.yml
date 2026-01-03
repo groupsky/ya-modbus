@@ -47,6 +47,31 @@ jobs:
           # Use a token that can trigger workflows
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Check workflow permissions
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "Checking permissions for manual workflow trigger..."
+
+          # Get user's permission level
+          PERMISSION=$(gh api \
+            repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission \
+            --jq '.permission')
+
+          echo "User: ${{ github.actor }}"
+          echo "Permission: $PERMISSION"
+
+          # Allow only maintain and admin permissions (not write, read, or triage)
+          if [ "$PERMISSION" != "maintain" ] && [ "$PERMISSION" != "admin" ]; then
+            echo "❌ Insufficient permissions to trigger manual pre-releases"
+            echo "   Required: maintain or admin access"
+            echo "   Current: $PERMISSION"
+            exit 1
+          fi
+
+          echo "✅ Permission check passed"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Setup Node.js from .nvmrc
         uses: actions/setup-node@v6
         with:

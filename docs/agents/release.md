@@ -65,6 +65,8 @@ Automatic on push to main (after PR merge). No manual action needed.
 
 Trigger manually via workflow_dispatch. Pre-release publishes to custom dist-tag.
 
+Requires maintain or admin repository access.
+
 Options:
 
 - Empty dist-tag input: auto-generates from branch name
