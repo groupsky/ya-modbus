@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src/**/*.test.ts", "src/__mocks__/**/*.ts"],
+  "references": [{ "path": "./tsconfig.json" }]
+}
