@@ -8,10 +8,15 @@ describe('PollingScheduler', () => {
   let scheduler: PollingScheduler
   let onDataCallback: jest.Mock
   let onErrorCallback: jest.Mock
+  let failureCount: number
 
   beforeEach(() => {
+    failureCount = 0
     onDataCallback = jest.fn()
-    onErrorCallback = jest.fn()
+    onErrorCallback = jest.fn().mockImplementation(() => {
+      failureCount++
+      return failureCount
+    })
     scheduler = new PollingScheduler(onDataCallback, onErrorCallback)
     jest.useFakeTimers()
   })

@@ -1229,13 +1229,13 @@ describe('createBridge', () => {
     })
 
     it('should call handlePollingError and update device state', async () => {
-      let errorCallback: ((deviceId: string, error: Error) => void) | undefined
+      let errorCallback: ((deviceId: string, error: Error) => number) | undefined
 
       const mockDeviceManager = new MockedDeviceManager()
       MockedDeviceManager.mockReturnValue(mockDeviceManager as any)
 
       MockedPollingScheduler.mockImplementation((onData, onError) => {
-        errorCallback = onError as (deviceId: string, error: Error) => void
+        errorCallback = onError as (deviceId: string, error: Error) => number
         return {
           scheduleDevice: jest.fn(),
           unscheduleDevice: jest.fn(),
@@ -1258,7 +1258,10 @@ describe('createBridge', () => {
       // Call the error callback
       expect(errorCallback).toBeDefined()
       const testError = new Error('Device communication failed')
-      errorCallback!('device1', testError)
+      const failureCount = errorCallback!('device1', testError)
+
+      // Verify error callback returns failure count
+      expect(failureCount).toBe(1)
 
       // Verify updateDeviceState was called
       expect(mockDeviceManager.updateDeviceState).toHaveBeenCalledWith(
