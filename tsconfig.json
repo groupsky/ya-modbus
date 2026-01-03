@@ -7,5 +7,15 @@
     "incremental": true
   },
   "include": [],
-  "references": []
+  "references": [
+    { "path": "./packages/driver-types" },
+    { "path": "./packages/driver-sdk" },
+    { "path": "./packages/transport" },
+    { "path": "./packages/driver-loader" },
+    { "path": "./packages/cli" },
+    { "path": "./packages/mqtt-bridge" },
+    { "path": "./packages/emulator" },
+    { "path": "./packages/ya-modbus-driver-ex9em" },
+    { "path": "./packages/ya-modbus-driver-xymd1" }
+  ]
 }
