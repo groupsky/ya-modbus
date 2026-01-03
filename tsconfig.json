@@ -1,4 +1,11 @@
 {
+  // Root TypeScript configuration for building all packages
+  // Used by: npm run build (runs tsc --build)
+  //
+  // Project references ensure packages build in dependency order
+  // IMPORTANT: When adding a new package, add it to references array
+  // See: docs/agents/package-creation.md
+
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
@@ -7,5 +14,15 @@
     "incremental": true
   },
   "include": [],
-  "references": []
+  "references": [
+    { "path": "./packages/driver-types" },
+    { "path": "./packages/driver-sdk" },
+    { "path": "./packages/transport" },
+    { "path": "./packages/driver-loader" },
+    { "path": "./packages/cli" },
+    { "path": "./packages/mqtt-bridge" },
+    { "path": "./packages/emulator" },
+    { "path": "./packages/ya-modbus-driver-ex9em" },
+    { "path": "./packages/ya-modbus-driver-xymd1" }
+  ]
 }

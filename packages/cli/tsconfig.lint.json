@@ -1,0 +1,8 @@
+{
+  // Package-level linting configuration for ESLint
+  // Extends tsconfig.lint-base.json which provides:
+  // - Path mappings to resolve package imports from source
+  // - noEmit: true for linting without build
+  "extends": "../../tsconfig.lint-base.json",
+  "include": ["src/**/*.ts", "bin/**/*.ts", "__mocks__/**/*.ts"]
+}
