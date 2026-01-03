@@ -61,6 +61,7 @@ export function createBridge(
   const deviceManager = dependencies?.deviceManager ?? new DeviceManager(driverLoader)
 
   // Bridge reference to be set after bridge object is created
+  // This ensures publishData is always defined before PollingScheduler starts
   let bridgeRef: MqttBridge | null = null
 
   // Publish function that will be called from polling
