@@ -38,8 +38,8 @@ export function classifyError(error: Error): ErrorType {
 
   // Check for Modbus exceptions
   if (
-    message.includes('exception') ||
-    message.includes('0x02') ||
+    /modbus\s+exception/i.test(message) ||
+    /exception\s+code\s+0x[0-9a-f]+/i.test(message) ||
     /exception\s+\d+/.test(message)
   ) {
     return ErrorType.ModbusException

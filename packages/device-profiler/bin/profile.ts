@@ -6,7 +6,7 @@
 
 import type { DataBits, Parity, StopBits } from '@ya-modbus/driver-types'
 import { createTransport } from '@ya-modbus/transport'
-import { Command } from 'commander'
+import { Command, Option } from 'commander'
 
 import { runProfileScan } from '../src/cli.js'
 import { RegisterType } from '../src/read-tester.js'
@@ -40,7 +40,11 @@ program
   .option('--end <address>', 'End register address', parseNumber, 100)
   .option('--batch <size>', 'Batch size for reads', parseNumber, 10)
   .option('--baud <rate>', 'Baud rate for RTU', parseNumber, 9600)
-  .option('--parity <parity>', 'Parity for RTU (none, even, odd)', 'none')
+  .addOption(
+    new Option('--parity <parity>', 'Parity for RTU')
+      .choices(['none', 'even', 'odd'])
+      .default('none')
+  )
   .option('--data-bits <bits>', 'Data bits for RTU', parseNumber, 8)
   .option('--stop-bits <bits>', 'Stop bits for RTU', parseNumber, 1)
   .option('--timeout <ms>', 'Response timeout in milliseconds', parseNumber, 1000)
@@ -58,6 +62,9 @@ program
           throw new Error('Invalid TCP address format. Expected host:port')
         }
         const port = parseInt(portStr, 10)
+        if (isNaN(port) || port < 1 || port > 65535) {
+          throw new Error(`Invalid port number: ${portStr}. Must be between 1 and 65535`)
+        }
         transport = await createTransport({
           host,
           port,
