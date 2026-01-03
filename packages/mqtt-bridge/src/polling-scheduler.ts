@@ -131,14 +131,30 @@ export class PollingScheduler {
       const dataPointIds = device.driver.dataPoints.map((dp) => dp.id)
       const data = await device.driver.readDataPoints(dataPointIds)
 
-      this.onData(deviceId, data)
-      device.lastFailureCount = 0
+      try {
+        this.onData(deviceId, data)
+        device.lastFailureCount = 0
+      } catch (callbackError) {
+        // Data callback threw - log but don't count as polling failure
+        console.error(
+          `Error in data callback for device ${deviceId}:`,
+          callbackError instanceof Error ? callbackError : new Error(String(callbackError))
+        )
+      }
     } catch (error) {
-      const failureCount = this.onError(
-        deviceId,
-        error instanceof Error ? error : new Error(String(error))
-      )
-      device.lastFailureCount = failureCount
+      try {
+        const failureCount = this.onError(
+          deviceId,
+          error instanceof Error ? error : new Error(String(error))
+        )
+        device.lastFailureCount = failureCount
+      } catch (callbackError) {
+        // Error callback threw - log and keep last known failure count
+        console.error(
+          `Error in error callback for device ${deviceId}:`,
+          callbackError instanceof Error ? callbackError : new Error(String(callbackError))
+        )
+      }
     }
 
     this.scheduleNextPoll(deviceId)

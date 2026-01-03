@@ -209,6 +209,62 @@ describe('PollingScheduler', () => {
       expect(mockReadDataPoints).toHaveBeenCalledTimes(4) // Now it should poll
     })
 
+    it('should reset to normal interval after recovery from backoff', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 1000, maxRetries: 3, retryBackoff: 2000 },
+      }
+
+      const mockReadDataPoints = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('Read timeout'))
+        .mockRejectedValueOnce(new Error('Read timeout'))
+        .mockRejectedValueOnce(new Error('Read timeout'))
+        .mockRejectedValueOnce(new Error('Read timeout'))
+        .mockResolvedValue({ temp: 25 })
+
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: mockReadDataPoints,
+      }
+
+      scheduler.scheduleDevice('device1', config, driver)
+      scheduler.start()
+
+      // First three failures - normal interval (1000ms each)
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(2)
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(3)
+
+      // Fourth failure - enters backoff (2000ms)
+      await jest.advanceTimersByTimeAsync(2000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(4)
+
+      // Fifth attempt succeeds - resets lastFailureCount to 0
+      await jest.advanceTimersByTimeAsync(2000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(5)
+      expect(onDataCallback).toHaveBeenCalledTimes(1)
+      expect(onDataCallback).toHaveBeenCalledWith('device1', { temp: 25 })
+
+      // Next poll should use normal interval (1000ms), not backoff (2000ms)
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(6)
+
+      // Verify it stays on normal interval
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(7)
+    })
+
     it('should handle non-Error exceptions', async () => {
       const config: DeviceConfig = {
         deviceId: 'device1',
@@ -518,6 +574,98 @@ describe('PollingScheduler', () => {
       // Device was removed, so no second poll should happen
       await jest.advanceTimersByTimeAsync(200)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+    })
+
+    it('should handle data callback throwing exception', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 100 },
+      }
+
+      const mockReadDataPoints = jest.fn().mockResolvedValue({ temp: 25.5 })
+
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: mockReadDataPoints,
+      }
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+
+      // Make onDataCallback throw
+      onDataCallback.mockImplementationOnce(() => {
+        throw new Error('Data callback error')
+      })
+
+      scheduler.scheduleDevice('device1', config, driver)
+      scheduler.start()
+
+      // First poll - data callback throws
+      await jest.advanceTimersByTimeAsync(100)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Error in data callback for device device1:',
+        expect.objectContaining({ message: 'Data callback error' })
+      )
+
+      // Second poll should still happen (polling continues despite callback error)
+      onDataCallback.mockRestore()
+      await jest.advanceTimersByTimeAsync(100)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(2)
+
+      consoleErrorSpy.mockRestore()
+    })
+
+    it('should handle error callback throwing exception', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 100 },
+      }
+
+      const mockReadDataPoints = jest.fn().mockRejectedValue(new Error('Read timeout'))
+
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: mockReadDataPoints,
+      }
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+
+      // Make onErrorCallback throw
+      onErrorCallback.mockImplementationOnce(() => {
+        throw new Error('Error callback error')
+      })
+
+      scheduler.scheduleDevice('device1', config, driver)
+      scheduler.start()
+
+      // First poll - error callback throws
+      await jest.advanceTimersByTimeAsync(100)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Error in error callback for device device1:',
+        expect.objectContaining({ message: 'Error callback error' })
+      )
+
+      // Second poll should still happen (polling continues despite callback error)
+      onErrorCallback.mockRestore()
+      await jest.advanceTimersByTimeAsync(100)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(2)
+
+      consoleErrorSpy.mockRestore()
     })
 
     it('should not poll if scheduler stopped after scheduling next poll', async () => {

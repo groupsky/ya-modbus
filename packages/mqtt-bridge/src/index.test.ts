@@ -1186,6 +1186,9 @@ describe('createBridge', () => {
     it('should call handlePollingData and publish data', async () => {
       let dataCallback: ((deviceId: string, data: Record<string, unknown>) => void) | undefined
 
+      const mockDeviceManager = new MockedDeviceManager()
+      MockedDeviceManager.mockReturnValue(mockDeviceManager as any)
+
       MockedPollingScheduler.mockImplementation((onData) => {
         dataCallback = onData as (deviceId: string, data: Record<string, unknown>) => void
         return {
@@ -1226,6 +1229,16 @@ describe('createBridge', () => {
       expect(payload.deviceId).toBe('device1')
       expect(payload.data).toEqual(testData)
       expect(payload.timestamp).toBeGreaterThan(0)
+
+      // Verify device state is updated with reset consecutiveFailures
+      expect(mockDeviceManager.updateDeviceState).toHaveBeenCalledWith(
+        'device1',
+        expect.objectContaining({
+          consecutiveFailures: 0,
+          lastPoll: expect.any(Number),
+          lastUpdate: expect.any(Number),
+        })
+      )
     })
 
     it('should call handlePollingError and update device state', async () => {
