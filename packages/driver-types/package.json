@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/driver-types",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "TypeScript type definitions for ya-modbus device drivers",
   "keywords": [
     "modbus",

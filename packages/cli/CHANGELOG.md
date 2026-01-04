@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.6.0 (2026-01-04)
+
+### Bug Fixes
+
+- **cli:** address review feedback for implicit driver detection ([46f1c66](https://github.com/groupsky/ya-modbus/commit/46f1c6675cb66d6af5c4ec891f8b75f99cc5af43))
+- **driver-xymd1:** update valid baud rates to 9600, 14400, and 19200 ([#47](https://github.com/groupsky/ya-modbus/issues/47)) ([b1bcfae](https://github.com/groupsky/ya-modbus/commit/b1bcfae012b23f361c9833d87ab4abbcdef33fc5))
+- enable linting without build and fix monorepo build order ([#129](https://github.com/groupsky/ya-modbus/issues/129)) ([e4ba4fd](https://github.com/groupsky/ya-modbus/commit/e4ba4fdc61c8695c3ab0b9504ef340d19861c599)), closes [#130](https://github.com/groupsky/ya-modbus/issues/130)
+- **release:** bump versions to 0.2.0 to bypass npm 24h block ([#148](https://github.com/groupsky/ya-modbus/issues/148)) ([aa2be6a](https://github.com/groupsky/ya-modbus/commit/aa2be6ae998f4443774b43507e7991601ec3068a))
+- **release:** revert failed release and add missing publishConfig ([#147](https://github.com/groupsky/ya-modbus/issues/147)) ([60ea209](https://github.com/groupsky/ya-modbus/commit/60ea2091cbb350b0f474dc45d3ab33177b050764))
+- **release:** revert failed release and cleanup tags ([#145](https://github.com/groupsky/ya-modbus/issues/145)) ([228ae2b](https://github.com/groupsky/ya-modbus/commit/228ae2b4da0c433e475825d068202efd3f0d3a5a)), closes [#143](https://github.com/groupsky/ya-modbus/issues/143) [#144](https://github.com/groupsky/ya-modbus/issues/144)
+
+### Features
+
+- **cli:** add cross-validation for driver DEFAULT_CONFIG vs SUPPORTED_CONFIG ([#77](https://github.com/groupsky/ya-modbus/issues/77)) ([392ca3f](https://github.com/groupsky/ya-modbus/commit/392ca3fbc3d3a6e057eac6b2e8529da0573d1ac2)), closes [#56](https://github.com/groupsky/ya-modbus/issues/56)
+- **cli:** add driver DEFAULT_CONFIG and SUPPORTED_CONFIG support ([#54](https://github.com/groupsky/ya-modbus/issues/54)) ([a41ddf0](https://github.com/groupsky/ya-modbus/commit/a41ddf0ee439b9ecd5a2e069af9055deb9fc074f)), closes [#51](https://github.com/groupsky/ya-modbus/issues/51) [56-#60](https://github.com/56-/issues/60) [#51](https://github.com/groupsky/ya-modbus/issues/51)
+- **cli:** Add interactive CLI tool for testing Modbus device drivers ([#17](https://github.com/groupsky/ya-modbus/issues/17)) ([41a5083](https://github.com/groupsky/ya-modbus/commit/41a5083d813fa2e75ed14ce7d1b042e56f55e33a))
+- **cli:** add Modbus RTU device discovery command ([#67](https://github.com/groupsky/ya-modbus/issues/67)) ([9b3fe7d](https://github.com/groupsky/ya-modbus/commit/9b3fe7d10a6e58435f27e3ffeed884e8256532a8))
+- **cli:** improve help organization with option and command groups ([#70](https://github.com/groupsky/ya-modbus/issues/70)) ([6c2b9a3](https://github.com/groupsky/ya-modbus/commit/6c2b9a3d90e63669ad06b52ddaa1a2c6cc67feda))
+- **cli:** unify driver loading with implicit local detection ([b53a4a0](https://github.com/groupsky/ya-modbus/commit/b53a4a06b3a7a999844a88536d2ce9a7972f0149)), closes [#76](https://github.com/groupsky/ya-modbus/issues/76)
+- **drivers:** add multi-device driver support ([#75](https://github.com/groupsky/ya-modbus/issues/75)) ([d52173b](https://github.com/groupsky/ya-modbus/commit/d52173bdeb02ce54b7048978e404245fecba5efb))
+- **release:** add Lerna-Lite publishing with pre-release support ([#135](https://github.com/groupsky/ya-modbus/issues/135)) ([3db7542](https://github.com/groupsky/ya-modbus/commit/3db7542ddbb7bb150b4deab50d5c96e5d668c852))
+- **transport:** extract transport package for code reusability ([#102](https://github.com/groupsky/ya-modbus/issues/102)) ([aea6946](https://github.com/groupsky/ya-modbus/commit/aea6946b40f502ff630c7a0ec599088899c30a90)), closes [#107](https://github.com/groupsky/ya-modbus/issues/107) [#108](https://github.com/groupsky/ya-modbus/issues/108) [#109](https://github.com/groupsky/ya-modbus/issues/109) [#91](https://github.com/groupsky/ya-modbus/issues/91)
+
+### Reverts
+
+- Revert "chore(release): publish packages" ([a6d080d](https://github.com/groupsky/ya-modbus/commit/a6d080deeacf306f4911b6d78eab05dac8bfa7a7))
+
 ## [0.5.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.5.0...@ya-modbus/cli@0.5.1) (2026-01-04)
 
 **Note:** Version bump only for package @ya-modbus/cli

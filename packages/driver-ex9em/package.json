@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/driver-ex9em",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "NOARK Ex9EM Energy Meter driver for ya-modbus",
   "keywords": [
     "modbus",
@@ -41,11 +41,11 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@ya-modbus/driver-sdk": "^0.5.1",
-    "@ya-modbus/driver-types": "^0.5.1"
+    "@ya-modbus/driver-sdk": "^0.6.0",
+    "@ya-modbus/driver-types": "^0.6.0"
   },
   "devDependencies": {
-    "@ya-modbus/cli": "^0.5.1"
+    "@ya-modbus/cli": "^0.6.0"
   },
   "engines": {
     "node": ">=20.0.0"
