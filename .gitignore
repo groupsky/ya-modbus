@@ -43,6 +43,11 @@ pids/
 data/
 *.json.bak
 
+# Docker runtime
+mosquitto/data/
+mosquitto/log/
+config/config.json
+
 # Temporary
 tmp/
 temp/

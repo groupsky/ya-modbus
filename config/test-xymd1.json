@@ -1,0 +1,19 @@
+{
+  "mqtt": {
+    "url": "mqtt://localhost:1883",
+    "clientId": "ya-modbus-bridge-test"
+  },
+  "devices": [
+    {
+      "id": "xymd1_test",
+      "name": "XYMD1 Temperature/Humidity Sensor Test",
+      "driver": "ya-modbus-driver-xymd1",
+      "transport": "rtu",
+      "port": "/dev/ttyACM0",
+      "baudRate": 9600,
+      "parity": "even",
+      "slaveId": 52,
+      "pollInterval": 5000
+    }
+  ]
+}

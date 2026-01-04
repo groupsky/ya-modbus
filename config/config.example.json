@@ -1,0 +1,33 @@
+{
+  "mqtt": {
+    "url": "mqtt://mosquitto:1883",
+    "clientId": "ya-modbus-bridge",
+    "username": "",
+    "password": "",
+    "topicPrefix": "modbus"
+  },
+  "devices": [
+    {
+      "id": "temp_sensor_1",
+      "name": "Temperature Sensor 1",
+      "driver": "ya-modbus-driver-xymd1",
+      "transport": "rtu",
+      "port": "/dev/ttyUSB0",
+      "baudRate": 9600,
+      "parity": "even",
+      "slaveId": 1,
+      "pollInterval": 5000
+    },
+    {
+      "id": "energy_meter_1",
+      "name": "Energy Meter 1",
+      "driver": "ya-modbus-driver-ex9em",
+      "transport": "rtu",
+      "port": "/dev/ttyUSB0",
+      "baudRate": 9600,
+      "parity": "even",
+      "slaveId": 2,
+      "pollInterval": 10000
+    }
+  ]
+}

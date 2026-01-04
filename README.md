@@ -6,6 +6,8 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![Node](https://img.shields.io/badge/Node-24+-green.svg)](https://nodejs.org/)
 [![codecov](https://codecov.io/gh/groupsky/ya-modbus/graph/badge.svg)](https://codecov.io/gh/groupsky/ya-modbus)
+[![Security](https://img.shields.io/badge/Security-SBOM%20%26%20Provenance-success)](./SECURITY.md)
+[![Docker](https://img.shields.io/docker/v/groupsky/ya-modbus?label=Docker&logo=docker)](https://hub.docker.com/r/groupsky/ya-modbus)
 
 ## Features
 
@@ -336,38 +338,208 @@ mosquitto_sub -t "modbus/+/errors/#"
 
 ## Docker Deployment
 
-```bash
-# Build image
-docker build -t ya-modbus .
+Pre-built multi-platform images available on Docker Hub and GitHub Container Registry:
 
-# Run with configuration
+- **Docker Hub**: `groupsky/ya-modbus:latest`
+- **GHCR**: `ghcr.io/groupsky/ya-modbus:latest`
+
+Two container variants are available:
+
+- **`ya-modbus:latest`** (complete) - Includes mqtt-bridge + all built-in drivers (recommended)
+- **`ya-modbus:<version>`** (base) - mqtt-bridge only, install drivers separately
+
+**Platforms**: linux/amd64, linux/arm64
+
+### Quick Start (Pre-built Images)
+
+**Simplest start** (using environment variables):
+
+```bash
+# Pull and run from Docker Hub
 docker run -d \
   --name modbus-bridge \
-  -v $(pwd)/config.json:/app/config.json \
+  -e MQTT_URL=mqtt://your-broker:1883 \
   -v $(pwd)/data:/data \
   --device /dev/ttyUSB0:/dev/ttyUSB0 \
-  -e MQTT_BROKER=mqtt://mosquitto:1883 \
-  ya-modbus
+  groupsky/ya-modbus:latest
+
+# Or from GHCR
+docker run -d \
+  --name modbus-bridge \
+  -e MQTT_URL=mqtt://your-broker:1883 \
+  -v $(pwd)/data:/data \
+  --device /dev/ttyUSB0:/dev/ttyUSB0 \
+  ghcr.io/groupsky/ya-modbus:latest
+```
+
+### Building Locally
+
+**If you want to build from source**:
+
+```bash
+# Build complete image with all drivers
+docker build -t ya-modbus:complete --build-arg VARIANT=complete .
+
+# Run with just MQTT broker URL
+docker run -d \
+  --name modbus-bridge \
+  -e MQTT_URL=mqtt://your-broker:1883 \
+  -v $(pwd)/data:/data \
+  --device /dev/ttyUSB0:/dev/ttyUSB0 \
+  ya-modbus:complete
+```
+
+**With configuration file**:
+
+```bash
+# Run with configuration file
+docker run -d \
+  --name modbus-bridge \
+  -v $(pwd)/config:/config:ro \
+  -v $(pwd)/data:/data \
+  --device /dev/ttyUSB0:/dev/ttyUSB0 \
+  ya-modbus:complete
+```
+
+The container automatically detects if `/config/config.json` exists and uses it; otherwise it uses environment variables (`MQTT_URL`, `MQTT_CLIENT_ID`).
+
+### Using Base Variant (Custom Drivers)
+
+```bash
+# Build base image (bridge only)
+docker build -t ya-modbus:base --build-arg VARIANT=base .
+
+# Create Dockerfile to add custom drivers
+cat > Dockerfile.custom <<EOF
+FROM ya-modbus:base
+USER root
+RUN npm install ya-modbus-driver-custom-device
+USER modbus
+EOF
+
+# Build and run
+docker build -f Dockerfile.custom -t ya-modbus:custom .
+docker run -d --name modbus-bridge ya-modbus:custom
 ```
 
 ### Docker Compose
 
-```yaml
-version: '3.8'
-services:
-  modbus-bridge:
-    image: ya-modbus
-    volumes:
-      - ./config.json:/app/config.json
-      - ./data:/data
-      - /dev/ttyUSB0:/dev/ttyUSB0
-    devices:
-      - /dev/ttyUSB0
-    environment:
-      MQTT_BROKER: mqtt://mosquitto:1883
-      STATE_FILE: /data/bridge-state.json
-    restart: unless-stopped
+```bash
+# Copy example configuration
+cp config/config.example.json config/config.json
+
+# Edit config.json with your devices and MQTT settings
+# Then start the bridge
+docker compose up -d
+
+# View logs
+docker compose logs -f mqtt-bridge-complete
+
+# Stop
+docker compose down
 ```
+
+See `docker-compose.yml` for complete example with MQTT broker.
+
+### Configuration
+
+Mount configuration file at `/config/config.json`:
+
+```json
+{
+  "mqtt": {
+    "url": "mqtt://mosquitto:1883",
+    "clientId": "ya-modbus-bridge"
+  },
+  "devices": [
+    {
+      "id": "temp_sensor_1",
+      "driver": "ya-modbus-driver-xymd1",
+      "transport": "rtu",
+      "port": "/dev/ttyUSB0",
+      "slaveId": 1
+    }
+  ]
+}
+```
+
+### Serial Device Access
+
+For RTU devices, pass through the serial device:
+
+```bash
+docker run -d \
+  --name modbus-bridge \
+  --device /dev/ttyUSB0:/dev/ttyUSB0 \
+  ya-modbus:complete
+```
+
+### Persistence
+
+Bridge state is saved to `/data` by default:
+
+```bash
+docker run -d \
+  -v $(pwd)/data:/data \
+  ya-modbus:complete
+```
+
+### Environment Variables
+
+Configure the bridge using environment variables (no config file needed):
+
+| Variable         | Default                 | Description                                             |
+| ---------------- | ----------------------- | ------------------------------------------------------- |
+| `MQTT_URL`       | `mqtt://localhost:1883` | MQTT broker URL                                         |
+| `MQTT_CLIENT_ID` | `ya-modbus-bridge`      | MQTT client identifier                                  |
+| `STATE_DIR`      | `/data`                 | State persistence directory (can be overridden)         |
+| `NODE_ENV`       | `production`            | Node.js environment (affects logging and error details) |
+
+Example:
+
+```bash
+docker run -d \
+  -e MQTT_URL=mqtt://broker:1883 \
+  -e MQTT_CLIENT_ID=my-bridge \
+  ya-modbus:complete
+```
+
+**Note**: Devices must still be configured via config file or MQTT runtime configuration.
+
+### Health Checks
+
+The container includes built-in health monitoring:
+
+```bash
+# Check container health
+docker ps --format "table {{.Names}}\t{{.Status}}"
+
+# View health check logs
+docker inspect modbus-bridge --format='{{.State.Health}}'
+```
+
+Health check runs every 30s, verifies the bridge process is running. Containers are marked healthy after 5s start period.
+
+### Security
+
+All published Docker images include supply chain security features:
+
+- **SBOM** (Software Bill of Materials) - complete dependency inventory
+- **Build Provenance** - cryptographically signed build attestation
+- **Vulnerability Scanning** - automated Trivy scans on every release
+- **Non-root Execution** - runs as unprivileged `modbus` user
+
+Verify image attestations:
+
+```bash
+# View SBOM
+docker buildx imagetools inspect groupsky/ya-modbus:latest --format "{{ json .SBOM }}"
+
+# View provenance
+docker buildx imagetools inspect groupsky/ya-modbus:latest --format "{{ json .Provenance }}"
+```
+
+See [SECURITY.md](./SECURITY.md) for complete security policy and vulnerability reporting.
 
 ## Companion Package: modbus-herdsman-converters
 
