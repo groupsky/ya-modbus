@@ -108,18 +108,18 @@ const driver = await createDriver({
 | `current_l1`           | L1 Current           | float | A    | Read-only | Phase L1 current             |
 | `current_l2`           | L2 Current           | float | A    | Read-only | Phase L2 current             |
 | `current_l3`           | L3 Current           | float | A    | Read-only | Phase L3 current             |
-| `active_power_total`   | Total Active Power   | float | W    | Read-only | Total active power           |
-| `active_power_l1`      | L1 Active Power      | float | W    | Read-only | Phase L1 active power        |
-| `active_power_l2`      | L2 Active Power      | float | W    | Read-only | Phase L2 active power        |
-| `active_power_l3`      | L3 Active Power      | float | W    | Read-only | Phase L3 active power        |
-| `reactive_power_total` | Total Reactive Power | float | VAr  | Read-only | Total reactive power         |
-| `reactive_power_l1`    | L1 Reactive Power    | float | VAr  | Read-only | Phase L1 reactive power      |
-| `reactive_power_l2`    | L2 Reactive Power    | float | VAr  | Read-only | Phase L2 reactive power      |
-| `reactive_power_l3`    | L3 Reactive Power    | float | VAr  | Read-only | Phase L3 reactive power      |
-| `apparent_power_total` | Total Apparent Power | float | VA   | Read-only | Total apparent power         |
-| `apparent_power_l1`    | L1 Apparent Power    | float | VA   | Read-only | Phase L1 apparent power      |
-| `apparent_power_l2`    | L2 Apparent Power    | float | VA   | Read-only | Phase L2 apparent power      |
-| `apparent_power_l3`    | L3 Apparent Power    | float | VA   | Read-only | Phase L3 apparent power      |
+| `active_power_total`   | Total Active Power   | float | kW   | Read-only | Total active power           |
+| `active_power_l1`      | L1 Active Power      | float | kW   | Read-only | Phase L1 active power        |
+| `active_power_l2`      | L2 Active Power      | float | kW   | Read-only | Phase L2 active power        |
+| `active_power_l3`      | L3 Active Power      | float | kW   | Read-only | Phase L3 active power        |
+| `reactive_power_total` | Total Reactive Power | float | kvar | Read-only | Total reactive power         |
+| `reactive_power_l1`    | L1 Reactive Power    | float | kvar | Read-only | Phase L1 reactive power      |
+| `reactive_power_l2`    | L2 Reactive Power    | float | kvar | Read-only | Phase L2 reactive power      |
+| `reactive_power_l3`    | L3 Reactive Power    | float | kvar | Read-only | Phase L3 reactive power      |
+| `apparent_power_total` | Total Apparent Power | float | kVA  | Read-only | Total apparent power         |
+| `apparent_power_l1`    | L1 Apparent Power    | float | kVA  | Read-only | Phase L1 apparent power      |
+| `apparent_power_l2`    | L2 Apparent Power    | float | kVA  | Read-only | Phase L2 apparent power      |
+| `apparent_power_l3`    | L3 Apparent Power    | float | kVA  | Read-only | Phase L3 apparent power      |
 | `power_factor_total`   | Total Power Factor   | float | -    | Read-only | Total power factor (-1 to 1) |
 | `power_factor_l1`      | L1 Power Factor      | float | -    | Read-only | Phase L1 power factor        |
 | `power_factor_l2`      | L2 Power Factor      | float | -    | Read-only | Phase L2 power factor        |

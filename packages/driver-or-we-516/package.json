@@ -37,6 +37,7 @@
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf dist",
+    "lint": "eslint .",
     "test": "jest"
   },
   "dependencies": {
