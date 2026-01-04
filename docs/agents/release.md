@@ -36,11 +36,25 @@ Conventional commit types determine version bump:
 
 ### Production Release
 
-Automatic on push to main. No action needed.
+Automatic on push to main (after PR merge). No manual action needed.
+
+**Publishes:**
+
+- npm packages to npmjs.org
+- Docker images to Docker Hub and GHCR
+  - Base variant: `groupsky/ya-modbus:<version>`
+  - Complete variant: `groupsky/ya-modbus:latest` (and `<version>-complete`)
 
 ### Pre-release (Feature Branch)
 
 Manual workflow_dispatch. Requires maintain/admin access. Dist-tag auto-generated from branch or specified.
+
+**Publishes:**
+
+- npm packages with dist-tag (e.g., `@pkg@beta`)
+- Docker images with version and dist-tag
+  - Base: `groupsky/ya-modbus:<version>`, `groupsky/ya-modbus:<dist-tag>`
+  - Complete: `groupsky/ya-modbus:<version>-complete`, `groupsky/ya-modbus:<dist-tag>-complete`
 
 ### Manual/Emergency Release
 
@@ -48,8 +62,33 @@ NEVER use npm scripts named `version` or `publish` - they conflict with npm life
 
 Use npx lerna commands directly with `--yes` and `--no-private` flags.
 
-See: `.github/workflows/release.yml` lines 172-173, 249 for production commands
-See: `.github/workflows/release.yml` lines 192-197, 271-276 for pre-release commands
-See: `docs/PUBLISHING-SETUP.md` for complete manual release procedure
+**Docker publishing** requires Docker Hub credentials and GitHub token:
+
+- `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` secrets for Docker Hub
+- `GITHUB_TOKEN` automatic for GHCR
+
+## Docker Publishing
+
+Docker images are automatically built and published when packages are released.
+
+**Platforms:** linux/amd64, linux/arm64
+
+**Registries:**
+
+- Docker Hub: `groupsky/ya-modbus`
+- GHCR: `ghcr.io/groupsky/ya-modbus`
+
+**Variants:**
+
+- Base: Core bridge only (users install drivers separately)
+- Complete: Includes all built-in drivers (recommended)
+
+**Tags:**
+
+- Production: `<version>`, `<version>-complete`, `latest` (complete only)
+- Pre-release: `<version>`, `<version>-complete`, `<dist-tag>`, `<dist-tag>-complete`
+
+See: `.github/workflows/release.yml` for workflow implementation
+See: `docs/PUBLISHING-SETUP.md` for first-time configuration and manual release setup
 See: `lerna.json` for Lerna configuration
 See: `docs/agents/git.md` for commit message format

@@ -336,14 +336,43 @@ mosquitto_sub -t "modbus/+/errors/#"
 
 ## Docker Deployment
 
+Pre-built multi-platform images available on Docker Hub and GitHub Container Registry:
+
+- **Docker Hub**: `groupsky/ya-modbus:latest`
+- **GHCR**: `ghcr.io/groupsky/ya-modbus:latest`
+
 Two container variants are available:
 
-- **`ya-modbus:complete`** - Includes mqtt-bridge + all built-in drivers (recommended)
-- **`ya-modbus:base`** - mqtt-bridge only, install drivers separately
+- **`ya-modbus:latest`** (complete) - Includes mqtt-bridge + all built-in drivers (recommended)
+- **`ya-modbus:<version>`** (base) - mqtt-bridge only, install drivers separately
 
-### Quick Start (Complete Variant)
+**Platforms**: linux/amd64, linux/arm64
+
+### Quick Start (Pre-built Images)
 
 **Simplest start** (using environment variables):
+
+```bash
+# Pull and run from Docker Hub
+docker run -d \
+  --name modbus-bridge \
+  -e MQTT_URL=mqtt://your-broker:1883 \
+  -v $(pwd)/data:/data \
+  --device /dev/ttyUSB0:/dev/ttyUSB0 \
+  groupsky/ya-modbus:latest
+
+# Or from GHCR
+docker run -d \
+  --name modbus-bridge \
+  -e MQTT_URL=mqtt://your-broker:1883 \
+  -v $(pwd)/data:/data \
+  --device /dev/ttyUSB0:/dev/ttyUSB0 \
+  ghcr.io/groupsky/ya-modbus:latest
+```
+
+### Building Locally
+
+**If you want to build from source**:
 
 ```bash
 # Build complete image with all drivers
@@ -457,11 +486,12 @@ docker run -d \
 
 Configure the bridge using environment variables (no config file needed):
 
-| Variable         | Default                 | Description                 |
-| ---------------- | ----------------------- | --------------------------- |
-| `MQTT_URL`       | `mqtt://localhost:1883` | MQTT broker URL             |
-| `MQTT_CLIENT_ID` | `ya-modbus-bridge`      | MQTT client identifier      |
-| `STATE_DIR`      | `/data`                 | State persistence directory |
+| Variable         | Default                 | Description                                             |
+| ---------------- | ----------------------- | ------------------------------------------------------- |
+| `MQTT_URL`       | `mqtt://localhost:1883` | MQTT broker URL                                         |
+| `MQTT_CLIENT_ID` | `ya-modbus-bridge`      | MQTT client identifier                                  |
+| `STATE_DIR`      | `/data`                 | State persistence directory (can be overridden)         |
+| `NODE_ENV`       | `production`            | Node.js environment (affects logging and error details) |
 
 Example:
 

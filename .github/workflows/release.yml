@@ -321,6 +321,15 @@ jobs:
           echo ""
           echo "To publish, re-run without dry-run option."
 
+      - name: Extract version for Docker tags
+        id: extract-version
+        if: steps.release-type.outputs.is_dry_run == 'false'
+        run: |
+          # Get version from mqtt-bridge package (main package for Docker)
+          VERSION=$(jq -r '.version' packages/mqtt-bridge/package.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 MQTT Bridge version: $VERSION"
+
       - name: Summary
         if: always()
         run: |
@@ -339,5 +348,143 @@ jobs:
             echo "### Installation" >> $GITHUB_STEP_SUMMARY
             echo '```bash' >> $GITHUB_STEP_SUMMARY
             echo "npm install @ya-modbus/cli@${{ steps.release-type.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+    outputs:
+      is_prerelease: ${{ steps.release-type.outputs.is_prerelease }}
+      is_dry_run: ${{ steps.release-type.outputs.is_dry_run }}
+      dist_tag: ${{ steps.release-type.outputs.dist_tag }}
+      version: ${{ steps.extract-version.outputs.version }}
+      has_changes: ${{ steps.version-production.outputs.has_changes }}
+
+  docker-publish:
+    name: Build and Publish Docker Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: release
+    # Only run if packages were published (not dry-run, not no-changes)
+    if: |
+      needs.release.outputs.is_dry_run == 'false' &&
+      (needs.release.outputs.is_prerelease == 'true' || needs.release.outputs.has_changes == 'true')
+
+    permissions:
+      contents: read
+      packages: write # For GHCR
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine Docker tags
+        id: docker-tags
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+          IS_PRERELEASE="${{ needs.release.outputs.is_prerelease }}"
+          DIST_TAG="${{ needs.release.outputs.dist_tag }}"
+
+          # Docker Hub repository
+          DOCKERHUB_REPO="groupsky/ya-modbus"
+          # GHCR repository
+          GHCR_REPO="ghcr.io/${{ github.repository }}"
+
+          if [ "$IS_PRERELEASE" == "true" ]; then
+            # Pre-release tags: version and dist-tag
+            TAGS_BASE="$DOCKERHUB_REPO:$VERSION,$GHCR_REPO:$VERSION"
+            TAGS_BASE="$TAGS_BASE,$DOCKERHUB_REPO:$DIST_TAG,$GHCR_REPO:$DIST_TAG"
+            TAGS_COMPLETE="$DOCKERHUB_REPO:$VERSION-complete,$GHCR_REPO:$VERSION-complete"
+            TAGS_COMPLETE="$TAGS_COMPLETE,$DOCKERHUB_REPO:$DIST_TAG-complete,$GHCR_REPO:$DIST_TAG-complete"
+            echo "📦 Pre-release Docker tags: $VERSION, $DIST_TAG"
+          else
+            # Production tags: version, latest
+            TAGS_BASE="$DOCKERHUB_REPO:$VERSION,$GHCR_REPO:$VERSION"
+            TAGS_COMPLETE="$DOCKERHUB_REPO:$VERSION-complete,$GHCR_REPO:$VERSION-complete"
+            TAGS_COMPLETE="$TAGS_COMPLETE,$DOCKERHUB_REPO:latest,$GHCR_REPO:latest"
+            echo "📦 Production Docker tags: $VERSION, latest"
+          fi
+
+          echo "tags_base=$TAGS_BASE" >> $GITHUB_OUTPUT
+          echo "tags_complete=$TAGS_COMPLETE" >> $GITHUB_OUTPUT
+
+      - name: Build and push base variant
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            VARIANT=base
+          push: true
+          tags: ${{ steps.docker-tags.outputs.tags_base }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.title=ya-modbus
+            org.opencontainers.image.description=Production-ready Modbus to MQTT bridge (base variant)
+            org.opencontainers.image.version=${{ needs.release.outputs.version }}
+            org.opencontainers.image.vendor=ya-modbus
+            org.opencontainers.image.licenses=GPL-3.0-or-later
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Build and push complete variant
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            VARIANT=complete
+          push: true
+          tags: ${{ steps.docker-tags.outputs.tags_complete }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.title=ya-modbus
+            org.opencontainers.image.description=Production-ready Modbus to MQTT bridge (complete variant with all drivers)
+            org.opencontainers.image.version=${{ needs.release.outputs.version }}
+            org.opencontainers.image.vendor=ya-modbus
+            org.opencontainers.image.licenses=GPL-3.0-or-later
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Docker publish summary
+        run: |
+          echo "## 🐳 Docker Images Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Base Variant" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "docker pull groupsky/ya-modbus:${{ needs.release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/${{ github.repository }}:${{ needs.release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Complete Variant (Recommended)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "docker pull groupsky/ya-modbus:${{ needs.release.outputs.version }}-complete" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/${{ github.repository }}:${{ needs.release.outputs.version }}-complete" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.release.outputs.is_prerelease }}" == "false" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Latest Tag" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "docker pull groupsky/ya-modbus:latest" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ghcr.io/${{ github.repository }}:latest" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi

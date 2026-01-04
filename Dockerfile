@@ -49,8 +49,7 @@ WORKDIR /app
 
 # Install runtime tools
 RUN apk add --no-cache \
-    tini \
-    su-exec
+    tini
 
 # Copy package files
 COPY package*.json ./
@@ -60,6 +59,10 @@ COPY packages/driver-loader/package*.json ./packages/driver-loader/
 COPY packages/driver-types/package*.json ./packages/driver-types/
 COPY packages/driver-sdk/package*.json ./packages/driver-sdk/
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Copy built artifacts from builder
 COPY --from=builder /build/packages/mqtt-bridge/dist ./packages/mqtt-bridge/dist
 COPY --from=builder /build/packages/transport/dist ./packages/transport/dist
@@ -67,8 +70,11 @@ COPY --from=builder /build/packages/driver-loader/dist ./packages/driver-loader/
 COPY --from=builder /build/packages/driver-types/dist ./packages/driver-types/dist
 COPY --from=builder /build/packages/driver-sdk/dist ./packages/driver-sdk/dist
 
-# Copy node_modules from builder (includes all production dependencies and workspace links)
-# We filter out dev dependencies by copying selectively
+# Copy node_modules from builder
+# Note: This copies ALL dependencies (including dev) from builder stage
+# This is intentional to preserve workspace links and avoid npm ci in runtime
+# Dev dependencies are excluded from builder via --ignore-scripts
+# Future: Consider selective copying if image size becomes a concern
 COPY --from=builder /build/node_modules ./node_modules
 
 # Create non-root user
@@ -93,13 +99,13 @@ VOLUME ["/data", "/config"]
 USER modbus
 
 # Use tini as init system (handles signals properly)
-ENTRYPOINT ["/sbin/tini", "--"]
+# Entrypoint script handles config detection and forwards arguments
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/docker-entrypoint.sh"]
 
-# Default command runs the bridge
-# Uses environment variables by default (MQTT_URL, MQTT_CLIENT_ID)
-# Override with: docker run -e MQTT_URL=mqtt://broker:1883 ya-modbus:complete
-# Or provide config file: docker run -v ./config.json:/config/config.json ya-modbus:complete --config /config/config.json
-CMD ["sh", "-c", "if [ -f /config/config.json ]; then exec node /app/packages/mqtt-bridge/dist/bin/ya-modbus-bridge.js run --state-dir /data --config /config/config.json; else exec node /app/packages/mqtt-bridge/dist/bin/ya-modbus-bridge.js run --state-dir /data --mqtt-url \"${MQTT_URL}\" --mqtt-client-id \"${MQTT_CLIENT_ID}\"; fi"]
+# Default: run bridge with auto-detected config
+# Override: docker run ya-modbus:complete --help
+# Custom args: docker run ya-modbus:complete run --mqtt-url mqtt://broker
+CMD []
 
 # ============================================================================
 # Stage 4: Complete Runtime (with all drivers)
