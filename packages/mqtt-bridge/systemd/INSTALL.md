@@ -4,10 +4,12 @@ This guide covers installing and running ya-modbus-bridge as a systemd service o
 
 ## Prerequisites
 
-- Linux system with systemd (most modern distributions)
+- Linux system with systemd v235 or higher (v247+ recommended for full security features)
 - Node.js 20 or higher
 - Root or sudo access
 - ya-modbus-bridge installed globally via npm
+
+**Note:** This service file uses security hardening features that require systemd v247+ for full functionality. On older systems (v235-v246), the service will still work but some security directives will be ignored. Systems older than v235 are not supported.
 
 ## Installation Steps
 
@@ -22,18 +24,28 @@ sudo npm install -g @ya-modbus/mqtt-bridge
 Create a dedicated, unprivileged system user for running the service:
 
 ```bash
-sudo useradd --system --home /var/lib/ya-modbus-bridge --create-home --shell /usr/sbin/nologin ya-modbus-bridge
+sudo useradd --system --shell /usr/sbin/nologin ya-modbus-bridge
 ```
 
-### 3. Create configuration directory
+**Note:** The home/state directory `/var/lib/ya-modbus-bridge` is automatically created by systemd with correct ownership when the service starts (via `StateDirectory=ya-modbus-bridge`). Do not create it manually.
+
+### 3. Grant serial port access (if using serial Modbus)
+
+If you're using serial Modbus connections (RS-485/RS-232 via USB adapters like `/dev/ttyUSB0`), add the service user to the `dialout` group:
+
+```bash
+sudo usermod -a -G dialout ya-modbus-bridge
+```
+
+**Note:** Skip this step if you're only using Modbus TCP.
+
+### 4. Create configuration directory
 
 ```bash
 sudo mkdir -p /etc/ya-modbus-bridge
 ```
 
-Note: The state directory `/var/lib/ya-modbus-bridge` is automatically created by systemd with correct ownership when the service starts (via `StateDirectory=ya-modbus-bridge`).
-
-### 4. Locate systemd configuration files
+### 5. Locate systemd configuration files
 
 After global installation, find the systemd configuration files:
 
@@ -58,9 +70,10 @@ if [ ! -d "$SYSTEMD_FILES" ]; then
 fi
 ```
 
-Alternatively, you can download the files directly from the GitHub repository.
+Alternatively, download the files directly from the GitHub repository:
+https://github.com/groupsky/ya-modbus/tree/main/packages/mqtt-bridge/systemd
 
-### 5. Create configuration file
+### 6. Create configuration file
 
 Copy the example configuration and customize it:
 
@@ -76,7 +89,7 @@ sudo chmod 600 /etc/ya-modbus-bridge/config.json
 sudo chown ya-modbus-bridge:ya-modbus-bridge /etc/ya-modbus-bridge/config.json
 ```
 
-### 6. Create environment file
+### 7. Create environment file
 
 ```bash
 sudo cp "$SYSTEMD_FILES/environment.example" /etc/ya-modbus-bridge/environment
@@ -90,7 +103,7 @@ sudo chmod 600 /etc/ya-modbus-bridge/environment
 sudo chown ya-modbus-bridge:ya-modbus-bridge /etc/ya-modbus-bridge/environment
 ```
 
-### 7. Set configuration directory ownership
+### 8. Set configuration directory ownership
 
 ```bash
 sudo chown -R ya-modbus-bridge:ya-modbus-bridge /etc/ya-modbus-bridge
@@ -98,7 +111,7 @@ sudo chown -R ya-modbus-bridge:ya-modbus-bridge /etc/ya-modbus-bridge
 
 Note: The state directory ownership is handled automatically by systemd's `StateDirectory` directive.
 
-### 8. Install systemd service file
+### 9. Install systemd service file
 
 Copy the service file to systemd:
 
@@ -130,7 +143,7 @@ BRIDGE_PATH=$(which ya-modbus-bridge)
 sudo sed -i "s|/usr/bin/ya-modbus-bridge|$BRIDGE_PATH|g" /etc/systemd/system/ya-modbus-bridge.service
 ```
 
-### 9. Reload systemd and enable service
+### 10. Reload systemd and enable service
 
 ```bash
 # Reload systemd configuration

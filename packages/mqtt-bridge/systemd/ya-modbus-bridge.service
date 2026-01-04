@@ -1,3 +1,7 @@
+# Ya-Modbus MQTT Bridge Service
+# Requires: systemd >= 235 (minimum), >= 247 (recommended for full security features)
+# See INSTALL.md for installation instructions
+
 [Unit]
 Description=Ya-Modbus MQTT Bridge Service
 Documentation=https://github.com/groupsky/ya-modbus/tree/main/packages/mqtt-bridge#readme
