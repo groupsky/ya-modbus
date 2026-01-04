@@ -1,5 +1,5 @@
 module.exports = {
-  displayName: 'ya-modbus-driver-xymd1',
+  displayName: '@ya-modbus/driver-xymd1',
   preset: 'ts-jest',
   testEnvironment: 'node',
   rootDir: '.',

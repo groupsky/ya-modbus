@@ -23,6 +23,7 @@ permissions:
   contents: write # For creating tags and pushing commits
   issues: write # For creating GitHub releases
   pull-requests: write # For release notes
+  id-token: write # For npm provenance generation
 
 jobs:
   release:
@@ -169,7 +170,7 @@ jobs:
           TAGS_BEFORE=$(git tag | wc -l)
 
           # Run lerna version (exits 0 even if no changes)
-          npx lerna version --yes --no-private || EXIT_CODE=$?
+          npx lerna version --yes --no-private --sync-workspace-lock || EXIT_CODE=$?
 
           # Check if any new tags were created
           TAGS_AFTER=$(git tag | wc -l)
@@ -194,7 +195,8 @@ jobs:
             --no-git-tag-version \
             --no-push \
             --yes \
-            --no-private
+            --no-private \
+            --sync-workspace-lock
 
       - name: Check for version conflicts (pre-release)
         if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false'
@@ -249,7 +251,6 @@ jobs:
         run: npx lerna publish from-git --yes --no-private
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
 
       - name: No changes detected
         if: |
@@ -275,7 +276,6 @@ jobs:
             --no-private
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
 
       - name: Find PR for this branch
         if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false'
