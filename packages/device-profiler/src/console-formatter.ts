@@ -11,7 +11,12 @@ function formatError(error: unknown): string {
   if (typeof error === 'string') return error
   if (error instanceof Error) return error.message
   if (typeof error === 'object' && 'message' in error) return String(error.message)
-  return JSON.stringify(error)
+  try {
+    return JSON.stringify(error)
+  } catch {
+    // Fallback for circular references or BigInt - return type name
+    return `[${typeof error}]`
+  }
 }
 
 /**
