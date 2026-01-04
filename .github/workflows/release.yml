@@ -1,0 +1,345 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dist-tag:
+        description: 'NPM dist-tag (leave empty to auto-generate from branch name, or specify: beta, next, etc.)'
+        required: false
+        default: ''
+      dry-run:
+        description: 'Dry run (validate without publishing)'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # For creating tags and pushing commits
+  issues: write # For creating GitHub releases
+  pull-requests: write # For release notes
+
+jobs:
+  release:
+    name: Release Packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Don't run on version bump commits to avoid infinite loop
+    # Note: For push events on main, branch protection should require CI to pass before merge
+    # For manual triggers, tests run inline below as a safety check
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' &&
+       !startsWith(github.event.head_commit.message, 'chore(release):') &&
+       github.event.head_commit.author.username != 'github-actions[bot]')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          # Fetch all history and tags for lerna to detect changes
+          fetch-depth: 0
+          # Use a token that can trigger workflows
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check workflow permissions
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "Checking permissions for manual workflow trigger..."
+
+          # Get user's permission level
+          PERMISSION=$(gh api \
+            repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission \
+            --jq '.permission')
+
+          echo "User: ${{ github.actor }}"
+          echo "Permission: $PERMISSION"
+
+          # Allow only maintain and admin permissions (not write, read, or triage)
+          if [ "$PERMISSION" != "maintain" ] && [ "$PERMISSION" != "admin" ]; then
+            echo "❌ Insufficient permissions to trigger manual pre-releases"
+            echo "   Required: maintain or admin access"
+            echo "   Current: $PERMISSION"
+            exit 1
+          fi
+
+          echo "✅ Permission check passed"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js from .nvmrc
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Detect release type
+        id: release-type
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+          # Check dry-run mode
+          DRY_RUN="${{ github.event.inputs.dry-run }}"
+          if [ "$DRY_RUN" == "true" ]; then
+            echo "is_dry_run=true" >> $GITHUB_OUTPUT
+            echo "🔍 DRY RUN MODE - No publishing will occur"
+          else
+            echo "is_dry_run=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Determine dist-tag (empty input means auto-generate from branch)
+          DIST_TAG_INPUT="${{ github.event.inputs.dist-tag }}"
+
+          # Determine if this is a pre-release
+          if [ "$BRANCH" != "main" ] || [ -n "$DIST_TAG_INPUT" ]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+
+            # Determine dist-tag
+            if [ -n "$DIST_TAG_INPUT" ]; then
+              DIST_TAG="$DIST_TAG_INPUT"
+
+              # Validate dist-tag format
+              if ! echo "$DIST_TAG" | grep -qE '^[a-zA-Z0-9][a-zA-Z0-9-]*$'; then
+                echo "❌ Invalid dist-tag format: $DIST_TAG"
+                echo "   Must start with alphanumeric and contain only alphanumeric and hyphens"
+                exit 1
+              fi
+
+              # Check for reserved tags
+              if [ "$DIST_TAG" == "latest" ] || [ "$DIST_TAG" == "next" ]; then
+                echo "❌ Reserved dist-tag: $DIST_TAG"
+                echo "   Use empty value to trigger production release on main branch"
+                exit 1
+              fi
+
+              # Check length (npm allows up to 214 chars, but keep it reasonable)
+              if [ ${#DIST_TAG} -gt 50 ]; then
+                echo "❌ Dist-tag too long: ${#DIST_TAG} chars (max 50)"
+                exit 1
+              fi
+            else
+              # Auto-generate dist-tag from branch name
+              DIST_TAG=$(echo "$BRANCH" | sed 's/[^a-zA-Z0-9-]/-/g' | sed 's/^-*//' | sed 's/-*$//')
+
+              # Ensure dist-tag is not empty after sanitization
+              if [ -z "$DIST_TAG" ]; then
+                echo "❌ Cannot generate valid dist-tag from branch name: $BRANCH"
+                exit 1
+              fi
+            fi
+            echo "dist_tag=$DIST_TAG" >> $GITHUB_OUTPUT
+
+            # Determine preid for versioning (remove trailing numeric suffix if present)
+            PREID=$(echo "$DIST_TAG" | sed 's/-[0-9]*$//')
+            echo "preid=$PREID" >> $GITHUB_OUTPUT
+
+            echo "📦 Pre-release mode: dist-tag=$DIST_TAG, preid=$PREID"
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "dist_tag=latest" >> $GITHUB_OUTPUT
+            echo "📦 Production release mode"
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Run tests
+        run: npm run test:ci
+
+      - name: Version packages (production)
+        if: steps.release-type.outputs.is_prerelease == 'false'
+        id: version-production
+        run: |
+          # Capture current tags before versioning
+          TAGS_BEFORE=$(git tag | wc -l)
+
+          # Run lerna version (exits 0 even if no changes)
+          npx lerna version --yes --no-private || EXIT_CODE=$?
+
+          # Check if any new tags were created
+          TAGS_AFTER=$(git tag | wc -l)
+          TAGS_CREATED=$((TAGS_AFTER - TAGS_BEFORE))
+
+          if [ $TAGS_CREATED -eq 0 ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No packages to release - no changes detected"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "✅ Created $TAGS_CREATED version tag(s)"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Version packages (pre-release)
+        if: steps.release-type.outputs.is_prerelease == 'true'
+        id: version-prerelease
+        run: |
+          npx lerna version prerelease \
+            --preid ${{ steps.release-type.outputs.preid }} \
+            --no-git-tag-version \
+            --no-push \
+            --yes \
+            --no-private
+
+      - name: Check for version conflicts (pre-release)
+        if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false'
+        run: |
+          echo "Checking for version conflicts on npm..."
+          CONFLICT_FOUND=false
+
+          # Get list of packages and their versions from package.json files
+          for pkg_json in packages/*/package.json; do
+            if [ -f "$pkg_json" ]; then
+              PKG_NAME=$(jq -r '.name' "$pkg_json")
+              PKG_VERSION=$(jq -r '.version' "$pkg_json")
+              PKG_PRIVATE=$(jq -r '.private // false' "$pkg_json")
+
+              # Skip private packages
+              if [ "$PKG_PRIVATE" == "true" ]; then
+                continue
+              fi
+
+              echo "Checking $PKG_NAME@$PKG_VERSION..."
+
+              # Check if this version exists on npm
+              if npm view "$PKG_NAME@$PKG_VERSION" version 2>/dev/null; then
+                echo "  ❌ Version $PKG_VERSION already exists on npm!"
+                CONFLICT_FOUND=true
+              else
+                echo "  ✅ Version $PKG_VERSION is available"
+              fi
+            fi
+          done
+
+          if [ "$CONFLICT_FOUND" == "true" ]; then
+            echo ""
+            echo "❌ ERROR: Version conflict detected!"
+            echo "One or more package versions already exist on npm."
+            echo ""
+            echo "This can happen when:"
+            echo "  - Multiple pre-releases are triggered simultaneously"
+            echo "  - A previous release succeeded but workflow failed afterward"
+            echo ""
+            echo "Please wait a moment and try again to get the next version number."
+            exit 1
+          fi
+
+          echo "✅ No version conflicts detected"
+
+      - name: Publish to npm (production)
+        if: |
+          steps.release-type.outputs.is_prerelease == 'false' &&
+          steps.release-type.outputs.is_dry_run == 'false' &&
+          steps.version-production.outputs.has_changes == 'true'
+        run: npx lerna publish from-git --yes --no-private
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+
+      - name: No changes detected
+        if: |
+          steps.release-type.outputs.is_prerelease == 'false' &&
+          steps.version-production.outputs.has_changes == 'false'
+        run: |
+          echo "ℹ️ No packages have changes that warrant a release."
+          echo ""
+          echo "This can happen when:"
+          echo "  - Only ignored files changed (tests, docs, config)"
+          echo "  - Commits don't match conventional commit format"
+          echo "  - Recent release already published the changes"
+          echo ""
+          echo "See lerna.json ignoreChanges for patterns that skip releases."
+
+      - name: Publish to npm (pre-release)
+        if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false'
+        run: |
+          npx lerna publish from-package \
+            --dist-tag ${{ steps.release-type.outputs.dist_tag }} \
+            --no-git-reset \
+            --yes \
+            --no-private
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+
+      - name: Find PR for this branch
+        if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false'
+        id: find-pr
+        run: |
+          BRANCH="${{ steps.release-type.outputs.branch }}"
+          PR_NUMBER=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -n "$PR_NUMBER" ]; then
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+            echo "✅ Found PR #$PR_NUMBER for branch $BRANCH"
+          else
+            echo "pr_number=" >> $GITHUB_OUTPUT
+            echo "ℹ️ No open PR found for branch $BRANCH"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment on PR with pre-release info
+        if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false' && steps.find-pr.outputs.pr_number != ''
+        run: |
+          gh pr comment ${{ steps.find-pr.outputs.pr_number }} --body "## 📦 Pre-release Published
+
+          **Dist-tag**: \`${{ steps.release-type.outputs.dist_tag }}\`
+
+          Install this pre-release version:
+          \`\`\`bash
+          npm install @ya-modbus/cli@${{ steps.release-type.outputs.dist_tag }}
+          \`\`\`
+
+          > The dist-tag will be automatically removed when this PR is closed or merged.
+
+          <!-- ya-modbus-prerelease: ${{ steps.release-type.outputs.dist_tag }} -->"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Dry run summary
+        if: steps.release-type.outputs.is_dry_run == 'true'
+        run: |
+          echo "🔍 DRY RUN COMPLETE - No packages were published"
+          echo ""
+          echo "Release configuration:"
+          echo "  Branch: ${{ steps.release-type.outputs.branch }}"
+          echo "  Pre-release: ${{ steps.release-type.outputs.is_prerelease }}"
+          echo "  Dist-tag: ${{ steps.release-type.outputs.dist_tag }}"
+          echo ""
+          echo "To publish, re-run without dry-run option."
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.release-type.outputs.is_dry_run }}" == "true" ]; then
+            echo "**🔍 DRY RUN MODE** - No packages were published" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "- Branch: ${{ steps.release-type.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Pre-release: ${{ steps.release-type.outputs.is_prerelease }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Dist-tag: ${{ steps.release-type.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Dry run: ${{ steps.release-type.outputs.is_dry_run }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.release-type.outputs.is_prerelease }}" == "true" ] && [ "${{ steps.release-type.outputs.is_dry_run }}" == "false" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Installation" >> $GITHUB_STEP_SUMMARY
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo "npm install @ya-modbus/cli@${{ steps.release-type.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
