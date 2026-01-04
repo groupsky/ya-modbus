@@ -46,5 +46,8 @@
   },
   "devDependencies": {
     "@ya-modbus/cli": "^0.5.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }

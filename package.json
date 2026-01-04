@@ -23,6 +23,10 @@
     "type": "git",
     "url": "https://github.com/groupsky/ya-modbus.git"
   },
+  "homepage": "https://github.com/groupsky/ya-modbus#readme",
+  "bugs": {
+    "url": "https://github.com/groupsky/ya-modbus/issues"
+  },
   "license": "GPL-3.0-or-later",
   "author": "Geno Roupsky <geno@roupsky.name>",
   "workspaces": [

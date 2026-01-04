@@ -34,5 +34,8 @@
     "clean": "rm -rf dist",
     "test": "jest",
     "lint": "eslint ."
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
