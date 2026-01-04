@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.5.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-loader@0.5.0...@ya-modbus/driver-loader@0.5.1) (2026-01-04)
+
+**Note:** Version bump only for package @ya-modbus/driver-loader
+
 # 0.5.0 (2026-01-04)
 
 ### Bug Fixes
