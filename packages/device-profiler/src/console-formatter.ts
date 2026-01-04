@@ -6,6 +6,14 @@ import Table from 'cli-table3'
 
 import type { ScanResult } from './register-scanner.js'
 
+function formatError(error: unknown): string {
+  if (error == null) return '-'
+  if (typeof error === 'string') return error
+  if (error instanceof Error) return error.message
+  if (typeof error === 'object' && 'message' in error) return String(error.message)
+  return JSON.stringify(error)
+}
+
 /**
  * Format progress message
  *
@@ -34,7 +42,7 @@ export function formatSummary(results: ScanResult[]): string {
     const value = result.success && result.value ? result.value.toString('hex').toUpperCase() : '-'
 
     const status = result.success ? 'OK' : 'FAIL'
-    const error = result.error ?? '-'
+    const error = formatError(result.error)
     const timing = result.timing.toFixed(1)
 
     table.push([result.address.toString(), result.type, status, value, timing, error])
