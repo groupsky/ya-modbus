@@ -40,10 +40,7 @@
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
-    "prepare": "husky",
-    "version": "lerna version --no-private",
-    "publish": "lerna publish from-git --no-private",
-    "release": "npm run build && npm run test && npm run version && npm run publish"
+    "prepare": "husky"
   },
   "devDependencies": {
     "@lerna-lite/cli": "^4.10.3",

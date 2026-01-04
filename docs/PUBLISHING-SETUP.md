@@ -55,7 +55,7 @@ Check that workflow can authenticate:
 To publish packages manually from local machine:
 
 1. **Environment Variables**:
-   - `NPM_TOKEN` - For npm authentication
+   - `NPM_TOKEN` - For npm authentication (or `NODE_AUTH_TOKEN`)
    - `GH_TOKEN` - For creating GitHub releases
 
 2. **Clean Working Tree**: No uncommitted changes
@@ -64,7 +64,30 @@ To publish packages manually from local machine:
 
 4. **Tests Passing**: Run `npm test`
 
-See: docs/agents/release.md for manual release workflow
+### Manual Release Commands
+
+Execute these commands in order:
+
+```bash
+# Set npm authentication (use NPM_TOKEN from environment)
+npm config set //registry.npmjs.org/:_authToken $NPM_TOKEN
+
+# Build packages
+npm run build
+
+# Run tests
+npm run test
+
+# Version packages (creates git tags and GitHub releases)
+npx lerna version --yes --no-private
+
+# Publish to npm
+npx lerna publish from-git --yes --no-private
+```
+
+**Important**: Do NOT create npm scripts named `version` or `publish` - these names conflict with npm lifecycle hooks and cause recursive execution issues.
+
+See: docs/agents/release.md for more details on the release workflow
 
 ## Troubleshooting
 
