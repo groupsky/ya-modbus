@@ -247,6 +247,64 @@ describe('OR-WE-516 Driver', () => {
       })
     })
 
+    describe('edge cases', () => {
+      it('should read zero values correctly', async () => {
+        const driver = await createDriver({
+          transport: mockTransport,
+          slaveId: 1,
+        })
+
+        const buffer = createRealtimeBuffer({
+          22: 0.0, // current_l1 = 0
+          28: 0.0, // active_power_total = 0
+        })
+        mockTransport.readHoldingRegisters.mockResolvedValue(buffer)
+
+        const current = await driver.readDataPoint('current_l1')
+        const power = await driver.readDataPoint('active_power_total')
+
+        expect(current).toBe(0)
+        expect(power).toBe(0)
+      })
+
+      it('should read negative power factor (leading)', async () => {
+        const driver = await createDriver({
+          transport: mockTransport,
+          slaveId: 1,
+        })
+
+        // Negative power factor indicates leading power factor (capacitive load)
+        const buffer = createRealtimeBuffer({
+          52: -0.85, // power_factor_total
+        })
+        mockTransport.readHoldingRegisters.mockResolvedValue(buffer)
+
+        const result = await driver.readDataPoint('power_factor_total')
+
+        expect(result).toBeCloseTo(-0.85, 2)
+      })
+
+      it('should read negative power values (reverse flow)', async () => {
+        const driver = await createDriver({
+          transport: mockTransport,
+          slaveId: 1,
+        })
+
+        // Negative power indicates reverse flow (export)
+        const buffer = createRealtimeBuffer({
+          28: -1500.5, // active_power_total
+          36: -250.0, // reactive_power_total
+        })
+        mockTransport.readHoldingRegisters.mockResolvedValue(buffer)
+
+        const activePower = await driver.readDataPoint('active_power_total')
+        const reactivePower = await driver.readDataPoint('reactive_power_total')
+
+        expect(activePower).toBeCloseTo(-1500.5, 1)
+        expect(reactivePower).toBeCloseTo(-250.0, 1)
+      })
+    })
+
     it('should throw on unknown data point', async () => {
       const driver = await createDriver({
         transport: mockTransport,
