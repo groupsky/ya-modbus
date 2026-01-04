@@ -46,8 +46,9 @@ StateDirectoryMode=0750
 ProtectSystem=strict
 PrivateTmp=yes
 ProtectHome=yes
+PrivateDevices=yes
 NoExecPaths=/
-ExecPaths=/usr/bin /usr/local/bin /usr/lib /usr/local/lib
+ExecPaths=/usr/bin /usr/local/bin /usr/lib /usr/local/lib /lib /lib64
 
 # Security: Kernel Protection
 ProtectKernelLogs=true
