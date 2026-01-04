@@ -40,7 +40,7 @@ ReadWritePaths=/var/lib/ya-modbus-bridge
 PrivateTmp=yes
 ProtectHome=yes
 NoExecPaths=/
-ExecPaths=/usr/bin /usr/local/bin /usr/lib/node_modules
+ExecPaths=/usr/bin /usr/local/bin /usr/lib /usr/local/lib
 
 # Security: Kernel Protection
 ProtectKernelLogs=true
@@ -59,8 +59,8 @@ RestrictSUIDSGID=yes
 RemoveIPC=yes
 
 # Security: Network Access
-# MQTT requires IPv4/IPv6 network access
-RestrictAddressFamilies=AF_INET AF_INET6
+# MQTT requires IPv4/IPv6 network access, Unix sockets for Node.js IPC
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 
 # Security: System Call Filtering
 SystemCallFilter=@system-service

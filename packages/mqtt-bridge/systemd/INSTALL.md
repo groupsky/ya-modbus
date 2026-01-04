@@ -38,11 +38,23 @@ After global installation, find the systemd configuration files:
 
 ```bash
 # Find the npm global installation directory
-NPM_PREFIX=$(npm config get prefix)
-SYSTEMD_FILES="$NPM_PREFIX/lib/node_modules/@ya-modbus/mqtt-bridge/systemd"
+# Use npm root -g which works reliably across different npm configurations
+NPM_GLOBAL_ROOT=$(npm root -g 2>/dev/null || echo "/usr/local/lib/node_modules")
+SYSTEMD_FILES="$NPM_GLOBAL_ROOT/@ya-modbus/mqtt-bridge/systemd"
 
 # Verify the path exists
 ls -la "$SYSTEMD_FILES"
+
+# If the above fails (e.g., using nvm), try finding via the binary location
+if [ ! -d "$SYSTEMD_FILES" ]; then
+  BRIDGE_BIN=$(which ya-modbus-bridge 2>/dev/null)
+  if [ -n "$BRIDGE_BIN" ]; then
+    # Follow symlink to actual package location
+    BRIDGE_BIN=$(readlink -f "$BRIDGE_BIN")
+    SYSTEMD_FILES="$(dirname $(dirname "$BRIDGE_BIN"))/systemd"
+    echo "Found via binary location: $SYSTEMD_FILES"
+  fi
+fi
 ```
 
 Alternatively, you can download the files directly from the GitHub repository.
