@@ -372,17 +372,33 @@ To run multiple bridge instances:
 1. Copy the service file with a different name:
 
    ```bash
-   sudo cp /etc/systemd/system/ya-modbus-bridge.service /etc/systemd/system/ya-modbus-bridge@instance2.service
+   sudo cp /etc/systemd/system/ya-modbus-bridge.service /etc/systemd/system/ya-modbus-bridge-instance2.service
    ```
 
-2. Modify the configuration path in the new service file
+2. Edit the new service file to use a different configuration path:
 
-3. Create separate configuration for the new instance
-
-4. Enable and start:
    ```bash
-   sudo systemctl enable ya-modbus-bridge@instance2.service
-   sudo systemctl start ya-modbus-bridge@instance2.service
+   sudo sed -i 's|/etc/ya-modbus-bridge/|/etc/ya-modbus-bridge-instance2/|g' /etc/systemd/system/ya-modbus-bridge-instance2.service
+   sudo sed -i 's|StateDirectory=ya-modbus-bridge|StateDirectory=ya-modbus-bridge-instance2|g' /etc/systemd/system/ya-modbus-bridge-instance2.service
+   ```
+
+3. Create separate configuration directory and files for the new instance:
+
+   ```bash
+   sudo mkdir -p /etc/ya-modbus-bridge-instance2
+   sudo cp /etc/ya-modbus-bridge/config.json /etc/ya-modbus-bridge-instance2/
+   sudo cp /etc/ya-modbus-bridge/environment /etc/ya-modbus-bridge-instance2/
+   sudo chown -R ya-modbus-bridge:ya-modbus-bridge /etc/ya-modbus-bridge-instance2
+   # Edit the config for the new instance
+   sudo nano /etc/ya-modbus-bridge-instance2/config.json
+   ```
+
+4. Reload, enable, and start:
+
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable ya-modbus-bridge-instance2.service
+   sudo systemctl start ya-modbus-bridge-instance2.service
    ```
 
 ## Uninstallation
@@ -396,6 +412,9 @@ sudo systemctl disable ya-modbus-bridge.service
 
 # Remove service file
 sudo rm /etc/systemd/system/ya-modbus-bridge.service
+
+# Remove symlink if created during installation (step 9, Option A)
+sudo rm -f /usr/bin/ya-modbus-bridge
 
 # Reload systemd
 sudo systemctl daemon-reload
