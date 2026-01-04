@@ -9,6 +9,8 @@ Wants=network-online.target
 Type=simple
 Restart=on-failure
 RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=300
 TimeoutStopSec=30
 
 # User/Group
