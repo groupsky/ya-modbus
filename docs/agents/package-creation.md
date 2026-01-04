@@ -23,7 +23,7 @@ Every new package MUST include:
 
 All packages require 95% coverage (branches, functions, lines, statements).
 
-See: `packages/ya-modbus-driver-xymd1/jest.config.cjs:23-30` for required `coverageThreshold` configuration.
+See: `packages/driver-xymd1/jest.config.cjs:23-30` for required `coverageThreshold` configuration.
 
 ### Root Configuration Updates
 
@@ -38,8 +38,19 @@ See: Root `tsconfig.lint-base.json:19-27` for paths format
 
 ### Naming Patterns
 
-- Drivers: `ya-modbus-driver-<device>`
-- Utilities: `@ya-modbus/<name>`
+- All packages: `@ya-modbus/<name>` (scoped naming)
+- Driver folders: `packages/driver-<device>`
+- Driver package names: `@ya-modbus/driver-<device>`
+
+### Engines Field
+
+All packages MUST include the engines field:
+
+```json
+"engines": {
+  "node": ">=20.0.0"
+}
+```
 
 ## Driver Packages
 
@@ -59,5 +70,5 @@ Before committing:
 
 - Comprehensive guide: docs/NEW-PACKAGE.md
 - Driver development: docs/agents/driver-development.md
-- Driver reference: packages/ya-modbus-driver-xymd1
+- Driver reference: packages/driver-xymd1
 - CLI reference: packages/cli

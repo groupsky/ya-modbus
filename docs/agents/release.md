@@ -4,7 +4,7 @@ paths: /lerna.json, /.github/workflows/release.yml
 
 # Release Process Guidelines
 
-Publishing packages to npm using Lerna-Lite with conventional commits.
+Publishing packages to npm using Lerna-Lite with conventional commits. Uses npm trusted publishers with OIDC for secure, tokenless publishing with provenance.
 
 ## Release Triggers
 
@@ -48,8 +48,7 @@ NEVER use npm scripts named `version` or `publish` - they conflict with npm life
 
 Use npx lerna commands directly with `--yes` and `--no-private` flags.
 
-See: `.github/workflows/release.yml` lines 172-173, 249 for production commands
-See: `.github/workflows/release.yml` lines 192-197, 271-276 for pre-release commands
+See: `.github/workflows/release.yml` "Version packages" and "Publish to npm" steps
 See: `docs/PUBLISHING-SETUP.md` for complete manual release procedure
 See: `lerna.json` for Lerna configuration
 See: `docs/agents/git.md` for commit message format

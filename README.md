@@ -4,7 +4,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
-[![Node](https://img.shields.io/badge/Node-24+-green.svg)](https://nodejs.org/)
+[![Node](https://img.shields.io/badge/Node-20+-green.svg)](https://nodejs.org/)
 [![codecov](https://codecov.io/gh/groupsky/ya-modbus/graph/badge.svg)](https://codecov.io/gh/groupsky/ya-modbus)
 
 ## Features
@@ -16,7 +16,6 @@
 - **Multi-register optimization** - Batch adjacent registers (70-90% fewer operations)
 - **Production monitoring** - Comprehensive diagnostics, error publishing, health checks
 - **RTU & TCP support** - Serial (RS-485/RS-232) and network Modbus devices
-- **Converter ecosystem** - Optional data normalization for InfluxDB, Prometheus, PostgreSQL
 - **Software emulator** - Test device drivers without physical hardware
 - **Agent-friendly** - Comprehensive documentation, per-directory guides for AI assistants
 
@@ -25,7 +24,7 @@
 ### Installation
 
 ```bash
-npm install -g ya-modbus
+npm install -g @ya-modbus/cli
 ```
 
 ### Basic Usage
@@ -178,7 +177,7 @@ Device drivers can be distributed as independent npm packages:
 
 ```bash
 # Install bridge + third-party driver
-npm install -g ya-modbus ya-modbus-driver-solar
+npm install -g @ya-modbus/cli ya-modbus-driver-solar
 
 # Use in configuration
 {
@@ -191,7 +190,10 @@ npm install -g ya-modbus ya-modbus-driver-solar
 }
 ```
 
-**Recommended naming**: `ya-modbus-driver-<name>` for easy discovery
+**Naming conventions**:
+
+- Monorepo packages: `@ya-modbus/driver-<name>` (e.g., `@ya-modbus/driver-ex9em`)
+- Third-party packages: `ya-modbus-driver-<name>` for easy discovery
 
 **Auto-detection**: Drivers can auto-detect device model when `deviceType` is omitted
 
@@ -221,7 +223,7 @@ npm install -g ya-modbus ya-modbus-driver-solar
 
 ### Prerequisites
 
-- Node.js 24+ (see `.nvmrc`)
+- Node.js 20+ (see `.nvmrc`)
 - npm 10+
 
 ### Setup
@@ -248,12 +250,15 @@ npm run dev
 
 ```
 packages/
-├── core/         # Bridge orchestration, transport, polling, discovery
-├── cli/          # Command-line tool (test, provision, monitor)
-├── devices/      # Device-specific implementations
-├── converters/   # Data normalization layer (optional companion)
-├── emulator/     # Software Modbus device emulator for testing
-└── mqtt-config/  # Runtime configuration management
+├── mqtt-bridge/      # Bridge orchestration, MQTT publishing, polling
+├── cli/              # Command-line tool (test, provision, monitor)
+├── transport/        # RTU/TCP transport implementations
+├── driver-types/     # TypeScript type definitions
+├── driver-sdk/       # Runtime SDK for driver development
+├── driver-loader/    # Dynamic driver loading
+├── device-profiler/  # Device discovery and register scanning
+├── emulator/         # Software Modbus device emulator for testing
+└── driver-*/         # Device drivers (e.g., driver-ex9em, driver-xymd1)
 ```
 
 ## Runtime Configuration via MQTT
@@ -368,36 +373,6 @@ services:
       STATE_FILE: /data/bridge-state.json
     restart: unless-stopped
 ```
-
-## Companion Package: modbus-herdsman-converters
-
-Optional data normalization layer inspired by zigbee-herdsman-converters:
-
-```typescript
-import { convert } from '@ya-modbus/converters'
-
-// Raw device data
-const rawData = {
-  voltage: 230.5,
-  current: 5.2,
-  power: 1198.6,
-}
-
-// Convert to InfluxDB format
-const influx = convert(rawData, {
-  adapter: 'influxdb',
-  measurement: 'modbus_device',
-  tags: { device_id: 'meter_1', location: 'building_a' },
-})
-
-// Convert to Prometheus format
-const prometheus = convert(rawData, {
-  adapter: 'prometheus',
-  prefix: 'modbus',
-})
-```
-
-See [@ya-modbus/converters](./packages/converters/README.md) for details.
 
 ## Performance
 
