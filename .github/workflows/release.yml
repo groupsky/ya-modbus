@@ -23,6 +23,7 @@ permissions:
   contents: write # For creating tags and pushing commits
   issues: write # For creating GitHub releases
   pull-requests: write # For release notes
+  id-token: write # For npm provenance generation
 
 jobs:
   release:
