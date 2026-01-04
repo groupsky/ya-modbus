@@ -25,6 +25,9 @@
   "bugs": {
     "url": "https://github.com/groupsky/ya-modbus/issues"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf dist",
