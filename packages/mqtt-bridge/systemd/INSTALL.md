@@ -55,9 +55,6 @@ After global installation, find the systemd configuration files:
 NPM_GLOBAL_ROOT=$(npm root -g 2>/dev/null || echo "/usr/local/lib/node_modules")
 SYSTEMD_FILES="$NPM_GLOBAL_ROOT/@ya-modbus/mqtt-bridge/systemd"
 
-# Verify the path exists
-ls -la "$SYSTEMD_FILES"
-
 # If the above fails (e.g., using nvm), try finding via the binary location
 if [ ! -d "$SYSTEMD_FILES" ]; then
   BRIDGE_BIN=$(which ya-modbus-bridge 2>/dev/null)
@@ -68,9 +65,20 @@ if [ ! -d "$SYSTEMD_FILES" ]; then
     echo "Found via binary location: $SYSTEMD_FILES"
   fi
 fi
+
+# Verify the path exists and exit if not found
+if [ ! -d "$SYSTEMD_FILES" ]; then
+  echo "ERROR: Could not locate systemd configuration files."
+  echo "Expected location: $SYSTEMD_FILES"
+  echo "Please download files manually from the GitHub repository (see below)."
+  exit 1
+fi
+
+echo "Found systemd files at: $SYSTEMD_FILES"
+ls -la "$SYSTEMD_FILES"
 ```
 
-Alternatively, download the files directly from the GitHub repository:
+If the automatic detection fails, download the files directly from the GitHub repository:
 https://github.com/groupsky/ya-modbus/tree/main/packages/mqtt-bridge/systemd
 
 ### 6. Create configuration file
@@ -228,6 +236,9 @@ systemctl is-active ya-modbus-bridge.service
 When updating the ya-modbus-bridge package:
 
 ```bash
+# Backup current configuration (recommended)
+sudo cp -r /etc/ya-modbus-bridge /etc/ya-modbus-bridge.backup.$(date +%Y%m%d)
+
 # Stop the service
 sudo systemctl stop ya-modbus-bridge.service
 
@@ -239,6 +250,9 @@ sudo systemctl start ya-modbus-bridge.service
 
 # Verify
 sudo systemctl status ya-modbus-bridge.service
+
+# Remove backup after confirming update works (optional)
+# sudo rm -rf /etc/ya-modbus-bridge.backup.*
 ```
 
 ## Security Analysis
@@ -270,7 +284,11 @@ This command provides a security score (0-10, lower is better) and identifies po
 3. Verify configuration file syntax:
 
    ```bash
+   # Using jq (install with: sudo apt install jq)
    cat /etc/ya-modbus-bridge/config.json | jq .
+
+   # Alternative using Node.js (no extra dependencies)
+   node -e "console.log(JSON.stringify(require('/etc/ya-modbus-bridge/config.json'), null, 2))"
    ```
 
 4. Check file permissions:
