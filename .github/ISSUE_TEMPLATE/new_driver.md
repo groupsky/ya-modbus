@@ -23,9 +23,9 @@ Provide one of the following:
 <details>
 <summary>Register list (if no documentation available)</summary>
 
-| Register | Type    | Description      | Unit | Scale |
-| -------- | ------- | ---------------- | ---- | ----- |
-| 0x0000   | holding | Example register | kWh  | 0.01  |
+| Register | Type    | Size | Encoding | Description      | Unit | Scale |
+| -------- | ------- | ---- | -------- | ---------------- | ---- | ----- |
+| 0x0000   | holding | 2    | uint32be | Example register | kWh  | 0.01  |
 
 </details>
 
