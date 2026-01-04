@@ -286,13 +286,16 @@ describe('Timing Behavior Integration', () => {
       const transport = emulator.getTransport() as MemoryTransport
       const request = Buffer.from([0x01, 0x03, 0x00, 0x00, 0x00, 0x01])
 
-      // Should resolve immediately (no delay)
+      let resolved = false
       // @ts-expect-error - accessing protected method for testing
-      const promise = transport.sendRequest(1, request)
+      const promise = transport.sendRequest(1, request).then(() => {
+        resolved = true
+      })
 
-      // Advance minimal time for microtasks
+      // Should resolve immediately (no delay) - just advance microtasks
       await jest.advanceTimersByTimeAsync(0)
       await promise
+      expect(resolved).toBe(true)
     })
   })
 
