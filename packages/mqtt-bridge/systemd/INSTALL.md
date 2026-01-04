@@ -32,12 +32,27 @@ sudo mkdir -p /etc/ya-modbus-bridge
 sudo mkdir -p /var/lib/ya-modbus-bridge/state
 ```
 
-### 4. Create configuration file
+### 4. Locate systemd configuration files
+
+After global installation, find the systemd configuration files:
+
+```bash
+# Find the npm global installation directory
+NPM_PREFIX=$(npm config get prefix)
+SYSTEMD_FILES="$NPM_PREFIX/lib/node_modules/@ya-modbus/mqtt-bridge/systemd"
+
+# Verify the path exists
+ls -la "$SYSTEMD_FILES"
+```
+
+Alternatively, you can download the files directly from the GitHub repository.
+
+### 5. Create configuration file
 
 Copy the example configuration and customize it:
 
 ```bash
-sudo cp systemd/config.json.example /etc/ya-modbus-bridge/config.json
+sudo cp "$SYSTEMD_FILES/config.json.example" /etc/ya-modbus-bridge/config.json
 sudo nano /etc/ya-modbus-bridge/config.json
 ```
 
@@ -48,10 +63,10 @@ sudo chmod 600 /etc/ya-modbus-bridge/config.json
 sudo chown ya-modbus-bridge:ya-modbus-bridge /etc/ya-modbus-bridge/config.json
 ```
 
-### 5. Create environment file
+### 6. Create environment file
 
 ```bash
-sudo cp systemd/environment.example /etc/ya-modbus-bridge/environment
+sudo cp "$SYSTEMD_FILES/environment.example" /etc/ya-modbus-bridge/environment
 sudo nano /etc/ya-modbus-bridge/environment
 ```
 
@@ -62,20 +77,46 @@ sudo chmod 600 /etc/ya-modbus-bridge/environment
 sudo chown ya-modbus-bridge:ya-modbus-bridge /etc/ya-modbus-bridge/environment
 ```
 
-### 6. Set directory ownership
+### 7. Set directory ownership
 
 ```bash
 sudo chown -R ya-modbus-bridge:ya-modbus-bridge /var/lib/ya-modbus-bridge
 sudo chown -R ya-modbus-bridge:ya-modbus-bridge /etc/ya-modbus-bridge
 ```
 
-### 7. Install systemd service file
+### 8. Install systemd service file
+
+Copy the service file to systemd:
 
 ```bash
-sudo cp systemd/ya-modbus-bridge.service /etc/systemd/system/
+sudo cp "$SYSTEMD_FILES/ya-modbus-bridge.service" /etc/systemd/system/
 ```
 
-### 8. Reload systemd and enable service
+**Important:** The service file expects `ya-modbus-bridge` to be available at `/usr/bin/ya-modbus-bridge`. Verify the binary location:
+
+```bash
+which ya-modbus-bridge
+```
+
+If the binary is not in `/usr/bin`, you have two options:
+
+**Option A:** Create a symlink (recommended):
+
+```bash
+sudo ln -s $(which ya-modbus-bridge) /usr/bin/ya-modbus-bridge
+```
+
+**Option B:** Edit the service file to use the actual path:
+
+```bash
+# Find the actual path
+BRIDGE_PATH=$(which ya-modbus-bridge)
+
+# Edit the service file
+sudo sed -i "s|/usr/bin/ya-modbus-bridge|$BRIDGE_PATH|g" /etc/systemd/system/ya-modbus-bridge.service
+```
+
+### 9. Reload systemd and enable service
 
 ```bash
 # Reload systemd configuration
