@@ -83,7 +83,7 @@ describe('validateDeviceConfig', () => {
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
   })
 
-  it('should throw error for driver not starting with ya-modbus-driver-', () => {
+  it('should throw error for invalid driver package name format', () => {
     const config = {
       deviceId: 'device1',
       driver: 'malicious-driver',
@@ -96,7 +96,9 @@ describe('validateDeviceConfig', () => {
     }
 
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
-    expect(() => validateDeviceConfig(config)).toThrow('must start with ya-modbus-driver-')
+    expect(() => validateDeviceConfig(config)).toThrow(
+      '@ya-modbus/driver-<name> or ya-modbus-driver-<name>'
+    )
   })
 
   it('should throw error for driver with path traversal attempts', () => {

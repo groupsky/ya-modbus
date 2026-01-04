@@ -420,7 +420,7 @@ describe('Driver Loader', () => {
 
   describe('integration with real dependencies', () => {
     test('should load real driver package without deps parameter', async () => {
-      const result = await loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' })
+      const result = await loadDriver({ driverPackage: '@ya-modbus/driver-xymd1' })
 
       expect(result).toBeDefined()
       expect(result.createDriver).toBeDefined()

@@ -249,7 +249,7 @@ describe('DriverLoader', () => {
       )
     })
 
-    it('should reject driver package name not starting with ya-modbus-driver-', async () => {
+    it('should reject invalid driver package name format', async () => {
       const loader = new DriverLoader(undefined, createMockTransportManager())
 
       const connection: DeviceConnection = {
@@ -263,7 +263,7 @@ describe('DriverLoader', () => {
       }
 
       await expect(loader.loadDriver('malicious-driver', connection)).rejects.toThrow(
-        "Invalid driver package name: must start with 'ya-modbus-driver-'"
+        'must be @ya-modbus/driver-<name> or ya-modbus-driver-<name>'
       )
     })
 
@@ -281,7 +281,7 @@ describe('DriverLoader', () => {
       }
 
       await expect(loader.loadDriver('../../malicious-code', connection)).rejects.toThrow(
-        "Invalid driver package name: must start with 'ya-modbus-driver-'"
+        'must be @ya-modbus/driver-<name> or ya-modbus-driver-<name>'
       )
     })
 

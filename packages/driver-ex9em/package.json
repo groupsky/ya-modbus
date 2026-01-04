@@ -1,14 +1,15 @@
 {
-  "name": "ya-modbus-driver-xymd1",
+  "name": "@ya-modbus/driver-ex9em",
   "version": "0.2.0",
-  "description": "XYMD1 Temperature and Humidity Sensor driver for ya-modbus",
+  "description": "NOARK Ex9EM Energy Meter driver for ya-modbus",
   "keywords": [
     "modbus",
     "driver",
-    "temperature",
-    "humidity",
-    "sensor",
-    "xymd1",
+    "energy",
+    "meter",
+    "power",
+    "ex9em",
+    "noark",
     "ya-modbus-driver"
   ],
   "author": "Geno Roupsky <geno@roupsky.name>",
@@ -23,9 +24,9 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/groupsky/ya-modbus.git",
-    "directory": "packages/ya-modbus-driver-xymd1"
+    "directory": "packages/driver-ex9em"
   },
-  "homepage": "https://github.com/groupsky/ya-modbus/tree/main/packages/ya-modbus-driver-xymd1#readme",
+  "homepage": "https://github.com/groupsky/ya-modbus/tree/main/packages/driver-ex9em#readme",
   "bugs": {
     "url": "https://github.com/groupsky/ya-modbus/issues"
   },
@@ -35,7 +36,8 @@
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf dist",
-    "test": "jest"
+    "test": "jest",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@ya-modbus/driver-sdk": "^0.2.0",
