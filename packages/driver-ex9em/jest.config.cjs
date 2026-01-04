@@ -1,5 +1,5 @@
 module.exports = {
-  displayName: 'ya-modbus-driver-ex9em',
+  displayName: '@ya-modbus/driver-ex9em',
   preset: 'ts-jest',
   testEnvironment: 'node',
   rootDir: '.',

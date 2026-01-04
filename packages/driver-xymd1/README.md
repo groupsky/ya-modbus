@@ -1,4 +1,4 @@
-# ya-modbus-driver-xymd1
+# @ya-modbus/driver-xymd1
 
 XYMD1 Temperature and Humidity Sensor driver for ya-modbus.
 
@@ -17,13 +17,13 @@ XYMD1 Temperature and Humidity Sensor driver for ya-modbus.
 ## Installation
 
 ```bash
-npm install ya-modbus-driver-xymd1
+npm install @ya-modbus/driver-xymd1
 ```
 
 ## Usage
 
 ```typescript
-import { createDriver } from 'ya-modbus-driver-xymd1'
+import { createDriver } from '@ya-modbus/driver-xymd1'
 import { ModbusRTU } from '@ya-modbus/transport-rtu'
 
 // Create transport
@@ -65,7 +65,7 @@ await driver.writeDataPoint('humidity_correction', 2.0)
 The driver exports a `DEFAULT_CONFIG` constant with factory-default device settings:
 
 ```typescript
-import { createDriver, DEFAULT_CONFIG } from 'ya-modbus-driver-xymd1'
+import { createDriver, DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
 import { ModbusRTU } from '@ya-modbus/transport-rtu'
 
 // Use default configuration for connecting to factory-default device

@@ -23,7 +23,7 @@
     { "path": "./packages/mqtt-bridge" },
     { "path": "./packages/emulator" },
     { "path": "./packages/device-profiler" },
-    { "path": "./packages/ya-modbus-driver-ex9em" },
-    { "path": "./packages/ya-modbus-driver-xymd1" }
+    { "path": "./packages/driver-ex9em" },
+    { "path": "./packages/driver-xymd1" }
   ]
 }

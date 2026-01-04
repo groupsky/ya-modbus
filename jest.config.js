@@ -8,8 +8,8 @@ module.exports = {
     '<rootDir>/packages/emulator',
     '<rootDir>/packages/mqtt-bridge',
     '<rootDir>/packages/transport',
-    '<rootDir>/packages/ya-modbus-driver-ex9em',
-    '<rootDir>/packages/ya-modbus-driver-xymd1',
+    '<rootDir>/packages/driver-ex9em',
+    '<rootDir>/packages/driver-xymd1',
   ],
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
