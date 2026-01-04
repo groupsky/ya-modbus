@@ -25,12 +25,13 @@ Create a dedicated, unprivileged system user for running the service:
 sudo useradd --system --home /var/lib/ya-modbus-bridge --create-home --shell /usr/sbin/nologin ya-modbus-bridge
 ```
 
-### 3. Create configuration directories
+### 3. Create configuration directory
 
 ```bash
 sudo mkdir -p /etc/ya-modbus-bridge
-sudo mkdir -p /var/lib/ya-modbus-bridge/state
 ```
+
+Note: The state directory `/var/lib/ya-modbus-bridge` is automatically created by systemd with correct ownership when the service starts (via `StateDirectory=ya-modbus-bridge`).
 
 ### 4. Locate systemd configuration files
 
@@ -89,12 +90,13 @@ sudo chmod 600 /etc/ya-modbus-bridge/environment
 sudo chown ya-modbus-bridge:ya-modbus-bridge /etc/ya-modbus-bridge/environment
 ```
 
-### 7. Set directory ownership
+### 7. Set configuration directory ownership
 
 ```bash
-sudo chown -R ya-modbus-bridge:ya-modbus-bridge /var/lib/ya-modbus-bridge
 sudo chown -R ya-modbus-bridge:ya-modbus-bridge /etc/ya-modbus-bridge
 ```
+
+Note: The state directory ownership is handled automatically by systemd's `StateDirectory` directive.
 
 ### 8. Install systemd service file
 
@@ -273,12 +275,13 @@ This command provides a security score (0-10, lower is better) and identifies po
 
 ### Permission errors
 
-Ensure all files and directories are owned by the service user:
+Ensure configuration files are owned by the service user:
 
 ```bash
-sudo chown -R ya-modbus-bridge:ya-modbus-bridge /var/lib/ya-modbus-bridge
 sudo chown -R ya-modbus-bridge:ya-modbus-bridge /etc/ya-modbus-bridge
 ```
+
+Note: The state directory `/var/lib/ya-modbus-bridge` is automatically managed by systemd's `StateDirectory` directive with correct ownership.
 
 ### MQTT connection issues
 
