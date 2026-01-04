@@ -27,6 +27,10 @@
   "bugs": {
     "url": "https://github.com/groupsky/ya-modbus/issues"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Geno Roupsky <geno@roupsky.name>",
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf dist",
