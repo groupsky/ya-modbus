@@ -8,9 +8,5 @@ NODE_ENV=production
 # Uncomment and adjust if you need to limit Node.js heap size
 #NODE_OPTIONS=--max-old-space-size=384
 
-# Optional: Logging Level
-# Uncomment to set log level if your application supports it
-#LOG_LEVEL=info
-
 # Optional: Additional Environment Variables
 # Add any other environment variables your bridge configuration needs
