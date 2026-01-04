@@ -30,6 +30,7 @@ jobs:
     name: Release Packages
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    environment: npm
     # Don't run on version bump commits to avoid infinite loop
     # Note: For push events on main, branch protection should require CI to pass before merge
     # For manual triggers, tests run inline below as a safety check
@@ -248,9 +249,7 @@ jobs:
           steps.release-type.outputs.is_prerelease == 'false' &&
           steps.release-type.outputs.is_dry_run == 'false' &&
           steps.version-production.outputs.has_changes == 'true'
-        run: npx lerna publish from-git --yes --no-private
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx lerna publish from-git --yes --no-private --provenance
 
       - name: No changes detected
         if: |
@@ -273,9 +272,8 @@ jobs:
             --dist-tag ${{ steps.release-type.outputs.dist_tag }} \
             --no-git-reset \
             --yes \
-            --no-private
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+            --no-private \
+            --provenance
 
       - name: Find PR for this branch
         if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false'
