@@ -463,6 +463,34 @@ describe('readFloatBE', () => {
       'Insufficient buffer size for float32: need 4 bytes at offset 0, but only 0 bytes available (buffer length: 0)'
     )
   })
+
+  it('should read NaN from buffer', () => {
+    // IEEE 754 quiet NaN: 0x7FC00000
+    const buffer = Buffer.from([0x7f, 0xc0, 0x00, 0x00])
+    const value = readFloatBE(buffer, 0)
+    expect(Number.isNaN(value)).toBe(true)
+  })
+
+  it('should read positive Infinity from buffer', () => {
+    // IEEE 754 +Infinity: 0x7F800000
+    const buffer = Buffer.from([0x7f, 0x80, 0x00, 0x00])
+    const value = readFloatBE(buffer, 0)
+    expect(value).toBe(Infinity)
+  })
+
+  it('should read negative Infinity from buffer', () => {
+    // IEEE 754 -Infinity: 0xFF800000
+    const buffer = Buffer.from([0xff, 0x80, 0x00, 0x00])
+    const value = readFloatBE(buffer, 0)
+    expect(value).toBe(-Infinity)
+  })
+
+  it('should read negative zero from buffer', () => {
+    // IEEE 754 -0: 0x80000000
+    const buffer = Buffer.from([0x80, 0x00, 0x00, 0x00])
+    const value = readFloatBE(buffer, 0)
+    expect(Object.is(value, -0)).toBe(true)
+  })
 })
 
 describe('writeFloatBE', () => {
