@@ -149,6 +149,14 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     pollType: 'on-demand',
     description: 'Measurement cycle time',
   },
+  {
+    id: 'combined_code',
+    name: 'Combined Code',
+    type: 'integer',
+    access: 'rw',
+    pollType: 'on-demand',
+    description: 'Synthesis code for bidirectional energy calculation mode',
+  },
 
   // Voltage measurements
   {
@@ -262,7 +270,7 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     id: 'reactive_power_total',
     name: 'Total Reactive Power',
     type: 'float',
-    unit: 'kvar',
+    unit: 'kVAr',
     access: 'r',
     description: 'Total reactive power (all phases)',
     decimals: 3,
@@ -271,7 +279,7 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     id: 'reactive_power_l1',
     name: 'L1 Reactive Power',
     type: 'float',
-    unit: 'kvar',
+    unit: 'kVAr',
     access: 'r',
     description: 'Phase L1 reactive power',
     decimals: 3,
@@ -280,7 +288,7 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     id: 'reactive_power_l2',
     name: 'L2 Reactive Power',
     type: 'float',
-    unit: 'kvar',
+    unit: 'kVAr',
     access: 'r',
     description: 'Phase L2 reactive power',
     decimals: 3,
@@ -289,7 +297,7 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     id: 'reactive_power_l3',
     name: 'L3 Reactive Power',
     type: 'float',
-    unit: 'kvar',
+    unit: 'kVAr',
     access: 'r',
     description: 'Phase L3 reactive power',
     decimals: 3,
@@ -664,15 +672,28 @@ const ENERGY_REGISTER_MAP: Record<string, number> = {
 }
 
 /**
+ * Register mapping for config registers outside bulk read range
+ * These registers are read/written individually
+ */
+const CONFIG_REGISTER_MAP: Record<string, number> = {
+  combined_code: 0x0042,
+}
+
+/**
  * Data points that are single 16-bit registers (not floats)
  */
 const SINGLE_REGISTER_POINTS = new Set([
-  'serial_number',
   'device_address',
   'baud_rate',
   'ct_rate',
   'cycle_time',
+  'combined_code',
 ])
+
+/**
+ * Data points that are 32-bit integers (2 registers)
+ */
+const DOUBLE_REGISTER_INT_POINTS = new Set(['serial_number'])
 
 /**
  * Decode data point value from buffer
@@ -685,6 +706,10 @@ function decodeRealtimeDataPoint(id: string, buffer: Buffer): unknown {
 
   if (SINGLE_REGISTER_POINTS.has(id)) {
     return buffer.readUInt16BE(registerOffset * 2)
+  }
+
+  if (DOUBLE_REGISTER_INT_POINTS.has(id)) {
+    return buffer.readUInt32BE(registerOffset * 2)
   }
 
   return readFloatBE(buffer, registerOffset * 2)
@@ -726,6 +751,13 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         return decodeEnergyDataPoint(id, buffer)
       }
 
+      // Check if it's a config register (read individually)
+      const configRegister = CONFIG_REGISTER_MAP[id]
+      if (configRegister !== undefined) {
+        const buffer = await transport.readHoldingRegisters(configRegister, 1)
+        return buffer.readUInt16BE(0)
+      }
+
       throw new Error(`Unknown data point: ${id}`)
     },
 
@@ -764,6 +796,14 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         return
       }
 
+      if (id === 'combined_code') {
+        if (!isValidInteger(value) || value < 0 || value > 65535) {
+          throw new Error(formatRangeError('combined code', 0, 65535))
+        }
+        await transport.writeSingleRegister(0x0042, value)
+        return
+      }
+
       throw new Error(`Data point ${id} is read-only`)
     },
 
@@ -773,6 +813,7 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
       // Separate data points by register type
       const realtimePoints = ids.filter((id) => id in REALTIME_REGISTER_MAP)
       const energyPoints = ids.filter((id) => id in ENERGY_REGISTER_MAP)
+      const configPoints = ids.filter((id) => id in CONFIG_REGISTER_MAP)
 
       // Read realtime registers if needed
       if (realtimePoints.length > 0) {
@@ -790,9 +831,21 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         }
       }
 
+      // Read config registers individually
+      for (const id of configPoints) {
+        const register = CONFIG_REGISTER_MAP[id]
+        if (register !== undefined) {
+          const buffer = await transport.readHoldingRegisters(register, 1)
+          result[id] = buffer.readUInt16BE(0)
+        }
+      }
+
       // Check for unknown data points
       const unknownPoints = ids.filter(
-        (id) => !(id in REALTIME_REGISTER_MAP) && !(id in ENERGY_REGISTER_MAP)
+        (id) =>
+          !(id in REALTIME_REGISTER_MAP) &&
+          !(id in ENERGY_REGISTER_MAP) &&
+          !(id in CONFIG_REGISTER_MAP)
       )
       if (unknownPoints.length > 0) {
         throw new Error(`Unknown data points: ${unknownPoints.join(', ')}`)

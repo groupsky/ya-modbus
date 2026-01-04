@@ -86,16 +86,17 @@ const driver = await createDriver({
 
 ### Device Information
 
-| ID                 | Name             | Type    | Access     | Description                        |
-| ------------------ | ---------------- | ------- | ---------- | ---------------------------------- |
-| `serial_number`    | Serial Number    | integer | Read-only  | Device serial number               |
-| `device_address`   | Device Address   | integer | Read-write | Modbus address (1-247)             |
-| `baud_rate`        | Baud Rate        | enum    | Read-write | Baud rate (1200, 2400, 4800, 9600) |
-| `software_version` | Software Version | float   | Read-only  | Firmware version                   |
-| `hardware_version` | Hardware Version | float   | Read-only  | Hardware revision                  |
-| `ct_rate`          | CT Rate          | integer | Read-only  | Current transformer ratio          |
-| `s0_output_rate`   | S0 Output Rate   | float   | Read-write | S0 pulse output rate (imp/kWh)     |
-| `cycle_time`       | Cycle Time       | integer | Read-write | Measurement cycle time (0-65535)   |
+| ID                 | Name             | Type    | Access     | Description                           |
+| ------------------ | ---------------- | ------- | ---------- | ------------------------------------- |
+| `serial_number`    | Serial Number    | integer | Read-only  | Device serial number (32-bit)         |
+| `device_address`   | Device Address   | integer | Read-write | Modbus address (1-247)                |
+| `baud_rate`        | Baud Rate        | enum    | Read-write | Baud rate (1200, 2400, 4800, 9600)    |
+| `software_version` | Software Version | float   | Read-only  | Firmware version                      |
+| `hardware_version` | Hardware Version | float   | Read-only  | Hardware revision                     |
+| `ct_rate`          | CT Rate          | integer | Read-only  | Current transformer ratio             |
+| `s0_output_rate`   | S0 Output Rate   | float   | Read-write | S0 pulse output rate (imp/kWh)        |
+| `cycle_time`       | Cycle Time       | integer | Read-write | Measurement cycle time (0-65535)      |
+| `combined_code`    | Combined Code    | integer | Read-write | Bidirectional energy calculation mode |
 
 ### Real-time Measurements
 
@@ -112,10 +113,10 @@ const driver = await createDriver({
 | `active_power_l1`      | L1 Active Power      | float | kW   | Read-only | Phase L1 active power        |
 | `active_power_l2`      | L2 Active Power      | float | kW   | Read-only | Phase L2 active power        |
 | `active_power_l3`      | L3 Active Power      | float | kW   | Read-only | Phase L3 active power        |
-| `reactive_power_total` | Total Reactive Power | float | kvar | Read-only | Total reactive power         |
-| `reactive_power_l1`    | L1 Reactive Power    | float | kvar | Read-only | Phase L1 reactive power      |
-| `reactive_power_l2`    | L2 Reactive Power    | float | kvar | Read-only | Phase L2 reactive power      |
-| `reactive_power_l3`    | L3 Reactive Power    | float | kvar | Read-only | Phase L3 reactive power      |
+| `reactive_power_total` | Total Reactive Power | float | kVAr | Read-only | Total reactive power         |
+| `reactive_power_l1`    | L1 Reactive Power    | float | kVAr | Read-only | Phase L1 reactive power      |
+| `reactive_power_l2`    | L2 Reactive Power    | float | kVAr | Read-only | Phase L2 reactive power      |
+| `reactive_power_l3`    | L3 Reactive Power    | float | kVAr | Read-only | Phase L3 reactive power      |
 | `apparent_power_total` | Total Apparent Power | float | kVA  | Read-only | Total apparent power         |
 | `apparent_power_l1`    | L1 Apparent Power    | float | kVA  | Read-only | Phase L1 apparent power      |
 | `apparent_power_l2`    | L2 Apparent Power    | float | kVA  | Read-only | Phase L2 apparent power      |
@@ -159,6 +160,7 @@ const driver = await createDriver({
 | Range         | Registers  | Type    | Description                    |
 | ------------- | ---------- | ------- | ------------------------------ |
 | 0x0000-0x003B | 60 (120 B) | Holding | Device info + real-time values |
+| 0x0042        | 1 (2 B)    | Holding | Combined code (config)         |
 | 0x0100-0x012E | 48 (96 B)  | Holding | Energy counters                |
 
 All float values are IEEE 754 single-precision (32-bit) big-endian.
@@ -184,6 +186,16 @@ await driver.writeDataPoint('baud_rate', 4800)
 ```typescript
 // Set S0 output rate (impulses per kWh)
 await driver.writeDataPoint('s0_output_rate', 1000.0)
+```
+
+### Configure Combined Code (Bidirectional Mode)
+
+```typescript
+// Read current combined code setting
+const mode = await driver.readDataPoint('combined_code')
+
+// Set combined code for bidirectional energy calculation
+await driver.writeDataPoint('combined_code', 5)
 ```
 
 ## License

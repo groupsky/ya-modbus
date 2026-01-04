@@ -9,7 +9,12 @@ import { createDriver, DEFAULT_CONFIG, SUPPORTED_CONFIG } from './index'
 /**
  * Single register integer data points (register offsets)
  */
-const SINGLE_REGISTER_OFFSETS = new Set([0, 2, 3, 8, 13]) // serial_number, device_address, baud_rate, ct_rate, cycle_time
+const SINGLE_REGISTER_OFFSETS = new Set([2, 3, 8, 13]) // device_address, baud_rate, ct_rate, cycle_time
+
+/**
+ * Double register (32-bit) integer data points (register offsets)
+ */
+const DOUBLE_REGISTER_INT_OFFSETS = new Set([0]) // serial_number
 
 /**
  * Helper to create a buffer with IEEE 754 floats at specified register offsets
@@ -19,8 +24,11 @@ function createRealtimeBuffer(values: Record<number, number>): Buffer {
   for (const [registerOffset, value] of Object.entries(values)) {
     const offset = Number(registerOffset)
     if (SINGLE_REGISTER_OFFSETS.has(offset)) {
-      // Single register values (serial, address, baud, ct_rate, cycle_time)
+      // Single register values (address, baud, ct_rate, cycle_time)
       buffer.writeUInt16BE(value, offset * 2)
+    } else if (DOUBLE_REGISTER_INT_OFFSETS.has(offset)) {
+      // Double register (32-bit) integer values (serial_number)
+      buffer.writeUInt32BE(value, offset * 2)
     } else {
       // Float values
       buffer.writeFloatBE(value, offset * 2)
@@ -142,7 +150,7 @@ describe('OR-WE-516 Driver', () => {
   describe('readDataPoint', () => {
     describe('realtime data points', () => {
       it.each([
-        { id: 'serial_number', registerOffset: 0, value: 12345 },
+        { id: 'serial_number', registerOffset: 0, value: 123456789 }, // 32-bit value
         { id: 'device_address', registerOffset: 2, value: 5 },
         { id: 'baud_rate', registerOffset: 3, value: 9600 },
         { id: 'ct_rate', registerOffset: 8, value: 1 },
@@ -244,6 +252,24 @@ describe('OR-WE-516 Driver', () => {
 
         expect(result).toBeCloseTo(value, 2)
         expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x100, 48)
+      })
+    })
+
+    describe('config data points', () => {
+      it('should read combined_code from register 0x0042', async () => {
+        const driver = await createDriver({
+          transport: mockTransport,
+          slaveId: 1,
+        })
+
+        const buffer = Buffer.alloc(2)
+        buffer.writeUInt16BE(5, 0) // combined_code = 5
+        mockTransport.readHoldingRegisters.mockResolvedValue(buffer)
+
+        const result = await driver.readDataPoint('combined_code')
+
+        expect(result).toBe(5)
+        expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x0042, 1)
       })
     })
 
@@ -384,6 +410,22 @@ describe('OR-WE-516 Driver', () => {
       expect(mockTransport.readHoldingRegisters).toHaveBeenCalledTimes(2)
       expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0, 60)
       expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x100, 48)
+    })
+
+    it('should read config data points individually', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      const configBuffer = Buffer.alloc(2)
+      configBuffer.writeUInt16BE(5, 0)
+      mockTransport.readHoldingRegisters.mockResolvedValue(configBuffer)
+
+      const result = await driver.readDataPoints(['combined_code'])
+
+      expect(result['combined_code']).toBe(5)
+      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x0042, 1)
     })
 
     it('should throw on unknown data points', async () => {
@@ -528,6 +570,44 @@ describe('OR-WE-516 Driver', () => {
 
           await expect(driver.writeDataPoint('cycle_time', value)).rejects.toThrow(
             'Invalid cycle time'
+          )
+        }
+      )
+    })
+
+    describe('combined_code', () => {
+      it('should write valid combined code', async () => {
+        const driver = await createDriver({
+          transport: mockTransport,
+          slaveId: 1,
+        })
+
+        await driver.writeDataPoint('combined_code', 5)
+
+        expect(mockTransport.writeSingleRegister).toHaveBeenCalledWith(0x0042, 5)
+      })
+
+      it.each([0, 65535])('should accept boundary combined code %d', async (value) => {
+        const driver = await createDriver({
+          transport: mockTransport,
+          slaveId: 1,
+        })
+
+        await driver.writeDataPoint('combined_code', value)
+
+        expect(mockTransport.writeSingleRegister).toHaveBeenCalledWith(0x0042, value)
+      })
+
+      it.each([-1, 65536, 1.5, NaN, 'invalid'])(
+        'should reject invalid combined code %p',
+        async (value) => {
+          const driver = await createDriver({
+            transport: mockTransport,
+            slaveId: 1,
+          })
+
+          await expect(driver.writeDataPoint('combined_code', value)).rejects.toThrow(
+            'Invalid combined code'
           )
         }
       )
