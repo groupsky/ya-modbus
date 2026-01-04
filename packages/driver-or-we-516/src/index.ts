@@ -13,6 +13,15 @@
  * - All float values are IEEE 754 single-precision (32-bit)
  */
 
+import {
+  readFloatBE,
+  writeFloatBE,
+  createEnumValidator,
+  createRangeValidator,
+  isValidInteger,
+  formatEnumError,
+  formatRangeError,
+} from '@ya-modbus/driver-sdk'
 import type {
   DeviceDriver,
   DataPoint,
@@ -57,11 +66,11 @@ export const DEFAULT_CONFIG = {
 } as const satisfies DefaultSerialConfig
 
 /**
- * Read IEEE 754 float from buffer at register offset
+ * Validators for writable data points
  */
-function readFloat(buffer: Buffer, registerOffset: number): number {
-  return buffer.readFloatBE(registerOffset * 2)
-}
+const isValidBaudRate = createEnumValidator(SUPPORTED_CONFIG.validBaudRates)
+const isValidAddress = createRangeValidator(...SUPPORTED_CONFIG.validAddressRange)
+const isValidCycleTime = createRangeValidator(0, 65535)
 
 /**
  * Data point definitions for OR-WE-516
@@ -678,7 +687,7 @@ function decodeRealtimeDataPoint(id: string, buffer: Buffer): unknown {
     return buffer.readUInt16BE(registerOffset * 2)
   }
 
-  return readFloat(buffer, registerOffset)
+  return readFloatBE(buffer, registerOffset * 2)
 }
 
 /**
@@ -689,7 +698,7 @@ function decodeEnergyDataPoint(id: string, buffer: Buffer): unknown {
   if (registerOffset === undefined) {
     throw new Error(`Unknown energy data point: ${id}`)
   }
-  return readFloat(buffer, registerOffset)
+  return readFloatBE(buffer, registerOffset * 2)
 }
 
 /**
@@ -722,19 +731,17 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
 
     async writeDataPoint(id: string, value: unknown): Promise<void> {
       if (id === 'device_address') {
-        if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 247) {
-          throw new Error('Invalid device address: must be integer between 1 and 247')
+        if (!isValidInteger(value) || !isValidAddress(value)) {
+          const [min, max] = SUPPORTED_CONFIG.validAddressRange
+          throw new Error(formatRangeError('device address', min, max))
         }
         await transport.writeSingleRegister(2, value)
         return
       }
 
       if (id === 'baud_rate') {
-        const validRates = SUPPORTED_CONFIG.validBaudRates as readonly number[]
-        if (typeof value !== 'number' || !validRates.includes(value)) {
-          throw new Error(
-            `Invalid baud rate: must be one of ${SUPPORTED_CONFIG.validBaudRates.join(', ')}`
-          )
+        if (!isValidBaudRate(value)) {
+          throw new Error(formatEnumError('baud rate', SUPPORTED_CONFIG.validBaudRates))
         }
         await transport.writeSingleRegister(3, value)
         return
@@ -744,15 +751,14 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         if (typeof value !== 'number' || !Number.isFinite(value)) {
           throw new Error('Invalid S0 output rate: must be a finite number')
         }
-        const buffer = Buffer.allocUnsafe(4)
-        buffer.writeFloatBE(value, 0)
+        const buffer = writeFloatBE(value)
         await transport.writeMultipleRegisters(0x0009, buffer)
         return
       }
 
       if (id === 'cycle_time') {
-        if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 65535) {
-          throw new Error('Invalid cycle time: must be integer between 0 and 65535')
+        if (!isValidInteger(value) || !isValidCycleTime(value)) {
+          throw new Error(formatRangeError('cycle time', 0, 65535))
         }
         await transport.writeSingleRegister(0x000d, value)
         return

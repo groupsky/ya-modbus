@@ -196,3 +196,44 @@ export function writeScaledInt16BE(value: number, scale: number): Buffer {
   buffer.writeInt16BE(scaledValue, 0)
   return buffer
 }
+
+/**
+ * Read an IEEE 754 single-precision float (32-bit) from a buffer
+ *
+ * @param buffer - Buffer containing the register data (2 consecutive registers)
+ * @param offset - Byte offset to start reading from
+ * @returns Float value
+ *
+ * @example
+ * ```typescript
+ * // Device stores voltage as IEEE 754 float
+ * const buffer = await transport.readHoldingRegisters(0x000E, 2)
+ * const voltage = readFloatBE(buffer, 0)
+ * ```
+ */
+export function readFloatBE(buffer: Buffer, offset: number): number {
+  validateBufferBounds(buffer, offset, 4, 'float32')
+  return buffer.readFloatBE(offset)
+}
+
+/**
+ * Encode a float value to an IEEE 754 single-precision (32-bit) buffer
+ *
+ * @param value - Value to encode
+ * @returns 4-byte buffer containing the float value
+ * @throws Error if value is not finite
+ *
+ * @example
+ * ```typescript
+ * // Write S0 output rate as IEEE 754 float
+ * const buffer = writeFloatBE(1000.0)
+ * await transport.writeMultipleRegisters(0x0009, buffer)
+ * ```
+ */
+export function writeFloatBE(value: number): Buffer {
+  validateWriteValue(value)
+
+  const buffer = Buffer.allocUnsafe(4)
+  buffer.writeFloatBE(value, 0)
+  return buffer
+}
