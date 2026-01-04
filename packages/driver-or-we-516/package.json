@@ -1,0 +1,52 @@
+{
+  "name": "@ya-modbus/driver-or-we-516",
+  "version": "0.0.0",
+  "description": "ORNO OR-WE-516 3-phase energy meter driver for ya-modbus",
+  "keywords": [
+    "modbus",
+    "driver",
+    "energy-meter",
+    "power-meter",
+    "orno",
+    "or-we-516",
+    "3-phase",
+    "ya-modbus-driver"
+  ],
+  "author": "Geno Roupsky <185580+groupsky@users.noreply.github.com>",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/groupsky/ya-modbus.git",
+    "directory": "packages/driver-or-we-516"
+  },
+  "homepage": "https://github.com/groupsky/ya-modbus/tree/main/packages/driver-or-we-516#readme",
+  "bugs": {
+    "url": "https://github.com/groupsky/ya-modbus/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@ya-modbus/driver-sdk": "^0.6.0",
+    "@ya-modbus/driver-types": "^0.6.0"
+  },
+  "devDependencies": {
+    "@ya-modbus/cli": "^0.6.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

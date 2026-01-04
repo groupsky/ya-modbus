@@ -10,6 +10,7 @@ module.exports = {
     '<rootDir>/packages/transport',
     '<rootDir>/packages/driver-ex9em',
     '<rootDir>/packages/driver-xymd1',
+    '<rootDir>/packages/driver-or-we-516',
   ],
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {

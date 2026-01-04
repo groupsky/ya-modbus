@@ -26,7 +26,8 @@
       "@ya-modbus/emulator": ["packages/emulator/src"],
       "@ya-modbus/device-profiler": ["packages/device-profiler/src"],
       "@ya-modbus/driver-ex9em": ["packages/driver-ex9em/src"],
-      "@ya-modbus/driver-xymd1": ["packages/driver-xymd1/src"]
+      "@ya-modbus/driver-xymd1": ["packages/driver-xymd1/src"],
+      "@ya-modbus/driver-or-we-516": ["packages/driver-or-we-516/src"]
     }
   },
   // Note: Packages must specify their own "include" paths
