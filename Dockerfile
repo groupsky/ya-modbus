@@ -82,7 +82,9 @@ RUN mkdir -p /data /config && \
 
 # Set up environment
 ENV NODE_ENV=production \
-    STATE_DIR=/data
+    STATE_DIR=/data \
+    MQTT_URL=mqtt://localhost:1883 \
+    MQTT_CLIENT_ID=ya-modbus-bridge
 
 # Volume for persistent state
 VOLUME ["/data", "/config"]
@@ -94,7 +96,10 @@ USER modbus
 ENTRYPOINT ["/sbin/tini", "--"]
 
 # Default command runs the bridge
-CMD ["node", "/app/packages/mqtt-bridge/dist/bin/ya-modbus-bridge.js", "run", "--state-dir", "/data", "--config", "/config/config.json"]
+# Uses environment variables by default (MQTT_URL, MQTT_CLIENT_ID)
+# Override with: docker run -e MQTT_URL=mqtt://broker:1883 ya-modbus:complete
+# Or provide config file: docker run -v ./config.json:/config/config.json ya-modbus:complete --config /config/config.json
+CMD ["sh", "-c", "if [ -f /config/config.json ]; then exec node /app/packages/mqtt-bridge/dist/bin/ya-modbus-bridge.js run --state-dir /data --config /config/config.json; else exec node /app/packages/mqtt-bridge/dist/bin/ya-modbus-bridge.js run --state-dir /data --mqtt-url \"${MQTT_URL}\" --mqtt-client-id \"${MQTT_CLIENT_ID}\"; fi"]
 
 # ============================================================================
 # Stage 4: Complete Runtime (with all drivers)

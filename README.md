@@ -343,11 +343,25 @@ Two container variants are available:
 
 ### Quick Start (Complete Variant)
 
+**Simplest start** (using environment variables):
+
 ```bash
 # Build complete image with all drivers
 docker build -t ya-modbus:complete --build-arg VARIANT=complete .
 
-# Run with configuration
+# Run with just MQTT broker URL
+docker run -d \
+  --name modbus-bridge \
+  -e MQTT_URL=mqtt://your-broker:1883 \
+  -v $(pwd)/data:/data \
+  --device /dev/ttyUSB0:/dev/ttyUSB0 \
+  ya-modbus:complete
+```
+
+**With configuration file**:
+
+```bash
+# Run with configuration file
 docker run -d \
   --name modbus-bridge \
   -v $(pwd)/config:/config:ro \
@@ -355,6 +369,8 @@ docker run -d \
   --device /dev/ttyUSB0:/dev/ttyUSB0 \
   ya-modbus:complete
 ```
+
+The container automatically detects if `/config/config.json` exists and uses it; otherwise it uses environment variables (`MQTT_URL`, `MQTT_CLIENT_ID`).
 
 ### Using Base Variant (Custom Drivers)
 
@@ -436,6 +452,41 @@ docker run -d \
   -v $(pwd)/data:/data \
   ya-modbus:complete
 ```
+
+### Environment Variables
+
+Configure the bridge using environment variables (no config file needed):
+
+| Variable         | Default                 | Description                 |
+| ---------------- | ----------------------- | --------------------------- |
+| `MQTT_URL`       | `mqtt://localhost:1883` | MQTT broker URL             |
+| `MQTT_CLIENT_ID` | `ya-modbus-bridge`      | MQTT client identifier      |
+| `STATE_DIR`      | `/data`                 | State persistence directory |
+
+Example:
+
+```bash
+docker run -d \
+  -e MQTT_URL=mqtt://broker:1883 \
+  -e MQTT_CLIENT_ID=my-bridge \
+  ya-modbus:complete
+```
+
+**Note**: Devices must still be configured via config file or MQTT runtime configuration.
+
+### Health Checks
+
+The container includes built-in health monitoring:
+
+```bash
+# Check container health
+docker ps --format "table {{.Names}}\t{{.Status}}"
+
+# View health check logs
+docker inspect modbus-bridge --format='{{.State.Health}}'
+```
+
+Health check runs every 30s, verifies the bridge process is running. Containers are marked healthy after 5s start period.
 
 ## Companion Package: modbus-herdsman-converters
 
