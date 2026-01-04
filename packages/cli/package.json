@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/cli",
-  "version": "0.0.0",
+  "version": "0.2.0",
   "description": "CLI tool for testing and developing Modbus device drivers",
   "type": "module",
   "keywords": [
@@ -44,17 +44,17 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@ya-modbus/driver-loader": "^0.0.0",
-    "@ya-modbus/driver-types": "^0.0.0",
-    "@ya-modbus/transport": "^0.0.0",
-    "commander": "^14.0.2",
+    "@ya-modbus/driver-loader": "^0.2.0",
+    "@ya-modbus/driver-types": "^0.2.0",
+    "@ya-modbus/transport": "^0.2.0",
     "chalk": "^5.3.0",
-    "cli-table3": "^0.6.3"
+    "cli-table3": "^0.6.3",
+    "commander": "^14.0.2"
   },
   "devDependencies": {
     "@types/node": "^20.10.6",
-    "typescript": "^5.7.2",
     "jest": "^30.2.0",
-    "ts-jest": "^29.1.1"
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.7.2"
   }
 }
