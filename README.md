@@ -6,6 +6,8 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![Node](https://img.shields.io/badge/Node-24+-green.svg)](https://nodejs.org/)
 [![codecov](https://codecov.io/gh/groupsky/ya-modbus/graph/badge.svg)](https://codecov.io/gh/groupsky/ya-modbus)
+[![Security](https://img.shields.io/badge/Security-SBOM%20%26%20Provenance-success)](./SECURITY.md)
+[![Docker](https://img.shields.io/docker/v/groupsky/ya-modbus?label=Docker&logo=docker)](https://hub.docker.com/r/groupsky/ya-modbus)
 
 ## Features
 
@@ -517,6 +519,27 @@ docker inspect modbus-bridge --format='{{.State.Health}}'
 ```
 
 Health check runs every 30s, verifies the bridge process is running. Containers are marked healthy after 5s start period.
+
+### Security
+
+All published Docker images include supply chain security features:
+
+- **SBOM** (Software Bill of Materials) - complete dependency inventory
+- **Build Provenance** - cryptographically signed build attestation
+- **Vulnerability Scanning** - automated Trivy scans on every release
+- **Non-root Execution** - runs as unprivileged `modbus` user
+
+Verify image attestations:
+
+```bash
+# View SBOM
+docker buildx imagetools inspect groupsky/ya-modbus:latest --format "{{ json .SBOM }}"
+
+# View provenance
+docker buildx imagetools inspect groupsky/ya-modbus:latest --format "{{ json .Provenance }}"
+```
+
+See [SECURITY.md](./SECURITY.md) for complete security policy and vulnerability reporting.
 
 ## Companion Package: modbus-herdsman-converters
 

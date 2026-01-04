@@ -88,6 +88,34 @@ Docker images are automatically built and published when packages are released.
 - Production: `<version>`, `<version>-complete`, `latest` (complete only)
 - Pre-release: `<version>`, `<version>-complete`, `<dist-tag>`, `<dist-tag>-complete`
 
+**Supply Chain Security:**
+
+All published images include:
+
+- **SBOM** (Software Bill of Materials): Complete inventory of dependencies
+- **Build Provenance**: Cryptographically signed attestation using SLSA framework
+- **Vulnerability Scanning**: Automated Trivy scans for CRITICAL and HIGH vulnerabilities
+- **Security Reporting**: Scan results uploaded to GitHub Security tab
+- **OCI Compliance**: Full OpenContainers Image specification metadata
+
+**Security Scanning:**
+
+Each variant is scanned separately:
+
+- Scans run after successful image publishing
+- Results uploaded as SARIF to GitHub Security tab
+- Scans include: OS packages, libraries, secrets, misconfigurations
+- Both table output (workflow logs) and SARIF format (Security tab)
+
+**GitHub Releases:**
+
+Production releases automatically create GitHub Releases with:
+
+- Conventional commit changelog (grouped by type)
+- Docker image pull commands for all variants
+- Security verification instructions
+- NPM package installation commands
+
 See: `.github/workflows/release.yml` for workflow implementation
 See: `docs/PUBLISHING-SETUP.md` for first-time configuration and manual release setup
 See: `lerna.json` for Lerna configuration

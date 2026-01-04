@@ -23,7 +23,9 @@ permissions:
   contents: write # For creating tags and pushing commits
   issues: write # For creating GitHub releases
   pull-requests: write # For release notes
-  id-token: write # For npm provenance generation
+  id-token: write # For OIDC token (attestations)
+  attestations: write # For build provenance
+  security-events: write # For uploading SARIF reports
 
 jobs:
   release:
@@ -371,10 +373,16 @@ jobs:
     permissions:
       contents: read
       packages: write # For GHCR
+      id-token: write # For attestations
+      attestations: write # For build provenance
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Get build timestamp
+        id: build-date
+        run: echo "date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -427,6 +435,7 @@ jobs:
 
       - name: Build and push base variant
         uses: docker/build-push-action@v6
+        id: build-base
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -434,8 +443,10 @@ jobs:
             VARIANT=base
           push: true
           tags: ${{ steps.docker-tags.outputs.tags_base }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=base
+          cache-to: type=gha,mode=max,scope=base
+          provenance: mode=max
+          sbom: true
           labels: |
             org.opencontainers.image.title=ya-modbus
             org.opencontainers.image.description=Production-ready Modbus to MQTT bridge (base variant)
@@ -444,9 +455,15 @@ jobs:
             org.opencontainers.image.licenses=GPL-3.0-or-later
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ steps.build-date.outputs.date }}
+            org.opencontainers.image.url=https://github.com/${{ github.repository }}
+            org.opencontainers.image.documentation=https://github.com/${{ github.repository }}#readme
+            org.opencontainers.image.authors=ya-modbus contributors
+            org.opencontainers.image.base.name=docker.io/library/node:24-alpine
 
       - name: Build and push complete variant
         uses: docker/build-push-action@v6
+        id: build-complete
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -454,8 +471,10 @@ jobs:
             VARIANT=complete
           push: true
           tags: ${{ steps.docker-tags.outputs.tags_complete }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=complete
+          cache-to: type=gha,mode=max,scope=complete
+          provenance: mode=max
+          sbom: true
           labels: |
             org.opencontainers.image.title=ya-modbus
             org.opencontainers.image.description=Production-ready Modbus to MQTT bridge (complete variant with all drivers)
@@ -464,6 +483,11 @@ jobs:
             org.opencontainers.image.licenses=GPL-3.0-or-later
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ steps.build-date.outputs.date }}
+            org.opencontainers.image.url=https://github.com/${{ github.repository }}
+            org.opencontainers.image.documentation=https://github.com/${{ github.repository }}#readme
+            org.opencontainers.image.authors=ya-modbus contributors
+            org.opencontainers.image.base.name=docker.io/library/node:24-alpine
 
       - name: Docker publish summary
         run: |
@@ -488,3 +512,222 @@ jobs:
             echo "docker pull ghcr.io/${{ github.repository }}:latest" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi
+
+  docker-scan:
+    name: Security Scan Docker Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [release, docker-publish]
+    if: |
+      needs.release.outputs.is_dry_run == 'false' &&
+      (needs.release.outputs.is_prerelease == 'true' || needs.release.outputs.has_changes == 'true')
+
+    permissions:
+      contents: read
+      security-events: write # For uploading SARIF results
+
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [base, complete]
+
+    steps:
+      - name: Determine image tag
+        id: image-tag
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+          VARIANT="${{ matrix.variant }}"
+
+          if [ "$VARIANT" == "complete" ]; then
+            TAG="$VERSION-complete"
+          else
+            TAG="$VERSION"
+          fi
+
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "🔍 Scanning image: groupsky/ya-modbus:$TAG"
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: groupsky/ya-modbus:${{ steps.image-tag.outputs.tag }}
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.variant }}.sarif'
+          severity: 'CRITICAL,HIGH'
+          vuln-type: 'os,library'
+          scanners: 'vuln,secret,config'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results-${{ matrix.variant }}.sarif'
+          category: 'docker-${{ matrix.variant }}'
+
+      - name: Run Trivy vulnerability scanner (table output)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: groupsky/ya-modbus:${{ steps.image-tag.outputs.tag }}
+          format: 'table'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          vuln-type: 'os,library'
+          scanners: 'vuln,secret,config'
+
+      - name: Security scan summary
+        if: always()
+        run: |
+          echo "## 🔒 Security Scan: ${{ matrix.variant }} variant" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Image: \`groupsky/ya-modbus:${{ steps.image-tag.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Scan results uploaded to Security tab" >> $GITHUB_STEP_SUMMARY
+
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [release, docker-publish]
+    # Only create releases for production (not pre-release, not dry-run, not no-changes)
+    if: |
+      needs.release.outputs.is_dry_run == 'false' &&
+      needs.release.outputs.is_prerelease == 'false' &&
+      needs.release.outputs.has_changes == 'true'
+
+    permissions:
+      contents: write # For creating releases
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # Fetch all history for changelog generation
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+
+          # Find the previous release tag
+          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -v "$VERSION" | head -n 1)
+
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "No previous tag found, using initial commit"
+            PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+
+          echo "Generating changelog from $PREVIOUS_TAG to v$VERSION"
+
+          # Generate changelog using conventional commits (save directly to temp files)
+          git log $PREVIOUS_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges > changelog-all.txt
+
+          # Group by type
+          grep "^- feat" changelog-all.txt > changelog-features.txt || true
+          grep "^- fix" changelog-all.txt > changelog-fixes.txt || true
+          grep "^- perf" changelog-all.txt > changelog-perf.txt || true
+          git log $PREVIOUS_TAG..HEAD --pretty=format:"%B" --no-merges | grep "BREAKING CHANGE:" > changelog-breaking.txt || true
+
+          # Build formatted changelog directly to file
+          > changelog.md
+
+          if [ -s changelog-breaking.txt ]; then
+            echo "## ⚠️ Breaking Changes" >> changelog.md
+            echo "" >> changelog.md
+            cat changelog-breaking.txt >> changelog.md
+            echo "" >> changelog.md
+            echo "" >> changelog.md
+          fi
+
+          if [ -s changelog-features.txt ]; then
+            echo "## ✨ Features" >> changelog.md
+            echo "" >> changelog.md
+            cat changelog-features.txt >> changelog.md
+            echo "" >> changelog.md
+            echo "" >> changelog.md
+          fi
+
+          if [ -s changelog-fixes.txt ]; then
+            echo "## 🐛 Bug Fixes" >> changelog.md
+            echo "" >> changelog.md
+            cat changelog-fixes.txt >> changelog.md
+            echo "" >> changelog.md
+            echo "" >> changelog.md
+          fi
+
+          if [ -s changelog-perf.txt ]; then
+            echo "## ⚡ Performance Improvements" >> changelog.md
+            echo "" >> changelog.md
+            cat changelog-perf.txt >> changelog.md
+            echo "" >> changelog.md
+            echo "" >> changelog.md
+          fi
+
+          # Clean up temp files
+          rm -f changelog-all.txt changelog-features.txt changelog-fixes.txt changelog-perf.txt changelog-breaking.txt
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+
+          # Create release notes
+          cat > release-notes.md <<'EOF'
+          ## Docker Images
+
+          Multi-platform images (linux/amd64, linux/arm64) are available on Docker Hub and GitHub Container Registry.
+
+          ### Quick Start
+
+          **Complete variant** (recommended - includes all built-in drivers):
+          ```bash
+          docker pull groupsky/ya-modbus:latest
+          # or
+          docker pull ghcr.io/${{ github.repository }}:latest
+          ```
+
+          **Base variant** (core bridge only, install drivers separately):
+          ```bash
+          docker pull groupsky/ya-modbus:${{ needs.release.outputs.version }}
+          # or
+          docker pull ghcr.io/${{ github.repository }}:${{ needs.release.outputs.version }}
+          ```
+
+          ### Security
+
+          All images include:
+          - 🔒 SBOM (Software Bill of Materials)
+          - ✅ Build provenance attestation
+          - 🛡️ Vulnerability scanning (see Security tab)
+
+          Verify image attestations:
+          ```bash
+          docker buildx imagetools inspect groupsky/ya-modbus:${{ needs.release.outputs.version }} --format "{{ json .Provenance }}"
+          ```
+
+          ### NPM Packages
+
+          Install packages via npm:
+          ```bash
+          npm install -g ya-modbus@${{ needs.release.outputs.version }}
+          ```
+
+          ## Changelog
+
+          EOF
+
+          # Append generated changelog
+          cat changelog.md >> release-notes.md
+
+          # Create the release
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes-file release-notes.md \
+            --verify-tag
+
+      - name: Release summary
+        run: |
+          echo "## 📦 GitHub Release Created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Version: v${{ needs.release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "View: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
