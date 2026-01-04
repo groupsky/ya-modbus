@@ -55,6 +55,9 @@ describe('Timing Behavior Integration', () => {
     })
 
     it('should apply polling interval as detection delay', async () => {
+      // Mock random to return 0.5, so delay = 0 + 0.5 * (100 - 0) = 50ms
+      const mockRandom = jest.spyOn(Math, 'random').mockReturnValue(0.5)
+
       emulator = new ModbusEmulator({ transport: 'memory' })
       emulator.addDevice({
         slaveId: 1,
@@ -69,14 +72,21 @@ describe('Timing Behavior Integration', () => {
       const transport = emulator.getTransport() as MemoryTransport
       const request = Buffer.from([0x01, 0x03, 0x00, 0x00, 0x00, 0x01])
 
-      // With polling interval, delay is random in [0, pollingInterval]
-      // Test that it resolves within the max polling interval
+      let resolved = false
       // @ts-expect-error - accessing protected method for testing
-      const promise = transport.sendRequest(1, request)
+      const promise = transport.sendRequest(1, request).then(() => {
+        resolved = true
+      })
 
-      // Advance past max possible delay
-      await jest.advanceTimersByTimeAsync(100)
+      // With random=0.5, delay should be 50ms
+      await jest.advanceTimersByTimeAsync(49)
+      expect(resolved).toBe(false)
+
+      await jest.advanceTimersByTimeAsync(1)
       await promise
+      expect(resolved).toBe(true)
+
+      mockRandom.mockRestore()
     })
   })
 
