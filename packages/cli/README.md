@@ -40,7 +40,7 @@ npm install --save-dev @ya-modbus/cli
 ```bash
 # RTU (serial) - uses driver defaults for baud rate, parity, etc.
 ya-modbus read \
-  --driver ya-modbus-driver-xymd1 \
+  --driver @ya-modbus/driver-xymd1 \
   --port /dev/ttyUSB0 \
   --data-point temperature
 
@@ -56,7 +56,7 @@ ya-modbus read \
 ```bash
 # Uses driver defaults
 ya-modbus read \
-  --driver ya-modbus-driver-xymd1 \
+  --driver @ya-modbus/driver-xymd1 \
   --port /dev/ttyUSB0 \
   --data-point temperature humidity
 ```
@@ -66,7 +66,7 @@ ya-modbus read \
 ```bash
 # Uses driver defaults
 ya-modbus read \
-  --driver ya-modbus-driver-xymd1 \
+  --driver @ya-modbus/driver-xymd1 \
   --port /dev/ttyUSB0 \
   --all
 ```
@@ -76,7 +76,7 @@ ya-modbus read \
 ```bash
 # Uses driver defaults
 ya-modbus read \
-  --driver ya-modbus-driver-xymd1 \
+  --driver @ya-modbus/driver-xymd1 \
   --port /dev/ttyUSB0 \
   --data-point temperature \
   --format json
@@ -89,7 +89,7 @@ ya-modbus read \
 ```bash
 # Uses driver defaults
 ya-modbus write \
-  --driver ya-modbus-driver-xymd1 \
+  --driver @ya-modbus/driver-xymd1 \
   --port /dev/ttyUSB0 \
   --data-point setpoint \
   --value 25.5
@@ -100,7 +100,7 @@ ya-modbus write \
 ```bash
 # Uses driver defaults
 ya-modbus write \
-  --driver ya-modbus-driver-xymd1 \
+  --driver @ya-modbus/driver-xymd1 \
   --port /dev/ttyUSB0 \
   --data-point setpoint \
   --value 25.5 \
@@ -112,7 +112,7 @@ ya-modbus write \
 ```bash
 # Uses driver defaults
 ya-modbus write \
-  --driver ya-modbus-driver-xymd1 \
+  --driver @ya-modbus/driver-xymd1 \
   --port /dev/ttyUSB0 \
   --data-point setpoint \
   --value 25.5 \
@@ -130,7 +130,7 @@ ya-modbus write \
 # Discover using driver SUPPORTED_CONFIG to limit parameter combinations
 ya-modbus discover \
   --port /dev/ttyUSB0 \
-  --driver ya-modbus-driver-xymd1
+  --driver @ya-modbus/driver-xymd1
 ```
 
 **Discovery without driver (tests common parameters):**
@@ -155,7 +155,7 @@ ya-modbus discover \
 # Stop after finding one device (default behavior)
 ya-modbus discover \
   --port /dev/ttyUSB0 \
-  --driver ya-modbus-driver-xymd1 \
+  --driver @ya-modbus/driver-xymd1 \
   --max-devices 1
 
 # Find unlimited devices
@@ -216,7 +216,7 @@ Starting Modbus device discovery on /dev/ttyUSB0...
 Strategy: quick
 Timeout: 1000ms, Delay: 100ms
 
-Using driver: ya-modbus-driver-xymd1
+Using driver: @ya-modbus/driver-xymd1
 Using driver SUPPORTED_CONFIG to limit parameter combinations
 
 Testing 1482 parameter combinations...
@@ -278,7 +278,7 @@ Based on real-world testing with default settings (timeout=1000ms, delay=100ms):
 When running from a driver package directory, the CLI auto-detects the driver:
 
 ```bash
-cd packages/ya-modbus-driver-xymd1
+cd packages/driver-xymd1
 npx ya-modbus read --port /dev/ttyUSB0 --slave-id 1 --data-point temperature
 ```
 
@@ -286,7 +286,7 @@ npx ya-modbus read --port /dev/ttyUSB0 --slave-id 1 --data-point temperature
 
 ```bash
 ya-modbus read \
-  --driver ya-modbus-driver-xymd1 \
+  --driver @ya-modbus/driver-xymd1 \
   --port /dev/ttyUSB0 \
   --slave-id 1 \
   --data-point temperature
@@ -317,7 +317,7 @@ The same priority applies to validation constraints (`supportedConfig`).
 
 ```bash
 ya-modbus read \
-  --driver ya-modbus-driver-xymd1 \
+  --driver @ya-modbus/driver-xymd1 \
   --port /dev/ttyUSB0 \
   --baud-rate 9600 \
   --parity even \
@@ -332,7 +332,7 @@ ya-modbus read \
 ```bash
 # CLI uses driver defaults - just specify port and data point
 ya-modbus read \
-  --driver ya-modbus-driver-xymd1 \
+  --driver @ya-modbus/driver-xymd1 \
   --port /dev/ttyUSB0 \
   --data-point temperature
 ```
@@ -344,7 +344,7 @@ User-specified values always take precedence over driver defaults:
 ```bash
 # Use driver defaults but override baud rate and slave ID
 ya-modbus read \
-  --driver ya-modbus-driver-xymd1 \
+  --driver @ya-modbus/driver-xymd1 \
   --port /dev/ttyUSB0 \
   --baud-rate 19200 \
   --slave-id 5 \
@@ -356,7 +356,7 @@ ya-modbus read \
 The CLI validates user input against driver constraints. Invalid values trigger helpful error messages:
 
 ```bash
-$ ya-modbus read --driver ya-modbus-driver-xymd1 --port /dev/ttyUSB0 --baud-rate 115200
+$ ya-modbus read --driver @ya-modbus/driver-xymd1 --port /dev/ttyUSB0 --baud-rate 115200
 Error: Invalid baud rate 115200. This driver supports: 9600, 14400, 19200 (default: 9600)
 ```
 
@@ -404,14 +404,14 @@ Use the `show-defaults` command to inspect driver configuration before use:
 
 ```bash
 # Show defaults from installed driver
-ya-modbus show-defaults --driver ya-modbus-driver-xymd1
+ya-modbus show-defaults --driver @ya-modbus/driver-xymd1
 
 # Show defaults from local development driver (auto-detects from cwd)
 cd packages/my-driver
 ya-modbus show-defaults
 
 # JSON output for tooling
-ya-modbus show-defaults --driver ya-modbus-driver-xymd1 --format json
+ya-modbus show-defaults --driver @ya-modbus/driver-xymd1 --format json
 ```
 
 Output:
@@ -511,7 +511,7 @@ If `--device` is omitted with a multi-device driver, the driver-level defaults a
 
 ```bash
 # Auto-detect driver (from driver package directory) - uses driver defaults
-cd packages/ya-modbus-driver-xymd1
+cd packages/driver-xymd1
 npx ya-modbus read \
   --port /dev/ttyUSB0 \
   --data-point temperature humidity \
@@ -537,7 +537,7 @@ Performance:
 ```bash
 # Uses driver defaults for baud rate, parity, etc.
 ya-modbus write \
-  --driver ya-modbus-driver-xymd1 \
+  --driver @ya-modbus/driver-xymd1 \
   --port /dev/ttyUSB0 \
   --data-point device_address \
   --value 5 \
@@ -552,7 +552,7 @@ ya-modbus read \
   --host 192.168.1.100 \
   --tcp-port 502 \
   --slave-id 1 \
-  --driver ya-modbus-driver-xymd1 \
+  --driver @ya-modbus/driver-xymd1 \
   --all \
   --format json
 ```
@@ -593,7 +593,7 @@ sudo usermod -a -G dialout $USER
 Ensure the driver package is installed:
 
 ```bash
-npm install ya-modbus-driver-xymd1
+npm install @ya-modbus/driver-xymd1
 ```
 
 Or use auto-detect mode from the driver package directory.
@@ -609,4 +609,4 @@ Or use auto-detect mode from the driver package directory.
 
 - [Driver Development Guide](../../docs/DRIVER-DEVELOPMENT.md)
 - [Architecture Documentation](../../docs/ARCHITECTURE.md)
-- [XYMD1 Driver](../ya-modbus-driver-xymd1/README.md)
+- [XYMD1 Driver](../driver-xymd1/README.md)

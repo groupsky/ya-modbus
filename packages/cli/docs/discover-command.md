@@ -36,7 +36,7 @@ This will:
 ### Discovery Options
 
 - `--driver <package>` - Driver package name (uses SUPPORTED_CONFIG to optimize scan)
-  - Example: `--driver ya-modbus-driver-xymd1`
+  - Example: `--driver @ya-modbus/driver-xymd1`
   - Limits parameter combinations to those supported by the device
   - Prioritizes DEFAULT_CONFIG values
 
@@ -105,7 +105,7 @@ This will:
 Specifying a driver package significantly improves discovery speed and accuracy:
 
 ```bash
-ya-modbus discover --port /dev/ttyUSB0 --driver ya-modbus-driver-xymd1
+ya-modbus discover --port /dev/ttyUSB0 --driver @ya-modbus/driver-xymd1
 ```
 
 **Benefits:**
@@ -273,7 +273,7 @@ Progress: 35% (520/1482) | Devices found: 1 | Elapsed: 2m 15s | ETA: 4m 10s
 1. **Use a driver package**
 
    ```bash
-   ya-modbus discover --port /dev/ttyUSB0 --driver ya-modbus-driver-xymd1
+   ya-modbus discover --port /dev/ttyUSB0 --driver @ya-modbus/driver-xymd1
    ```
 
 2. **Reduce timeout**
@@ -318,7 +318,7 @@ Progress: 35% (520/1482) | Devices found: 1 | Elapsed: 2m 15s | ETA: 4m 10s
 
    ```bash
    ya-modbus read --port /dev/ttyUSB0 --slave-id 1 --baud-rate 9600 \
-     --parity even --driver ya-modbus-driver-xymd1 --all
+     --parity even --driver @ya-modbus/driver-xymd1 --all
    ```
 
 2. **Check driver compatibility**
@@ -344,7 +344,7 @@ ya-modbus discover --port /dev/ttyUSB0
 Optimize discovery for XYMD1 temperature/humidity sensor:
 
 ```bash
-ya-modbus discover --port /dev/ttyUSB0 --driver ya-modbus-driver-xymd1
+ya-modbus discover --port /dev/ttyUSB0 --driver @ya-modbus/driver-xymd1
 ```
 
 ### Example 3: Fast Scan with Lower Timeout
@@ -368,7 +368,7 @@ ya-modbus discover --port /dev/ttyUSB0 --strategy thorough --timeout 2000
 Generate JSON output for processing:
 
 ```bash
-ya-modbus discover --port /dev/ttyUSB0 --driver ya-modbus-driver-xymd1 \
+ya-modbus discover --port /dev/ttyUSB0 --driver @ya-modbus/driver-xymd1 \
   --format json > discovered-devices.json
 ```
 
@@ -399,14 +399,14 @@ After discovery, use results with read/write commands:
 
 ```bash
 # 1. Discover device
-ya-modbus discover --port /dev/ttyUSB0 --driver ya-modbus-driver-xymd1
+ya-modbus discover --port /dev/ttyUSB0 --driver @ya-modbus/driver-xymd1
 
 # Output shows: Slave ID 1 @ 9600,E,8,1
 
 # 2. Read data from discovered device
 ya-modbus read --port /dev/ttyUSB0 --slave-id 1 --baud-rate 9600 \
   --parity even --data-bits 8 --stop-bits 1 \
-  --driver ya-modbus-driver-xymd1 --all
+  --driver @ya-modbus/driver-xymd1 --all
 ```
 
 ### Integration with Configuration Management

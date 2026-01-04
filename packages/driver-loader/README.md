@@ -23,7 +23,7 @@ const driver = await loadDriver({})
 ```typescript
 import { loadDriver } from '@ya-modbus/driver-loader'
 
-const driver = await loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' })
+const driver = await loadDriver({ driverPackage: '@ya-modbus/driver-xymd1' })
 ```
 
 ### Error Handling
@@ -148,7 +148,7 @@ Returns cache statistics including hits, misses, and current cache size.
 **Cache Behavior:**
 
 - **Automatic caching:** Drivers are cached by package name after first load
-- **Cache key:** Package name (e.g., 'ya-modbus-driver-xymd1')
+- **Cache key:** Package name (e.g., '@ya-modbus/driver-xymd1')
 - **Cache lifetime:** Persists for the lifetime of the Node.js process
 - **Auto-detect mode:** Even auto-detected drivers are cached by their package name
 - **No cache on errors:** Failed loads are not cached, allowing retry
