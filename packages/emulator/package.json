@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/emulator",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Software Modbus device emulator for testing drivers without physical hardware",
   "keywords": [
     "modbus",
@@ -38,9 +38,9 @@
     "test": "jest"
   },
   "dependencies": {
-    "modbus-serial": "^8.0.23",
     "commander": "^12.1.0",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "modbus-serial": "^8.0.23"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9"
