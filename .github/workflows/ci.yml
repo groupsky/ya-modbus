@@ -147,8 +147,8 @@ jobs:
             echo "Error: driver-types build failed"
             exit 1
           fi
-          if [ ! -d "packages/ya-modbus-driver-xymd1/dist" ]; then
-            echo "Error: ya-modbus-driver-xymd1 build failed"
+          if [ ! -d "packages/driver-xymd1/dist" ]; then
+            echo "Error: driver-xymd1 build failed"
             exit 1
           fi
           echo "All packages built successfully"

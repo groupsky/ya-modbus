@@ -79,6 +79,51 @@ describe('DriverLoader', () => {
       expect(mockLoadDriver).toHaveBeenCalledWith({ driverPackage: 'ya-modbus-driver-test' })
     })
 
+    it('should accept scoped driver package names', async () => {
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test Manufacturer',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
+      const mockLoadedDriver: LoadedDriver = { createDriver: mockCreateDriver }
+      const mockLoadDriver = jest.fn().mockResolvedValue(mockLoadedDriver)
+
+      const loader = new DriverLoader(mockLoadDriver, createMockTransportManager())
+
+      const connection: DeviceConnection = {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      }
+
+      const driver = await loader.loadDriver('@ya-modbus/driver-test', connection, 'device1')
+
+      expect(driver).toBe(mockDriver)
+      expect(mockLoadDriver).toHaveBeenCalledWith({ driverPackage: '@ya-modbus/driver-test' })
+    })
+
+    it('should reject scoped driver with path traversal', async () => {
+      const loader = new DriverLoader(undefined, createMockTransportManager())
+
+      const connection: DeviceConnection = {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      }
+
+      await expect(loader.loadDriver('@ya-modbus/driver-../evil', connection)).rejects.toThrow(
+        'path traversal not allowed'
+      )
+    })
+
     it('should create different instances for different devices', async () => {
       const mockDriver1: DeviceDriver = {
         name: 'test-device',
@@ -249,7 +294,7 @@ describe('DriverLoader', () => {
       )
     })
 
-    it('should reject driver package name not starting with ya-modbus-driver-', async () => {
+    it('should reject invalid driver package name format', async () => {
       const loader = new DriverLoader(undefined, createMockTransportManager())
 
       const connection: DeviceConnection = {
@@ -263,7 +308,7 @@ describe('DriverLoader', () => {
       }
 
       await expect(loader.loadDriver('malicious-driver', connection)).rejects.toThrow(
-        "Invalid driver package name: must start with 'ya-modbus-driver-'"
+        'must be @ya-modbus/driver-<name> or ya-modbus-driver-<name>'
       )
     })
 
@@ -281,7 +326,7 @@ describe('DriverLoader', () => {
       }
 
       await expect(loader.loadDriver('../../malicious-code', connection)).rejects.toThrow(
-        "Invalid driver package name: must start with 'ya-modbus-driver-'"
+        'must be @ya-modbus/driver-<name> or ya-modbus-driver-<name>'
       )
     })
 
