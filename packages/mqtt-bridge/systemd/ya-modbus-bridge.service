@@ -34,9 +34,12 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=ya-modbus-bridge
 
+# State Directory (auto-created with correct ownership)
+StateDirectory=ya-modbus-bridge
+StateDirectoryMode=0750
+
 # Security: Filesystem Protection
 ProtectSystem=strict
-ReadWritePaths=/var/lib/ya-modbus-bridge
 PrivateTmp=yes
 ProtectHome=yes
 NoExecPaths=/
