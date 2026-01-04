@@ -1,4 +1,4 @@
-# ya-modbus-driver-ex9em
+# @ya-modbus/driver-ex9em
 
 NOARK Ex9EM Energy Meter driver for ya-modbus
 
@@ -14,13 +14,13 @@ NOARK Ex9EM Energy Meter driver for ya-modbus
 ## Installation
 
 ```bash
-npm install ya-modbus-driver-ex9em
+npm install @ya-modbus/driver-ex9em
 ```
 
 ## Usage
 
 ```typescript
-import { createDriver, DEFAULT_CONFIG } from 'ya-modbus-driver-ex9em'
+import { createDriver, DEFAULT_CONFIG } from '@ya-modbus/driver-ex9em'
 import { createRTUTransport } from '@ya-modbus/transport-rtu'
 
 // Create transport with factory default settings

@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/driver-sdk",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Runtime SDK for ya-modbus device drivers with transformation utilities and helpers",
   "keywords": [
     "modbus",
@@ -14,7 +14,9 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
   ],
   "repository": {
     "type": "git",
@@ -34,6 +36,6 @@
     "test": "jest"
   },
   "dependencies": {
-    "@ya-modbus/driver-types": "^0.3.0"
+    "@ya-modbus/driver-types": "^0.4.0"
   }
 }

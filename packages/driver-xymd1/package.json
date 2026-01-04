@@ -1,6 +1,6 @@
 {
-  "name": "ya-modbus-driver-xymd1",
-  "version": "0.3.0",
+  "name": "@ya-modbus/driver-xymd1",
+  "version": "0.4.0",
   "description": "XYMD1 Temperature and Humidity Sensor driver for ya-modbus",
   "keywords": [
     "modbus",
@@ -18,14 +18,15 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "repository": {
     "type": "git",
     "url": "https://github.com/groupsky/ya-modbus.git",
-    "directory": "packages/ya-modbus-driver-xymd1"
+    "directory": "packages/driver-xymd1"
   },
-  "homepage": "https://github.com/groupsky/ya-modbus/tree/main/packages/ya-modbus-driver-xymd1#readme",
+  "homepage": "https://github.com/groupsky/ya-modbus/tree/main/packages/driver-xymd1#readme",
   "bugs": {
     "url": "https://github.com/groupsky/ya-modbus/issues"
   },
@@ -38,10 +39,10 @@
     "test": "jest"
   },
   "dependencies": {
-    "@ya-modbus/driver-sdk": "^0.3.0",
-    "@ya-modbus/driver-types": "^0.3.0"
+    "@ya-modbus/driver-sdk": "^0.4.0",
+    "@ya-modbus/driver-types": "^0.4.0"
   },
   "devDependencies": {
-    "@ya-modbus/cli": "^0.3.0"
+    "@ya-modbus/cli": "^0.4.0"
   }
 }

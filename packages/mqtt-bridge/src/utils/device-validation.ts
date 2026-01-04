@@ -18,12 +18,12 @@ const deviceIdSchema = z
 const driverNameSchema = z
   .string()
   .min(1, 'Driver name must not be empty')
-  .regex(/^ya-modbus-driver-[a-z0-9-]+$/, {
+  .regex(/^(@ya-modbus\/driver-[a-z0-9-]+|ya-modbus-driver-[a-z0-9-]+)$/, {
     message:
-      'Driver must start with ya-modbus-driver- and contain only lowercase letters, numbers, and hyphens',
+      'Driver must be @ya-modbus/driver-<name> or ya-modbus-driver-<name> with only lowercase letters, numbers, and hyphens',
   })
-  .refine((name) => !name.includes('..') && !name.includes('/') && !name.includes('\\'), {
-    message: 'Driver name cannot contain path separators',
+  .refine((name) => !name.includes('..') && !name.includes('\\'), {
+    message: 'Driver name cannot contain path traversal sequences',
   })
 
 const rtuConnectionSchema = z.object({

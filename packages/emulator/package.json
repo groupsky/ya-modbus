@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/emulator",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Software Modbus device emulator for testing drivers without physical hardware",
   "keywords": [
     "modbus",
@@ -18,7 +18,9 @@
   },
   "files": [
     "dist",
-    "bin"
+    "bin",
+    "README.md",
+    "CHANGELOG.md"
   ],
   "repository": {
     "type": "git",

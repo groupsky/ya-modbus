@@ -350,7 +350,7 @@ export const createDriver = async (config): Promise<DeviceDriver> => {
 
 - [Driver Development Guide](../../docs/DRIVER-DEVELOPMENT.md)
 - [Driver Types](../driver-types/README.md)
-- [Example Drivers](../ya-modbus-driver-xymd1/)
+- [Example Drivers](../driver-xymd1/)
 
 ## License
 
