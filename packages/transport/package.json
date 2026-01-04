@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/transport",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Modbus transport implementations for ya-modbus",
   "keywords": [
     "modbus",
@@ -39,7 +39,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@ya-modbus/driver-types": "^0.5.0",
+    "@ya-modbus/driver-types": "^0.5.1",
     "async-mutex": "^0.5.0",
     "modbus-serial": "^8.0.18"
   },
