@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/driver-types",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "description": "TypeScript type definitions for ya-modbus device drivers",
   "keywords": [
     "modbus",
@@ -13,7 +13,9 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
   ],
   "repository": {
     "type": "git",

@@ -33,6 +33,44 @@ describe('validateDeviceConfig', () => {
     expect(() => validateDeviceConfig(config)).not.toThrow()
   })
 
+  it('should validate valid scoped driver name', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: '@ya-modbus/driver-test',
+      connection: {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      },
+    }
+
+    expect(() => validateDeviceConfig(config)).not.toThrow()
+  })
+
+  it('should reject scoped driver with path traversal attempt', () => {
+    const invalidDrivers = [
+      '@ya-modbus/driver-../evil',
+      '@ya-modbus/driver-test/../hack',
+      '@ya-modbus/driver-..\\evil',
+    ]
+
+    invalidDrivers.forEach((driver) => {
+      const config = {
+        deviceId: 'device1',
+        driver,
+        connection: {
+          type: 'tcp',
+          host: 'localhost',
+          port: 502,
+          slaveId: 1,
+        },
+      }
+
+      expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
+    })
+  })
+
   it('should throw error for deviceId with MQTT special characters', () => {
     const invalidIds = ['device+1', 'device#1', 'device/1', '$device1']
 
