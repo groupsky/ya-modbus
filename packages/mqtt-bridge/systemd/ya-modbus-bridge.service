@@ -1,0 +1,82 @@
+[Unit]
+Description=Ya-Modbus MQTT Bridge Service
+Documentation=https://github.com/groupsky/ya-modbus/tree/main/packages/mqtt-bridge#readme
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Process Configuration
+Type=simple
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+
+# User/Group
+User=ya-modbus-bridge
+Group=ya-modbus-bridge
+UMask=0027
+
+# Working Directory
+WorkingDirectory=/var/lib/ya-modbus-bridge
+
+# Environment
+Environment="NODE_ENV=production"
+EnvironmentFile=/etc/ya-modbus-bridge/environment
+EnvironmentFile=-/etc/ya-modbus-bridge/environment.local
+
+# Execution
+ExecStart=/usr/bin/ya-modbus-bridge run --config /etc/ya-modbus-bridge/config.json
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ya-modbus-bridge
+
+# Security: Filesystem Protection
+ProtectSystem=strict
+ReadWritePaths=/var/lib/ya-modbus-bridge
+PrivateTmp=yes
+ProtectHome=yes
+NoExecPaths=/
+ExecPaths=/usr/bin /usr/local/bin /usr/lib/node_modules
+
+# Security: Kernel Protection
+ProtectKernelLogs=true
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+ProtectHostname=yes
+
+# Security: Process Isolation
+NoNewPrivileges=true
+PrivateUsers=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RemoveIPC=yes
+
+# Security: Network Access
+# MQTT requires IPv4/IPv6 network access
+RestrictAddressFamilies=AF_INET AF_INET6
+
+# Security: System Call Filtering
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+
+# Security: Capabilities
+# Remove all capabilities - Node.js MQTT bridge doesn't need special privileges
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# Resource Limits
+MemoryMax=512M
+MemoryHigh=384M
+CPUQuota=100%
+TasksMax=128
+LimitNOFILE=1024
+
+[Install]
+WantedBy=multi-user.target
