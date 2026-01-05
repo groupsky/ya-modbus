@@ -7,7 +7,7 @@ ORNO OR-WE-516 3-Phase Energy Meter driver implementation.
 - Implements DeviceDriver interface from `@ya-modbus/driver-types`
 - Uses SDK utilities from `@ya-modbus/driver-sdk` for validation and encoding
 - All floats are IEEE 754 big-endian (use `readFloatBE`/`writeFloatBE`)
-- Two register ranges: realtime (0x0000-0x003B) and energy (0x0100-0x012E)
+- Two register ranges: realtime (0x0000-0x003B) and energy (0x0100-0x012F)
 
 ## Testing
 

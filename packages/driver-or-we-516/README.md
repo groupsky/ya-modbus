@@ -161,7 +161,7 @@ const driver = await createDriver({
 | ------------- | ---------- | ------- | ------------------------------ |
 | 0x0000-0x003B | 60 (120 B) | Holding | Device info + real-time values |
 | 0x0042        | 1 (2 B)    | Holding | Combined code (config)         |
-| 0x0100-0x012E | 48 (96 B)  | Holding | Energy counters                |
+| 0x0100-0x012F | 48 (96 B)  | Holding | Energy counters                |
 
 All float values are IEEE 754 single-precision (32-bit) big-endian.
 

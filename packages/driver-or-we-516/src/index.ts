@@ -9,7 +9,7 @@
  *
  * Register mapping:
  * - Holding registers 0x0000-0x003B: Device info and real-time measurements
- * - Holding registers 0x0100-0x012E: Energy counters
+ * - Holding registers 0x0100-0x012F: Energy counters
  * - All float values are IEEE 754 single-precision (32-bit)
  */
 
@@ -797,7 +797,7 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
       }
 
       if (id === 'combined_code') {
-        if (!isValidInteger(value) || value < 0 || value > 65535) {
+        if (!isValidInteger(value) || !isValidCycleTime(value)) {
           throw new Error(formatRangeError('combined code', 0, 65535))
         }
         await transport.writeSingleRegister(0x0042, value)
