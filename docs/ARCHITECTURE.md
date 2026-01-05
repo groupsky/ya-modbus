@@ -15,12 +15,15 @@ ya-modbus is a TypeScript monorepo that bridges Modbus devices (RTU/TCP) to MQTT
 ### Package Structure
 
 ```
-@ya-modbus/core         - Bridge orchestration, transport, polling
-@ya-modbus/cli          - Command-line tools
-@ya-modbus/devices      - Device driver implementations
-@ya-modbus/converters   - Optional data normalization layer
-@ya-modbus/emulator     - Software Modbus emulator for testing
-@ya-modbus/mqtt-config  - Runtime configuration management
+@ya-modbus/mqtt-bridge     - Bridge orchestration, MQTT publishing, polling
+@ya-modbus/cli             - Command-line tools
+@ya-modbus/transport       - RTU/TCP transport implementations
+@ya-modbus/driver-types    - TypeScript type definitions (types-only)
+@ya-modbus/driver-sdk      - Runtime SDK (base classes, helpers, transforms)
+@ya-modbus/driver-loader   - Dynamic driver loading
+@ya-modbus/device-profiler - Device discovery and register scanning
+@ya-modbus/emulator        - Software Modbus emulator for testing
+@ya-modbus/driver-*        - Device driver implementations (e.g., driver-ex9em, driver-xymd1)
 ```
 
 ### Core Dependencies
@@ -114,7 +117,7 @@ ya-modbus is a TypeScript monorepo that bridges Modbus devices (RTU/TCP) to MQTT
 
 **Register configuration**: Each register specifies address, type, format, poll type, and optional custom interval.
 
-**Implementation**: `packages/core/src/types/register.ts`
+**Implementation**: `packages/mqtt-bridge/src/polling/`
 
 **Rationale**: Reduces bus traffic by 60-80% compared to uniform polling.
 
@@ -138,7 +141,7 @@ ya-modbus is a TypeScript monorepo that bridges Modbus devices (RTU/TCP) to MQTT
 
 **Configuration**: Per-device settings for gap threshold (default: 10 registers) and max batch size (default: 80 registers, per Modbus spec).
 
-**Implementation**: `packages/core/src/polling/read-optimizer.ts`
+**Implementation**: `packages/mqtt-bridge/src/polling/`
 
 **Rationale**: Reduces read operations by 70-90% for typical devices.
 
@@ -194,7 +197,7 @@ modbus/
 
 **Output**: Discovery results include slave ID, serial parameters, identified device type, confidence score, manufacturer, and model.
 
-**Implementation**: `packages/core/src/discovery/`
+**Implementation**: `packages/device-profiler/src/`
 
 ### 6. Error Handling & Publishing
 
@@ -225,7 +228,7 @@ modbus/
 
 **Enforcement**: Validate all operations before execution, reject requests that violate constraints.
 
-**Implementation**: `packages/core/src/device/constraints.ts`
+**Implementation**: `packages/driver-types/src/device-driver.ts`
 
 ### 8. Connection Management & Recovery
 
@@ -274,7 +277,7 @@ modbus/
 
 2. **External Layer** (standardized API):
    - Semantic data points identified by meaningful IDs ("voltage_l1", "total_energy")
-   - Standard data types and units (canonical definitions in `packages/core/src/types/`)
+   - Standard data types and units (canonical definitions in `packages/driver-types/src/`)
    - Polling configuration by data point, not by register
 
 **Transformation Examples**:
@@ -294,9 +297,9 @@ modbus/
 
 **Extensibility**:
 
-- Data types: `packages/core/src/types/data-types.ts`
-- Units: `packages/core/src/types/units.ts`
-- Standard transforms: `packages/core/src/transforms/`
+- Data types: `packages/driver-types/src/data-types.ts`
+- Units: `packages/driver-types/src/units.ts`
+- Standard transforms: `packages/driver-sdk/src/`
 
 **Rationale**:
 
@@ -518,21 +521,23 @@ Device drivers can be distributed as independent npm packages, enabling:
 ```
 @ya-modbus/driver-types      # TypeScript type definitions (types-only)
 @ya-modbus/driver-sdk        # Runtime SDK (base classes, helpers, transforms)
-@ya-modbus/driver-dev-tools  # Development tools (test harness, mocks, emulator)
-@ya-modbus/cli               # CLI tool (production + optional dev features)
-@ya-modbus/core              # Core bridge (loads drivers dynamically)
+@ya-modbus/driver-loader     # Dynamic driver loading
+@ya-modbus/device-profiler   # Development tools (register scanning, device discovery)
+@ya-modbus/cli               # CLI tool (production + dev features)
+@ya-modbus/mqtt-bridge       # Core bridge (loads drivers dynamically)
 ```
 
 **Dependency flow**:
 
 - `driver-types`: No dependencies (pure types)
 - `driver-sdk`: Depends on `driver-types`
-- `driver-dev-tools`: Depends on `driver-sdk`, `driver-types` (dev-only)
-- `cli`: Depends on `driver-sdk`, optionally `driver-dev-tools`
-- `core`: Depends on `driver-sdk` (loads drivers at runtime)
-- Third-party drivers: Depend on `driver-sdk`, dev-depend on `driver-dev-tools`
+- `driver-loader`: Depends on `driver-types`
+- `device-profiler`: Depends on `driver-types`, `transport`
+- `cli`: Depends on `driver-loader`, `driver-types`, `transport`
+- `mqtt-bridge`: Depends on `driver-loader`, `driver-types`, `transport`
+- Third-party drivers: Depend on `driver-sdk`, `driver-types`
 
-No cyclic dependencies: SDK is contract, core is runtime, drivers are plugins.
+No cyclic dependencies: SDK is contract, mqtt-bridge is runtime, drivers are plugins.
 
 ### Driver Discovery
 
@@ -574,7 +579,7 @@ No cyclic dependencies: SDK is contract, core is runtime, drivers are plugins.
 - Standard transformation helpers (multipliers, BCD, decimal dates, etc.)
 - Constraint types (forbidden ranges, batch limits, timing)
 
-**Implementation**: See `packages/ya-modbus-driver-*/src/` for reference driver implementations.
+**Implementation**: See `packages/driver-*/src/` for reference driver implementations (e.g., `driver-ex9em`, `driver-xymd1`).
 
 **Key principle**: Drivers transform device-specific encodings to standard data types transparently.
 
@@ -599,7 +604,7 @@ npx ya-modbus scan-registers --port /dev/ttyUSB0 --slave-id 1
 npx ya-modbus characterize --port /dev/ttyUSB0 --slave-id 1 --output profile.json
 ```
 
-**Development commands** (require `@ya-modbus/driver-dev-tools`):
+**Development commands** (require `@ya-modbus/device-profiler`):
 
 - `discover` - Auto-detect connection parameters (baud, parity, slave ID)
 - `scan-registers` - Find readable/writable register ranges
@@ -623,7 +628,7 @@ npx ya-modbus characterize --port /dev/ttyUSB0 --slave-id 1 --output profile.jso
 - Assertion helpers (data point validation)
 - Fast test cycles (no hardware required)
 
-**Usage examples**: See `packages/ya-modbus-driver-*/src/**/*.test.ts` for test patterns.
+**Usage examples**: See `packages/driver-*/src/**/*.test.ts` for test patterns (e.g., `driver-ex9em`, `driver-xymd1`).
 
 ### Versioning & Compatibility
 
@@ -654,17 +659,17 @@ npx ya-modbus characterize --port /dev/ttyUSB0 --slave-id 1 --output profile.jso
 
 **Purpose**: Bootstraps driver development and validates device documentation.
 
-**Schema**: See `packages/driver-dev-tools/src/types/device-profile.ts` for complete structure.
+**Schema**: See `packages/device-profiler/src/` for device profiling types and structure.
 
 ### Built-in Drivers as Plugins
 
-**No special casing**: Built-in drivers (`@ya-modbus/devices`) use same interface as third-party drivers.
+**No special casing**: Built-in drivers (e.g., `@ya-modbus/driver-ex9em`, `@ya-modbus/driver-xymd1`) use same interface as third-party drivers.
 
 Benefits:
 
 - Consistent architecture (no dual implementation paths)
 - Built-in drivers serve as reference implementations
-- `@ya-modbus/devices` becomes optional (users install needed drivers only)
+- Users install only needed drivers (smaller footprint)
 - Clear separation between core bridge and device-specific code
 
 ### Package Installation
@@ -738,16 +743,15 @@ npm install ya-modbus ya-modbus-driver-solar
 
 ### Migration Path
 
-**Existing built-in drivers** refactor to use plugin architecture:
+The plugin architecture is fully implemented:
 
-1. Extract types to `@ya-modbus/driver-types`
-2. Move runtime SDK to `@ya-modbus/driver-sdk`
-3. Extract dev tools to `@ya-modbus/driver-dev-tools`
-4. Refactor `@ya-modbus/devices` drivers to use SDK
-5. Update `@ya-modbus/core` to load drivers via SDK contract
-6. Keep `@ya-modbus/devices` as official driver collection
+1. Types extracted to `@ya-modbus/driver-types`
+2. Runtime SDK in `@ya-modbus/driver-sdk`
+3. Device profiling tools in `@ya-modbus/device-profiler`
+4. Built-in drivers use SDK (e.g., `@ya-modbus/driver-ex9em`, `@ya-modbus/driver-xymd1`)
+5. `@ya-modbus/mqtt-bridge` loads drivers via `@ya-modbus/driver-loader`
 
-No breaking changes for users (same device IDs, behavior).
+Drivers follow the same interface pattern (same device IDs, behavior).
 
 ## Future Enhancements
 

@@ -61,7 +61,7 @@ module.exports = {
 
 **REQUIRED**: All new packages must set minimum coverage thresholds of **95%** for branches, functions, lines, and statements. This ensures high test quality and prevents regressions.
 
-See `packages/cli/jest.config.cjs` or `packages/ya-modbus-driver-xymd1/jest.config.cjs` for reference.
+See `packages/cli/jest.config.cjs` or `packages/driver-xymd1/jest.config.cjs` for reference.
 
 ### 3. AGENTS.md
 
@@ -149,6 +149,18 @@ Packages typically extend the base tsconfig:
 }
 ```
 
+### Engine Requirements
+
+All packages MUST specify the Node.js engine requirement:
+
+```json
+{
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
+```
+
 ### Module Resolution
 
 For ESM packages, set in package.json:
@@ -175,7 +187,9 @@ Reference other workspace packages:
 
 ### Driver Package
 
-Device driver packages should follow naming: `ya-modbus-driver-<device>`
+Device driver packages use scoped naming: `@ya-modbus/driver-<device>`
+
+The package folder should be named `driver-<device>` (e.g., `packages/driver-xymd1`).
 
 **Required exports**:
 
@@ -273,7 +287,7 @@ describe('Configuration consistency', () => {
 
 This pattern ensures the factory defaults are always valid according to the device's supported values.
 
-See `packages/ya-modbus-driver-xymd1` for reference implementation.
+See `packages/driver-xymd1` for reference implementation.
 
 ### Utility Package
 

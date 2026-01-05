@@ -9,26 +9,40 @@ Before publishing packages to npm:
 1. **NPM Organization**: Ensure `@ya-modbus` scope exists on npm
 2. **Package Registration**: First publish creates packages (no pre-registration needed)
 3. **User Permissions**: Publisher needs appropriate npm access to the scope
-4. **Repository Secrets**: Configure NPM_TOKEN in GitHub
+4. **Trusted Publishers**: Configure npm trusted publishers with GitHub OIDC
 
-## NPM Token Configuration
+## NPM Trusted Publishers (OIDC)
 
-### Creating an NPM Token
+This project uses npm Trusted Publishers for secure, tokenless publishing via GitHub OIDC.
 
-1. Go to https://www.npmjs.com/settings/tokens
-2. Click "Generate New Token"
-3. Select token type: **Automation** (for CI/CD)
-4. Generate and copy the token
+### How It Works
 
-### Adding Token to GitHub
+- GitHub Actions authenticates to npm using OpenID Connect (OIDC)
+- No long-lived npm tokens are stored in repository secrets
+- Published packages include provenance attestations (via `--provenance` flag)
+- Authentication is scoped to specific repository and workflow
 
-1. Go to repository Settings → Secrets and variables → Actions
-2. Click "New repository secret"
-3. Name: `NPM_TOKEN`
-4. Value: Paste your npm token
-5. Click "Add secret"
+### Configuration
 
-**Note**: After first publish, migrate to npm Trusted Publishers for enhanced security. Trusted Publishers eliminate the need for long-lived tokens by using OIDC. See: https://docs.npmjs.com/trusted-publishers
+Trusted Publishers are configured per-package on npm:
+
+1. Go to your package on npm (e.g., https://www.npmjs.com/package/@ya-modbus/cli)
+2. Navigate to Settings → Trusted Publishers
+3. Add a new publisher with:
+   - **Repository owner**: The GitHub organization/user
+   - **Repository name**: The repository name
+   - **Workflow file**: `release.yml`
+   - **Environment**: `npm`
+
+### GitHub Environment
+
+The release workflow uses a GitHub environment named `npm`:
+
+1. Go to repository Settings → Environments
+2. Create environment named `npm`
+3. Configure deployment protection rules as needed (optional)
+
+See: https://docs.npmjs.com/trusted-publishers for detailed setup
 
 ## GitHub Token (Automatic)
 
@@ -54,23 +68,20 @@ Check that workflow can authenticate:
 
 To publish packages manually from local machine:
 
-1. **Environment Variables**:
-   - `NPM_TOKEN` - For npm authentication (or `NODE_AUTH_TOKEN`)
+1. **NPM Authentication**: Log in to npm with `npm login`
+2. **Environment Variables**:
    - `GH_TOKEN` - For creating GitHub releases
-
-2. **Clean Working Tree**: No uncommitted changes
-
-3. **Dependencies Installed**: Run `npm ci`
-
-4. **Tests Passing**: Run `npm test`
+3. **Clean Working Tree**: No uncommitted changes
+4. **Dependencies Installed**: Run `npm ci`
+5. **Tests Passing**: Run `npm test`
 
 ### Manual Release Commands
 
 Execute these commands in order:
 
 ```bash
-# Set npm authentication (use NPM_TOKEN from environment)
-npm config set //registry.npmjs.org/:_authToken $NPM_TOKEN
+# Log in to npm (if not already authenticated)
+npm login
 
 # Build packages
 npm run build
@@ -79,11 +90,13 @@ npm run build
 npm run test
 
 # Version packages (creates git tags and GitHub releases)
-npx lerna version --yes --no-private
+npx lerna version --yes --no-private --sync-workspace-lock
 
 # Publish to npm
 npx lerna publish from-git --yes --no-private
 ```
+
+**Note**: Manual releases do not include provenance attestations. Provenance is only available through the GitHub Actions workflow with OIDC authentication.
 
 **Important**: Do NOT create npm scripts named `version` or `publish` - these names conflict with npm lifecycle hooks and cause recursive execution issues.
 
@@ -91,13 +104,14 @@ See: docs/agents/release.md for more details on the release workflow
 
 ## Troubleshooting
 
-### Authentication Failures
+### OIDC Authentication Failures
 
-If npm publish fails with 401:
+If npm publish fails with 401 in GitHub Actions:
 
-- Verify NPM_TOKEN secret is configured in GitHub
-- Check token hasn't expired
-- Verify token type is "Automation" (not "Publish")
+- Verify trusted publisher is configured for the package on npm
+- Check `id-token: write` permission is set in workflow
+- Verify `environment: npm` is configured in the job
+- Ensure workflow file name matches the trusted publisher config
 
 ### GitHub Release Creation Failures
 
@@ -114,12 +128,13 @@ If publish fails with 403:
 - Verify user has publish access to `@ya-modbus` scope
 - Check npm organization membership
 - Verify package isn't already published by another user
+- For OIDC: Check trusted publisher configuration matches exactly
 
 ## Security Notes
 
-- **Never commit tokens** to the repository
-- Use "Automation" tokens for CI/CD (not personal tokens)
-- Tokens can be rotated in npm settings
+- **OIDC is preferred**: No long-lived tokens to manage or rotate
+- **Provenance**: Packages published via workflow include cryptographic provenance
+- **Environment protection**: Use GitHub environment rules to control who can trigger releases
 - GitHub automatically masks token values in workflow logs
 
 See: .github/workflows/release.yml for workflow implementation

@@ -14,8 +14,20 @@ See: `.github/workflows/ci.yml` for matrix generation implementation
 
 ## Release Workflows
 
-For release and publishing workflows, see dedicated documentation.
+Uses npm trusted publishers with OIDC for secure publishing. Requires `id-token: write` permission and `npm` environment.
 
 See: `docs/agents/release.md` for release process
 See: `.github/workflows/release.yml` for production/pre-release workflow
 See: `.github/workflows/cleanup-prerelease.yml` for dist-tag cleanup
+
+## Claude Workflows
+
+Two workflows for Claude Code integration with security hardening.
+
+### Security Measures
+
+- **Fork PR skip**: `claude-code-review.yml` skips fork PRs to prevent prompt injection
+- **Tool restrictions**: Both workflows use `--allowed-tools` to limit Claude to safe operations
+
+See: `.github/workflows/claude.yml` for issue/comment responses
+See: `.github/workflows/claude-code-review.yml` for automated PR reviews

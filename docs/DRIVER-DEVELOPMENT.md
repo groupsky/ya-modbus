@@ -15,12 +15,15 @@ Device drivers are distributed as npm packages that:
 
 ### 1. Create Driver Package
 
-**Recommended naming**: `ya-modbus-driver-<name>`
+**Monorepo packages**: `@ya-modbus/driver-<name>` (scoped naming)
 
-- Examples: `ya-modbus-driver-solar`, `ya-modbus-driver-energymeter`
+- Directory: `packages/driver-<name>`
+- Package name: `@ya-modbus/driver-<name>`
+
+**Third-party packages**: `ya-modbus-driver-<name>` or `@org/ya-modbus-driver-<name>`
+
 - Makes drivers easily discoverable
 - Consistent with ecosystem conventions
-- Can use scoped packages: `@acme/ya-modbus-driver-solar`
 
 ```bash
 # Create new npm package with recommended naming
@@ -31,8 +34,8 @@ npm init -y
 # Install SDK (production dependency)
 npm install @ya-modbus/driver-sdk
 
-# Install dev tools (development only)
-npm install --save-dev @ya-modbus/driver-dev-tools typescript @types/node
+# Install dev dependencies
+npm install --save-dev @ya-modbus/emulator typescript @types/node
 ```
 
 ### 2. Package Structure
@@ -55,7 +58,7 @@ my-modbus-driver/
 - Device family with shared logic but different capabilities
 - Multiple firmware versions with different register layouts
 
-See `packages/ya-modbus-driver-*/` for reference implementations.
+See `packages/driver-*/` for reference implementations.
 
 **Required**: Implement `DeviceDriver` interface from `@ya-modbus/driver-types`.
 
@@ -206,21 +209,21 @@ Driver owns the transformation layer - consumers never see raw registers.
 
 ### Example Driver
 
-See `packages/ya-modbus-driver-*/src/` for complete examples.
+See `packages/driver-*/src/` for complete examples.
 
 ## Testing
 
 ### Test with Emulator
 
 ```typescript
-import { createTestHarness } from '@ya-modbus/driver-dev-tools'
+import { ModbusEmulator } from '@ya-modbus/emulator'
 import { createDriver } from './device'
 
 describe('MyDevice', () => {
-  const harness = createTestHarness()
+  let emulator: ModbusEmulator
 
   beforeEach(async () => {
-    await harness.start({
+    emulator = new ModbusEmulator({
       devices: [
         {
           slaveId: 1,
@@ -233,13 +236,13 @@ describe('MyDevice', () => {
     })
   })
 
-  afterEach(() => harness.stop())
+  afterEach(() => emulator.stop())
 
   it('should read voltage with explicit device type', async () => {
     const driver = await createDriver({
       device: 'ModelA',
       slaveId: 1,
-      transport: harness.getTransport(),
+      transport: emulator.getTransport(),
     })
 
     const value = await driver.readDataPoint('voltage_l1')
@@ -250,7 +253,7 @@ describe('MyDevice', () => {
     const driver = await createDriver({
       // No device - will auto-detect
       slaveId: 1,
-      transport: harness.getTransport(),
+      transport: emulator.getTransport(),
     })
 
     expect(driver.model).toBe('ModelA')
@@ -443,7 +446,7 @@ Document in driver implementation, enforce via function composition.
 
 ```json
 {
-  "name": "ya-modbus-driver-solar",
+  "name": "@ya-modbus/driver-solar",
   "version": "1.0.0",
   "description": "Modbus drivers for Acme Solar inverters (X1000, X2000, X5000 series)",
   "keywords": ["ya-modbus-driver", "modbus", "solar", "inverter"],
@@ -453,25 +456,29 @@ Document in driver implementation, enforce via function composition.
     "@ya-modbus/driver-sdk": "^1.0.0"
   },
   "devDependencies": {
-    "@ya-modbus/driver-dev-tools": "^1.0.0",
+    "@ya-modbus/emulator": "^1.0.0",
     "typescript": "^5.0.0"
   },
   "peerDependencies": {
     "@ya-modbus/driver-sdk": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
 ```
 
 **Naming conventions**:
 
-- **Recommended**: `ya-modbus-driver-<name>` (e.g., `ya-modbus-driver-solar`)
-- **Scoped packages**: `@org/ya-modbus-driver-<name>` (e.g., `@acme/ya-modbus-driver-solar`)
+- **Monorepo**: `@ya-modbus/driver-<name>` (e.g., `@ya-modbus/driver-ex9em`)
+- **Third-party**: `ya-modbus-driver-<name>` or `@org/ya-modbus-driver-<name>`
 - Any name works if `keywords` includes `"ya-modbus-driver"`
 
 **Required fields**:
 
 - `keywords` must include `"ya-modbus-driver"` for discovery
 - `peerDependencies` declares SDK compatibility
+- `engines` field with Node.js version requirement (e.g., `"node": ">=20.0.0"`)
 - `description` should list supported device types if multiple
 
 **Benefits of single factory approach**:
@@ -737,9 +744,9 @@ Tests pass with emulator but fail with real device.
 
 Complete driver examples in monorepo:
 
-- `packages/ya-modbus-driver-xymd1/src/device.ts` - Energy meter reference implementation
-- `packages/ya-modbus-driver-ex9em/src/device.ts` - Energy meter with multiple data points
-- See other `packages/ya-modbus-driver-*/` for additional examples
+- `packages/driver-xymd1/src/device.ts` - Temperature/humidity sensor reference implementation
+- `packages/driver-ex9em/src/device.ts` - Energy meter with multiple data points
+- See other `packages/driver-*/` for additional examples
 
 Study these for patterns and conventions.
 
@@ -747,7 +754,7 @@ Study these for patterns and conventions.
 
 - **API Reference**: `packages/driver-sdk/docs/`
 - **Type Definitions**: `packages/driver-types/index.d.ts`
-- **Test Utilities**: `packages/driver-dev-tools/docs/`
+- **Emulator**: `packages/emulator/` for testing without hardware
 - **Architecture**: `docs/ARCHITECTURE.md`
 - **Contributing**: `CONTRIBUTING.md`
 
@@ -755,4 +762,4 @@ Study these for patterns and conventions.
 
 - **GitHub Issues**: Bug reports for SDK/tools
 - **GitHub Discussions**: Questions about driver development
-- **Examples**: Reference implementations in `packages/ya-modbus-driver-*/`
+- **Examples**: Reference implementations in `packages/driver-*/`

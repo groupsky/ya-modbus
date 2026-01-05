@@ -1,5 +1,5 @@
 ---
-paths: packages/ya-modbus-driver-*/**/*.ts
+paths: packages/driver-*/**/*.ts
 ---
 
 # Driver Development Guidelines
@@ -27,12 +27,12 @@ See: `packages/driver-sdk/src/codec.ts` for buffer transformation functions
 See: `packages/driver-sdk/src/validators.ts` for configuration validators
 See: `packages/driver-sdk/src/errors.ts` for error formatting
 See: `packages/driver-sdk/README.md` for API reference
-See: `packages/ya-modbus-driver-ex9em/src/device.ts` for usage examples
+See: `packages/driver-ex9em/src/device.ts` for usage examples
 
 ## Naming Conventions
 
-- Package: `ya-modbus-driver-<name>` (e.g., `ya-modbus-driver-solar`)
-- Scoped: `@org/ya-modbus-driver-<name>`
+- Package: `@ya-modbus/driver-<name>` (e.g., `@ya-modbus/driver-ex9em`)
+- Third-party: `@org/ya-modbus-driver-<name>` or `ya-modbus-driver-<name>`
 - Data points: semantic, not `reg_0000` or `holding_6`
 - Units: canonical from driver-sdk (`V` not `volts`)
 
@@ -60,7 +60,7 @@ If exporting configs, add cross-validation tests:
 
 ## Testing
 
-- Emulator for fast iteration (`@ya-modbus/driver-dev-tools`)
+- Emulator for fast iteration (`@ya-modbus/emulator`)
 - Real device testing via `npx ya-modbus` commands
 - Test both explicit device type and auto-detection
 
@@ -69,7 +69,7 @@ If exporting configs, add cross-validation tests:
 - `src/index.ts` - Export `createDriver` function
 - `src/device.ts` - Driver implementation
 - `src/device.test.ts` - Tests
-- `package.json` - Must include `"ya-modbus-driver"` in keywords
+- `package.json` - Must include `"ya-modbus-driver"` in keywords and `engines` field
 
 See: `docs/DRIVER-DEVELOPMENT.md` for complete guide
-See: `packages/ya-modbus-driver-*/` for reference implementations
+See: `packages/driver-*/` for reference implementations
