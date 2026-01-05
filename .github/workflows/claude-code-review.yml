@@ -1,20 +1,52 @@
 name: Claude Code Review
 
 on:
-  pull_request:
-    types: [opened, synchronize]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: claude-review-${{ github.event.issue.number }}
+  cancel-in-progress: true
 
 jobs:
-  claude-review:
-    # Skip fork PRs to prevent prompt injection via malicious PR content
-    if: github.event.pull_request.head.repo.full_name == github.repository
+  # Notify unauthorized users who try to use the command
+  notify-unauthorized:
+    if: |
+      github.event.issue.pull_request &&
+      (github.event.comment.body == '/claude-review' ||
+       startsWith(github.event.comment.body, '/claude-review ')) &&
+      github.event.comment.author_association != 'OWNER'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: React to indicate unauthorized
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -f content='-1'
 
+  # Acknowledge the command with a reaction
+  acknowledge:
+    if: |
+      github.event.issue.pull_request &&
+      (github.event.comment.body == '/claude-review' ||
+       startsWith(github.event.comment.body, '/claude-review ')) &&
+      github.event.comment.author_association == 'OWNER'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: React to acknowledge command
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -f content='+1'
+
+  claude-review:
+    needs: acknowledge
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -23,6 +55,16 @@ jobs:
       id-token: write
 
     steps:
+      - name: Check if PR is from fork
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          IS_FORK=$(gh pr view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json isCrossRepository -q '.isCrossRepository')
+          if [ "$IS_FORK" = "true" ]; then
+            echo "::error::Cannot review PRs from forks due to security concerns"
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
@@ -35,7 +77,7 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             REPO: ${{ github.repository }}
-            PR NUMBER: ${{ github.event.pull_request.number }}
+            PR NUMBER: ${{ github.event.issue.number }}
 
             Please review this pull request and provide feedback on:
             - Code quality and best practices
