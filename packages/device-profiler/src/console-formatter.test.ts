@@ -203,4 +203,93 @@ describe('formatSummary', () => {
 
     expect(output).toContain('12.3')
   })
+
+  it('should handle object errors gracefully', () => {
+    // Bug scenario: error field contains an object instead of string,
+    // which was displayed as "[object Object]" instead of a readable message
+    const results: ScanResult[] = [
+      {
+        address: 78,
+        type: RegisterType.Holding,
+        success: false,
+        timing: 3202.3,
+        error: { code: 'EBUSY', message: 'Port is busy' } as unknown as string,
+        errorType: ErrorType.Unknown,
+      },
+    ]
+
+    const output = formatSummary(results)
+
+    // Should not display [object Object]
+    expect(output).not.toContain('[object Object]')
+    // Should display stringified error
+    expect(output).toContain('Port is busy')
+  })
+
+  it('should handle null error', () => {
+    const results: ScanResult[] = [
+      {
+        address: 0,
+        type: RegisterType.Holding,
+        success: false,
+        timing: 100,
+        error: null as unknown as string,
+        errorType: ErrorType.Unknown,
+      },
+    ]
+
+    const output = formatSummary(results)
+    // Count occurrences of '-' (should have at least 2: value and error)
+    const dashes = (output.match(/-/g) ?? []).length
+    expect(dashes).toBeGreaterThanOrEqual(2)
+  })
+
+  it('should handle undefined error', () => {
+    const results: ScanResult[] = [
+      {
+        address: 0,
+        type: RegisterType.Holding,
+        success: false,
+        timing: 100,
+        errorType: ErrorType.Unknown,
+      },
+    ]
+
+    const output = formatSummary(results)
+    const dashes = (output.match(/-/g) ?? []).length
+    expect(dashes).toBeGreaterThanOrEqual(2)
+  })
+
+  it('should handle Error instance', () => {
+    const results: ScanResult[] = [
+      {
+        address: 0,
+        type: RegisterType.Holding,
+        success: false,
+        timing: 100,
+        error: new Error('Connection refused') as unknown as string,
+        errorType: ErrorType.Unknown,
+      },
+    ]
+
+    const output = formatSummary(results)
+    expect(output).toContain('Connection refused')
+  })
+
+  it('should handle object without message property', () => {
+    const results: ScanResult[] = [
+      {
+        address: 0,
+        type: RegisterType.Holding,
+        success: false,
+        timing: 100,
+        error: { code: 'EBUSY', errno: -16 } as unknown as string,
+        errorType: ErrorType.Unknown,
+      },
+    ]
+
+    const output = formatSummary(results)
+    // Should JSON stringify the object
+    expect(output).toContain('EBUSY')
+  })
 })
