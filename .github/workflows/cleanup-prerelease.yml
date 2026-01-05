@@ -93,11 +93,13 @@ jobs:
 
       - name: Summary
         if: always()
+        env:
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           echo "## Pre-release Cleanup Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- PR: #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Branch: ${{ github.event.pull_request.head.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: $PR_BRANCH" >> $GITHUB_STEP_SUMMARY
           echo "- Status: ${{ github.event.pull_request.merged && 'Merged' || 'Closed without merge' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
