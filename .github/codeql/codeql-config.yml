@@ -1,0 +1,14 @@
+name: ya-modbus CodeQL config
+
+paths:
+  - packages/
+  - .github/
+
+paths-ignore:
+  - '**/node_modules/**'
+  - '**/dist/**'
+  - '**/coverage/**'
+  - '**/*.test.ts'
+  - '**/*.spec.ts'
+  - '**/__tests__/**'
+  - '**/__mocks__/**'
