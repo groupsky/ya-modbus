@@ -1,8 +1,11 @@
 ---
-paths: /**/{AGENTS,CLAUDE,.aider}.md, /**/.cursorrules, /.github/copilot-instructions.md, /**/docs/agents/*.md, /**/.claude/rules/**/*.md
+paths: /**/{AGENTS,CLAUDE}.md, /.github/copilot-instructions.md, /**/docs/agents/*.md, /**/.claude/rules/**/*.md, /**/.cursor/rules/**/*.md
 ---
 
 # Agent Documentation Maintenance
+
+AGENTS.md files provide instructions to AI coding agents (Claude, Cursor, Copilot, etc.).
+AI tooling automatically reads these files and includes them in the agent's context.
 
 ## Core Principles
 
@@ -21,13 +24,20 @@ paths: /**/{AGENTS,CLAUDE,.aider}.md, /**/.cursorrules, /.github/copilot-instruc
 - Points to docs/agents/\*.md for detailed guidelines
 - Use ALL CAPS for imperative keywords (READ, BEFORE, NEVER, ALWAYS, MUST)
 - NEVER include code examples or violation demonstrations
-- NEVER duplicate information from parent directory AGENTS.md files
+
+## Scope & Inheritance
+
+- AGENTS.md can be placed in any directory
+- Applies to all files within that directory (recursively)
+- Nested AGENTS.md extends and overrides parent AGENTS.md
+- Child docs should NOT repeat parent instructions
 
 ## File Naming
 
 - Canonical: AGENTS.md
-- Symlinks: CLAUDE.md, .aider.md, .cursorrules → AGENTS.md
-- Agent docs: .claude/rules/agents → docs/agents (for Claude Desktop)
+- Symlinks: CLAUDE.md → AGENTS.md
+- Agent docs: .claude/rules/agents → docs/agents (Claude Code)
+- Agent docs: .cursor/rules/agents → docs/agents (Cursor IDE)
 
 ## Frontmatter
 
