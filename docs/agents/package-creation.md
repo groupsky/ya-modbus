@@ -66,9 +66,9 @@ Before committing:
 4. Coverage meets 95% thresholds
 5. Package added to root jest.config.js
 
-Before first release:
+Before merging to main (for publishable packages):
 
-6. First-time npm publish completed manually (see docs/PUBLISHING-SETUP.md)
+6. First-time npm publish completed manually (see `docs/PUBLISHING-SETUP.md`)
 7. Trusted publisher configured on npm.com
 
 ## References

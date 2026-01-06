@@ -134,7 +134,7 @@ After creating the package:
 
 ## First-Time NPM Publishing
 
-When publishing a new package to npm for the first time, you must publish manually before automated releases will work. This is due to a "chicken and egg" problem with npm trusted publishers:
+When publishing a new package to npm for the first time, you MUST publish manually before automated releases will work. This is due to a "chicken and egg" problem with npm trusted publishers:
 
 - Trusted publishers require the package to already exist on npm
 - The package doesn't exist until you publish it
@@ -152,9 +152,9 @@ When publishing a new package to npm for the first time, you must publish manual
 
 2. **Configure trusted publisher** on npm:
    - Go to package settings on npm.com
-   - Add trusted publisher with: owner=`groupsky`, repo=`ya-modbus`, workflow=`release.yml`, environment=`npm`
+   - Add trusted publisher with: owner=`<github-owner>`, repo=`<repo-name>`, workflow=`release.yml`, environment=`npm`
 
-3. **Verify** by triggering a pre-release from a feature branch
+3. **Verify** by triggering a pre-release workflow (see [Release Process](agents/release.md) for details)
 
 See [PUBLISHING-SETUP.md](PUBLISHING-SETUP.md#first-time-package-publishing) for detailed instructions.
 

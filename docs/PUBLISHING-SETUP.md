@@ -46,7 +46,7 @@ See: https://docs.npmjs.com/trusted-publishers for detailed setup
 
 ## First-Time Package Publishing
 
-When creating a new package, you must publish it manually before the trusted publisher workflow can work. This is because npm trusted publishers can only be configured for packages that already exist on the registry.
+When creating a new package, you MUST publish it manually before the trusted publisher workflow can work. This is because npm trusted publishers can only be configured for packages that already exist on the registry.
 
 ### The Chicken-and-Egg Problem
 
@@ -78,8 +78,8 @@ After the package exists on npm:
 1. Go to your package on npm (e.g., https://www.npmjs.com/package/@ya-modbus/your-package)
 2. Navigate to **Settings** → **Trusted Publishers**
 3. Click **Add trusted publisher** and fill in:
-   - **Repository owner**: `groupsky` (or your GitHub organization/user)
-   - **Repository name**: `ya-modbus`
+   - **Repository owner**: Your GitHub organization or username
+   - **Repository name**: Your repository name
    - **Workflow file**: `release.yml`
    - **Environment**: `npm`
 
@@ -88,7 +88,7 @@ After the package exists on npm:
 Trigger a test release to confirm the trusted publisher is working:
 
 1. Create a feature branch with a minor change
-2. Open a PR and trigger a manual pre-release workflow
+2. Open a PR and trigger a manual pre-release workflow (see `docs/agents/release.md` for details)
 3. Verify the workflow publishes successfully with provenance
 
 ## GitHub Token (Automatic)
