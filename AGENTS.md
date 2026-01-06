@@ -45,10 +45,10 @@ Reading task-specific documentation prevents implementation errors and ensures y
 → READ docs/agents/release.md (Lerna-Lite, versioning, npm publishing)
 
 **Before modifying these docs:**
-→ READ docs/agents/maintenance.md
+→ READ docs/agents/agent-docs.md
 
 **Before modifying CI/CD:**
-→ READ docs/agents/workflows.md or .github/AGENTS.md
+→ READ docs/agents/workflows.md
 
 **For architecture questions:**
 → READ docs/ARCHITECTURE.md
