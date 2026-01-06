@@ -132,6 +132,32 @@ After creating the package:
 - [ ] `npm run lint` from root includes the package
 - [ ] README.md contains essential usage information
 
+## First-Time NPM Publishing
+
+When publishing a new package to npm for the first time, you MUST publish manually before automated releases will work. This is due to a "chicken and egg" problem with npm trusted publishers:
+
+- Trusted publishers require the package to already exist on npm
+- The package doesn't exist until you publish it
+- **Solution**: Manual first publish → configure trusted publisher → automation works
+
+### Quick Steps
+
+1. **Manual first publish** from package directory:
+
+   ```bash
+   npm login
+   npm run build
+   npm publish --access public
+   ```
+
+2. **Configure trusted publisher** on npm:
+   - Go to package settings on npm.com
+   - Add trusted publisher with: owner=`<github-owner>`, repo=`<repo-name>`, workflow=`release.yml`, environment=`npm`
+
+3. **Verify** by triggering a pre-release workflow (see [Release Process](agents/release.md) for details)
+
+See [PUBLISHING-SETUP.md](PUBLISHING-SETUP.md#first-time-package-publishing) for detailed instructions.
+
 ## Common Patterns
 
 ### TypeScript Configuration
