@@ -7,9 +7,9 @@ First-time configuration for publishing packages to npm using Lerna-Lite.
 Before publishing packages to npm:
 
 1. **NPM Organization**: Ensure `@ya-modbus` scope exists on npm
-2. **Package Registration**: First publish creates packages (no pre-registration needed)
+2. **First Publish is Manual**: New packages MUST be published manually first (trusted publishers only work for existing packages)
 3. **User Permissions**: Publisher needs appropriate npm access to the scope
-4. **Trusted Publishers**: Configure npm trusted publishers with GitHub OIDC
+4. **Trusted Publishers**: Configure npm trusted publishers with GitHub OIDC (after first publish)
 
 ## NPM Trusted Publishers (OIDC)
 
@@ -43,6 +43,53 @@ The release workflow uses a GitHub environment named `npm`:
 3. Configure deployment protection rules as needed (optional)
 
 See: https://docs.npmjs.com/trusted-publishers for detailed setup
+
+## First-Time Package Publishing
+
+When creating a new package, you must publish it manually before the trusted publisher workflow can work. This is because npm trusted publishers can only be configured for packages that already exist on the registry.
+
+### The Chicken-and-Egg Problem
+
+1. Automated release workflow uses trusted publishers → requires package to exist on npm
+2. Package doesn't exist on npm → can't configure trusted publisher
+3. **Solution**: Manual first publish → configure trusted publisher → automation works
+
+### Step 1: Manual First Publish
+
+From the package directory:
+
+```bash
+# Log in to npm (if not already authenticated)
+npm login
+
+# Build the package
+npm run build
+
+# Publish with public access (required for scoped packages)
+npm publish --access public
+```
+
+**Note**: Manual publishes do NOT include provenance attestations. Provenance is only available through the GitHub Actions workflow with OIDC authentication.
+
+### Step 2: Configure Trusted Publisher
+
+After the package exists on npm:
+
+1. Go to your package on npm (e.g., https://www.npmjs.com/package/@ya-modbus/your-package)
+2. Navigate to **Settings** → **Trusted Publishers**
+3. Click **Add trusted publisher** and fill in:
+   - **Repository owner**: `groupsky` (or your GitHub organization/user)
+   - **Repository name**: `ya-modbus`
+   - **Workflow file**: `release.yml`
+   - **Environment**: `npm`
+
+### Step 3: Verify Automated Publishing
+
+Trigger a test release to confirm the trusted publisher is working:
+
+1. Create a feature branch with a minor change
+2. Open a PR and trigger a manual pre-release workflow
+3. Verify the workflow publishes successfully with provenance
 
 ## GitHub Token (Automatic)
 
