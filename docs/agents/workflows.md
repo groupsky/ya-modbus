@@ -18,7 +18,6 @@ Uses npm trusted publishers with OIDC for secure publishing. Requires `id-token:
 
 See: `docs/agents/release.md` for release process
 See: `.github/workflows/release.yml` for production/pre-release workflow
-See: `.github/workflows/cleanup-prerelease.yml` for dist-tag cleanup
 
 ## Claude Workflows
 

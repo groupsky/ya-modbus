@@ -187,69 +187,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Version packages (pre-release)
-        if: steps.release-type.outputs.is_prerelease == 'true'
-        id: version-prerelease
-        run: |
-          npx lerna version prerelease \
-            --preid ${{ steps.release-type.outputs.preid }} \
-            --no-git-tag-version \
-            --no-push \
-            --yes \
-            --no-private \
-            --sync-workspace-lock
-
-      - name: Check for version conflicts (pre-release)
-        if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false'
-        run: |
-          echo "Checking for version conflicts on npm..."
-          CONFLICT_FOUND=false
-
-          # Get list of packages and their versions from package.json files
-          for pkg_json in packages/*/package.json; do
-            if [ -f "$pkg_json" ]; then
-              PKG_NAME=$(jq -r '.name' "$pkg_json")
-              PKG_VERSION=$(jq -r '.version' "$pkg_json")
-              PKG_PRIVATE=$(jq -r '.private // false' "$pkg_json")
-
-              # Skip private packages
-              if [ "$PKG_PRIVATE" == "true" ]; then
-                continue
-              fi
-
-              echo "Checking $PKG_NAME@$PKG_VERSION..."
-
-              # Check if this version exists on npm
-              if npm view "$PKG_NAME@$PKG_VERSION" version 2>/dev/null; then
-                echo "  ❌ Version $PKG_VERSION already exists on npm!"
-                CONFLICT_FOUND=true
-              else
-                echo "  ✅ Version $PKG_VERSION is available"
-              fi
-            fi
-          done
-
-          if [ "$CONFLICT_FOUND" == "true" ]; then
-            echo ""
-            echo "❌ ERROR: Version conflict detected!"
-            echo "One or more package versions already exist on npm."
-            echo ""
-            echo "This can happen when:"
-            echo "  - Multiple pre-releases are triggered simultaneously"
-            echo "  - A previous release succeeded but workflow failed afterward"
-            echo ""
-            echo "Please wait a moment and try again to get the next version number."
-            exit 1
-          fi
-
-          echo "✅ No version conflicts detected"
-
       - name: Publish to npm (production)
         if: |
           steps.release-type.outputs.is_prerelease == 'false' &&
           steps.release-type.outputs.is_dry_run == 'false' &&
           steps.version-production.outputs.has_changes == 'true'
-        run: npx lerna publish from-git --yes --no-private --provenance
+        run: npx lerna publish from-git --yes --no-private
 
       - name: No changes detected
         if: |
@@ -268,12 +211,37 @@ jobs:
       - name: Publish to npm (pre-release)
         if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false'
         run: |
-          npx lerna publish from-package \
+          # Use canary mode for automatic versioning with git SHA
+          # Format: X.Y.Z-{preid}.0+{sha} (e.g., 0.6.1-pr123.0+abc1234)
+          # The SHA ensures uniqueness even with multiple publishes
+          # Provenance attestations are automatically generated via OIDC trusted publishing
+          npx lerna publish --canary \
+            --preid ${{ steps.release-type.outputs.preid }} \
             --dist-tag ${{ steps.release-type.outputs.dist_tag }} \
-            --no-git-reset \
             --yes \
             --no-private \
-            --provenance
+            --summary-file lerna-publish-summary.json
+
+      - name: Verify packages were published
+        if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false'
+        id: verify-publish
+        run: |
+          if [ -f lerna-publish-summary.json ]; then
+            PUBLISHED_COUNT=$(jq '. | length' lerna-publish-summary.json 2>/dev/null || echo "0")
+            if [ "$PUBLISHED_COUNT" -gt 0 ]; then
+              echo "has_packages=true" >> $GITHUB_OUTPUT
+              echo "published_count=$PUBLISHED_COUNT" >> $GITHUB_OUTPUT
+              echo "✅ Published $PUBLISHED_COUNT package(s)"
+            else
+              echo "has_packages=false" >> $GITHUB_OUTPUT
+              echo "published_count=0" >> $GITHUB_OUTPUT
+              echo "ℹ️ No packages published - no changes detected"
+            fi
+          else
+            echo "has_packages=false" >> $GITHUB_OUTPUT
+            echo "published_count=0" >> $GITHUB_OUTPUT
+            echo "⚠️ Lerna summary file not found - no packages published"
+          fi
 
       - name: Find PR for this branch
         if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false'
@@ -292,52 +260,130 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Comment on PR with pre-release info
-        if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false' && steps.find-pr.outputs.pr_number != ''
+        if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false' && steps.find-pr.outputs.pr_number != '' && steps.verify-publish.outputs.has_packages == 'true'
         run: |
+          # Get list of actually published packages from lerna summary
+          PACKAGES=$(jq -r '.[].packageName' lerna-publish-summary.json 2>/dev/null)
+
+          # Validate that we have packages
+          if [ -z "$PACKAGES" ]; then
+            echo "❌ Error: No packages found in lerna summary"
+            exit 1
+          fi
+
+          # Build install commands for published packages
+          INSTALL_COMMANDS=$(for pkg in $PACKAGES; do
+            echo "npm install ${pkg}@${{ steps.release-type.outputs.dist_tag }}"
+          done)
+
+          # Build cleanup commands for published packages
+          CLEANUP_COMMANDS=$(for pkg in $PACKAGES; do
+            echo "npm dist-tag rm ${pkg} ${{ steps.release-type.outputs.dist_tag }}"
+          done)
+
           gh pr comment ${{ steps.find-pr.outputs.pr_number }} --body "## 📦 Pre-release Published
 
           **Dist-tag**: \`${{ steps.release-type.outputs.dist_tag }}\`
 
-          Install this pre-release version:
-          \`\`\`bash
-          npm install @ya-modbus/cli@${{ steps.release-type.outputs.dist_tag }}
-          \`\`\`
+          ### Installation
 
-          > The dist-tag will be automatically removed when this PR is closed or merged.
+          Install any of the published packages using the dist-tag:
+          \`\`\`bash
+          ${INSTALL_COMMANDS}\`\`\`
+
+          ### Manual Cleanup
+
+          When you're done testing, you should manually remove the dist-tag to keep the registry clean:
+
+          \`\`\`bash
+          # Remove dist-tags (requires npm authentication):
+          ${CLEANUP_COMMANDS}\`\`\`
+
+          > **Note**: Cleanup is optional. Published versions remain available via exact version install (e.g., \`npm install @ya-modbus/cli@0.6.1-pr123.0+abc1234\`) even after the dist-tag is removed.
 
           <!-- ya-modbus-prerelease: ${{ steps.release-type.outputs.dist_tag }} -->"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment on PR when no packages published
+        if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false' && steps.find-pr.outputs.pr_number != '' && steps.verify-publish.outputs.has_packages == 'false'
+        run: |
+          gh pr comment ${{ steps.find-pr.outputs.pr_number }} --body "## ℹ️ No Pre-release Published
+
+          Pre-release workflow completed, but **no packages were published**.
+
+          This typically happens when:
+          - Only ignored files changed (tests, docs, config)
+          - Commits don't match conventional commit format
+          - No changes warrant a release per lerna.json ignoreChanges
+
+          See \`lerna.json\` ignoreChanges for patterns that skip releases."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Dry run summary
         if: steps.release-type.outputs.is_dry_run == 'true'
         run: |
-          echo "🔍 DRY RUN COMPLETE - No packages were published"
-          echo ""
-          echo "Release configuration:"
-          echo "  Branch: ${{ steps.release-type.outputs.branch }}"
-          echo "  Pre-release: ${{ steps.release-type.outputs.is_prerelease }}"
-          echo "  Dist-tag: ${{ steps.release-type.outputs.dist_tag }}"
-          echo ""
-          echo "To publish, re-run without dry-run option."
-
-      - name: Summary
-        if: always()
-        run: |
-          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔍 Dry Run Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.release-type.outputs.is_dry_run }}" == "true" ]; then
-            echo "**🔍 DRY RUN MODE** - No packages were published" >> $GITHUB_STEP_SUMMARY
+          echo "**No packages were published** - This was a validation run only." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: \`${{ steps.release-type.outputs.branch }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Pre-release: \`${{ steps.release-type.outputs.is_prerelease }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Dist-tag: \`${{ steps.release-type.outputs.dist_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To publish for real, re-run the workflow without the dry-run option." >> $GITHUB_STEP_SUMMARY
+
+      - name: Pre-release summary
+        if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false'
+        run: |
+          if [ "${{ steps.verify-publish.outputs.has_packages }}" == "true" ]; then
+            echo "## 📦 Pre-release Published" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "- Branch: ${{ steps.release-type.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Pre-release: ${{ steps.release-type.outputs.is_prerelease }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Dist-tag: ${{ steps.release-type.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Dry run: ${{ steps.release-type.outputs.is_dry_run }}" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.release-type.outputs.is_prerelease }}" == "true" ] && [ "${{ steps.release-type.outputs.is_dry_run }}" == "false" ]; then
+            echo "**Dist-tag**: \`${{ steps.release-type.outputs.dist_tag }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Packages published**: ${{ steps.verify-publish.outputs.published_count }}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Installation" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Install any of the published packages using the dist-tag:" >> $GITHUB_STEP_SUMMARY
             echo '```bash' >> $GITHUB_STEP_SUMMARY
-            echo "npm install @ya-modbus/cli@${{ steps.release-type.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
+
+            # Get list of actually published packages from lerna summary
+            PACKAGES=$(jq -r '.[].packageName' lerna-publish-summary.json 2>/dev/null)
+            for pkg in $PACKAGES; do
+              echo "npm install ${pkg}@${{ steps.release-type.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
+            done
+
             echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ℹ️ No Pre-release Published" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Pre-release workflow completed, but **no packages were published**." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "This typically happens when:" >> $GITHUB_STEP_SUMMARY
+            echo "- Only ignored files changed (tests, docs, config)" >> $GITHUB_STEP_SUMMARY
+            echo "- Commits don't match conventional commit format" >> $GITHUB_STEP_SUMMARY
+            echo "- No changes warrant a release per lerna.json ignoreChanges" >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Production release summary
+        if: steps.release-type.outputs.is_prerelease == 'false' && steps.release-type.outputs.is_dry_run == 'false'
+        run: |
+          echo "## 🚀 Production Release Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Packages have been published to npm with the \`latest\` dist-tag." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "See the [Releases](https://github.com/${{ github.repository }}/releases) page for details." >> $GITHUB_STEP_SUMMARY
+
+      - name: Common summary
+        if: steps.release-type.outputs.is_dry_run == 'false'
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: \`${{ steps.release-type.outputs.branch }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Type: \`${{ steps.release-type.outputs.is_prerelease == 'true' && 'pre-release' || 'production' }}\`" >> $GITHUB_STEP_SUMMARY

@@ -8,47 +8,41 @@ Publishing packages to npm using Lerna-Lite with conventional commits. Uses npm 
 
 ## Release Triggers
 
-### Production Releases
+**Production Releases**: Auto-triggered on push to main. Skipped when commit starts with `chore(release):` or no package changes.
 
-Auto-triggered on push to main. Skipped when commit starts with `chore(release):` or no package changes.
+**Pre-releases (Feature Branch)**: Manual workflow_dispatch trigger. Creates canary version with custom dist-tag and git SHA. NO git tags. Version changes NOT committed to branch.
 
-### Pre-release (Feature Branch)
-
-Manual workflow_dispatch trigger. Creates pre-release version with custom dist-tag. NO git tags. Version changes NOT committed to branch.
-
-### Pre-release Cleanup
-
-Auto-removes dist-tag when PR closed/merged. Published versions remain available.
+**Pre-release Cleanup**: Manual removal required (npm dist-tag rm). Published versions remain available after cleanup.
 
 ## Version Bumping
 
 Uses independent versioning - each package maintains its own version.
 
-Conventional commit types determine version bump:
+Conventional commit types determine version bump. SEE docs/agents/git.md for commit message format.
 
-- `feat:` → MINOR version bump (0.1.0 → 0.2.0)
-- `fix:` → PATCH version bump (0.1.0 → 0.1.1)
-- `perf:` → PATCH version bump (0.1.0 → 0.1.1)
-- `BREAKING CHANGE:` → MAJOR version bump (0.1.0 → 1.0.0)
-- `docs:`, `chore:`, `test:`, `ci:` → NO release
+ONLY changed packages (and their dependents) are published. Unchanged packages remain at current version.
+
+## Ignored Changes
+
+Lerna NEVER triggers releases when ONLY these files change:
+
+- Test files, documentation, config files
+- `.github/**`, `docs/**`
+
+SEE `lerna.json` ignoreChanges configuration for complete list.
 
 ## Triggering Releases
 
-### Production Release
+**Production Release**: Automatic on push to main. No action needed.
 
-Automatic on push to main. No action needed.
+**Pre-release (Feature Branch)**: Manual workflow_dispatch. Requires maintain/admin access.
 
-### Pre-release (Feature Branch)
+**Manual/Emergency Release**: NEVER use npm scripts named `version` or `publish` - they conflict with npm lifecycle hooks. Use npx lerna commands directly with `--yes` and `--no-private` flags.
 
-Manual workflow_dispatch. Requires maintain/admin access. Dist-tag auto-generated from branch or specified.
+## References
 
-### Manual/Emergency Release
-
-NEVER use npm scripts named `version` or `publish` - they conflict with npm lifecycle hooks.
-
-Use npx lerna commands directly with `--yes` and `--no-private` flags.
-
-See: `.github/workflows/release.yml` "Version packages" and "Publish to npm" steps
-See: `docs/PUBLISHING-SETUP.md` for complete manual release procedure
-See: `lerna.json` for Lerna configuration
-See: `docs/agents/git.md` for commit message format
+- `.github/workflows/release.yml` - Workflow implementation
+- `docs/PUBLISHING-SETUP.md` - First-time setup and manual release procedure
+- `lerna.json` - Lerna configuration and ignoreChanges
+- `docs/agents/git.md` - Commit message format and conventional commits
+- https://github.com/lerna-lite/lerna-lite - Official Lerna-Lite documentation
