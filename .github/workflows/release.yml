@@ -272,16 +272,14 @@ jobs:
           fi
 
           # Build install commands for published packages
-          INSTALL_COMMANDS=""
-          for pkg in $PACKAGES; do
-            INSTALL_COMMANDS="${INSTALL_COMMANDS}npm install ${pkg}@${{ steps.release-type.outputs.dist_tag }}\n"
-          done
+          INSTALL_COMMANDS=$(for pkg in $PACKAGES; do
+            echo "npm install ${pkg}@${{ steps.release-type.outputs.dist_tag }}"
+          done)
 
           # Build cleanup commands for published packages
-          CLEANUP_COMMANDS=""
-          for pkg in $PACKAGES; do
-            CLEANUP_COMMANDS="${CLEANUP_COMMANDS}npm dist-tag rm ${pkg} ${{ steps.release-type.outputs.dist_tag }}\n"
-          done
+          CLEANUP_COMMANDS=$(for pkg in $PACKAGES; do
+            echo "npm dist-tag rm ${pkg} ${{ steps.release-type.outputs.dist_tag }}"
+          done)
 
           gh pr comment ${{ steps.find-pr.outputs.pr_number }} --body "## 📦 Pre-release Published
 
