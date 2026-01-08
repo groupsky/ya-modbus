@@ -14,7 +14,9 @@ Auto-triggered on push to main. Skipped when commit starts with `chore(release):
 
 ### Pre-release (Feature Branch)
 
-Manual workflow_dispatch trigger. Creates pre-release version with custom dist-tag. NO git tags. Version changes NOT committed to branch.
+Manual workflow_dispatch trigger. Creates canary version with custom dist-tag and git SHA. NO git tags. Version changes NOT committed to branch.
+
+Version format: `X.Y.Z-{preid}.0+{sha}` (e.g., `0.6.1-pr123.0+abc1234`)
 
 ### Pre-release Cleanup
 

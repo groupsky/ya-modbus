@@ -187,69 +187,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Version packages (pre-release)
-        if: steps.release-type.outputs.is_prerelease == 'true'
-        id: version-prerelease
-        run: |
-          npx lerna version prerelease \
-            --preid ${{ steps.release-type.outputs.preid }} \
-            --no-git-tag-version \
-            --no-push \
-            --yes \
-            --no-private \
-            --sync-workspace-lock
-
-      - name: Check for version conflicts (pre-release)
-        if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false'
-        run: |
-          echo "Checking for version conflicts on npm..."
-          CONFLICT_FOUND=false
-
-          # Get list of packages and their versions from package.json files
-          for pkg_json in packages/*/package.json; do
-            if [ -f "$pkg_json" ]; then
-              PKG_NAME=$(jq -r '.name' "$pkg_json")
-              PKG_VERSION=$(jq -r '.version' "$pkg_json")
-              PKG_PRIVATE=$(jq -r '.private // false' "$pkg_json")
-
-              # Skip private packages
-              if [ "$PKG_PRIVATE" == "true" ]; then
-                continue
-              fi
-
-              echo "Checking $PKG_NAME@$PKG_VERSION..."
-
-              # Check if this version exists on npm
-              if npm view "$PKG_NAME@$PKG_VERSION" version 2>/dev/null; then
-                echo "  ❌ Version $PKG_VERSION already exists on npm!"
-                CONFLICT_FOUND=true
-              else
-                echo "  ✅ Version $PKG_VERSION is available"
-              fi
-            fi
-          done
-
-          if [ "$CONFLICT_FOUND" == "true" ]; then
-            echo ""
-            echo "❌ ERROR: Version conflict detected!"
-            echo "One or more package versions already exist on npm."
-            echo ""
-            echo "This can happen when:"
-            echo "  - Multiple pre-releases are triggered simultaneously"
-            echo "  - A previous release succeeded but workflow failed afterward"
-            echo ""
-            echo "Please wait a moment and try again to get the next version number."
-            exit 1
-          fi
-
-          echo "✅ No version conflicts detected"
-
       - name: Publish to npm (production)
         if: |
           steps.release-type.outputs.is_prerelease == 'false' &&
           steps.release-type.outputs.is_dry_run == 'false' &&
           steps.version-production.outputs.has_changes == 'true'
-        run: npx lerna publish from-git --yes --no-private --provenance
+        run: npx lerna publish from-git --yes --no-private
 
       - name: No changes detected
         if: |
@@ -268,12 +211,15 @@ jobs:
       - name: Publish to npm (pre-release)
         if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false'
         run: |
-          npx lerna publish from-package \
+          # Use canary mode for automatic versioning with git SHA
+          # Format: X.Y.Z-{preid}.0+{sha} (e.g., 0.6.1-pr123.0+abc1234)
+          # The SHA ensures uniqueness even with multiple publishes
+          # Provenance attestations are automatically generated via OIDC trusted publishing
+          npx lerna publish --canary \
+            --preid ${{ steps.release-type.outputs.preid }} \
             --dist-tag ${{ steps.release-type.outputs.dist_tag }} \
-            --no-git-reset \
             --yes \
-            --no-private \
-            --provenance
+            --no-private
 
       - name: Find PR for this branch
         if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false'
