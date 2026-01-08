@@ -240,16 +240,40 @@ jobs:
       - name: Comment on PR with pre-release info
         if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false' && steps.find-pr.outputs.pr_number != ''
         run: |
+          # Get list of published packages
+          PACKAGES=$(npm query ".workspace:not([private])" | jq -r '.[].name')
+
+          # Build install commands for all packages
+          INSTALL_COMMANDS=""
+          for pkg in $PACKAGES; do
+            INSTALL_COMMANDS="${INSTALL_COMMANDS}npm install ${pkg}@${{ steps.release-type.outputs.dist_tag }}\n"
+          done
+
+          # Build cleanup commands for all packages
+          CLEANUP_COMMANDS=""
+          for pkg in $PACKAGES; do
+            CLEANUP_COMMANDS="${CLEANUP_COMMANDS}npm dist-tag rm ${pkg} ${{ steps.release-type.outputs.dist_tag }}\n"
+          done
+
           gh pr comment ${{ steps.find-pr.outputs.pr_number }} --body "## 📦 Pre-release Published
 
           **Dist-tag**: \`${{ steps.release-type.outputs.dist_tag }}\`
 
-          Install this pre-release version:
-          \`\`\`bash
-          npm install @ya-modbus/cli@${{ steps.release-type.outputs.dist_tag }}
-          \`\`\`
+          ### Installation
 
-          > The dist-tag will be automatically removed when this PR is closed or merged.
+          Install any of the published packages using the dist-tag:
+          \`\`\`bash
+          ${INSTALL_COMMANDS}\`\`\`
+
+          ### Manual Cleanup
+
+          The dist-tag will be automatically removed when this PR is closed or merged. If you need to remove it manually:
+
+          \`\`\`bash
+          # Remove dist-tags (requires npm authentication):
+          ${CLEANUP_COMMANDS}\`\`\`
+
+          > **Note**: Published versions remain available via exact version install (e.g., \`npm install @ya-modbus/cli@0.6.1-pr123.0+abc1234\`) even after the dist-tag is removed.
 
           <!-- ya-modbus-prerelease: ${{ steps.release-type.outputs.dist_tag }} -->"
         env:
@@ -283,7 +307,15 @@ jobs:
           if [ "${{ steps.release-type.outputs.is_prerelease }}" == "true" ] && [ "${{ steps.release-type.outputs.is_dry_run }}" == "false" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Installation" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Install any of the published packages using the dist-tag:" >> $GITHUB_STEP_SUMMARY
             echo '```bash' >> $GITHUB_STEP_SUMMARY
-            echo "npm install @ya-modbus/cli@${{ steps.release-type.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
+
+            # Get list of published packages
+            PACKAGES=$(npm query ".workspace:not([private])" | jq -r '.[].name')
+            for pkg in $PACKAGES; do
+              echo "npm install ${pkg}@${{ steps.release-type.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
+            done
+
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi
