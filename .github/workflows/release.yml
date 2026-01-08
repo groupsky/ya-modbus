@@ -219,7 +219,8 @@ jobs:
             --preid ${{ steps.release-type.outputs.preid }} \
             --dist-tag ${{ steps.release-type.outputs.dist_tag }} \
             --yes \
-            --no-private
+            --no-private \
+            --summary-file lerna-publish-summary.json
 
       - name: Find PR for this branch
         if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false'
@@ -240,16 +241,21 @@ jobs:
       - name: Comment on PR with pre-release info
         if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false' && steps.find-pr.outputs.pr_number != ''
         run: |
-          # Get list of published packages
-          PACKAGES=$(npm query ".workspace:not([private])" | jq -r '.[].name')
+          # Get list of actually published packages from lerna summary
+          if [ -f lerna-publish-summary.json ]; then
+            PACKAGES=$(jq -r '.[].packageName' lerna-publish-summary.json)
+          else
+            # Fallback to all workspace packages if summary file doesn't exist
+            PACKAGES=$(npm query ".workspace:not([private])" | jq -r '.[].name')
+          fi
 
-          # Build install commands for all packages
+          # Build install commands for published packages
           INSTALL_COMMANDS=""
           for pkg in $PACKAGES; do
             INSTALL_COMMANDS="${INSTALL_COMMANDS}npm install ${pkg}@${{ steps.release-type.outputs.dist_tag }}\n"
           done
 
-          # Build cleanup commands for all packages
+          # Build cleanup commands for published packages
           CLEANUP_COMMANDS=""
           for pkg in $PACKAGES; do
             CLEANUP_COMMANDS="${CLEANUP_COMMANDS}npm dist-tag rm ${pkg} ${{ steps.release-type.outputs.dist_tag }}\n"
@@ -311,8 +317,13 @@ jobs:
             echo "Install any of the published packages using the dist-tag:" >> $GITHUB_STEP_SUMMARY
             echo '```bash' >> $GITHUB_STEP_SUMMARY
 
-            # Get list of published packages
-            PACKAGES=$(npm query ".workspace:not([private])" | jq -r '.[].name')
+            # Get list of actually published packages from lerna summary
+            if [ -f lerna-publish-summary.json ]; then
+              PACKAGES=$(jq -r '.[].packageName' lerna-publish-summary.json)
+            else
+              # Fallback to all workspace packages if summary file doesn't exist
+              PACKAGES=$(npm query ".workspace:not([private])" | jq -r '.[].name')
+            fi
             for pkg in $PACKAGES; do
               echo "npm install ${pkg}@${{ steps.release-type.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
             done
