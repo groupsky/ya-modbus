@@ -645,8 +645,6 @@ Understanding the release process helps troubleshoot issues and set expectations
    - Includes provenance attestations
 9. **Success**: Packages available on npm
 
-**Timeline:** Typically 5-10 minutes depending on test suite duration.
-
 ### Pre-release Flow
 
 1. **Trigger**: Manual workflow dispatch from GitHub Actions
@@ -665,8 +663,6 @@ Understanding the release process helps troubleshoot issues and set expectations
    - NO version commits pushed
 8. **PR comment**: If PR exists, workflow comments with installation instructions
 9. **Success**: Pre-release versions available on npm
-
-**Timeline:** Typically 5-10 minutes depending on test suite duration.
 
 **Key differences from production:**
 
