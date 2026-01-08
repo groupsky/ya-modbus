@@ -12,7 +12,7 @@ Publishing packages to npm using Lerna-Lite with conventional commits. Uses npm 
 
 **Pre-releases (Feature Branch)**: Manual workflow_dispatch trigger. Creates canary version with custom dist-tag and git SHA. NO git tags. Version changes NOT committed to branch.
 
-**Pre-release Cleanup**: Auto-removes dist-tag when PR closed/merged. Published versions remain available.
+**Pre-release Cleanup**: Manual removal required (npm dist-tag rm). Published versions remain available after cleanup.
 
 ## Version Bumping
 

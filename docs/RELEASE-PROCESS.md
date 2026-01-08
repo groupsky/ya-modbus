@@ -390,14 +390,16 @@ dist-tag: rc      → All packages published with @rc
 
 ### Dist-tag Cleanup
 
-When a pull request is closed or merged, the GitHub Actions workflow automatically removes the dist-tag:
+When you're done testing pre-releases, you should manually remove the dist-tag to keep the registry clean:
 
 ```bash
 npm dist-tag rm @ya-modbus/cli pr123
 npm dist-tag rm @ya-modbus/driver-abc pr123
 ```
 
-**Important:** The published versions remain available on npm even after the dist-tag is removed. You can still install them using exact version strings:
+**Why manual?** Automatic cleanup requires npm Trusted Publishers (OIDC) to support dist-tag operations, which is not yet available (tracked in [npm/cli#8547](https://github.com/npm/cli/issues/8547)). Manual cleanup is temporary until npm adds OIDC support for dist-tag management.
+
+**Important:** Cleanup is optional. Published versions remain available on npm even after the dist-tag is removed. You can still install them using exact version strings:
 
 ```bash
 npm install @ya-modbus/cli@1.6.0-pr123.0+abc1234
@@ -535,9 +537,9 @@ Pre-releases are **manually triggered** and require maintain or admin repository
 
 **After pre-release:**
 
-- If you opened a PR, the workflow will comment with installation instructions
-- Dist-tag is automatically removed when PR is closed or merged
-- Published versions remain available via exact version strings
+- If you opened a PR, the workflow will comment with installation instructions and cleanup commands
+- Dist-tag should be manually removed when testing is complete (optional)
+- Published versions remain available via exact version strings even after cleanup
 
 **Dist-tag generation:**
 
