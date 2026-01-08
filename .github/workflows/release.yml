@@ -288,45 +288,58 @@ jobs:
       - name: Dry run summary
         if: steps.release-type.outputs.is_dry_run == 'true'
         run: |
-          echo "🔍 DRY RUN COMPLETE - No packages were published"
-          echo ""
-          echo "Release configuration:"
-          echo "  Branch: ${{ steps.release-type.outputs.branch }}"
-          echo "  Pre-release: ${{ steps.release-type.outputs.is_prerelease }}"
-          echo "  Dist-tag: ${{ steps.release-type.outputs.dist_tag }}"
-          echo ""
-          echo "To publish, re-run without dry-run option."
-
-      - name: Summary
-        if: always()
-        run: |
-          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔍 Dry Run Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.release-type.outputs.is_dry_run }}" == "true" ]; then
-            echo "**🔍 DRY RUN MODE** - No packages were published" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "- Branch: ${{ steps.release-type.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Pre-release: ${{ steps.release-type.outputs.is_prerelease }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Dist-tag: ${{ steps.release-type.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Dry run: ${{ steps.release-type.outputs.is_dry_run }}" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.release-type.outputs.is_prerelease }}" == "true" ] && [ "${{ steps.release-type.outputs.is_dry_run }}" == "false" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Installation" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Install any of the published packages using the dist-tag:" >> $GITHUB_STEP_SUMMARY
-            echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "**No packages were published** - This was a validation run only." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: \`${{ steps.release-type.outputs.branch }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Pre-release: \`${{ steps.release-type.outputs.is_prerelease }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Dist-tag: \`${{ steps.release-type.outputs.dist_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To publish for real, re-run the workflow without the dry-run option." >> $GITHUB_STEP_SUMMARY
 
-            # Get list of actually published packages from lerna summary
-            if [ -f lerna-publish-summary.json ]; then
-              PACKAGES=$(jq -r '.[].packageName' lerna-publish-summary.json)
-            else
-              # Fallback to all workspace packages if summary file doesn't exist
-              PACKAGES=$(npm query ".workspace:not([private])" | jq -r '.[].name')
-            fi
-            for pkg in $PACKAGES; do
-              echo "npm install ${pkg}@${{ steps.release-type.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
-            done
+      - name: Pre-release summary
+        if: steps.release-type.outputs.is_prerelease == 'true' && steps.release-type.outputs.is_dry_run == 'false'
+        run: |
+          echo "## 📦 Pre-release Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Dist-tag**: \`${{ steps.release-type.outputs.dist_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Install any of the published packages using the dist-tag:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
 
-            echo '```' >> $GITHUB_STEP_SUMMARY
+          # Get list of actually published packages from lerna summary
+          if [ -f lerna-publish-summary.json ]; then
+            PACKAGES=$(jq -r '.[].packageName' lerna-publish-summary.json)
+          else
+            # Fallback to all workspace packages if summary file doesn't exist
+            PACKAGES=$(npm query ".workspace:not([private])" | jq -r '.[].name')
           fi
+          for pkg in $PACKAGES; do
+            echo "npm install ${pkg}@${{ steps.release-type.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
+          done
+
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Production release summary
+        if: steps.release-type.outputs.is_prerelease == 'false' && steps.release-type.outputs.is_dry_run == 'false'
+        run: |
+          echo "## 🚀 Production Release Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Packages have been published to npm with the \`latest\` dist-tag." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "See the [Releases](https://github.com/${{ github.repository }}/releases) page for details." >> $GITHUB_STEP_SUMMARY
+
+      - name: Common summary
+        if: steps.release-type.outputs.is_dry_run == 'false'
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: \`${{ steps.release-type.outputs.branch }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Type: \`${{ steps.release-type.outputs.is_prerelease == 'true' && 'pre-release' || 'production' }}\`" >> $GITHUB_STEP_SUMMARY
