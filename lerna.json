@@ -8,6 +8,7 @@
       "changelogPreset": "angular",
       "createRelease": "github",
       "message": "chore(release): publish packages",
+      "describeTag": "*@*",
       "ignoreChanges": [
         "**/__tests__/**",
         "**/*.test.ts",
@@ -19,6 +20,9 @@
         "**/tsconfig*.json",
         "**/.eslintrc*",
         "**/.prettierrc*",
+        "**/.cursor/**",
+        "**/.cursorrules",
+        "**/.aider.md",
         ".github/**",
         "docs/**"
       ]
