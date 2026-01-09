@@ -34,30 +34,41 @@ jobs:
     steps:
       - name: Get event actor
         id: get-event-info
+        env:
+          PR_USER: ${{ github.event.pull_request.user.login }}
+          REVIEW_USER: ${{ github.event.review.user.login }}
+          COMMENT_USER: ${{ github.event.comment.user.login }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           # Extract the username of the person triggering this workflow
-          ACTOR="${{
-            github.event_name == 'pull_request' && github.event.pull_request.user.login ||
-            github.event_name == 'pull_request_review' && github.event.review.user.login ||
-            github.event_name == 'issue_comment' && github.event.comment.user.login
-          }}"
-          echo "actor=$ACTOR" >> $GITHUB_OUTPUT
+          if [ "$EVENT_NAME" == "pull_request" ]; then
+            echo "actor=$PR_USER" >> $GITHUB_OUTPUT
+          elif [ "$EVENT_NAME" == "pull_request_review" ]; then
+            echo "actor=$REVIEW_USER" >> $GITHUB_OUTPUT
+          elif [ "$EVENT_NAME" == "issue_comment" ]; then
+            echo "actor=$COMMENT_USER" >> $GITHUB_OUTPUT
+          fi
 
       - name: Get PR information
         id: get-pr-info
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Extract PR number and head SHA based on event type
-          if [ "${{ github.event_name }}" == "pull_request" ] || [ "${{ github.event_name }}" == "pull_request_review" ]; then
-            echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
-            echo "head-sha=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}" == "issue_comment" ]; then
+          if [ "$EVENT_NAME" == "pull_request" ] || [ "$EVENT_NAME" == "pull_request_review" ]; then
+            echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+            echo "head-sha=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
+          elif [ "$EVENT_NAME" == "issue_comment" ]; then
             # For comment events, fetch PR details via GitHub API
-            PR_DATA=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.issue.number }})
-            echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
-            echo "head-sha=$(echo $PR_DATA | jq -r .head.sha)" >> $GITHUB_OUTPUT
+            PR_DATA=$(gh api "repos/$REPOSITORY/pulls/$ISSUE_NUMBER")
+            echo "number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+            echo "head-sha=$(echo "$PR_DATA" | jq -r .head.sha)" >> $GITHUB_OUTPUT
           fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check user permission
         id: check

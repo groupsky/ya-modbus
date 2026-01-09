@@ -154,7 +154,7 @@ When publishing a new package to npm for the first time, you MUST publish manual
    - Go to package settings on npm.com
    - Add trusted publisher with: owner=`<github-owner>`, repo=`<repo-name>`, workflow=`release.yml`, environment=`npm`
 
-3. **Verify** by opening a PR to trigger preview packages via pkg.pr.new, then merging to trigger production release (see [Release Process](agents/release.md) for details)
+3. **Verify** by opening a PR to trigger preview packages via pkg.pr.new, then merging to trigger production release (see [Release Process](RELEASE-PROCESS.md) for details)
 
 See [PUBLISHING-SETUP.md](PUBLISHING-SETUP.md#first-time-package-publishing) for detailed instructions.
 

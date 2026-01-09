@@ -453,13 +453,13 @@ Understanding the release process helps troubleshoot issues and set expectations
    - Solution: Request write access from repository owner
    - Preview packages require write access to post PR comments
 
-2. **Fork pull request**
-   - Solution: Preview packages only work for PRs from branches in the same repository
-   - Fork PRs are blocked for security reasons
-
-3. **PR from fork**
-   - Solution: Push changes to a branch in the main repository instead of a fork
-   - This security measure prevents unauthorized preview package publishing
+2. **Pull request from forked repository**
+   - **Problem:** Preview packages do not work for PRs from forks
+   - **Reason:** The workflow explicitly checks `github.event.pull_request.head.repo.full_name == github.repository` to prevent unauthorized users from publishing packages that could be confused with official packages
+   - **Solution:** For external contributors, maintainers with write access can:
+     - Manually trigger preview publishing by approving the PR
+     - Comment `/pkg-pr-new` on the PR
+     - Or push the contributor's changes to a branch in the main repository
 
 ### Preview Package Build Failures
 

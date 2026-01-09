@@ -47,6 +47,7 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@lerna-lite/changed": "^4.10.3",
     "@lerna-lite/cli": "^4.10.3",
     "@lerna-lite/publish": "^4.10.3",
     "@lerna-lite/version": "^4.10.3",
