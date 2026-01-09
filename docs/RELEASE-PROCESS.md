@@ -8,8 +8,6 @@ Comprehensive guide to releasing packages in the ya-modbus monorepo using Lerna-
 - [Release Types](#release-types)
 - [Independent Package Versioning](#independent-package-versioning)
 - [Version Bumping Rules](#version-bumping-rules)
-- [Pre-release Versioning (Canary)](#pre-release-versioning-canary)
-- [Dist-tags](#dist-tags)
 - [Ignored Changes](#ignored-changes)
 - [How to Trigger Releases](#how-to-trigger-releases)
 - [What Happens During a Release](#what-happens-during-a-release)
@@ -24,7 +22,7 @@ Key features:
 - **Independent versioning**: Each package maintains its own semantic version
 - **Conventional commits**: Commit messages determine version bumps automatically
 - **Selective publishing**: Only changed packages (and their dependents) are published
-- **Pre-release support**: Create canary versions for testing before production release
+- **Preview packages**: Test PR changes with temporary preview packages via pkg.pr.new
 - **Ignored patterns**: Tests, docs, and config changes don't trigger releases
 
 ## Release Types
@@ -48,19 +46,19 @@ Production releases are published to npm with the `latest` dist-tag and are auto
 - Skipped when commit message starts with `chore(release):`
 - Skipped when only ignored files changed (see [Ignored Changes](#ignored-changes))
 
-### Pre-releases (Feature Branches)
+### Preview Packages (Pull Requests)
 
-Pre-releases allow you to publish test versions from feature branches before merging to `main`. These are canary versions intended for testing and validation.
+Preview packages allow you to test changes from pull requests before merging to `main`. These are temporary preview versions published via [pkg.pr.new](https://github.com/stackblitz-labs/pkg.pr.new) for testing and validation.
 
 **Characteristics:**
 
-- Manually triggered via GitHub Actions workflow dispatch
-- Creates canary versions with git SHA for uniqueness
-- Uses custom dist-tag for easy installation
+- Automatically triggered on PR events (open, sync, reopen)
+- Can be manually triggered via PR approval or `/pkg-pr-new` comment
+- Published to pkg.pr.new temporary registry (not npm)
 - No git tags created
-- Version changes NOT committed back to the branch
-- Requires maintain or admin repository access
-- Includes cryptographic provenance attestations
+- No version changes committed
+- Requires write access to the repository
+- Installation URLs posted as PR comments
 
 **When to use:**
 
@@ -68,6 +66,12 @@ Pre-releases allow you to publish test versions from feature branches before mer
 - Getting early feedback on new features
 - Validating bug fixes with specific versions
 - CI/CD integration testing
+
+**When it runs:**
+
+- Automatically on pull request opened, synchronized, or reopened
+- On pull request approval
+- When a comment containing `/pkg-pr-new` is posted on a PR
 
 ## Independent Package Versioning
 
@@ -170,239 +174,6 @@ git commit -m "feat(cli): add new export command"
 git commit -m "docs(cli): update examples"
 # Result: MINOR bump (feat wins over fix and docs)
 # @ya-modbus/cli 1.5.0 → 1.6.0
-```
-
-## Pre-release Versioning (Canary)
-
-Canary mode creates commit-specific pre-releases for testing before production deployment. These versions are temporary and designed for validation.
-
-### Canary Version Format
-
-```
-X.Y.Z-{preid}.{counter}+{sha}
-```
-
-**Components:**
-
-- `X.Y.Z` - Next semantic version based on conventional commits
-- `{preid}` - Pre-release identifier (derived from branch name or custom)
-- `{counter}` - Incremental counter starting at 0
-- `{sha}` - Short git SHA for traceability
-
-**Example:**
-
-```
-0.6.1-pr123.0+abc1234
-```
-
-### How Canary Versioning Works
-
-#### Single Changed Package
-
-Starting state:
-
-```
-@ya-modbus/cli: 1.5.0
-@ya-modbus/core: 2.3.1
-@ya-modbus/driver-abc: 0.4.0
-```
-
-You create a feature branch and add a feature to `@ya-modbus/cli` only. Then trigger a pre-release with `preid=pr123` and current git SHA is `abc1234`.
-
-**Result:**
-
-```
-@ya-modbus/cli: 1.6.0-pr123.0+abc1234  (published)
-@ya-modbus/core: 2.3.1                 (unchanged - NOT published)
-@ya-modbus/driver-abc: 0.4.0           (unchanged - NOT published)
-```
-
-**Explanation:**
-
-1. `@ya-modbus/cli` changed, so it's versioned and published
-2. Conventional commit was `feat:`, so MINOR bump: 1.5.0 → 1.6.0
-3. Canary appends pre-release suffix: `-pr123.0+abc1234`
-4. Other packages unchanged, so not published
-
-#### Multiple Changed Packages
-
-Same starting state, but you change both `@ya-modbus/cli` (feature) and `@ya-modbus/driver-abc` (bug fix):
-
-```bash
-git commit -m "feat(cli): add discover command"
-git commit -m "fix(driver-abc): correct CRC validation"
-```
-
-Trigger pre-release with `preid=feat-discovery` and git SHA is `def5678`.
-
-**Result:**
-
-```
-@ya-modbus/cli: 1.6.0-feat-discovery.0+def5678          (MINOR bump)
-@ya-modbus/core: 2.3.1                                  (unchanged)
-@ya-modbus/driver-abc: 0.4.1-feat-discovery.0+def5678  (PATCH bump)
-```
-
-**Explanation:**
-
-1. Each changed package gets its own independent version bump
-2. `@ya-modbus/cli` gets MINOR bump (feat)
-3. `@ya-modbus/driver-abc` gets PATCH bump (fix)
-4. Both get the same preid and SHA suffix
-5. Unchanged packages are not published
-
-#### Multiple Publishes from Same Branch
-
-If you continue developing on the same feature branch and trigger additional pre-releases, the counter increments:
-
-**First publish:**
-
-```
-@ya-modbus/cli: 1.6.0-pr123.0+abc1234
-```
-
-**Second publish (after more commits):**
-
-```
-@ya-modbus/cli: 1.6.0-pr123.1+def5678
-```
-
-**Third publish:**
-
-```
-@ya-modbus/cli: 1.6.0-pr123.2+ghi9012
-```
-
-**Note:** The base version (1.6.0) stays the same, but the counter increments and the SHA changes.
-
-### Default Version Bump for Canaries
-
-By default, canary mode uses a **MINOR** version bump regardless of the conventional commit type. This is because canary versions are for testing and the actual production bump will be determined when merging to `main`.
-
-**Exception:** If your commits include `BREAKING CHANGE:`, the MAJOR version will be used.
-
-### Git SHA Purpose
-
-The git SHA in canary versions serves two purposes:
-
-1. **Uniqueness**: Ensures each publish creates a distinct version even if published from the same commit or if the counter somehow resets
-2. **Traceability**: Allows you to trace the published version back to the exact commit in your repository
-
-**Example of SHA preventing conflicts:**
-
-Without SHA, if you delete and recreate a branch, versions could conflict:
-
-```
-Branch attempt 1: 1.6.0-pr123.0  (published)
-Branch attempt 2: 1.6.0-pr123.0  (conflict!)
-```
-
-With SHA, each is unique:
-
-```
-Branch attempt 1: 1.6.0-pr123.0+abc1234  (published)
-Branch attempt 2: 1.6.0-pr123.0+def5678  (distinct!)
-```
-
-## Dist-tags
-
-Dist-tags in npm allow you to provide aliases to specific package versions, making it easy to install pre-release or experimental versions without using exact version strings.
-
-### What Are Dist-tags?
-
-Think of dist-tags as named pointers to specific package versions. Every package has a `latest` dist-tag by default, which points to the most recent production release.
-
-**Example npm state:**
-
-```
-@ya-modbus/cli@1.5.0 (dist-tag: latest)
-@ya-modbus/cli@1.6.0-pr123.0+abc1234 (dist-tag: pr123)
-```
-
-### Installing with Dist-tags
-
-Instead of specifying exact versions, you can use dist-tags:
-
-```bash
-# Install latest production version
-npm install @ya-modbus/cli@latest
-# or simply
-npm install @ya-modbus/cli
-
-# Install pre-release version
-npm install @ya-modbus/cli@pr123
-```
-
-### Dist-tag Behavior with Multiple Packages
-
-The same dist-tag can point to different versions of different packages. This is normal and expected with independent versioning.
-
-**Example:** Pre-release publishes `@ya-modbus/cli` and `@ya-modbus/driver-abc` with dist-tag `pr123`:
-
-**NPM state after publish:**
-
-```
-@ya-modbus/cli@1.6.0-pr123.0+abc1234 (dist-tag: pr123)
-@ya-modbus/driver-abc@0.4.1-pr123.0+abc1234 (dist-tag: pr123)
-```
-
-**Installing:**
-
-```bash
-# Each package resolves to its respective version with pr123 tag
-npm install @ya-modbus/cli@pr123
-# Installs: @ya-modbus/cli@1.6.0-pr123.0+abc1234
-
-npm install @ya-modbus/driver-abc@pr123
-# Installs: @ya-modbus/driver-abc@0.4.1-pr123.0+abc1234
-```
-
-### Automatic Dist-tag Generation
-
-For pre-releases, the dist-tag is automatically generated from the branch name if not specified:
-
-```
-Branch: feat/add-discovery  → Dist-tag: feat-add-discovery
-Branch: bugfix/crc-error   → Dist-tag: bugfix-crc-error
-Branch: pr-123             → Dist-tag: pr-123
-```
-
-**Sanitization rules:**
-
-- Non-alphanumeric characters replaced with hyphens
-- Leading/trailing hyphens removed
-- Must start with alphanumeric character
-
-### Custom Dist-tags
-
-You can specify a custom dist-tag when triggering a pre-release:
-
-```
-dist-tag: beta    → All packages published with @beta
-dist-tag: alpha   → All packages published with @alpha
-dist-tag: rc      → All packages published with @rc
-```
-
-**Reserved tags:**
-
-- `latest` - Reserved for production releases, cannot be used for pre-releases
-- `next` - Reserved (should not be used for feature branches)
-
-### Dist-tag Cleanup
-
-When you're done testing pre-releases, you should manually remove the dist-tag to keep the registry clean:
-
-```bash
-npm dist-tag rm @ya-modbus/cli pr123
-npm dist-tag rm @ya-modbus/driver-abc pr123
-```
-
-**Why manual?** Automatic cleanup requires npm Trusted Publishers (OIDC) to support dist-tag operations, which is not yet available (tracked in [npm/cli#8547](https://github.com/npm/cli/issues/8547)). Manual cleanup is temporary until npm adds OIDC support for dist-tag management.
-
-**Important:** Cleanup is optional. Published versions remain available on npm even after the dist-tag is removed. You can still install them using exact version strings:
-
-```bash
-npm install @ya-modbus/cli@1.6.0-pr123.0+abc1234
 ```
 
 ## Ignored Changes
@@ -512,57 +283,56 @@ Production releases are **fully automated** and require no manual intervention.
 - No package changes detected
 - Only ignored files changed
 
-### Pre-release (Feature Branch)
+### Preview Packages (Pull Requests)
 
-Pre-releases are **manually triggered** and require maintain or admin repository access.
+Preview packages are **automatically published** when pull requests are opened, synchronized, or reopened. They can also be manually triggered.
 
 **Prerequisites:**
 
-- Feature branch with committed changes
+- Open pull request with committed changes
 - Changes pushed to GitHub
-- Maintain or admin access to the repository
+- Write access to the repository
+
+**Automatic triggers:**
+
+- Pull request opened
+- Pull request synchronized (new commits pushed)
+- Pull request reopened
+- Pull request approved
+
+**Manual trigger:**
+
+- Comment `/pkg-pr-new` on the pull request
 
 **Process:**
 
-1. Navigate to **Actions** tab in GitHub
-2. Select **Release** workflow
-3. Click **Run workflow** dropdown
-4. Configure the workflow:
-   - **Use workflow from**: Select your feature branch
-   - **NPM dist-tag**: Leave empty for auto-generated tag, or specify custom (e.g., `beta`, `alpha`)
-   - **Dry run**: Check to validate without publishing
-5. Click **Run workflow**
-6. Monitor workflow progress in Actions tab
-7. If workflow succeeds, packages are published to npm with the specified dist-tag
+1. Open or update a pull request
+2. Preview package workflow runs automatically
+3. Workflow checks permissions, runs lint and tests
+4. Packages are built and published to pkg.pr.new
+5. Installation URLs are posted as a PR comment
+6. Test the preview packages using the URLs provided
 
-**After pre-release:**
+**What gets published:**
 
-- If you opened a PR, the workflow will comment with installation instructions and cleanup commands
-- Dist-tag should be manually removed when testing is complete (optional)
-- Published versions remain available via exact version strings even after cleanup
+- Only packages with changes in the PR
+- Uses pkg.pr.new temporary registry (not npm)
+- Installation URLs are unique per commit
+- No git tags or version commits created
 
-**Dist-tag generation:**
+**Testing new packages:**
 
-If you leave the dist-tag field empty, it's auto-generated from the branch name:
+Preview packages use the `--compact` flag which generates shorter URLs for packages already published to npm. For new packages not yet on npm:
 
-```
-Branch: feat/add-discovery  → Dist-tag: feat-add-discovery
-Branch: fix/crc-error      → Dist-tag: fix-crc-error
-```
+1. The package will still be published to the preview registry
+2. Install using the full URL format: `npm i https://pkg.pr.new/[org]/[repo]/[package-name]@[commit]`
+3. Once the package is first published to npm (via production release), future previews will use shorter compact URLs
 
-**Custom dist-tag:**
-
-Specify a custom dist-tag for semantic meaning:
-
-```
-Dist-tag: beta  → npm install @ya-modbus/cli@beta
-Dist-tag: alpha → npm install @ya-modbus/cli@alpha
-Dist-tag: rc    → npm install @ya-modbus/cli@rc
-```
+**Note:** Preview packages are temporary and intended for testing only. They are not published to the npm registry and do not affect production versions.
 
 ### Dry Run Mode
 
-Both production and pre-release workflows support dry run mode for validation without publishing.
+Production release workflow supports dry run mode for validation without publishing.
 
 **When to use:**
 
@@ -573,7 +343,7 @@ Both production and pre-release workflows support dry run mode for validation wi
 
 **How to use:**
 
-1. Trigger pre-release workflow manually
+1. Trigger release workflow manually (workflow_dispatch)
 2. Check **Dry run** checkbox
 3. Run workflow
 4. Review workflow output to see what would happen
@@ -647,32 +417,32 @@ Understanding the release process helps troubleshoot issues and set expectations
    - Includes provenance attestations
 9. **Success**: Packages available on npm
 
-### Pre-release Flow
+### Preview Package Flow
 
-1. **Trigger**: Manual workflow dispatch from GitHub Actions
-2. **Permission check**: Validates user has maintain or admin access
-3. **Checkout**: Workflow checks out feature branch
+1. **Trigger**: Pull request event (open, sync, reopen, approval, or `/pkg-pr-new` comment)
+2. **Permission check**: Validates user has write access to the repository
+3. **Checkout**: Workflow checks out PR head commit
 4. **Setup**: Node.js and npm dependencies installed
-5. **Build**: All packages built
-6. **Test**: Full test suite runs
-7. **Publish**:
-   - Lerna analyzes commits since last release
-   - Determines which packages changed
-   - Calculates canary versions with git SHA
-   - Authenticates to npm using OIDC
-   - Publishes packages with custom dist-tag
+5. **Lint**: Code linting runs (`npm run lint`)
+6. **Test**: Full test suite runs (`npm run test:ci`)
+7. **Build**: All packages built (`npm run build`)
+8. **Publish**:
+   - Publishes changed packages to pkg.pr.new
+   - Uses `--compact` flag for shorter URLs (requires packages published to npm)
    - NO git tags created
    - NO version commits pushed
-8. **PR comment**: If PR exists, workflow comments with installation instructions
-9. **Success**: Pre-release versions available on npm
+   - NO npm registry publishing
+9. **PR comment**: Workflow posts installation URLs as a PR comment
+10. **Success**: Preview packages available via pkg.pr.new URLs
 
 **Key differences from production:**
 
 - No git tags created
 - No version commits
-- Uses custom dist-tag instead of `latest`
+- Published to pkg.pr.new temporary registry (not npm)
 - No GitHub releases created
-- Versions include pre-release suffix and git SHA
+- Installation via unique URLs instead of version numbers
+- Requires write access instead of maintain/admin
 
 ## Troubleshooting
 
@@ -699,19 +469,60 @@ Understanding the release process helps troubleshoot issues and set expectations
    - Solution: Check if another workflow already published these changes
    - Review git tags: `git tag -l`
 
-### Pre-release Permission Denied
+### Preview Package Permission Denied
 
-**Symptom:** Workflow dispatch button not visible or workflow fails permission check.
+**Symptom:** Preview package workflow fails permission check or does not run.
 
 **Possible causes:**
 
 1. **Insufficient permissions**
-   - Solution: Request maintain or admin access from repository owner
-   - Pre-releases require elevated permissions to prevent accidental publishes
+   - Solution: Request write access from repository owner
+   - Preview packages require write access to post PR comments
 
-2. **Wrong branch selected**
-   - Solution: Ensure you selected your feature branch in the workflow dispatch dropdown
-   - Pre-releases must run from feature branches, not `main`
+2. **Fork pull request**
+   - Solution: Preview packages only work for PRs from branches in the same repository
+   - Fork PRs are blocked for security reasons
+
+3. **PR from fork**
+   - Solution: Push changes to a branch in the main repository instead of a fork
+   - This security measure prevents unauthorized preview package publishing
+
+### Preview Package Build Failures
+
+**Symptom:** Preview package workflow fails during lint, test, or build steps.
+
+**Possible causes:**
+
+1. **Linting errors**
+   - Solution: Run `npm run lint` locally and fix issues
+   - Workflow will not publish if linting fails
+
+2. **Test failures**
+   - Solution: Run `npm run test:ci` locally and fix failing tests
+   - All tests must pass before publishing preview packages
+
+3. **Build errors**
+   - Solution: Run `npm run build` locally and fix build issues
+   - Check for TypeScript errors or missing dependencies
+
+### Preview Package Installation Issues
+
+**Symptom:** Cannot install preview package using provided URL.
+
+**Possible causes:**
+
+1. **New package not yet on npm**
+   - Solution: Use full URL format instead of compact URL
+   - Format: `npm i https://pkg.pr.new/[org]/[repo]/[package-name]@[commit]`
+   - See PR comment for specific instructions
+
+2. **URL expired or incorrect**
+   - Solution: Verify you're using the latest URL from the most recent PR comment
+   - Each new commit generates new URLs
+
+3. **Network or registry issues**
+   - Solution: Check pkg.pr.new service status
+   - Try again after a few minutes
 
 ### OIDC Authentication Failures
 
@@ -743,7 +554,7 @@ Understanding the release process helps troubleshoot issues and set expectations
 
 1. **Version already published manually**
    - Solution: Check npm to see if version exists
-   - If testing, use a different preid for pre-releases
+   - If testing, wait for next commit to trigger new version
 
 2. **Multiple workflows running simultaneously**
    - Solution: Workflows are protected by concurrency group
@@ -753,20 +564,6 @@ Understanding the release process helps troubleshoot issues and set expectations
    - Solution: Fetch latest tags: `git fetch --tags`
    - Lerna uses git tags to determine last published version
 
-### Dist-tag Not Removed After PR Merge
-
-**Symptom:** Dist-tag still exists on npm after PR closed.
-
-**Possible causes:**
-
-1. **Cleanup workflow failed**
-   - Solution: Manually remove dist-tag: `npm dist-tag rm @ya-modbus/package-name tag-name`
-   - Requires npm authentication
-
-2. **PR closed before pre-release published**
-   - Solution: No dist-tag was created, nothing to clean up
-   - Check PR comments to verify pre-release was published
-
 ### Getting Help
 
 If you encounter issues not covered here:
@@ -774,17 +571,21 @@ If you encounter issues not covered here:
 1. Check workflow logs in GitHub Actions tab for detailed error messages
 2. Review `/docs/PUBLISHING-SETUP.md` for setup requirements
 3. Verify configuration in `/lerna.json`
-4. Check workflow definition in `/.github/workflows/release.yml`
+4. Check workflow definitions in `/.github/workflows/release.yml` and `/.github/workflows/pkg-pr-new.yml`
 5. Review [Lerna-Lite documentation](https://github.com/lerna-lite/lerna-lite)
-6. Open an issue in the repository with workflow logs and error details
+6. Review [pkg.pr.new documentation](https://github.com/stackblitz-labs/pkg.pr.new)
+7. Open an issue in the repository with workflow logs and error details
 
 ## Reference Documentation
 
 - **Agent Documentation**: `/docs/agents/release.md` - Technical guidelines for AI agents
 - **Publishing Setup**: `/docs/PUBLISHING-SETUP.md` - Initial configuration and manual publishing
-- **Workflow Definition**: `/.github/workflows/release.yml` - Complete workflow implementation
+- **Workflow Definitions**:
+  - `/.github/workflows/release.yml` - Production release workflow
+  - `/.github/workflows/pkg-pr-new.yml` - Preview packages workflow
 - **Lerna Configuration**: `/lerna.json` - Lerna-Lite settings and ignored patterns
 - **Git Guidelines**: `/docs/agents/git.md` - Commit message format and branching strategy
 - **Lerna-Lite**: https://github.com/lerna-lite/lerna-lite - Official documentation
 - **Conventional Commits**: https://www.conventionalcommits.org/ - Commit message specification
 - **NPM Trusted Publishers**: https://docs.npmjs.com/trusted-publishers - OIDC setup guide
+- **pkg.pr.new**: https://github.com/stackblitz-labs/pkg.pr.new - Preview packages service
