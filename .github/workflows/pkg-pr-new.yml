@@ -110,9 +110,8 @@ jobs:
       - name: Publish preview packages
         # Use installed version from package.json for security
         # --compact flag generates shorter URLs (requires packages published to npm with repository field)
-        # --template=compact shows package names without full paths in comments
         # pkg-pr-new automatically posts PR comments with installation URLs
-        run: npx pkg-pr-new publish --compact --template=compact './packages/*'
+        run: npx pkg-pr-new publish --compact './packages/*'
 
       - name: Generate workflow summary
         if: always()
