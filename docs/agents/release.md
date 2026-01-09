@@ -1,5 +1,5 @@
 ---
-paths: /lerna.json, /.github/workflows/release.yml
+paths: /lerna.json, /.github/workflows/release.yml, /.github/workflows/pkg-pr-new.yml
 ---
 
 # Release Process Guidelines
@@ -10,9 +10,7 @@ Publishing packages to npm using Lerna-Lite with conventional commits. Uses npm 
 
 **Production Releases**: Auto-triggered on push to main. Skipped when commit starts with `chore(release):` or no package changes.
 
-**Pre-releases (Feature Branch)**: Manual workflow_dispatch trigger. Creates canary version with custom dist-tag and git SHA. NO git tags. Version changes NOT committed to branch.
-
-**Pre-release Cleanup**: Manual removal required (npm dist-tag rm). Published versions remain available after cleanup.
+**Preview Packages (Pull Requests)**: Automatic via pkg.pr.new on pull requests. Creates temporary preview packages for testing without publishing to npm registry.
 
 ## Version Bumping
 
@@ -35,14 +33,16 @@ SEE `lerna.json` ignoreChanges configuration for complete list.
 
 **Production Release**: Automatic on push to main. No action needed.
 
-**Pre-release (Feature Branch)**: Manual workflow_dispatch. Requires maintain/admin access.
+**Preview Packages**: Automatic on pull requests via pkg.pr.new. Preview URLs posted as PR comments.
 
 **Manual/Emergency Release**: NEVER use npm scripts named `version` or `publish` - they conflict with npm lifecycle hooks. Use npx lerna commands directly with `--yes` and `--no-private` flags.
 
 ## References
 
-- `.github/workflows/release.yml` - Workflow implementation
+- `.github/workflows/release.yml` - Production release workflow
+- `.github/workflows/pkg-pr-new.yml` - Preview packages workflow
 - `docs/PUBLISHING-SETUP.md` - First-time setup and manual release procedure
 - `lerna.json` - Lerna configuration and ignoreChanges
 - `docs/agents/git.md` - Commit message format and conventional commits
 - https://github.com/lerna-lite/lerna-lite - Official Lerna-Lite documentation
+- https://github.com/stackblitz-labs/pkg.pr.new - Preview packages service

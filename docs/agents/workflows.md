@@ -17,7 +17,8 @@ See: `.github/workflows/ci.yml` for matrix generation implementation
 Uses npm trusted publishers with OIDC for secure publishing. Requires `id-token: write` permission and `npm` environment.
 
 See: `docs/agents/release.md` for release process
-See: `.github/workflows/release.yml` for production/pre-release workflow
+See: `.github/workflows/release.yml` for production release workflow
+See: `.github/workflows/pkg-pr-new.yml` for preview packages on pull requests
 
 ## Claude Workflows
 

@@ -1,0 +1,95 @@
+name: Publish Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_review:
+    types: [submitted]
+  issue_comment:
+    types: [created]
+  push:
+    branches:
+      - '**'
+    tags:
+      - '!**'
+    branches-ignore:
+      - main
+
+concurrency:
+  group: pkg-pr-new-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  check:
+    name: Check Permissions
+    runs-on: ubuntu-latest
+    # Skip if this is a push to main (shouldn't happen due to branches-ignore, but defensive)
+    if: |
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'approved') ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/pkg-pr-new')) ||
+      (github.event_name == 'push' && github.ref != 'refs/heads/main')
+    outputs:
+      has-permission: ${{ steps.check.outputs.require-result }}
+      pr-number: ${{ steps.pr.outputs.number }}
+    steps:
+      - name: Get PR number
+        id: pr
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ] || [ "${{ github.event_name }}" == "pull_request_review" ]; then
+            echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "issue_comment" ]; then
+            echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "push" ]; then
+            # For push events on feature branches, try to find associated PR
+            PR_NUMBER=$(gh pr list --head "${GITHUB_REF#refs/heads/}" --state open --json number --jq '.[0].number')
+            echo "number=${PR_NUMBER}" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check user permission
+        id: check
+        uses: actions-cool/check-user-permission@v2
+        with:
+          require: write
+          username: |
+            ${{
+              github.event_name == 'pull_request' && github.event.pull_request.user.login ||
+              github.event_name == 'pull_request_review' && github.event.review.user.login ||
+              github.event_name == 'issue_comment' && github.event.comment.user.login ||
+              github.event_name == 'push' && github.actor
+            }}
+
+  preview:
+    name: Publish Preview Packages
+    needs: check
+    if: needs.check.outputs.has-permission == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          # For PR events, checkout the PR head
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.event_name == 'pull_request_review' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node.js from .nvmrc
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Publish preview
+        run: npx pkg-pr-new publish --compact './packages/*'
