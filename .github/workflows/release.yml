@@ -289,7 +289,8 @@ jobs:
 
           Install any of the published packages using the dist-tag:
           \`\`\`bash
-          ${INSTALL_COMMANDS}\`\`\`
+          ${INSTALL_COMMANDS}
+          \`\`\`
 
           ### Manual Cleanup
 
@@ -297,7 +298,8 @@ jobs:
 
           \`\`\`bash
           # Remove dist-tags (requires npm authentication):
-          ${CLEANUP_COMMANDS}\`\`\`
+          ${CLEANUP_COMMANDS}
+          \`\`\`
 
           > **Note**: Cleanup is optional. Published versions remain available via exact version install (e.g., \`npm install @ya-modbus/cli@0.6.1-pr123.0+abc1234\`) even after the dist-tag is removed.
 
