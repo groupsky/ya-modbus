@@ -13,7 +13,6 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  pull-requests: write
   contents: read
 
 jobs:
@@ -109,45 +108,11 @@ jobs:
         run: npm run build
 
       - name: Publish preview packages
-        id: publish
         # Use installed version from package.json for security
         # --compact flag generates shorter URLs (requires packages published to npm with repository field)
         # --template=compact shows package names without full paths in comments
+        # pkg-pr-new automatically posts PR comments with installation URLs
         run: npx pkg-pr-new publish --compact --template=compact './packages/*'
-
-      - name: Comment preview URLs on PR
-        if: success()
-        run: |
-          gh pr comment ${{ needs.check.outputs.pr-number }} --body "## 📦 Preview Packages Published
-
-          Preview packages have been published for this PR. You can test these packages by installing them using the URLs posted by pkg.pr.new above.
-
-          ### Testing New Packages
-
-          **Note:** Preview packages use the \`--compact\` flag which requires packages to already be published to npm. If you're adding a new package that hasn't been published yet:
-
-          1. The package will still be published to the preview registry
-          2. You can install it using the full URL: \`npm i https://pkg.pr.new/${{ github.repository }}/[package-name]@[commit]\`
-          3. Once the package is first published to npm (via the release workflow), future previews will use shorter compact URLs
-
-          See [pkg.pr.new documentation](https://github.com/stackblitz-labs/pkg.pr.new) for more details."
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Comment on build failure
-        if: failure()
-        run: |
-          gh pr comment ${{ needs.check.outputs.pr-number }} --body "## ❌ Preview Package Publishing Failed
-
-          The preview package workflow failed during build or publish. Common causes:
-          - Linting errors
-          - Test failures
-          - Build errors
-          - Package configuration issues
-
-          Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed error messages."
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate workflow summary
         if: always()
@@ -157,9 +122,7 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Preview packages have been published via pkg.pr.new for PR #${{ needs.check.outputs.pr-number }}." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Commit**: \`${{ needs.check.outputs.pr-head-sha }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Installation URLs have been posted as a comment on the PR." >> $GITHUB_STEP_SUMMARY
+            echo "Installation URLs are available in the PR comments posted by pkg.pr.new." >> $GITHUB_STEP_SUMMARY
           else
             echo "## ❌ Preview Package Publishing Failed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY

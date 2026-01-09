@@ -326,7 +326,7 @@ Preview packages use the `--compact` flag which generates shorter URLs for packa
 
 1. The package will still be published to the preview registry
 2. Install using the full URL format: `npm i https://pkg.pr.new/[org]/[repo]/[package-name]@[commit]`
-3. Once the package is first published to npm (via production release), future previews will use shorter compact URLs
+3. Once the package is first published to npm (via production release), subsequent previews use shorter compact URLs
 
 **Note:** Preview packages are temporary and intended for testing only. They are not published to the npm registry and do not affect production versions.
 
