@@ -3,10 +3,6 @@ name: Publish Preview
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-  pull_request_review:
-    types: [submitted]
-  issue_comment:
-    types: [created]
 
 concurrency:
   group: pkg-pr-new-${{ github.ref }}
@@ -16,78 +12,16 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    name: Check Permissions
-    runs-on: ubuntu-latest
-    # Only run for PRs from the same repository (not forks) to prevent security issues
-    if: |
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      ((github.event_name == 'pull_request') ||
-       (github.event_name == 'pull_request_review' && github.event.review.state == 'approved') ||
-       (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/pkg-pr-new')))
-    outputs:
-      has-permission: ${{ steps.check.outputs.require-result }}
-      pr-number: ${{ steps.get-pr-info.outputs.number }}
-      pr-head-sha: ${{ steps.get-pr-info.outputs.head-sha }}
-      event-actor: ${{ steps.get-event-info.outputs.actor }}
-    steps:
-      - name: Get event actor
-        id: get-event-info
-        env:
-          PR_USER: ${{ github.event.pull_request.user.login }}
-          REVIEW_USER: ${{ github.event.review.user.login }}
-          COMMENT_USER: ${{ github.event.comment.user.login }}
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          # Extract the username of the person triggering this workflow
-          if [ "$EVENT_NAME" == "pull_request" ]; then
-            echo "actor=$PR_USER" >> $GITHUB_OUTPUT
-          elif [ "$EVENT_NAME" == "pull_request_review" ]; then
-            echo "actor=$REVIEW_USER" >> $GITHUB_OUTPUT
-          elif [ "$EVENT_NAME" == "issue_comment" ]; then
-            echo "actor=$COMMENT_USER" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Get PR information
-        id: get-pr-info
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          REPOSITORY: ${{ github.repository }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Extract PR number and head SHA based on event type
-          if [ "$EVENT_NAME" == "pull_request" ] || [ "$EVENT_NAME" == "pull_request_review" ]; then
-            echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
-            echo "head-sha=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
-          elif [ "$EVENT_NAME" == "issue_comment" ]; then
-            # For comment events, fetch PR details via GitHub API
-            PR_DATA=$(gh api "repos/$REPOSITORY/pulls/$ISSUE_NUMBER")
-            echo "number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
-            echo "head-sha=$(echo "$PR_DATA" | jq -r .head.sha)" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Check user permission
-        id: check
-        uses: actions-cool/check-user-permission@7b90a27f92f3961b368376107661682c441f6103 # v2.3.0
-        with:
-          require: write
-          username: ${{ steps.get-event-info.outputs.actor }}
-
-  preview:
+  publish:
     name: Publish Preview Packages
-    needs: check
-    if: needs.check.outputs.has-permission == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Only run for PRs from the same repository (not forks) to prevent security issues
+    if: github.event.pull_request.head.repo.full_name == github.repository
 
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          ref: ${{ needs.check.outputs.pr-head-sha }}
 
       - name: Setup Node.js from .nvmrc
         uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
@@ -108,10 +42,11 @@ jobs:
         run: npm run build
 
       - name: Publish preview packages
-        # Use installed version from package.json for security
-        # --compact flag generates shorter URLs (requires packages published to npm with repository field)
-        # pkg-pr-new automatically posts PR comments with installation URLs
-        run: npx pkg-pr-new publish --compact './packages/*'
+        run: |
+          # Use installed version from package.json for security
+          # --compact flag generates shorter URLs (requires packages published to npm with repository field)
+          # pkg-pr-new uses the installed GitHub App for permissions (no explicit token needed)
+          npx pkg-pr-new publish --compact './packages/*'
 
       - name: Generate workflow summary
         if: always()
@@ -119,13 +54,13 @@ jobs:
           if [ "${{ job.status }}" == "success" ]; then
             echo "## ✅ Preview Packages Published Successfully" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Preview packages have been published via pkg.pr.new for PR #${{ needs.check.outputs.pr-number }}." >> $GITHUB_STEP_SUMMARY
+            echo "Preview packages have been published via pkg.pr.new for PR #${{ github.event.pull_request.number }}." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Installation URLs are available in the PR comments posted by pkg.pr.new." >> $GITHUB_STEP_SUMMARY
           else
             echo "## ❌ Preview Package Publishing Failed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "The workflow failed for PR #${{ needs.check.outputs.pr-number }}." >> $GITHUB_STEP_SUMMARY
+            echo "The workflow failed for PR #${{ github.event.pull_request.number }}." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Check the job logs above for detailed error messages." >> $GITHUB_STEP_SUMMARY
           fi
@@ -133,6 +68,6 @@ jobs:
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Workflow details:**" >> $GITHUB_STEP_SUMMARY
-          echo "- PR: #${{ needs.check.outputs.pr-number }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Actor: @${{ needs.check.outputs.event-actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Commit: \`${{ needs.check.outputs.pr-head-sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- PR: #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Author: @${{ github.event.pull_request.user.login }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.event.pull_request.head.sha }}\`" >> $GITHUB_STEP_SUMMARY
