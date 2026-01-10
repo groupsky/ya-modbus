@@ -2,9 +2,9 @@
   "extends": "../../tsconfig.esm.json",
   "compilerOptions": {
     "outDir": "dist/esm",
-    "rootDir": "src"
+    "rootDir": "."
   },
-  "include": ["src"],
+  "include": ["src", "bin"],
   "references": [
     { "path": "../driver-types/tsconfig.esm.json" },
     { "path": "../transport/tsconfig.esm.json" },

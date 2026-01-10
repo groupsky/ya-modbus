@@ -88,27 +88,24 @@ IMPORTANT: Add references to BOTH tsconfig files for each dependency.
 
 ### CommonJS Module Interop
 
-When importing CommonJS modules (like `modbus-serial`, `aedes`) in ESM builds, use namespace imports:
+When importing CommonJS modules (like `modbus-serial`, `aedes`), use direct default imports:
 
 ```typescript
-// ❌ DON'T - breaks with Node16 module resolution
+// ✅ Correct - works with esModuleInterop: true
 import ModbusRTU from 'modbus-serial'
+import Aedes from 'aedes'
 
-// ✅ DO - works with both ESM and CJS
-import * as ModbusRTUNamespace from 'modbus-serial'
-const ModbusRTU = (ModbusRTUNamespace as any).default || ModbusRTUNamespace
+// For type-only imports
+import type ModbusRTU from 'modbus-serial'
 ```
 
-For type-only imports where types are used in function signatures, use `any` for simplicity:
+This works because:
 
-```typescript
-// Internal utility - using any for ESM/CJS interop
-function createTransport(client: any): Transport {
-  return {
-    /* ... */
-  }
-}
-```
+- Root configs have `esModuleInterop: true` which synthesizes default exports for CommonJS modules
+- TypeScript handles the interop at compile time for both ESM and CJS builds
+- Both `modbus-serial` and `aedes` are compatible with this pattern
+
+**Note:** Direct default imports work with our TypeScript configuration. Do NOT use namespace imports with `.default` fallback unless you have disabled `esModuleInterop`.
 
 ### Coverage Thresholds
 

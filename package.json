@@ -35,7 +35,7 @@
   "scripts": {
     "build": "lerna run build",
     "typecheck": "lerna run typecheck",
-    "clean": "npm run clean --workspaces --if-present && rm -f tsconfig.tsbuildinfo && find packages -name 'tsconfig.tsbuildinfo' -delete && rm -rf node_modules dist coverage",
+    "clean": "npm run clean --workspaces --if-present && rm -f tsconfig.tsbuildinfo && find packages -name 'tsconfig.tsbuildinfo' -delete && rm -rf dist coverage",
     "dev": "npm run dev --workspaces --if-present",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
