@@ -25,6 +25,7 @@ Every new package MUST include:
 All packages publish BOTH CommonJS and ESM formats:
 
 **package.json structure:**
+
 ```json
 {
   "type": "module",
@@ -56,6 +57,7 @@ All packages publish BOTH CommonJS and ESM formats:
 ### TypeScript Configuration
 
 **tsconfig.esm.json:**
+
 ```json
 {
   "extends": "../../tsconfig.esm.json",
@@ -64,13 +66,12 @@ All packages publish BOTH CommonJS and ESM formats:
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [
-    { "path": "../dependency/tsconfig.esm.json" }
-  ]
+  "references": [{ "path": "../dependency/tsconfig.esm.json" }]
 }
 ```
 
 **tsconfig.cjs.json:**
+
 ```json
 {
   "extends": "../../tsconfig.cjs.json",
@@ -79,9 +80,7 @@ All packages publish BOTH CommonJS and ESM formats:
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [
-    { "path": "../dependency/tsconfig.cjs.json" }
-  ]
+  "references": [{ "path": "../dependency/tsconfig.cjs.json" }]
 }
 ```
 
@@ -101,10 +100,13 @@ const ModbusRTU = (ModbusRTUNamespace as any).default || ModbusRTUNamespace
 ```
 
 For type-only imports where types are used in function signatures, use `any` for simplicity:
+
 ```typescript
 // Internal utility - using any for ESM/CJS interop
 function createTransport(client: any): Transport {
-  return { /* ... */ }
+  return {
+    /* ... */
+  }
 }
 ```
 
