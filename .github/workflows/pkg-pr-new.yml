@@ -1,0 +1,73 @@
+name: Publish Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: pkg-pr-new-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  publish:
+    name: Publish Preview Packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Only run for PRs from the same repository (not forks) to prevent security issues
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Setup Node.js from .nvmrc
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint code
+        run: npm run lint
+
+      - name: Run tests
+        run: npm run test:ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Publish preview packages
+        run: |
+          # Use installed version from package.json for security
+          # --compact flag generates shorter URLs (requires packages published to npm with repository field)
+          # pkg-pr-new uses its installed GitHub App for authentication and PR comments
+          # No GITHUB_TOKEN or workflow permissions needed (handled by the app)
+          npx pkg-pr-new publish --compact './packages/*'
+
+      - name: Generate workflow summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "## ✅ Preview Packages Published Successfully" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Preview packages have been published via pkg.pr.new for PR #${{ github.event.pull_request.number }}." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Installation URLs are available in the PR comments posted by pkg.pr.new." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Preview Package Publishing Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The workflow failed for PR #${{ github.event.pull_request.number }}." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Check the job logs above for detailed error messages." >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- PR: #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Author: @${{ github.event.pull_request.user.login }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.event.pull_request.head.sha }}\`" >> $GITHUB_STEP_SUMMARY

@@ -88,8 +88,10 @@ After the package exists on npm:
 Trigger a test release to confirm the trusted publisher is working:
 
 1. Create a feature branch with a minor change
-2. Open a PR and trigger a manual pre-release workflow (see `docs/agents/release.md` for details)
-3. Verify the workflow publishes successfully with provenance
+2. Open a PR to trigger automatic preview packages via pkg.pr.new (see `docs/agents/release.md` for details)
+3. Verify the preview package workflow runs successfully
+4. Merge the PR to main to trigger production release
+5. Verify the release workflow publishes successfully with provenance
 
 ## GitHub Token (Automatic)
 
@@ -107,9 +109,11 @@ For manual releases from local machine:
 
 Check that workflow can authenticate:
 
-1. Trigger a manual pre-release workflow on a feature branch
-2. Verify workflow can authenticate to npm
-3. Check that packages are published with correct dist-tag
+1. Open a PR on a feature branch to trigger automatic preview packages via pkg.pr.new
+2. Verify the preview package workflow runs successfully
+3. Merge to main to trigger production release
+4. Verify workflow can authenticate to npm
+5. Check that packages are published with provenance
 
 ## Manual Release Requirements
 
