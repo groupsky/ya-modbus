@@ -1,0 +1,23 @@
+{
+  // CommonJS build configuration
+  // Extends tsconfig.build-base.json and adds CJS-specific settings
+  // Used by: npm run build:cjs
+  //
+  // Packages extend this and only override rootDir/outDir/references
+  // See: packages/*/tsconfig.cjs.json
+
+  "extends": "./tsconfig.build-base.json",
+  "compilerOptions": {
+    /* Module System - CommonJS */
+    "module": "CommonJS",
+    "moduleResolution": "node10",
+
+    /* CommonJS interop helpers */
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    /* Project References */
+    "composite": true,
+    "incremental": true
+  }
+}

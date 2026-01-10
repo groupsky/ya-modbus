@@ -1,0 +1,23 @@
+{
+  // ESM build configuration
+  // Extends tsconfig.build-base.json and adds ESM-specific settings
+  // Used by: npm run build:esm
+  //
+  // Packages extend this and only override rootDir/outDir/references
+  // See: packages/*/tsconfig.esm.json
+
+  "extends": "./tsconfig.build-base.json",
+  "compilerOptions": {
+    /* Module System - ESM */
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+
+    /* Enable interop for importing CommonJS modules in ESM */
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    /* Project References */
+    "composite": true,
+    "incremental": true
+  }
+}

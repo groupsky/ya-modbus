@@ -14,8 +14,8 @@
   "bin": {
     "ya-modbus-bridge": "./dist/bin/ya-modbus-bridge.js"
   },
-  "main": "dist/src/index.js",
-  "types": "dist/src/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/esm/index.d.ts",
   "engines": {
     "node": ">=20.0.0"
   },
@@ -37,11 +37,15 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc --build",
+    "build": "npm run build:esm && npm run build:cjs && npm run build:package-json",
     "clean": "rm -rf dist",
     "test": "jest",
     "lint": "eslint .",
-    "prepublishOnly": "npm run build && chmod +x dist/bin/ya-modbus-bridge.js"
+    "prepublishOnly": "npm run build && chmod +x dist/bin/ya-modbus-bridge.js",
+    "build:esm": "../../node_modules/.bin/tsc -p tsconfig.esm.json",
+    "build:cjs": "../../node_modules/.bin/tsc -p tsconfig.cjs.json",
+    "build:package-json": "echo '{\"type\":\"module\"}' > dist/esm/package.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
+    "typecheck": "../../node_modules/.bin/tsc --noEmit"
   },
   "dependencies": {
     "@ya-modbus/driver-loader": "^0.6.0",
@@ -58,5 +62,18 @@
     "jest": "^30.2.0",
     "ts-jest": "^29.1.1",
     "typescript": "^5.7.2"
+  },
+  "module": "./dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
   }
 }

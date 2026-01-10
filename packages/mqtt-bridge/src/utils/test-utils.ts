@@ -86,6 +86,7 @@ export function withTimeout<T>(
  * await waitForAllClientsToDisconnect(broker, 5000)
  */
 export function waitForAllClientsToDisconnect(broker: TestBroker, timeoutMs = 5000): Promise<void> {
+   
   if (broker.broker.connectedClients === 0) {
     return Promise.resolve()
   }
@@ -110,6 +111,7 @@ export function waitForAllClientsToDisconnect(broker: TestBroker, timeoutMs = 50
   ).finally(() => {
     broker.broker.off('clientDisconnect', onDisconnect!)
   })
+   
 }
 
 /**
@@ -123,6 +125,7 @@ export function waitForAllClientsToDisconnect(broker: TestBroker, timeoutMs = 50
  * await waitForClientReady(broker)
  */
 export function waitForClientReady(broker: TestBroker, timeoutMs = 2000): Promise<void> {
+   
   let onClientReady: (() => void) | undefined
 
   const clientReadyPromise = new Promise<void>((resolve) => {
@@ -140,6 +143,7 @@ export function waitForClientReady(broker: TestBroker, timeoutMs = 2000): Promis
   ).finally(() => {
     broker.broker.off('clientReady', onClientReady!)
   })
+   
 }
 
 /**
@@ -153,6 +157,7 @@ export function waitForClientReady(broker: TestBroker, timeoutMs = 2000): Promis
  * await waitForClientDisconnect(broker)
  */
 export function waitForClientDisconnect(broker: TestBroker, timeoutMs = 2000): Promise<void> {
+   
   let onClientDisconnect: (() => void) | undefined
 
   const clientDisconnectPromise = new Promise<void>((resolve) => {
@@ -170,6 +175,7 @@ export function waitForClientDisconnect(broker: TestBroker, timeoutMs = 2000): P
   ).finally(() => {
     broker.broker.off('clientDisconnect', onClientDisconnect!)
   })
+   
 }
 
 /**
@@ -188,6 +194,7 @@ export function waitForPublish(
   topicPattern?: string,
   timeoutMs = 1000
 ): Promise<{ topic: string; payload: Buffer }> {
+   
   let onPublish: ((packet: AedesPublishPacket, _client: Client | null) => void) | undefined
 
   const publishPromise = new Promise<{ topic: string; payload: Buffer }>((resolve) => {
@@ -209,6 +216,7 @@ export function waitForPublish(
   ).finally(() => {
     broker.broker.off('publish', onPublish!)
   })
+   
 }
 
 /**
@@ -227,6 +235,7 @@ export function waitForSubscribe(
   topicPattern?: string,
   timeoutMs = 1000
 ): Promise<Array<{ topic: string }>> {
+   
   let onSubscribe: ((subscriptions: Array<{ topic: string }>) => void) | undefined
 
   const subscribePromise = new Promise<Array<{ topic: string }>>((resolve) => {
@@ -246,6 +255,7 @@ export function waitForSubscribe(
   ).finally(() => {
     broker.broker.off('subscribe', onSubscribe!)
   })
+   
 }
 
 /**
@@ -264,6 +274,7 @@ export function waitForUnsubscribe(
   topicPattern?: string,
   timeoutMs = 1000
 ): Promise<Array<string>> {
+   
   let onUnsubscribe: ((unsubscriptions: Array<string>) => void) | undefined
 
   const unsubscribePromise = new Promise<Array<string>>((resolve) => {
@@ -283,6 +294,7 @@ export function waitForUnsubscribe(
   ).finally(() => {
     broker.broker.off('unsubscribe', onUnsubscribe!)
   })
+   
 }
 
 /**

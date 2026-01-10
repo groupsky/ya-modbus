@@ -13,8 +13,8 @@
   "bin": {
     "ya-modbus-profile": "./dist/bin/profile.js"
   },
-  "main": "./dist/src/index.js",
-  "types": "./dist/src/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/esm/index.d.ts",
   "files": [
     "dist",
     "README.md",
@@ -34,13 +34,17 @@
   },
   "author": "Geno Roupsky <185580+groupsky@users.noreply.github.com>",
   "scripts": {
-    "build": "tsc --build",
+    "build": "npm run build:esm && npm run build:cjs && npm run build:package-json",
     "clean": "rm -rf dist",
     "lint": "eslint .",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "build:esm": "../../node_modules/.bin/tsc -p tsconfig.esm.json",
+    "build:cjs": "../../node_modules/.bin/tsc -p tsconfig.cjs.json",
+    "build:package-json": "echo '{\"type\":\"module\"}' > dist/esm/package.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
+    "typecheck": "../../node_modules/.bin/tsc --noEmit"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -57,5 +61,18 @@
     "jest": "^30.2.0",
     "ts-jest": "^29.1.1",
     "typescript": "^5.7.2"
+  },
+  "module": "./dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
   }
 }

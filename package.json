@@ -33,7 +33,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "tsc --build",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present && rm -f tsconfig.tsbuildinfo && find packages -name 'tsconfig.tsbuildinfo' -delete && rm -rf node_modules dist coverage",
     "dev": "npm run dev --workspaces --if-present",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",

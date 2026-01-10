@@ -10,14 +10,103 @@ Creating packages in this monorepo. See docs/NEW-PACKAGE.md for comprehensive us
 
 Every new package MUST include:
 
-1. **package.json** - Standard scripts: build, clean, test, lint
+1. **package.json** - Dual package configuration with exports field
 2. **jest.config.cjs** - 95% coverage thresholds (all metrics)
-3. **tsconfig.json** - Extends tsconfig.base.json (for build)
-4. **tsconfig.lint.json** - Extends tsconfig.lint-base.json (for ESLint)
-5. **AGENTS.md** - Package-specific agent guidance
-6. **README.md** - User documentation
+3. **tsconfig.esm.json** - Extends root tsconfig.esm.json for ESM build
+4. **tsconfig.cjs.json** - Extends root tsconfig.cjs.json for CJS build
+5. **tsconfig.lint.json** - Extends tsconfig.lint-base.json (for ESLint)
+6. **AGENTS.md** - Package-specific agent guidance
+7. **README.md** - User documentation
 
 ## Critical Requirements
+
+### Dual Package Configuration
+
+All packages publish BOTH CommonJS and ESM formats:
+
+**package.json structure:**
+```json
+{
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "npm run build:esm && npm run build:cjs && npm run build:package-json",
+    "build:esm": "../../node_modules/.bin/tsc -p tsconfig.esm.json",
+    "build:cjs": "../../node_modules/.bin/tsc -p tsconfig.cjs.json",
+    "build:package-json": "echo '{\"type\":\"module\"}' > dist/esm/package.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
+    "typecheck": "../../node_modules/.bin/tsc --noEmit"
+  }
+}
+```
+
+### TypeScript Configuration
+
+**tsconfig.esm.json:**
+```json
+{
+  "extends": "../../tsconfig.esm.json",
+  "compilerOptions": {
+    "outDir": "dist/esm",
+    "rootDir": "src"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../dependency/tsconfig.esm.json" }
+  ]
+}
+```
+
+**tsconfig.cjs.json:**
+```json
+{
+  "extends": "../../tsconfig.cjs.json",
+  "compilerOptions": {
+    "outDir": "dist/cjs",
+    "rootDir": "src"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../dependency/tsconfig.cjs.json" }
+  ]
+}
+```
+
+IMPORTANT: Add references to BOTH tsconfig files for each dependency.
+
+### CommonJS Module Interop
+
+When importing CommonJS modules (like `modbus-serial`, `aedes`) in ESM builds, use namespace imports:
+
+```typescript
+// ❌ DON'T - breaks with Node16 module resolution
+import ModbusRTU from 'modbus-serial'
+
+// ✅ DO - works with both ESM and CJS
+import * as ModbusRTUNamespace from 'modbus-serial'
+const ModbusRTU = (ModbusRTUNamespace as any).default || ModbusRTUNamespace
+```
+
+For type-only imports where types are used in function signatures, use `any` for simplicity:
+```typescript
+// Internal utility - using any for ESM/CJS interop
+function createTransport(client: any): Transport {
+  return { /* ... */ }
+}
+```
 
 ### Coverage Thresholds
 
@@ -30,11 +119,9 @@ See: `packages/driver-xymd1/jest.config.cjs:23-30` for required `coverageThresho
 CRITICAL: When creating a new package, update these root files:
 
 1. **jest.config.js** - Add package to projects array (tests won't run from root otherwise)
-2. **tsconfig.json** - Add package to references array (build won't include package)
-3. **tsconfig.lint-base.json** - Add package to paths mapping (ESLint won't resolve imports)
+2. **tsconfig.lint-base.json** - Add package to paths mapping (ESLint won't resolve imports)
 
-See: Root `tsconfig.json:24-32` for references format
-See: Root `tsconfig.lint-base.json:19-27` for paths format
+NOTE: No longer need to update root tsconfig.json - packages handle their own build configurations.
 
 ### Naming Patterns
 

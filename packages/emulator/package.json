@@ -11,8 +11,8 @@
   "author": "Geno Roupsky <185580+groupsky@users.noreply.github.com>",
   "license": "GPL-3.0-or-later",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/esm/index.d.ts",
   "bin": {
     "ya-modbus-emulator": "./bin/ya-modbus-emulator.js"
   },
@@ -35,9 +35,13 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc --build",
+    "build": "npm run build:esm && npm run build:cjs && npm run build:package-json",
     "clean": "rm -rf dist",
-    "test": "jest"
+    "test": "jest",
+    "build:esm": "../../node_modules/.bin/tsc -p tsconfig.esm.json",
+    "build:cjs": "../../node_modules/.bin/tsc -p tsconfig.cjs.json",
+    "build:package-json": "echo '{\"type\":\"module\"}' > dist/esm/package.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
+    "typecheck": "../../node_modules/.bin/tsc --noEmit"
   },
   "dependencies": {
     "commander": "^14.0.2",
@@ -49,5 +53,18 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "module": "./dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
   }
 }
