@@ -8,8 +8,7 @@ concurrency:
   group: pkg-pr-new-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   publish:
@@ -45,7 +44,8 @@ jobs:
         run: |
           # Use installed version from package.json for security
           # --compact flag generates shorter URLs (requires packages published to npm with repository field)
-          # pkg-pr-new uses the installed GitHub App for permissions (no explicit token needed)
+          # pkg-pr-new uses its installed GitHub App for authentication and PR comments
+          # No GITHUB_TOKEN or workflow permissions needed (handled by the app)
           npx pkg-pr-new publish --compact './packages/*'
 
       - name: Generate workflow summary

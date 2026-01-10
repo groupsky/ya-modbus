@@ -53,12 +53,11 @@ Preview packages allow you to test changes from pull requests before merging to 
 **Characteristics:**
 
 - Automatically triggered on PR events (open, sync, reopen)
-- Can be manually triggered via PR approval or `/pkg-pr-new` comment
 - Published to pkg.pr.new temporary registry (not npm)
 - No git tags created
 - No version changes committed
-- Requires write access to the repository
-- Installation URLs posted as PR comments
+- Only runs for same-repository PRs (not forks)
+- Installation URLs posted as PR comments by pkg.pr.new GitHub App
 
 **When to use:**
 
@@ -70,8 +69,7 @@ Preview packages allow you to test changes from pull requests before merging to 
 **When it runs:**
 
 - Automatically on pull request opened, synchronized, or reopened
-- On pull request approval
-- When a comment containing `/pkg-pr-new` is posted on a PR
+- Only for pull requests from the same repository (not forks)
 
 ## Independent Package Versioning
 
@@ -285,32 +283,27 @@ Production releases are **fully automated** and require no manual intervention.
 
 ### Preview Packages (Pull Requests)
 
-Preview packages are **automatically published** when pull requests are opened, synchronized, or reopened. They can also be manually triggered.
+Preview packages are **automatically published** when pull requests are opened, synchronized, or reopened.
 
 **Prerequisites:**
 
 - Open pull request with committed changes
 - Changes pushed to GitHub
-- Write access to the repository
+- Pull request from the same repository (not a fork)
 
-**Automatic triggers:**
+**Triggers:**
 
 - Pull request opened
 - Pull request synchronized (new commits pushed)
 - Pull request reopened
-- Pull request approved
-
-**Manual trigger:**
-
-- Comment `/pkg-pr-new` on the pull request
 
 **Process:**
 
 1. Open or update a pull request
-2. Preview package workflow runs automatically
-3. Workflow checks permissions, runs lint and tests
+2. Preview package workflow runs automatically (fork PRs are blocked)
+3. Workflow runs lint, tests, and build steps
 4. Packages are built and published to pkg.pr.new
-5. Installation URLs are posted as a PR comment
+5. Installation URLs are posted as a PR comment by the pkg.pr.new GitHub App
 6. Test the preview packages using the URLs provided
 
 **What gets published:**
@@ -393,20 +386,20 @@ Understanding the release process helps troubleshoot issues and set expectations
 
 ### Preview Package Flow
 
-1. **Trigger**: Pull request event (open, sync, reopen, approval, or `/pkg-pr-new` comment)
-2. **Permission check**: Validates user has write access to the repository
-3. **Checkout**: Workflow checks out PR head commit
+1. **Trigger**: Pull request event (open, sync, or reopen)
+2. **Fork check**: Workflow verifies PR is from same repository (blocks forks for security)
+3. **Checkout**: Workflow checks out PR merge commit (tests integration with base branch)
 4. **Setup**: Node.js and npm dependencies installed
 5. **Lint**: Code linting runs (`npm run lint`)
 6. **Test**: Full test suite runs (`npm run test:ci`)
 7. **Build**: All packages built (`npm run build`)
 8. **Publish**:
-   - Publishes changed packages to pkg.pr.new
+   - Publishes changed packages to pkg.pr.new via installed GitHub App
    - Uses `--compact` flag for shorter URLs (requires packages published to npm)
    - NO git tags created
    - NO version commits pushed
    - NO npm registry publishing
-9. **PR comment**: Workflow posts installation URLs as a PR comment
+9. **PR comment**: pkg.pr.new GitHub App posts installation URLs as a PR comment
 10. **Success**: Preview packages available via pkg.pr.new URLs
 
 **Key differences from production:**
@@ -416,7 +409,7 @@ Understanding the release process helps troubleshoot issues and set expectations
 - Published to pkg.pr.new temporary registry (not npm)
 - No GitHub releases created
 - Installation via unique URLs instead of version numbers
-- Requires write access instead of maintain/admin
+- Only runs for same-repository PRs (fork PRs are blocked)
 
 ## Troubleshooting
 
@@ -443,23 +436,21 @@ Understanding the release process helps troubleshoot issues and set expectations
    - Solution: Check if another workflow already published these changes
    - Review git tags: `git tag -l`
 
-### Preview Package Permission Denied
+### Preview Package Workflow Does Not Run
 
-**Symptom:** Preview package workflow fails permission check or does not run.
+**Symptom:** Preview package workflow does not run for a pull request.
 
 **Possible causes:**
 
-1. **Insufficient permissions**
-   - Solution: Request write access from repository owner
-   - Preview packages require write access to post PR comments
-
-2. **Pull request from forked repository**
+1. **Pull request from forked repository**
    - **Problem:** Preview packages do not work for PRs from forks
-   - **Reason:** The workflow explicitly checks `github.event.pull_request.head.repo.full_name == github.repository` to prevent unauthorized users from publishing packages that could be confused with official packages
-   - **Solution:** For external contributors, maintainers with write access can:
-     - Manually trigger preview publishing by approving the PR
-     - Comment `/pkg-pr-new` on the PR
-     - Or push the contributor's changes to a branch in the main repository
+   - **Reason:** The workflow explicitly checks `github.event.pull_request.head.repo.full_name == github.repository` to prevent unauthorized publishing and ensure security
+   - **Why this is secure:** Fork PRs could potentially publish malicious packages that might be confused with official packages
+   - **Solution:** For external contributors, a maintainer must push the contributor's changes to a branch in the main repository, then the preview packages will publish automatically
+
+2. **First-time contributor awaiting approval**
+   - **Problem:** GitHub requires approval for first-time contributors to run workflows
+   - **Solution:** Repository maintainer must approve the workflow run in the GitHub Actions UI
 
 ### Preview Package Build Failures
 
