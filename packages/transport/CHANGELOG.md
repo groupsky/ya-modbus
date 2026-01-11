@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.7.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/transport@0.6.0...@ya-modbus/transport@0.7.0) (2026-01-11)
+
+### Features
+
+- **build:** add dual CommonJS/ESM package support ([#187](https://github.com/groupsky/ya-modbus/issues/187)) ([3d78130](https://github.com/groupsky/ya-modbus/commit/3d781304d42edba335cdc320ba25275f3b4ea6c9))
+
 # 0.6.0 (2026-01-04)
 
 ### Bug Fixes

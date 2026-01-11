@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.7.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.6.0...@ya-modbus/device-profiler@0.7.0) (2026-01-11)
+
+### Bug Fixes
+
+- **device-profiler:** display error message instead of [object Object] ([#165](https://github.com/groupsky/ya-modbus/issues/165)) ([591da4e](https://github.com/groupsky/ya-modbus/commit/591da4e889c85593898111c06e0cc633e1f90a29)), closes [#164](https://github.com/groupsky/ya-modbus/issues/164)
+
+### Features
+
+- **build:** add dual CommonJS/ESM package support ([#187](https://github.com/groupsky/ya-modbus/issues/187)) ([3d78130](https://github.com/groupsky/ya-modbus/commit/3d781304d42edba335cdc320ba25275f3b4ea6c9))
+
 # 0.6.0 (2026-01-04)
 
 ### Bug Fixes

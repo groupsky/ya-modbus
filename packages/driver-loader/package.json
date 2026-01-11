@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/driver-loader",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Dynamic driver loader for ya-modbus device drivers",
   "type": "module",
   "keywords": [
@@ -63,7 +63,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@ya-modbus/driver-types": "^0.6.0"
+    "@ya-modbus/driver-types": "^0.7.0"
   },
   "peerDependencies": {
     "jest": ">=29.0.0"
