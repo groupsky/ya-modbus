@@ -10,31 +10,69 @@ Creating packages in this monorepo. See docs/NEW-PACKAGE.md for comprehensive us
 
 Every new package MUST include:
 
-1. **package.json** - Standard scripts: build, clean, test, lint
+1. **package.json** - Dual package configuration with exports field
 2. **jest.config.cjs** - 95% coverage thresholds (all metrics)
-3. **tsconfig.json** - Extends tsconfig.base.json (for build)
-4. **tsconfig.lint.json** - Extends tsconfig.lint-base.json (for ESLint)
-5. **AGENTS.md** - Package-specific agent guidance
-6. **README.md** - User documentation
+3. **tsconfig.esm.json** - Extends root tsconfig.esm.json for ESM build
+4. **tsconfig.cjs.json** - Extends root tsconfig.cjs.json for CJS build
+5. **tsconfig.lint.json** - Extends tsconfig.lint-base.json (for ESLint)
+6. **AGENTS.md** - Package-specific agent guidance
+7. **README.md** - User documentation
 
 ## Critical Requirements
+
+### Dual Package Configuration
+
+All packages MUST publish BOTH CommonJS and ESM formats.
+
+See: packages/driver-xymd1/package.json for exports configuration and build scripts
+See: packages/driver-xymd1/tsconfig.esm.json for ESM build config
+See: packages/driver-xymd1/tsconfig.cjs.json for CJS build config
+
+CRITICAL: Add references to BOTH tsconfig files for each dependency.
+
+### Package Types: CLI vs Library
+
+**Library packages** (drivers, transport, etc.):
+
+- Use `rootDir: "src"` in tsconfig
+- Output: `dist/esm/index.js` and `dist/cjs/index.js`
+- Exports point to `dist/{esm,cjs}/index.js`
+
+**CLI packages** (cli, device-profiler, mqtt-bridge):
+
+- Use `rootDir: "."` in tsconfig
+- Include both `src` and `bin` directories
+- Output: `dist/esm/src/` and `dist/esm/bin/`
+- Exports point to `dist/{esm,cjs}/src/index.js`
+- Bin field points to `dist/esm/bin/*.js`
+
+See: packages/cli/tsconfig.esm.json for CLI package structure
+See: packages/driver-xymd1/tsconfig.esm.json for library package structure
+
+### CommonJS Module Interop
+
+When importing CommonJS modules (like `modbus-serial`, `aedes`), use direct default imports with `esModuleInterop: true`.
+
+See: packages/mqtt-bridge/src/index.ts for correct import patterns
+See: packages/transport/src/tcp-transport.ts for modbus-serial imports
+See: packages/mqtt-bridge/src/utils/test-utils.ts for aedes imports
+
+Root configs have `esModuleInterop: true` which synthesizes default exports for CommonJS modules.
 
 ### Coverage Thresholds
 
 All packages require 95% coverage (branches, functions, lines, statements).
 
-See: `packages/driver-xymd1/jest.config.cjs:23-30` for required `coverageThreshold` configuration.
+See: packages/driver-xymd1/jest.config.cjs (coverageThreshold section) for required configuration.
 
 ### Root Configuration Updates
 
 CRITICAL: When creating a new package, update these root files:
 
 1. **jest.config.js** - Add package to projects array (tests won't run from root otherwise)
-2. **tsconfig.json** - Add package to references array (build won't include package)
-3. **tsconfig.lint-base.json** - Add package to paths mapping (ESLint won't resolve imports)
+2. **tsconfig.lint-base.json** - Add package to paths mapping (ESLint won't resolve imports)
 
-See: Root `tsconfig.json:24-32` for references format
-See: Root `tsconfig.lint-base.json:19-27` for paths format
+NOTE: No longer need to update root tsconfig.json - packages handle their own build configurations.
 
 ### Naming Patterns
 
@@ -44,13 +82,9 @@ See: Root `tsconfig.lint-base.json:19-27` for paths format
 
 ### Engines Field
 
-All packages MUST include the engines field:
+All packages MUST include engines field specifying minimum Node.js version.
 
-```json
-"engines": {
-  "node": ">=20.0.0"
-}
-```
+See: packages/driver-xymd1/package.json (engines section) for configuration.
 
 ## Driver Packages
 

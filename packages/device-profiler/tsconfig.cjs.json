@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.cjs.json",
+  "compilerOptions": {
+    "outDir": "dist/cjs",
+    "rootDir": "."
+  },
+  "include": ["src", "bin"],
+  "references": [
+    { "path": "../driver-types/tsconfig.cjs.json" },
+    { "path": "../transport/tsconfig.cjs.json" }
+  ]
+}

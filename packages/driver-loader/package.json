@@ -10,16 +10,29 @@
   ],
   "author": "Geno Roupsky <185580+groupsky@users.noreply.github.com>",
   "license": "GPL-3.0-or-later",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
     },
     "./testing": {
-      "types": "./dist/testing/index.d.ts",
-      "default": "./dist/testing/index.js"
+      "import": {
+        "types": "./dist/esm/testing/index.d.ts",
+        "default": "./dist/esm/testing/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/testing/index.d.ts",
+        "default": "./dist/cjs/testing/index.js"
+      }
     }
   },
   "files": [
@@ -40,7 +53,11 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc --build",
+    "build": "npm run build:esm && npm run build:cjs && npm run build:package-json",
+    "build:esm": "../../node_modules/.bin/tsc -p tsconfig.esm.json",
+    "build:cjs": "../../node_modules/.bin/tsc -p tsconfig.cjs.json",
+    "build:package-json": "echo '{\"type\":\"module\"}' > dist/esm/package.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
+    "typecheck": "../../node_modules/.bin/tsc --noEmit",
     "clean": "rm -rf dist",
     "test": "jest",
     "lint": "eslint ."

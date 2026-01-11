@@ -33,8 +33,9 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "tsc --build",
-    "clean": "npm run clean --workspaces --if-present && rm -f tsconfig.tsbuildinfo && find packages -name 'tsconfig.tsbuildinfo' -delete && rm -rf node_modules dist coverage",
+    "build": "lerna run build",
+    "typecheck": "lerna run typecheck",
+    "clean": "npm run clean --workspaces --if-present && rm -f tsconfig.tsbuildinfo && find packages -name 'tsconfig.tsbuildinfo' -delete && rm -rf dist coverage",
     "dev": "npm run dev --workspaces --if-present",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
@@ -50,6 +51,7 @@
     "@lerna-lite/changed": "^4.10.3",
     "@lerna-lite/cli": "^4.10.3",
     "@lerna-lite/publish": "^4.10.3",
+    "@lerna-lite/run": "^4.10.5",
     "@lerna-lite/version": "^4.10.3",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.10.6",

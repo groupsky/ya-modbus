@@ -1,0 +1,42 @@
+{
+  // Base configuration for building packages (both ESM and CJS)
+  // Extended by tsconfig.esm.json and tsconfig.cjs.json
+  // Contains only format-agnostic settings
+  //
+  // DO NOT set module, moduleResolution here - those are format-specific
+  // See: tsconfig.esm.json and tsconfig.cjs.json for format-specific settings
+
+  "compilerOptions": {
+    /* Language and Environment */
+    "target": "ES2020",
+    "lib": ["ES2023"],
+
+    /* Type Checking */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* Emit */
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "removeComments": false,
+    "importHelpers": true,
+    "newLine": "lf",
+
+    /* Interop Constraints */
+    "isolatedModules": true,
+    "allowJs": false,
+    "resolveJsonModule": true,
+
+    /* Completeness */
+    "skipLibCheck": true
+  },
+  "exclude": ["node_modules", "dist", "coverage", "**/*.test.ts", "**/__mocks__"]
+}

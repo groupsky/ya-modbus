@@ -10,8 +10,21 @@
   "author": "Geno Roupsky <185580+groupsky@users.noreply.github.com>",
   "license": "GPL-3.0-or-later",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
+  },
   "files": [
     "dist",
     "README.md",
@@ -30,10 +43,14 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc --build",
+    "build": "npm run build:esm && npm run build:cjs && npm run build:package-json",
+    "build:esm": "../../node_modules/.bin/tsc -p tsconfig.esm.json",
+    "build:cjs": "../../node_modules/.bin/tsc -p tsconfig.cjs.json",
+    "build:package-json": "echo '{\"type\":\"module\"}' > dist/esm/package.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
     "clean": "rm -rf dist",
     "test": "jest",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "../../node_modules/.bin/tsc --noEmit"
   },
   "engines": {
     "node": ">=20.0.0"
