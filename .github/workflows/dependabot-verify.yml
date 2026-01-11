@@ -66,7 +66,10 @@ jobs:
             echo "   Root configuration covers all workspace packages"
             echo ""
 
-            # Verify all packages are in workspace
+            # Extract all dependabot directories for checking
+            dependabot_dirs=$(grep -A 1 "package-ecosystem: 'npm'" "$config_file" | grep "directory:" | awk '{print $2}' | tr -d "'")
+
+            # Verify all packages are covered (either in workspace or have individual config)
             coverage_ok=true
             for pkg in $packages; do
               pkg_dir=$(dirname "$pkg")
@@ -77,8 +80,11 @@ jobs:
                 # Check if package is in workspace
                 if echo "$has_workspaces" | jq -e --arg dir "$pkg_dir" 'any(. == $dir or . == ($dir | split("/")[0] + "/*"))' >/dev/null 2>&1; then
                   echo "✅ $pkg_dir is covered (workspace)"
+                # Check if package has individual dependabot config
+                elif echo "$dependabot_dirs" | grep -q "^/$pkg_dir$"; then
+                  echo "✅ $pkg_dir is covered (individual config)"
                 else
-                  echo "❌ $pkg_dir is NOT in workspace configuration!"
+                  echo "❌ $pkg_dir is NOT covered!"
                   coverage_ok=false
                 fi
               fi
