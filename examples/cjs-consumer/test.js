@@ -16,6 +16,7 @@ async function main() {
     deviceProfiler: require('@ya-modbus/device-profiler'),
     driverEx9em: require('@ya-modbus/driver-ex9em'),
     driverLoader: require('@ya-modbus/driver-loader'),
+    driverOrWe516: require('@ya-modbus/driver-or-we-516'),
     driverSdk: require('@ya-modbus/driver-sdk'),
     driverXymd1: require('@ya-modbus/driver-xymd1'),
     emulator: require('@ya-modbus/emulator'),
@@ -132,7 +133,7 @@ async function main() {
 
   console.log('\n✅ All CommonJS imports successful!')
   console.log('✅ No .default workaround required!')
-  console.log('✅ All 10 packages loaded and verified!')
+  console.log('✅ All 11 packages loaded and verified!')
 }
 
 main().catch((error) => {
