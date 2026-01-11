@@ -1,0 +1,26 @@
+{
+  "name": "example-typescript-esm-consumer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Example TypeScript ESM project consuming ya-modbus packages",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node dist/test.js"
+  },
+  "dependencies": {
+    "@ya-modbus/cli": "file:../../packages/cli",
+    "@ya-modbus/device-profiler": "file:../../packages/device-profiler",
+    "@ya-modbus/driver-ex9em": "file:../../packages/driver-ex9em",
+    "@ya-modbus/driver-loader": "file:../../packages/driver-loader",
+    "@ya-modbus/driver-sdk": "file:../../packages/driver-sdk",
+    "@ya-modbus/driver-types": "file:../../packages/driver-types",
+    "@ya-modbus/driver-xymd1": "file:../../packages/driver-xymd1",
+    "@ya-modbus/emulator": "file:../../packages/emulator",
+    "@ya-modbus/mqtt-bridge": "file:../../packages/mqtt-bridge",
+    "@ya-modbus/transport": "file:../../packages/transport"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}
