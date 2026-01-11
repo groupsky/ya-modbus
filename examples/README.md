@@ -19,11 +19,20 @@ These examples serve as:
 **Tests**: `require()` imports work without `.default` workarounds
 
 ```javascript
-const { DataType } = require('@ya-modbus/driver-types')
-const xymd1Driver = require('@ya-modbus/driver-xymd1')
+// Named exports from SDK packages
+const { readScaledUInt16BE, createEnumValidator } = require('@ya-modbus/driver-sdk')
+const { createTransport, createRTUTransport } = require('@ya-modbus/transport')
+
+// Driver packages (NO .default workaround needed)
+const driverXymd1 = require('@ya-modbus/driver-xymd1')
+const driver = await driverXymd1.createDriver({
+  transport: { type: 'tcp', host: 'localhost', port: 502 },
+})
 ```
 
 **Key verification**: Default exports work directly without `.default` access
+
+**Note**: JavaScript consumers cannot import type-only packages like `@ya-modbus/driver-types`
 
 ### 2. ES Module Consumer (`esm-consumer/`)
 
@@ -31,11 +40,18 @@ const xymd1Driver = require('@ya-modbus/driver-xymd1')
 **Tests**: `import` statements work natively
 
 ```javascript
-import { DataType } from '@ya-modbus/driver-types'
-import xymd1Driver from '@ya-modbus/driver-xymd1'
+// Named exports from SDK packages
+import { readScaledUInt16BE, createEnumValidator } from '@ya-modbus/driver-sdk'
+import { createTransport, createRTUTransport } from '@ya-modbus/transport'
+
+// Driver packages
+import { createDriver as createXYMD1Driver, DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
+const driver = await createXYMD1Driver({ transport: { type: 'tcp', host: 'localhost', port: 502 } })
 ```
 
 **Key verification**: Both named and default imports work correctly
+
+**Note**: JavaScript consumers cannot import type-only packages like `@ya-modbus/driver-types`
 
 ### 3. TypeScript ESM Consumer (`typescript-esm-consumer/`)
 
@@ -43,18 +59,27 @@ import xymd1Driver from '@ya-modbus/driver-xymd1'
 **Tests**: Full type safety with ES module output
 
 ```typescript
-import { DataType } from '@ya-modbus/driver-types'
-import type { ModbusDriver } from '@ya-modbus/driver-types'
-import xymd1Driver from '@ya-modbus/driver-xymd1'
+// Type-only imports
+import type { DataType, DeviceDriver } from '@ya-modbus/driver-types'
 
-const driver: ModbusDriver = xymd1Driver
+// Runtime imports
+import { readScaledUInt16BE, createEnumValidator } from '@ya-modbus/driver-sdk'
+import { createDriver as createXYMD1Driver, DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
+
+// Full type safety
+const driver: DeviceDriver = await createXYMD1Driver({
+  transport: { type: 'tcp', host: 'localhost', port: 502 },
+  slaveId: 1,
+} as any)
+
+const dataType: DataType = 'float' // Type-only usage
 ```
 
 **Key verification**:
 
 - TypeScript compilation succeeds
 - Type definitions are correct
-- Type-only imports work
+- Type-only imports work (`import type`)
 - Runtime execution works
 
 ### 4. TypeScript CJS Consumer (`typescript-cjs-consumer/`)
@@ -63,8 +88,17 @@ const driver: ModbusDriver = xymd1Driver
 **Tests**: Full type safety with CommonJS output
 
 ```typescript
-import { DataType } from '@ya-modbus/driver-types'
-import xymd1Driver from '@ya-modbus/driver-xymd1' // No .default needed!
+// Type-only imports
+import type { DataType, DeviceDriver } from '@ya-modbus/driver-types'
+
+// Runtime imports (NO .default workaround needed!)
+import { readScaledUInt16BE } from '@ya-modbus/driver-sdk'
+import { createDriver as createXYMD1Driver, DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
+
+const driver: DeviceDriver = await createXYMD1Driver({
+  transport: { type: 'tcp', host: 'localhost', port: 502 },
+  slaveId: 1,
+} as any)
 ```
 
 **Key verification**:

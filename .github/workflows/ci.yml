@@ -124,6 +124,7 @@ jobs:
     name: Package Compatibility
     runs-on: ubuntu-latest
     needs: setup
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
