@@ -41,7 +41,7 @@
     "clean": "rm -rf dist",
     "test": "jest",
     "lint": "eslint .",
-    "prepublishOnly": "npm run build && chmod +x dist/bin/ya-modbus-bridge.js",
+    "prepublishOnly": "npm run build && chmod +x dist/esm/bin/ya-modbus-bridge.js",
     "build:esm": "../../node_modules/.bin/tsc -p tsconfig.esm.json",
     "build:cjs": "../../node_modules/.bin/tsc -p tsconfig.cjs.json",
     "build:package-json": "echo '{\"type\":\"module\"}' > dist/esm/package.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // Entry point for CLI - delegates to compiled TypeScript
-import { main } from '../dist/cli.js'
+import { main } from '../dist/esm/cli.js'
 
 // Run the CLI
 main().catch((error) => {

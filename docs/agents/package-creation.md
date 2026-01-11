@@ -1,7 +1,3 @@
----
-paths: /**/packages/*/package.json, /**/packages/*/jest.config.cjs, /**/packages/*/tsconfig.json
----
-
 # Package Creation Guidelines
 
 Creating packages in this monorepo. See docs/NEW-PACKAGE.md for comprehensive user guide.
@@ -22,96 +18,30 @@ Every new package MUST include:
 
 ### Dual Package Configuration
 
-All packages publish BOTH CommonJS and ESM formats:
+All packages MUST publish BOTH CommonJS and ESM formats.
 
-**package.json structure:**
+See: packages/driver-xymd1/package.json:16-67 for exports configuration
+See: packages/driver-xymd1/package.json:39-47 for build scripts
+See: packages/driver-xymd1/tsconfig.esm.json for ESM build config
+See: packages/driver-xymd1/tsconfig.cjs.json for CJS build config
 
-```json
-{
-  "type": "module",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/esm/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/index.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/index.js"
-      }
-    }
-  },
-  "scripts": {
-    "build": "npm run build:esm && npm run build:cjs && npm run build:package-json",
-    "build:esm": "../../node_modules/.bin/tsc -p tsconfig.esm.json",
-    "build:cjs": "../../node_modules/.bin/tsc -p tsconfig.cjs.json",
-    "build:package-json": "echo '{\"type\":\"module\"}' > dist/esm/package.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
-    "typecheck": "../../node_modules/.bin/tsc --noEmit"
-  }
-}
-```
-
-### TypeScript Configuration
-
-**tsconfig.esm.json:**
-
-```json
-{
-  "extends": "../../tsconfig.esm.json",
-  "compilerOptions": {
-    "outDir": "dist/esm",
-    "rootDir": "src"
-  },
-  "include": ["src"],
-  "references": [{ "path": "../dependency/tsconfig.esm.json" }]
-}
-```
-
-**tsconfig.cjs.json:**
-
-```json
-{
-  "extends": "../../tsconfig.cjs.json",
-  "compilerOptions": {
-    "outDir": "dist/cjs",
-    "rootDir": "src"
-  },
-  "include": ["src"],
-  "references": [{ "path": "../dependency/tsconfig.cjs.json" }]
-}
-```
-
-IMPORTANT: Add references to BOTH tsconfig files for each dependency.
+CRITICAL: Add references to BOTH tsconfig files for each dependency.
 
 ### CommonJS Module Interop
 
-When importing CommonJS modules (like `modbus-serial`, `aedes`), use direct default imports:
+When importing CommonJS modules (like `modbus-serial`, `aedes`), use direct default imports with `esModuleInterop: true`.
 
-```typescript
-// ✅ Correct - works with esModuleInterop: true
-import ModbusRTU from 'modbus-serial'
-import Aedes from 'aedes'
+See: packages/mqtt-bridge/src/index.ts:1-3 for correct import patterns
+See: packages/transport/src/tcp-transport.ts:1-5 for modbus-serial imports
+See: packages/mqtt-bridge/src/utils/test-utils.ts:2-3 for aedes imports
 
-// For type-only imports
-import type ModbusRTU from 'modbus-serial'
-```
-
-This works because:
-
-- Root configs have `esModuleInterop: true` which synthesizes default exports for CommonJS modules
-- TypeScript handles the interop at compile time for both ESM and CJS builds
-- Both `modbus-serial` and `aedes` are compatible with this pattern
-
-**Note:** Direct default imports work with our TypeScript configuration. Do NOT use namespace imports with `.default` fallback unless you have disabled `esModuleInterop`.
+Root configs have `esModuleInterop: true` which synthesizes default exports for CommonJS modules.
 
 ### Coverage Thresholds
 
 All packages require 95% coverage (branches, functions, lines, statements).
 
-See: `packages/driver-xymd1/jest.config.cjs:23-30` for required `coverageThreshold` configuration.
+See: packages/driver-xymd1/jest.config.cjs:23-30 for required `coverageThreshold` configuration.
 
 ### Root Configuration Updates
 
@@ -130,13 +60,9 @@ NOTE: No longer need to update root tsconfig.json - packages handle their own bu
 
 ### Engines Field
 
-All packages MUST include the engines field:
+All packages MUST include engines field specifying minimum Node.js version.
 
-```json
-"engines": {
-  "node": ">=20.0.0"
-}
-```
+See: packages/driver-xymd1/package.json:52-54 for engines field configuration.
 
 ## Driver Packages
 
