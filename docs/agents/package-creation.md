@@ -26,6 +26,25 @@ See: packages/driver-xymd1/tsconfig.cjs.json for CJS build config
 
 CRITICAL: Add references to BOTH tsconfig files for each dependency.
 
+### Package Types: CLI vs Library
+
+**Library packages** (drivers, transport, etc.):
+
+- Use `rootDir: "src"` in tsconfig
+- Output: `dist/esm/index.js` and `dist/cjs/index.js`
+- Exports point to `dist/{esm,cjs}/index.js`
+
+**CLI packages** (cli, device-profiler, mqtt-bridge):
+
+- Use `rootDir: "."` in tsconfig
+- Include both `src` and `bin` directories
+- Output: `dist/esm/src/` and `dist/esm/bin/`
+- Exports point to `dist/{esm,cjs}/src/index.js`
+- Bin field points to `dist/esm/bin/*.js`
+
+See: packages/cli/tsconfig.esm.json for CLI package structure
+See: packages/driver-xymd1/tsconfig.esm.json for library package structure
+
 ### CommonJS Module Interop
 
 When importing CommonJS modules (like `modbus-serial`, `aedes`), use direct default imports with `esModuleInterop: true`.
