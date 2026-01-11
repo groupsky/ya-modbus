@@ -1,0 +1,21 @@
+{
+  "name": "example-typescript-cjs-consumer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Example TypeScript CommonJS project consuming ya-modbus packages",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node dist/test.js"
+  },
+  "dependencies": {
+    "@ya-modbus/driver-types": "file:../../packages/driver-types",
+    "@ya-modbus/driver-sdk": "file:../../packages/driver-sdk",
+    "@ya-modbus/transport": "file:../../packages/transport",
+    "@ya-modbus/driver-xymd1": "file:../../packages/driver-xymd1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "example-esm-consumer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Example ES Module project consuming ya-modbus packages",
+  "type": "module",
+  "scripts": {
+    "test": "node test.mjs"
+  },
+  "dependencies": {
+    "@ya-modbus/driver-types": "file:../../packages/driver-types",
+    "@ya-modbus/driver-sdk": "file:../../packages/driver-sdk",
+    "@ya-modbus/transport": "file:../../packages/transport",
+    "@ya-modbus/driver-xymd1": "file:../../packages/driver-xymd1"
+  }
+}
