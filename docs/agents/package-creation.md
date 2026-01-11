@@ -1,3 +1,7 @@
+---
+paths: /**/packages/*/package.json, /**/packages/*/jest.config.cjs, /**/packages/*/tsconfig.json
+---
+
 # Package Creation Guidelines
 
 Creating packages in this monorepo. See docs/NEW-PACKAGE.md for comprehensive user guide.
