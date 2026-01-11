@@ -32,6 +32,12 @@ const CONSUMERS = [
   'typescript-esm-consumer',
 ]
 
+// Packages that are type-only and don't need to be imported in JavaScript consumers
+const TYPE_ONLY_PACKAGES = ['@ya-modbus/driver-types']
+
+// TypeScript consumers that should import type-only packages
+const TYPESCRIPT_CONSUMERS = ['typescript-cjs-consumer', 'typescript-esm-consumer']
+
 /**
  * Discover all publishable packages in the monorepo
  */
@@ -98,12 +104,19 @@ function extractImports(filePath) {
     ),
   ].map((m) => m[1])
 
+  // Match type-only imports: import type ... from 'package'
+  const typeImports = [
+    ...content.matchAll(
+      /import\s+type\s+(?:{[^}]+}|[^{}\s]+)\s+from\s+['"](@ya-modbus\/[^'"]+)['"]/g
+    ),
+  ].map((m) => m[1])
+
   // Match CommonJS requires: require('package')
   const cjsImports = [...content.matchAll(/require\(['"](@ya-modbus\/[^'"]+)['"]\)/g)].map(
     (m) => m[1]
   )
 
-  return [...new Set([...esmImports, ...cjsImports])]
+  return [...new Set([...esmImports, ...typeImports, ...cjsImports])]
 }
 
 /**
@@ -128,6 +141,16 @@ function checkImportTypes(filePath) {
     ...content.matchAll(/import\s+{[^}]+}\s+from\s+['"](@ya-modbus\/[^'"]+)['"]/g),
   ]
   for (const match of namedImports) {
+    const pkgName = match[1]
+    if (!results[pkgName]) results[pkgName] = { default: false, named: false }
+    results[pkgName].named = true
+  }
+
+  // Check for type-only imports: import type { ... } from 'package'
+  const typeOnlyImports = [
+    ...content.matchAll(/import\s+type\s+{[^}]+}\s+from\s+['"](@ya-modbus\/[^'"]+)['"]/g),
+  ]
+  for (const match of typeOnlyImports) {
     const pkgName = match[1]
     if (!results[pkgName]) results[pkgName] = { default: false, named: false }
     results[pkgName].named = true
@@ -228,14 +251,25 @@ function main() {
     }
 
     const imports = extractImports(testFile)
-    const missingImports = packages.filter((pkg) => !imports.includes(pkg.name))
+
+    // For JavaScript consumers, skip type-only packages
+    const isTypeScriptConsumer = TYPESCRIPT_CONSUMERS.includes(consumer)
+    const requiredPackages = isTypeScriptConsumer
+      ? packages
+      : packages.filter((pkg) => !TYPE_ONLY_PACKAGES.includes(pkg.name))
+
+    const missingImports = requiredPackages.filter((pkg) => !imports.includes(pkg.name))
 
     if (missingImports.length > 0) {
-      console.log(`${COLORS.YELLOW}⚠ Packages not imported in test file:${COLORS.NC}`)
+      console.log(`${COLORS.RED}✗ Packages not imported in test file:${COLORS.NC}`)
       missingImports.forEach((pkg) => console.log(`  - ${pkg.name}`))
-      // Not marking as error - some packages might not need testing
+      hasErrors = true
     } else {
-      console.log(`${COLORS.GREEN}✓ All packages imported in test file${COLORS.NC}`)
+      const skipMsg =
+        !isTypeScriptConsumer && TYPE_ONLY_PACKAGES.length > 0
+          ? ` (${TYPE_ONLY_PACKAGES.length} type-only packages skipped)`
+          : ''
+      console.log(`${COLORS.GREEN}✓ All packages imported in test file${skipMsg}${COLORS.NC}`)
     }
 
     // Check import types (default vs named)
