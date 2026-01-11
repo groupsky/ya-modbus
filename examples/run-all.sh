@@ -54,6 +54,16 @@ run_example() {
   return 0
 }
 
+# First, verify package coverage
+echo -e "${BLUE}Running package coverage verification...${NC}"
+echo ""
+if ! node verify-coverage.js; then
+  echo -e "${RED}✗ Package coverage verification failed${NC}"
+  echo "================================"
+  exit 1
+fi
+echo ""
+
 # Run all examples
 run_example "cjs-consumer" "CommonJS Consumer"
 run_example "esm-consumer" "ESM Consumer"

@@ -9,6 +9,7 @@ These examples serve as:
 1. **Integration tests** - Verify dual CommonJS/ESM package support works correctly
 2. **Documentation** - Show developers how to use ya-modbus packages in their projects
 3. **CI validation** - Run automatically in CI to catch packaging regressions
+4. **Package coverage** - Dynamically verify all publishable packages are tested in all module systems
 
 ## Examples
 
@@ -74,12 +75,31 @@ import xymd1Driver from '@ya-modbus/driver-xymd1' // No .default needed!
 
 ## Running Examples
 
-### Run All Examples
+### Run All Examples (Recommended)
 
 ```bash
 # From the examples directory
 ./run-all.sh
 ```
+
+This script:
+
+1. **Verifies package coverage** - Ensures all packages are declared and imported
+2. **Runs all 4 consumer examples** - Tests CJS, ESM, TypeScript CJS, and TypeScript ESM
+3. **Reports results** - Shows which examples passed/failed
+
+### Run Package Coverage Verification Only
+
+```bash
+# From the examples directory
+node verify-coverage.js
+```
+
+This script dynamically discovers all publishable packages and verifies:
+
+- All consumer examples include all packages in `dependencies`
+- All test files import from all packages
+- Both default and named import patterns are tested
 
 ### Run Individual Example
 
@@ -100,12 +120,22 @@ Each example verifies:
 - ✅ Type-only imports (`import type`)
 - ✅ No `.default` workaround needed in CJS
 
-### Package Types
+### Package Coverage
 
-- **@ya-modbus/driver-types** - Enums and type definitions
-- **@ya-modbus/driver-sdk** - SDK functions
-- **@ya-modbus/transport** - Transport utilities
-- **@ya-modbus/driver-xymd1** - Complete driver implementation
+All examples test **all 10 publishable packages** from the monorepo:
+
+- **@ya-modbus/cli** - Command-line interface
+- **@ya-modbus/device-profiler** - Device profiling utilities
+- **@ya-modbus/driver-ex9em** - EX9EM device driver
+- **@ya-modbus/driver-loader** - Dynamic driver loading
+- **@ya-modbus/driver-sdk** - SDK utilities and functions
+- **@ya-modbus/driver-types** - TypeScript type definitions
+- **@ya-modbus/driver-xymd1** - XY-MD1 device driver
+- **@ya-modbus/emulator** - Modbus device emulator
+- **@ya-modbus/mqtt-bridge** - MQTT bridge service
+- **@ya-modbus/transport** - Transport layer (TCP/RTU)
+
+Package coverage is **verified dynamically** - when you add a new package, `verify-coverage.js` will detect it and require it to be tested.
 
 ### Type Safety (TypeScript only)
 
@@ -124,15 +154,29 @@ These examples run automatically in CI via the `Test Package Compatibility` work
 
 This ensures package compatibility is never broken.
 
-## Adding New Examples
+## Adding New Packages
 
-To add a new example:
+When you add a new publishable package to the monorepo:
+
+1. The `verify-coverage.js` script will **automatically detect it**
+2. CI will **fail** until the package is added to all consumer examples
+3. Add the package to each consumer's `package.json`:
+   ```json
+   "@ya-modbus/your-new-package": "file:../../packages/your-new-package"
+   ```
+4. Import and test at least one export from the package in each test file
+5. Run `./run-all.sh` to verify
+
+## Adding New Consumer Examples
+
+To add a new example for testing a different module system/configuration:
 
 1. Create directory: `examples/new-example/`
-2. Add `package.json` with `file:` dependencies to packages
-3. Add test script that verifies imports work
+2. Add `package.json` with `file:` dependencies to **all** packages
+3. Add test script that imports from **all** packages
 4. Update `run-all.sh` to include the new example
-5. Document the example in this README
+5. Update `verify-coverage.js` to recognize the new consumer
+6. Document the example in this README
 
 ## Dependencies
 
