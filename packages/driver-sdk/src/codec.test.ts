@@ -8,6 +8,8 @@ import {
   readScaledUInt32BE,
   writeScaledUInt16BE,
   writeScaledInt16BE,
+  readFloatBE,
+  writeFloatBE,
 } from './codec'
 
 describe('readScaledUInt16BE', () => {
@@ -409,5 +411,120 @@ describe('Edge case validation', () => {
       const buffer = writeScaledInt16BE(-3276.8, 10)
       expect(buffer.readInt16BE(0)).toBe(-32768)
     })
+  })
+})
+
+describe('readFloatBE', () => {
+  it('should read IEEE 754 float', () => {
+    // 230.5 as IEEE 754 float: 0x4366_8000
+    const buffer = Buffer.alloc(4)
+    buffer.writeFloatBE(230.5, 0)
+    const value = readFloatBE(buffer, 0)
+    expect(value).toBeCloseTo(230.5, 5)
+  })
+
+  it('should read negative float', () => {
+    const buffer = Buffer.alloc(4)
+    buffer.writeFloatBE(-123.456, 0)
+    const value = readFloatBE(buffer, 0)
+    expect(value).toBeCloseTo(-123.456, 3)
+  })
+
+  it('should read zero', () => {
+    const buffer = Buffer.from([0x00, 0x00, 0x00, 0x00])
+    const value = readFloatBE(buffer, 0)
+    expect(value).toBe(0)
+  })
+
+  it('should handle offset reading', () => {
+    const buffer = Buffer.alloc(8)
+    buffer.writeFloatBE(999.999, 4)
+    const value = readFloatBE(buffer, 4)
+    expect(value).toBeCloseTo(999.999, 3)
+  })
+
+  it('should throw when buffer is too small', () => {
+    const buffer = Buffer.from([0x00, 0x00, 0x00]) // Only 3 bytes, need 4
+    expect(() => readFloatBE(buffer, 0)).toThrow(
+      'Insufficient buffer size for float32: need 4 bytes at offset 0, but only 3 bytes available (buffer length: 3)'
+    )
+  })
+
+  it('should throw when offset leaves insufficient bytes', () => {
+    const buffer = Buffer.alloc(6) // 6 bytes
+    expect(() => readFloatBE(buffer, 3)).toThrow(
+      'Insufficient buffer size for float32: need 4 bytes at offset 3, but only 3 bytes available (buffer length: 6)'
+    )
+  })
+
+  it('should throw when buffer is empty', () => {
+    const buffer = Buffer.from([])
+    expect(() => readFloatBE(buffer, 0)).toThrow(
+      'Insufficient buffer size for float32: need 4 bytes at offset 0, but only 0 bytes available (buffer length: 0)'
+    )
+  })
+
+  it('should read NaN from buffer', () => {
+    // IEEE 754 quiet NaN: 0x7FC00000
+    const buffer = Buffer.from([0x7f, 0xc0, 0x00, 0x00])
+    const value = readFloatBE(buffer, 0)
+    expect(Number.isNaN(value)).toBe(true)
+  })
+
+  it('should read positive Infinity from buffer', () => {
+    // IEEE 754 +Infinity: 0x7F800000
+    const buffer = Buffer.from([0x7f, 0x80, 0x00, 0x00])
+    const value = readFloatBE(buffer, 0)
+    expect(value).toBe(Infinity)
+  })
+
+  it('should read negative Infinity from buffer', () => {
+    // IEEE 754 -Infinity: 0xFF800000
+    const buffer = Buffer.from([0xff, 0x80, 0x00, 0x00])
+    const value = readFloatBE(buffer, 0)
+    expect(value).toBe(-Infinity)
+  })
+
+  it('should read negative zero from buffer', () => {
+    // IEEE 754 -0: 0x80000000
+    const buffer = Buffer.from([0x80, 0x00, 0x00, 0x00])
+    const value = readFloatBE(buffer, 0)
+    expect(Object.is(value, -0)).toBe(true)
+  })
+})
+
+describe('writeFloatBE', () => {
+  it('should encode IEEE 754 float', () => {
+    const buffer = writeFloatBE(230.5)
+    expect(buffer.length).toBe(4)
+    expect(buffer.readFloatBE(0)).toBeCloseTo(230.5, 5)
+  })
+
+  it('should encode negative float', () => {
+    const buffer = writeFloatBE(-123.456)
+    expect(buffer.readFloatBE(0)).toBeCloseTo(-123.456, 3)
+  })
+
+  it('should encode zero', () => {
+    const buffer = writeFloatBE(0)
+    expect(buffer.readFloatBE(0)).toBe(0)
+  })
+
+  it('should encode small values', () => {
+    const buffer = writeFloatBE(0.001)
+    expect(buffer.readFloatBE(0)).toBeCloseTo(0.001, 5)
+  })
+
+  it('should encode large values', () => {
+    const buffer = writeFloatBE(1000000.0)
+    expect(buffer.readFloatBE(0)).toBeCloseTo(1000000.0, 0)
+  })
+
+  it.each([
+    { value: NaN, desc: 'NaN value' },
+    { value: Infinity, desc: 'Infinity value' },
+    { value: -Infinity, desc: '-Infinity value' },
+  ])('should throw on $desc', ({ value }) => {
+    expect(() => writeFloatBE(value)).toThrow('Invalid value: must be a finite number')
   })
 })

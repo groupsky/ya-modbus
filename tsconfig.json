@@ -24,6 +24,7 @@
     { "path": "./packages/emulator" },
     { "path": "./packages/device-profiler" },
     { "path": "./packages/driver-ex9em" },
-    { "path": "./packages/driver-xymd1" }
+    { "path": "./packages/driver-xymd1" },
+    { "path": "./packages/driver-or-we-516" }
   ]
 }

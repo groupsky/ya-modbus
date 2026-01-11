@@ -14,6 +14,7 @@ import {
   DEFAULT_CONFIG as EX9EM_CONFIG,
 } from '@ya-modbus/driver-ex9em'
 import { loadDriver } from '@ya-modbus/driver-loader'
+import { createDriver as createOrWe516Driver } from '@ya-modbus/driver-or-we-516'
 import { readScaledUInt16BE, createEnumValidator } from '@ya-modbus/driver-sdk'
 import type { DataType, DeviceDriver } from '@ya-modbus/driver-types'
 import { createDriver as createXYMD1Driver, DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
@@ -30,6 +31,7 @@ async function main() {
     scanRegisters,
     createEx9emDriver,
     loadDriver,
+    createOrWe516Driver,
     readScaledUInt16BE,
     createXYMD1Driver,
     ModbusEmulator,
@@ -150,7 +152,7 @@ async function main() {
   console.log('  dataType value:', dataType)
 
   console.log('\n✅ All TypeScript ESM imports successful with full type safety!')
-  console.log('✅ All 10 packages loaded and verified!')
+  console.log('✅ All 11 packages loaded and verified!')
 }
 
 main().catch((error: Error) => {
