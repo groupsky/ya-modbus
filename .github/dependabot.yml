@@ -119,3 +119,69 @@ updates:
       # Note: Security updates are not grouped - they create immediate individual PRs
     open-pull-requests-limit: 10
     rebase-strategy: 'auto'
+
+  # Example packages - test fixtures for package compatibility
+  - package-ecosystem: 'npm'
+    directory: '/examples/cjs-consumer'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '03:00'
+    labels:
+      - 'dependencies'
+      - 'npm'
+      - 'examples'
+    commit-message:
+      prefix: 'chore(deps)'
+      include: 'scope'
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: 'npm'
+    directory: '/examples/esm-consumer'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '03:00'
+    labels:
+      - 'dependencies'
+      - 'npm'
+      - 'examples'
+    commit-message:
+      prefix: 'chore(deps)'
+      include: 'scope'
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: 'npm'
+    directory: '/examples/typescript-cjs-consumer'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '03:00'
+    labels:
+      - 'dependencies'
+      - 'npm'
+      - 'examples'
+    commit-message:
+      prefix: 'chore(deps)'
+      include: 'scope'
+    # Pin @types/node to v20.x to match minimum supported Node.js version
+    ignore:
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+        versions: ['>=21']
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: 'npm'
+    directory: '/examples/typescript-esm-consumer'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '03:00'
+    labels:
+      - 'dependencies'
+      - 'npm'
+      - 'examples'
+    commit-message:
+      prefix: 'chore(deps)'
+      include: 'scope'
+    open-pull-requests-limit: 5
