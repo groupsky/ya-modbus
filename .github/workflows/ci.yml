@@ -144,5 +144,11 @@ jobs:
       - name: Build packages
         run: npm run build
 
+      - name: Validate package exports with publint
+        run: npm run validate:publint
+
+      - name: Check TypeScript types with arethetypeswrong
+        run: npm run validate:attw
+
       - name: Run compatibility examples
         run: cd examples && ./run-all.sh
