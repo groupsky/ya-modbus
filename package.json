@@ -46,8 +46,8 @@
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
     "prepare": "husky",
-    "validate:publint": "node scripts/validate-publint.js",
-    "validate:attw": "node scripts/validate-attw.js",
+    "validate:publint": "./scripts/validate-publint.sh",
+    "validate:attw": "./scripts/validate-attw.sh",
     "validate:packages": "npm run validate:publint && npm run validate:attw"
   },
   "devDependencies": {
