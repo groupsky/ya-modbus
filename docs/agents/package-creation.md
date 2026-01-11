@@ -20,8 +20,7 @@ Every new package MUST include:
 
 All packages MUST publish BOTH CommonJS and ESM formats.
 
-See: packages/driver-xymd1/package.json:16-67 for exports configuration
-See: packages/driver-xymd1/package.json:39-47 for build scripts
+See: packages/driver-xymd1/package.json for exports configuration and build scripts
 See: packages/driver-xymd1/tsconfig.esm.json for ESM build config
 See: packages/driver-xymd1/tsconfig.cjs.json for CJS build config
 
@@ -31,9 +30,9 @@ CRITICAL: Add references to BOTH tsconfig files for each dependency.
 
 When importing CommonJS modules (like `modbus-serial`, `aedes`), use direct default imports with `esModuleInterop: true`.
 
-See: packages/mqtt-bridge/src/index.ts:1-3 for correct import patterns
-See: packages/transport/src/tcp-transport.ts:1-5 for modbus-serial imports
-See: packages/mqtt-bridge/src/utils/test-utils.ts:2-3 for aedes imports
+See: packages/mqtt-bridge/src/index.ts for correct import patterns
+See: packages/transport/src/tcp-transport.ts for modbus-serial imports
+See: packages/mqtt-bridge/src/utils/test-utils.ts for aedes imports
 
 Root configs have `esModuleInterop: true` which synthesizes default exports for CommonJS modules.
 
@@ -41,7 +40,7 @@ Root configs have `esModuleInterop: true` which synthesizes default exports for 
 
 All packages require 95% coverage (branches, functions, lines, statements).
 
-See: packages/driver-xymd1/jest.config.cjs:23-30 for required `coverageThreshold` configuration.
+See: packages/driver-xymd1/jest.config.cjs (coverageThreshold section) for required configuration.
 
 ### Root Configuration Updates
 
@@ -62,7 +61,7 @@ NOTE: No longer need to update root tsconfig.json - packages handle their own bu
 
 All packages MUST include engines field specifying minimum Node.js version.
 
-See: packages/driver-xymd1/package.json:52-54 for engines field configuration.
+See: packages/driver-xymd1/package.json (engines section) for configuration.
 
 ## Driver Packages
 
