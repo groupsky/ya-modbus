@@ -44,3 +44,14 @@ Each consumer example MUST:
 
 See: `examples/README.md` for usage and troubleshooting
 See: Research summary from PR for best practices and tooling recommendations
+
+## CI Integration
+
+The Package Compatibility job in CI runs these steps in order:
+
+1. Build all packages (`npm run build`)
+2. Validate package exports with publint (`npm run validate:publint`)
+3. Validate TypeScript types with arethetypeswrong (`npm run validate:attw`)
+4. Run consumer examples (`examples/run-all.sh`)
+
+This provides layered verification: static analysis → type checking → runtime testing.

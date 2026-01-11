@@ -131,6 +131,7 @@ After creating the package:
 - [ ] `npm run lint` from package directory lints successfully
 - [ ] `npm run lint` from root includes the package
 - [ ] README.md contains essential usage information
+- [ ] `npm run validate:packages` passes (validates exports and types)
 
 ## First-Time NPM Publishing
 
