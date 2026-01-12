@@ -10,7 +10,13 @@ export type { EmulatedDevice as IEmulatedDevice } from './types/device.js'
 // Testing utilities for documentation examples
 export {
   withEmulator,
+  withRtuEmulator,
   createClientTransport,
+  createPtyPair,
+  isSocatAvailable,
+  type PtyPair,
   type TestEmulatorConfig,
   type TestEmulatorContext,
+  type RtuEmulatorConfig,
+  type RtuEmulatorContext,
 } from './testing/index.js'
