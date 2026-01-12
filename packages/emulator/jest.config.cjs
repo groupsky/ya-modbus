@@ -17,11 +17,14 @@ module.exports = {
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
+  coveragePathIgnorePatterns: ['/node_modules/', '/testing/', '/index\\.ts$'],
   collectCoverageFrom: [
     '<rootDir>/src/**/*.ts',
     '!<rootDir>/src/**/*.test.ts',
     '!<rootDir>/src/**/*.d.ts',
     '!<rootDir>/src/cli.ts', // Entry point - tested manually
+    '!<rootDir>/src/testing/**/*.ts', // Testing utilities - used by tests, not tested
+    '!<rootDir>/src/index.ts', // Barrel file - re-exports only
   ],
   coverageThreshold: {
     global: {

@@ -125,8 +125,9 @@ export async function withRtuEmulator<T>(
   const ptyPair = await createPtyPair()
 
   // Create Modbus RTU server on the server PTY
+  // Note: modbus-serial's ServerSerial accepts 'path' from serialport options
   const server = new ServerSerial(vector, {
-    port: ptyPair.serverPath,
+    path: ptyPair.serverPath,
     baudRate: config.baudRate ?? 9600,
     parity: config.parity ?? 'even',
     dataBits: 8,
@@ -140,9 +141,9 @@ export async function withRtuEmulator<T>(
       clearTimeout(timeout)
       resolve()
     })
-    server.on('error', (err: Error) => {
+    server.on('error', (err: Error | null) => {
       clearTimeout(timeout)
-      reject(err)
+      reject(err ?? new Error('Unknown server error'))
     })
   })
 
