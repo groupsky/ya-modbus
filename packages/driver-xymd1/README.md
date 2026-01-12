@@ -64,7 +64,7 @@ await driver.writeDataPoint('humidity_correction', 2.0)
 
 Once you have a transport configured, reading sensor data is straightforward:
 
-<!-- embedme examples/example-read-sensor.ts#L20-L22 -->
+<!-- embedme examples/example-read-sensor.ts#L22-L24 -->
 
 ```typescript
 const driver = await createDriver({ transport, slaveId: 1 })

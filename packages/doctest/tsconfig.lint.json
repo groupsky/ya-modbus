@@ -1,4 +1,0 @@
-{
-  "extends": "../../tsconfig.lint-base.json",
-  "include": ["src/**/*.ts"]
-}

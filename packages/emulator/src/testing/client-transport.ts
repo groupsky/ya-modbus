@@ -7,74 +7,7 @@
 
 import type { Transport } from '@ya-modbus/driver-types'
 
-/**
- * Interface matching the emulator's MemoryTransport sendRequest method
- */
-interface EmulatorTransport {
-  sendRequest(slaveId: number, request: Buffer): Promise<Buffer>
-}
-
-/**
- * Create a Transport instance that sends requests to the emulator
- */
-export function createClientTransport(
-  emulatorTransport: EmulatorTransport,
-  slaveId: number
-): Transport {
-  return {
-    async readHoldingRegisters(address: number, count: number): Promise<Buffer> {
-      const request = buildReadHoldingRegistersRequest(slaveId, address, count)
-      const response = await emulatorTransport.sendRequest(slaveId, request)
-      return parseReadResponse(response)
-    },
-
-    async readInputRegisters(address: number, count: number): Promise<Buffer> {
-      const request = buildReadInputRegistersRequest(slaveId, address, count)
-      const response = await emulatorTransport.sendRequest(slaveId, request)
-      return parseReadResponse(response)
-    },
-
-    async readCoils(address: number, count: number): Promise<Buffer> {
-      const request = buildReadCoilsRequest(slaveId, address, count)
-      const response = await emulatorTransport.sendRequest(slaveId, request)
-      return parseReadCoilsResponse(response)
-    },
-
-    async readDiscreteInputs(address: number, count: number): Promise<Buffer> {
-      const request = buildReadDiscreteInputsRequest(slaveId, address, count)
-      const response = await emulatorTransport.sendRequest(slaveId, request)
-      return parseReadCoilsResponse(response)
-    },
-
-    async writeSingleRegister(address: number, value: number): Promise<void> {
-      const request = buildWriteSingleRegisterRequest(slaveId, address, value)
-      const response = await emulatorTransport.sendRequest(slaveId, request)
-      checkWriteResponse(response, 0x06)
-    },
-
-    async writeMultipleRegisters(address: number, values: Buffer): Promise<void> {
-      const request = buildWriteMultipleRegistersRequest(slaveId, address, values)
-      const response = await emulatorTransport.sendRequest(slaveId, request)
-      checkWriteResponse(response, 0x10)
-    },
-
-    async writeSingleCoil(address: number, value: boolean): Promise<void> {
-      const request = buildWriteSingleCoilRequest(slaveId, address, value)
-      const response = await emulatorTransport.sendRequest(slaveId, request)
-      checkWriteResponse(response, 0x05)
-    },
-
-    async writeMultipleCoils(address: number, values: Buffer): Promise<void> {
-      const request = buildWriteMultipleCoilsRequest(slaveId, address, values)
-      const response = await emulatorTransport.sendRequest(slaveId, request)
-      checkWriteResponse(response, 0x0f)
-    },
-
-    async close(): Promise<void> {
-      // Nothing to close for memory transport
-    },
-  }
-}
+import { MemoryTransport } from '../transports/memory.js'
 
 // Modbus function codes
 const FC_READ_COILS = 0x01
@@ -87,48 +20,79 @@ const FC_WRITE_MULTIPLE_COILS = 0x0f
 const FC_WRITE_MULTIPLE_REGISTERS = 0x10
 
 /**
- * Build read holding registers request (FC 0x03)
+ * Create a Transport instance that sends requests to the emulator
  */
-function buildReadHoldingRegistersRequest(slaveId: number, address: number, count: number): Buffer {
-  const request = Buffer.alloc(6)
-  request[0] = slaveId
-  request[1] = FC_READ_HOLDING_REGISTERS
-  request.writeUInt16BE(address, 2)
-  request.writeUInt16BE(count, 4)
-  return request
+export function createClientTransport(
+  memoryTransport: MemoryTransport,
+  slaveId: number
+): Transport {
+  return {
+    async readHoldingRegisters(address: number, count: number): Promise<Buffer> {
+      const request = buildReadRequest(slaveId, FC_READ_HOLDING_REGISTERS, address, count)
+      const response = await memoryTransport.sendRequest(slaveId, request)
+      return parseReadResponse(response)
+    },
+
+    async readInputRegisters(address: number, count: number): Promise<Buffer> {
+      const request = buildReadRequest(slaveId, FC_READ_INPUT_REGISTERS, address, count)
+      const response = await memoryTransport.sendRequest(slaveId, request)
+      return parseReadResponse(response)
+    },
+
+    async readCoils(address: number, count: number): Promise<Buffer> {
+      const request = buildReadRequest(slaveId, FC_READ_COILS, address, count)
+      const response = await memoryTransport.sendRequest(slaveId, request)
+      return parseReadResponse(response)
+    },
+
+    async readDiscreteInputs(address: number, count: number): Promise<Buffer> {
+      const request = buildReadRequest(slaveId, FC_READ_DISCRETE_INPUTS, address, count)
+      const response = await memoryTransport.sendRequest(slaveId, request)
+      return parseReadResponse(response)
+    },
+
+    async writeSingleRegister(address: number, value: number): Promise<void> {
+      const request = buildWriteSingleRegisterRequest(slaveId, address, value)
+      const response = await memoryTransport.sendRequest(slaveId, request)
+      checkWriteResponse(response, FC_WRITE_SINGLE_REGISTER)
+    },
+
+    async writeMultipleRegisters(address: number, values: Buffer): Promise<void> {
+      const request = buildWriteMultipleRegistersRequest(slaveId, address, values)
+      const response = await memoryTransport.sendRequest(slaveId, request)
+      checkWriteResponse(response, FC_WRITE_MULTIPLE_REGISTERS)
+    },
+
+    async writeSingleCoil(address: number, value: boolean): Promise<void> {
+      const request = buildWriteSingleCoilRequest(slaveId, address, value)
+      const response = await memoryTransport.sendRequest(slaveId, request)
+      checkWriteResponse(response, FC_WRITE_SINGLE_COIL)
+    },
+
+    async writeMultipleCoils(address: number, values: Buffer): Promise<void> {
+      const request = buildWriteMultipleCoilsRequest(slaveId, address, values)
+      const response = await memoryTransport.sendRequest(slaveId, request)
+      checkWriteResponse(response, FC_WRITE_MULTIPLE_COILS)
+    },
+
+    async close(): Promise<void> {
+      // Nothing to close for memory transport
+    },
+  }
 }
 
 /**
- * Build read input registers request (FC 0x04)
+ * Build a read request (FC 0x01, 0x02, 0x03, 0x04)
  */
-function buildReadInputRegistersRequest(slaveId: number, address: number, count: number): Buffer {
+function buildReadRequest(
+  slaveId: number,
+  functionCode: number,
+  address: number,
+  count: number
+): Buffer {
   const request = Buffer.alloc(6)
   request[0] = slaveId
-  request[1] = FC_READ_INPUT_REGISTERS
-  request.writeUInt16BE(address, 2)
-  request.writeUInt16BE(count, 4)
-  return request
-}
-
-/**
- * Build read coils request (FC 0x01)
- */
-function buildReadCoilsRequest(slaveId: number, address: number, count: number): Buffer {
-  const request = Buffer.alloc(6)
-  request[0] = slaveId
-  request[1] = FC_READ_COILS
-  request.writeUInt16BE(address, 2)
-  request.writeUInt16BE(count, 4)
-  return request
-}
-
-/**
- * Build read discrete inputs request (FC 0x02)
- */
-function buildReadDiscreteInputsRequest(slaveId: number, address: number, count: number): Buffer {
-  const request = Buffer.alloc(6)
-  request[0] = slaveId
-  request[1] = FC_READ_DISCRETE_INPUTS
+  request[1] = functionCode
   request.writeUInt16BE(address, 2)
   request.writeUInt16BE(count, 4)
   return request
@@ -181,7 +145,7 @@ function buildWriteSingleCoilRequest(slaveId: number, address: number, value: bo
  * Build write multiple coils request (FC 0x0F)
  */
 function buildWriteMultipleCoilsRequest(slaveId: number, address: number, values: Buffer): Buffer {
-  const coilCount = values.length * 8 // Each byte represents 8 coils
+  const coilCount = values.length * 8
   const request = Buffer.alloc(7 + values.length)
   request[0] = slaveId
   request[1] = FC_WRITE_MULTIPLE_COILS
@@ -193,31 +157,10 @@ function buildWriteMultipleCoilsRequest(slaveId: number, address: number, values
 }
 
 /**
- * Parse read registers response (FC 0x03, 0x04)
+ * Parse read response (FC 0x01, 0x02, 0x03, 0x04)
  * Response format: [slaveId, functionCode, byteCount, ...data]
  */
 function parseReadResponse(response: Buffer): Buffer {
-  // Check for exception response
-  const functionCode = response[1]
-  if (functionCode !== undefined && (functionCode & 0x80) !== 0) {
-    const exceptionCode = response[2]
-    throw new Error(`Modbus exception: function=${functionCode & 0x7f}, code=${exceptionCode}`)
-  }
-
-  const byteCount = response[2]
-  if (byteCount === undefined) {
-    throw new Error('Invalid response: missing byte count')
-  }
-
-  // Return just the data portion
-  return response.subarray(3, 3 + byteCount)
-}
-
-/**
- * Parse read coils/discrete inputs response
- */
-function parseReadCoilsResponse(response: Buffer): Buffer {
-  // Check for exception response
   const functionCode = response[1]
   if (functionCode !== undefined && (functionCode & 0x80) !== 0) {
     const exceptionCode = response[2]

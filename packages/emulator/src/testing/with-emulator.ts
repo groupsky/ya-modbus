@@ -6,11 +6,13 @@
  */
 
 import type { Transport } from '@ya-modbus/driver-types'
-import { ModbusEmulator } from '@ya-modbus/emulator'
+
+import { ModbusEmulator } from '../emulator.js'
+import { MemoryTransport } from '../transports/memory.js'
 
 import { createClientTransport } from './client-transport.js'
 
-export interface EmulatorConfig {
+export interface TestEmulatorConfig {
   /** Slave ID for the emulated device (default: 1) */
   slaveId?: number
   /** Initial holding register values: { address: value } */
@@ -19,7 +21,7 @@ export interface EmulatorConfig {
   input?: Record<number, number>
 }
 
-export interface EmulatorContext {
+export interface TestEmulatorContext {
   /** Transport connected to the emulator */
   transport: Transport
   /** The emulator instance (for advanced usage) */
@@ -34,7 +36,7 @@ export interface EmulatorContext {
  *
  * @example
  * ```typescript
- * import { withEmulator } from '@ya-modbus/doctest'
+ * import { withEmulator } from '@ya-modbus/emulator'
  * import { createDriver } from '@ya-modbus/driver-xymd1'
  * import assert from 'node:assert'
  *
@@ -49,8 +51,8 @@ export interface EmulatorContext {
  * ```
  */
 export async function withEmulator<T>(
-  config: EmulatorConfig,
-  fn: (context: EmulatorContext) => Promise<T>
+  config: TestEmulatorConfig,
+  fn: (context: TestEmulatorContext) => Promise<T>
 ): Promise<T> {
   const slaveId = config.slaveId ?? 1
 
@@ -67,8 +69,9 @@ export async function withEmulator<T>(
   await emulator.start()
 
   try {
-    const memTransport = emulator.getTransport() as unknown as {
-      sendRequest(slaveId: number, request: Buffer): Promise<Buffer>
+    const memTransport = emulator.getTransport()
+    if (!(memTransport instanceof MemoryTransport)) {
+      throw new Error('Expected MemoryTransport for testing')
     }
     const transport = createClientTransport(memTransport, slaveId)
 

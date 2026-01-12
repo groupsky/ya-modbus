@@ -7,7 +7,7 @@
 
 import assert from 'node:assert'
 
-import { withEmulator } from '@ya-modbus/doctest'
+import { withEmulator } from '@ya-modbus/emulator'
 
 import { createDriver } from '@ya-modbus/driver-xymd1'
 
