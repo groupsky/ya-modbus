@@ -64,15 +64,17 @@ await driver.writeDataPoint('humidity_correction', 2.0)
 
 Once you have a transport configured, reading sensor data is straightforward:
 
-<!-- embedme examples/example-read-sensor.ts#L22-L24 -->
+<!-- embedme examples/example-read-sensor.ts#L22-L26 -->
 
 ```typescript
 const driver = await createDriver({ transport, slaveId: 1 })
 
 const values = await driver.readDataPoints(['temperature', 'humidity'])
+
+assert.deepStrictEqual(values, { temperature: 24.5, humidity: 65.2 })
 ```
 
-This returns `{ temperature: 24.5, humidity: 65.2 }` for the sensor values.
+The assertion shows the expected return value: `{ temperature: 24.5, humidity: 65.2 }`.
 
 ### Using Default Configuration
 
