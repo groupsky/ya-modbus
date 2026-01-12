@@ -150,8 +150,11 @@ jobs:
       - name: Check TypeScript types with arethetypeswrong
         run: npm run validate:attw
 
+      - name: Verify documentation is in sync
+        run: npm run docs:verify
+
       - name: Test documentation examples
-        run: npm run docs:test
+        run: npm run test:examples
 
       - name: Run compatibility examples
         run: cd examples && ./run-all.sh

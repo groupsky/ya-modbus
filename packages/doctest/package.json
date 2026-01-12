@@ -2,13 +2,10 @@
   "name": "@ya-modbus/doctest",
   "version": "0.1.0",
   "private": true,
-  "description": "Documentation testing tool for ya-modbus packages",
+  "description": "Documentation testing helpers for ya-modbus packages",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "bin": {
-    "ya-modbus-doctest": "./dist/cli.js"
-  },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
@@ -16,8 +13,7 @@
   },
   "dependencies": {
     "@ya-modbus/driver-types": "*",
-    "@ya-modbus/emulator": "*",
-    "glob": "^11.0.0"
+    "@ya-modbus/emulator": "*"
   },
   "devDependencies": {
     "typescript": "^5.7.2"
