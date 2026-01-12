@@ -16,11 +16,15 @@ XYMD1 Temperature and Humidity Sensor driver for ya-modbus.
 
 ## Installation
 
+<!-- doctest: skip -->
+
 ```bash
 npm install @ya-modbus/driver-xymd1
 ```
 
 ## Usage
+
+<!-- doctest: { "typecheck": true } -->
 
 ```typescript
 import { createDriver } from '@ya-modbus/driver-xymd1'
@@ -60,9 +64,25 @@ await driver.writeDataPoint('temperature_correction', -1.5)
 await driver.writeDataPoint('humidity_correction', 2.0)
 ```
 
+### Reading Sensor Data
+
+Once you have a transport configured, reading sensor data is straightforward:
+
+<!-- doctest: { "driver": "@ya-modbus/driver-xymd1", "slaveId": 1, "registers": { "input": { "1": 245, "2": 652 } } } -->
+
+```typescript
+const driver = await createDriver({ transport, slaveId: 1 })
+
+const values = await driver.readDataPoints(['temperature', 'humidity'])
+console.log(values)
+// {"temperature":24.5,"humidity":65.2}
+```
+
 ### Using Default Configuration
 
 The driver exports a `DEFAULT_CONFIG` constant with factory-default device settings:
+
+<!-- doctest: { "typecheck": true } -->
 
 ```typescript
 import { createDriver, DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
@@ -112,6 +132,8 @@ The XYMD01 supports temperature and humidity correction to calibrate sensor read
 
 ### Using the Driver API
 
+<!-- doctest: skip -->
+
 ```typescript
 // Example: Calibrate temperature
 // 1. Measure actual temperature with reference device: 23.0°C
@@ -129,6 +151,8 @@ await driver.writeDataPoint('humidity_correction', 1.5)
 ```
 
 ### Using the CLI
+
+<!-- doctest: skip -->
 
 ```bash
 # Set temperature correction

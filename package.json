@@ -48,7 +48,8 @@
     "prepare": "husky",
     "validate:publint": "./scripts/validate-publint.sh",
     "validate:attw": "./scripts/validate-attw.sh",
-    "validate:packages": "npm run validate:publint && npm run validate:attw"
+    "validate:packages": "npm run validate:publint && npm run validate:attw",
+    "docs:test": "node packages/doctest/dist/cli.js 'packages/*/README.md'"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
