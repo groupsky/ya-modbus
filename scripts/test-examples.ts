@@ -2,15 +2,15 @@
 /**
  * Documentation examples test runner
  *
- * Discovers and runs all example files that test documentation snippets.
- * Example files are self-contained and use the @ya-modbus/doctest helpers.
+ * Discovers and runs self-contained example files.
+ * Examples with .test.ts files are skipped (Jest handles them).
  *
  * Usage:
  *   npm run test:examples
  *   node --import tsx scripts/test-examples.ts
  */
 
-import { readdirSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, statSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import path from 'node:path'
 
@@ -18,9 +18,14 @@ interface TestResult {
   file: string
   success: boolean
   duration: number
+  skipped?: boolean
+  skipReason?: string
   error?: string
 }
 
+/**
+ * Run a self-contained example
+ */
 async function runExample(file: string): Promise<TestResult> {
   const startTime = Date.now()
 
@@ -55,22 +60,23 @@ async function runExample(file: string): Promise<TestResult> {
     })
 
     proc.on('error', (err) => {
-      const duration = Date.now() - startTime
       resolve({
         file,
         success: false,
-        duration,
+        duration: Date.now() - startTime,
         error: err.message,
       })
     })
   })
 }
 
-function findExampleFiles(): string[] {
-  const files: string[] = []
+/**
+ * Find example files, excluding those with Jest test files
+ */
+function findExampleFiles(): Array<{ file: string; hasJestTest: boolean }> {
+  const files: Array<{ file: string; hasJestTest: boolean }> = []
   const packagesDir = 'packages'
 
-  // Read all package directories
   const packageDirs = readdirSync(packagesDir)
 
   for (const pkgDir of packageDirs) {
@@ -80,10 +86,17 @@ function findExampleFiles(): string[] {
       const stat = statSync(examplesDir)
       if (!stat.isDirectory()) continue
 
-      // Find example-*.ts files
-      const exampleFiles = readdirSync(examplesDir)
-        .filter((f) => f.startsWith('example-') && f.endsWith('.ts'))
-        .map((f) => path.join(examplesDir, f))
+      const allFiles = readdirSync(examplesDir)
+
+      // Find example-*.ts files (excluding .test.ts and .config.json)
+      const exampleFiles = allFiles
+        .filter((f) => f.startsWith('example-') && f.endsWith('.ts') && !f.endsWith('.test.ts'))
+        .map((f) => {
+          const filePath = path.join(examplesDir, f)
+          const testFile = f.replace(/\.ts$/, '.test.ts')
+          const hasJestTest = allFiles.includes(testFile)
+          return { file: filePath, hasJestTest }
+        })
 
       files.push(...exampleFiles)
     } catch {
@@ -95,24 +108,35 @@ function findExampleFiles(): string[] {
 }
 
 async function main(): Promise<void> {
-  // Find all example files
-  // Convention: packages/*/examples/example-*.ts
-  const files = findExampleFiles()
+  const examples = findExampleFiles()
 
-  if (files.length === 0) {
+  if (examples.length === 0) {
     console.log('No example files found.')
     console.log('Expected pattern: packages/*/examples/example-*.ts')
     process.exit(0)
   }
 
-  console.log(`Running ${files.length} example(s)...\n`)
+  console.log(`Found ${examples.length} example(s)...\n`)
 
   const results: TestResult[] = []
   let hasFailures = false
 
-  for (const file of files.sort()) {
+  for (const { file, hasJestTest } of examples.sort((a, b) => a.file.localeCompare(b.file))) {
     const relativePath = path.relative(process.cwd(), file)
     process.stdout.write(`  ${relativePath} ... `)
+
+    if (hasJestTest) {
+      // Skip - Jest handles this example
+      results.push({
+        file,
+        success: true,
+        skipped: true,
+        skipReason: 'Jest test exists',
+        duration: 0,
+      })
+      console.log('SKIP (Jest test exists)')
+      continue
+    }
 
     const result = await runExample(file)
     results.push(result)
@@ -127,7 +151,8 @@ async function main(): Promise<void> {
 
   // Summary
   console.log('')
-  const passed = results.filter((r) => r.success).length
+  const passed = results.filter((r) => r.success && !r.skipped).length
+  const skipped = results.filter((r) => r.skipped).length
   const failed = results.filter((r) => !r.success).length
 
   if (failed > 0) {
@@ -144,7 +169,8 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log(`${passed}/${results.length} examples passed`)
+  const skipNote = skipped > 0 ? ` (${skipped} handled by Jest)` : ''
+  console.log(`${passed}/${examples.length - skipped} examples passed${skipNote}`)
 
   if (hasFailures) {
     process.exit(1)
