@@ -39,19 +39,19 @@ Options:
 <!-- embedme examples/example-scan.ts#L8-L20 -->
 
 ```ts
-await scanRegisters({
-  transport,
-  type: RegisterType.Holding,
-  startAddress: 0,
-  endAddress: 100,
-  batchSize: 10,
-  onProgress: (current, total) => {
-    console.log(`${current}/${total}`)
-  },
-  onResult: (result) => {
-    console.log(result)
-  },
-})
+    transport,
+    type: RegisterType.Holding,
+    startAddress: 0,
+    endAddress: 100,
+    batchSize: 10,
+    onProgress: (current, total) => {
+      console.log(`${current}/${total}`)
+    },
+    onResult: (result) => {
+      console.log(result)
+    },
+  })
+}
 ```
 
 ## Output
