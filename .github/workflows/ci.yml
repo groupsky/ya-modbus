@@ -150,6 +150,44 @@ jobs:
       - name: Check TypeScript types with arethetypeswrong
         run: npm run validate:attw
 
+      - name: Verify all TypeScript snippets use embedme
+        run: |
+          # Check that all ts/typescript code blocks have embedme comments
+          violations=()
+          for readme in packages/*/README.md; do
+            [[ -f "$readme" ]] || continue
+            # Find line numbers of ```ts or ```typescript blocks
+            while IFS=: read -r line_num content; do
+              # Check if previous non-empty line has embedme comment
+              prev_line=$((line_num - 1))
+              while [[ $prev_line -gt 0 ]]; do
+                prev_content=$(sed -n "${prev_line}p" "$readme")
+                # Skip empty lines
+                if [[ -n "$prev_content" ]]; then
+                  if [[ "$prev_content" =~ embedme ]]; then
+                    break # Found embedme comment
+                  else
+                    violations+=("$readme:$line_num")
+                    break
+                  fi
+                fi
+                prev_line=$((prev_line - 1))
+              done
+            done < <(grep -n '```ts$\|```typescript$' "$readme" || true)
+          done
+
+          if [[ ${#violations[@]} -gt 0 ]]; then
+            echo "❌ TypeScript code blocks without embedme comments:"
+            for v in "${violations[@]}"; do
+              echo "  - $v"
+            done
+            echo ""
+            echo "All TypeScript snippets must use embedme. See docs/agents/user-docs.md"
+            exit 1
+          fi
+
+          echo "✅ All TypeScript snippets use embedme"
+
       - name: Verify documentation is in sync
         run: npm run docs:verify
 
