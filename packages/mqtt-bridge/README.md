@@ -172,16 +172,9 @@ See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for complete bridge architect
 ## Development
 
 ```bash
-# Build
 npm run build
-
-# Test
 npm test
-
-# Lint
 npm run lint
-
-# Clean
 npm run clean
 ```
 
