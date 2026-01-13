@@ -12,15 +12,18 @@ import { join } from 'node:path'
 
 import { isSocatAvailable, withRtuEmulator } from '@ya-modbus/emulator'
 
+interface ExampleResult {
+  stdout: string
+  stderr: string
+  code: number | null
+}
+
 /**
- * Run the example script as a subprocess
+ * Run an example TypeScript file as a subprocess using tsx
  */
-async function runExample(
-  port: string
-): Promise<{ stdout: string; stderr: string; code: number | null }> {
+async function runExample(examplePath: string, args: string[] = []): Promise<ExampleResult> {
   return new Promise((resolve) => {
-    const examplePath = join(__dirname, 'example-rtu.ts')
-    const proc = spawn('node', ['--import', 'tsx', examplePath, port], {
+    const proc = spawn('node', ['--import', 'tsx', examplePath, ...args], {
       cwd: process.cwd(),
       stdio: ['ignore', 'pipe', 'pipe'],
     })
@@ -71,10 +74,12 @@ describe('example-rtu', () => {
       },
       async ({ clientPort }) => {
         // Run the example as a subprocess
-        const result = await runExample(clientPort)
+        const examplePath = join(__dirname, 'example-rtu.ts')
+        const result = await runExample(examplePath, [clientPort])
 
-        // Verify exit code
+        // Verify exit code and no errors
         expect(result.code).toBe(0)
+        expect(result.stderr).toBe('')
 
         // Verify sensor values in output
         expect(result.stdout).toContain('temperature')

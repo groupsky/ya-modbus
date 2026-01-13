@@ -9,8 +9,9 @@
  *   port  Serial port path (default: /dev/ttyUSB0)
  */
 
-import { createDriver } from '@ya-modbus/driver-xymd1'
 import { createRTUTransport } from '@ya-modbus/transport'
+
+import { createDriver } from '@ya-modbus/driver-xymd1'
 
 const port = process.argv[2] ?? '/dev/ttyUSB0'
 

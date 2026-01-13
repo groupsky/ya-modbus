@@ -27,13 +27,13 @@ PREFER embedding whole files. Use line ranges only when showing a small snippet 
 <!-- embedme examples/example-usage.ts#L10-L25 -->
 ```
 
-**Code block format** - Use `ts` (not `typescript`) with filename comment:
+**Code block format** - Use `ts` for code blocks (embedme requires this):
 
 ````markdown
 <!-- embedme examples/example-usage.ts -->
 
 ```ts
-// examples/example-usage.ts
+
 ```
 ````
 
@@ -61,5 +61,5 @@ Run `npm run docs:verify` to check embedme sync status.
 ## Reference Files
 
 - Pattern: packages/driver-xymd1/README.md
-- Example: packages/driver-xymd1/examples/example-read-sensor.ts
-- Test: packages/driver-xymd1/examples/example-read-sensor.test.ts
+- Example: packages/driver-xymd1/examples/example-rtu.ts
+- Test: packages/driver-xymd1/examples/example-rtu.test.ts

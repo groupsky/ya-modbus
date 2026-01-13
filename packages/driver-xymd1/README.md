@@ -22,11 +22,12 @@ npm install @ya-modbus/driver-xymd1
 
 ## Usage
 
-<!-- embedme examples/example-rtu.ts#L12-L41 -->
+<!-- embedme examples/example-rtu.ts#L12-L42 -->
 
-```typescript
-import { createDriver } from '@ya-modbus/driver-xymd1'
+```ts
 import { createRTUTransport } from '@ya-modbus/transport'
+
+import { createDriver } from '@ya-modbus/driver-xymd1'
 
 const port = process.argv[2] ?? '/dev/ttyUSB0'
 
@@ -56,22 +57,6 @@ try {
   await transport.close()
 }
 ```
-
-### Reading Sensor Data
-
-Once you have a transport configured, reading sensor data is straightforward:
-
-<!-- embedme examples/example-read-sensor.ts#L21-L25 -->
-
-```typescript
-const driver = await createDriver({ transport, slaveId: 1 })
-
-const values = await driver.readDataPoints(['temperature', 'humidity'])
-
-assert.deepStrictEqual(values, { temperature: 24.5, humidity: 65.2 })
-```
-
-The assertion shows the expected return value: `{ temperature: 24.5, humidity: 65.2 }`.
 
 ### Using Default Configuration
 

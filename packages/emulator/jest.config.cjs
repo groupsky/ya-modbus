@@ -17,7 +17,7 @@ module.exports = {
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
-  coveragePathIgnorePatterns: ['/node_modules/', '/testing/', '/index\\.ts$'],
+  coveragePathIgnorePatterns: ['/node_modules/', '/src/testing/'],
   collectCoverageFrom: [
     '<rootDir>/src/**/*.ts',
     '!<rootDir>/src/**/*.test.ts',

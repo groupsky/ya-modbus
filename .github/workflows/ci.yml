@@ -158,15 +158,12 @@ jobs:
           # Find all example-*.ts files (excluding test files)
           # and verify each has a corresponding .test.ts file
           missing=()
-          for example in packages/*/examples/example-*.ts; do
-            # Skip test files themselves
-            [[ "$example" == *.test.ts ]] && continue
-            # Check if test file exists
+          while IFS= read -r example; do
             test_file="${example%.ts}.test.ts"
             if [[ ! -f "$test_file" ]]; then
               missing+=("$example")
             fi
-          done
+          done < <(find packages/*/examples -name "example-*.ts" ! -name "*.test.ts" -type f 2>/dev/null || true)
 
           if [[ ${#missing[@]} -gt 0 ]]; then
             echo "❌ Examples missing test files:"

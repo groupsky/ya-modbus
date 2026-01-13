@@ -118,6 +118,9 @@ function buildWriteMultipleRegistersRequest(
   address: number,
   values: Buffer
 ): Buffer {
+  if (values.length % 2 !== 0) {
+    throw new Error(`Invalid buffer length ${values.length}: must be even for register writes`)
+  }
   const registerCount = values.length / 2
   const request = Buffer.alloc(7 + values.length)
   request[0] = slaveId
@@ -143,6 +146,10 @@ function buildWriteSingleCoilRequest(slaveId: number, address: number, value: bo
 
 /**
  * Build write multiple coils request (FC 0x0F)
+ *
+ * Note: The coil count assumes all bits in the buffer are used.
+ * This is a limitation of the Transport interface which takes a Buffer
+ * without a separate count parameter for partial byte coil writes.
  */
 function buildWriteMultipleCoilsRequest(slaveId: number, address: number, values: Buffer): Buffer {
   const coilCount = values.length * 8
