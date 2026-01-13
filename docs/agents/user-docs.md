@@ -9,15 +9,29 @@ paths: /**/README.md, /**/docs/*.md
 All TypeScript code snippets in README.md files MUST be:
 
 1. **Synced from source files** using embedme comments
-2. **Tested** via example files that run in CI
+2. **Tested** via example files with Jest tests
 
 ## Embedme Pattern
 
-Use embedme comments to sync code from example files:
+PREFER embedding whole files where possible. Use line ranges only for long examples.
 
+**Whole file (preferred):**
+```markdown
+<!-- embedme examples/example-usage.ts -->
+```
+
+**Line range (when necessary):**
 ```markdown
 <!-- embedme examples/example-usage.ts#L10-L25 -->
 ```
+
+**Code block format** - Use `ts` (not `typescript`) with filename comment:
+````markdown
+<!-- embedme examples/example-usage.ts -->
+```ts
+// examples/example-usage.ts
+```
+````
 
 See: packages/driver-xymd1/README.md for reference implementation
 
@@ -26,15 +40,9 @@ See: packages/driver-xymd1/README.md for reference implementation
 Example files (`packages/*/examples/example-*.ts`) MUST:
 
 1. Be self-contained and runnable
-2. Use `withEmulator()` for in-memory testing OR
-3. Have paired `*.test.ts` for complex scenarios (RTU)
+2. Have paired `*.test.ts` file (CI enforces this)
 
 See: packages/driver-xymd1/examples/ for patterns
-
-## Testing Strategy
-
-- **Simple examples**: Self-contained, run by `npm run test:examples`
-- **Complex examples (RTU)**: Paired Jest tests with `withRtuEmulator()`
 
 ## What NOT to Test
 
@@ -49,6 +57,5 @@ Run `npm run docs:verify` to check embedme sync status.
 ## Reference Files
 
 - Pattern: packages/driver-xymd1/README.md
-- Simple example: packages/driver-xymd1/examples/example-read-sensor.ts
-- RTU example: packages/driver-xymd1/examples/example-rtu.ts
-- RTU test: packages/driver-xymd1/examples/example-rtu.test.ts
+- Example: packages/driver-xymd1/examples/example-read-sensor.ts
+- Test: packages/driver-xymd1/examples/example-read-sensor.test.ts
