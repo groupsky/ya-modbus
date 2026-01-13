@@ -22,12 +22,11 @@ npm install @ya-modbus/driver-xymd1
 
 ## Usage
 
-<!-- embedme examples/example-rtu.ts#L12-L42 -->
+<!-- embedme examples/example-rtu.ts#L12-L41 -->
 
 ```typescript
-import { createRTUTransport } from '@ya-modbus/transport'
-
 import { createDriver } from '@ya-modbus/driver-xymd1'
+import { createRTUTransport } from '@ya-modbus/transport'
 
 const port = process.argv[2] ?? '/dev/ttyUSB0'
 
@@ -62,7 +61,7 @@ try {
 
 Once you have a transport configured, reading sensor data is straightforward:
 
-<!-- embedme examples/example-read-sensor.ts#L22-L26 -->
+<!-- embedme examples/example-read-sensor.ts#L21-L25 -->
 
 ```typescript
 const driver = await createDriver({ transport, slaveId: 1 })

@@ -7,9 +7,8 @@
 
 import assert from 'node:assert'
 
-import { withEmulator } from '@ya-modbus/emulator'
-
 import { createDriver } from '@ya-modbus/driver-xymd1'
+import { withEmulator } from '@ya-modbus/emulator'
 
 // Run example with emulator providing simulated sensor values
 await withEmulator(
