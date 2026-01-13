@@ -18,9 +18,9 @@ npm install @ya-modbus/emulator
 
 ## Quick Start
 
-```typescript
-import { ModbusEmulator } from '@ya-modbus/emulator'
+<!-- embedme examples/example-quickstart.ts#L4-L28 -->
 
+```ts
 // Create emulator with TCP transport
 const emulator = new ModbusEmulator({
   transport: 'tcp',
@@ -178,8 +178,9 @@ See `examples/virtual-serial-test.md` for detailed virtual serial port testing g
 
 Simulate realistic device response times:
 
-```typescript
-emulator.addDevice({
+<!-- embedme examples/example-timing.ts#L11-L19 -->
+
+```ts
   slaveId: 1,
   timing: {
     pollingInterval: 10, // Device checks for commands every 10ms
@@ -188,13 +189,16 @@ emulator.addDevice({
     perRegisterDelay: 0.1, // 0.1ms per register
   },
 })
+
 ```
 
 ### Register Constraints
 
 > **🚧 Planned for v0.2.0**: Define forbidden ranges and batch size limits
 
-```typescript
+<!-- embedme examples/example-constraints.ts#L13-L21 -->
+
+```ts
 // Coming in v0.2.0
 emulator.addDevice({
   slaveId: 1,
@@ -210,7 +214,9 @@ emulator.addDevice({
 
 > **🚧 Planned for v0.2.0**: Inject errors for testing error handling
 
-```typescript
+<!-- embedme examples/example-errors.ts#L13-L20 -->
+
+```ts
 // Coming in v0.2.0
 emulator.addDevice({
   slaveId: 1,

@@ -36,9 +36,9 @@ Options:
 
 ### Programmatic
 
-```typescript
-import { scanRegisters, RegisterType } from '@ya-modbus/device-profiler'
+<!-- embedme examples/example-scan.ts#L8-L20 -->
 
+```ts
 await scanRegisters({
   transport,
   type: RegisterType.Holding,

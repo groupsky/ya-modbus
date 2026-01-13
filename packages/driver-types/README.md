@@ -18,33 +18,43 @@ npm install @ya-modbus/driver-types
 
 The main interface that all device drivers must implement:
 
-```typescript
-import type { DeviceDriver } from '@ya-modbus/driver-types'
+<!-- embedme examples/type-examples.ts#L17-L32 -->
 
-const driver: DeviceDriver = {
-  name: 'my-device',
-  manufacturer: 'Acme Corp',
-  model: 'MD-100',
-  dataPoints: [...],
+```ts
+export function createExampleDriver(_transport: Transport): DeviceDriver {
+  const driver: DeviceDriver = {
+    name: 'my-device',
+    manufacturer: 'Acme Corp',
+    model: 'MD-100',
+    dataPoints: [],
 
-  async readDataPoint(id: string) { ... },
-  async writeDataPoint(id: string, value: unknown) { ... },
-  async readDataPoints(ids: string[]) { ... },
-}
+    readDataPoint(_id: string) {
+      return Promise.resolve(0)
+    },
+    writeDataPoint(_id: string, _value: unknown) {
+      return Promise.resolve()
+    },
+    readDataPoints(_ids: string[]) {
+      return Promise.resolve({})
+    },
 ```
 
 ### Transport
 
 Abstraction over Modbus RTU/TCP communication:
 
-```typescript
-import type { Transport } from '@ya-modbus/driver-types'
+<!-- embedme examples/type-examples.ts#L35-L43 -->
 
-// Read holding registers
-const buffer = await transport.readHoldingRegisters(0x0000, 2)
+```ts
+}
 
-// Write single register
-await transport.writeSingleRegister(0x0100, 1234)
+// Transport usage example
+export async function transportExample(transport: Transport): Promise<void> {
+  // Read holding registers
+  const buffer = await transport.readHoldingRegisters(0x0000, 2)
+  console.log(buffer)
+
+  // Write single register
 ```
 
 **Transport methods:**
@@ -63,39 +73,28 @@ await transport.writeSingleRegister(0x0100, 1234)
 
 Defines semantic data points exposed by drivers:
 
-```typescript
-import type { DataPoint } from '@ya-modbus/driver-types'
+<!-- embedme examples/type-examples.ts#L46-L53 -->
 
-const temperaturePoint: DataPoint = {
+```ts
+
+// DataPoint example
+export const temperaturePoint: DataPoint = {
   id: 'temperature',
   name: 'Temperature',
   description: 'Current temperature reading',
   unit: '°C',
   dataType: 'float',
-  access: 'read',
-}
 ```
 
 ### Configuration Types
 
 Types for driver configuration and device defaults:
 
-```typescript
-import type {
-  DriverConfig,
-  DefaultSerialConfig,
-  DefaultTCPConfig,
-  SupportedSerialConfig,
-} from '@ya-modbus/driver-types'
+<!-- embedme examples/type-examples.ts#L56-L66 -->
 
-// Factory function configuration
-const config: DriverConfig = {
-  transport,
-  slaveId: 1,
-  device: 'or-we-514', // For multi-device drivers
-}
+```ts
 
-// Default serial port configuration
+// Configuration types example
 export const DEFAULT_CONFIG = {
   baudRate: 9600,
   parity: 'even',
@@ -104,20 +103,19 @@ export const DEFAULT_CONFIG = {
   defaultAddress: 1,
 } as const satisfies DefaultSerialConfig
 
-// Supported configuration constraints
 export const SUPPORTED_CONFIG = {
-  validBaudRates: [9600, 14400, 19200],
-  validParity: ['even', 'none'],
-} as const satisfies SupportedSerialConfig
 ```
 
 ### Multi-Device Support
 
 Types for drivers that support multiple device models:
 
-```typescript
-import type { DeviceRegistry, DeviceInfo } from '@ya-modbus/driver-types'
+<!-- embedme examples/type-examples.ts#L69-L80 -->
 
+```ts
+} as const satisfies SupportedSerialConfig
+
+// Multi-device registry example
 export const DEVICES = {
   'or-we-514': {
     manufacturer: 'ORNO',
@@ -127,9 +125,6 @@ export const DEVICES = {
   'or-we-516': {
     manufacturer: 'ORNO',
     model: 'OR-WE-516',
-    description: 'Three-phase energy meter',
-  },
-} as const satisfies DeviceRegistry
 ```
 
 ## Exported Types

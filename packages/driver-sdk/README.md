@@ -38,13 +38,15 @@ Read and scale an unsigned 16-bit integer from a buffer.
 
 **Example:**
 
-```typescript
-import { readScaledUInt16BE } from '@ya-modbus/driver-sdk'
+<!-- embedme examples/api-examples.ts#L23-L28 -->
 
-// Device stores temperature as integer ×10 (235 = 23.5°C)
-const buffer = await transport.readInputRegisters(0, 1)
-const temperature = readScaledUInt16BE(buffer, 0, 10)
-// temperature = 23.5
+```ts
+  const buffer = await transport.readInputRegisters(0, 1)
+  const temperature = readScaledUInt16BE(buffer, 0, 10)
+  // temperature = 23.5
+  return temperature
+}
+
 ```
 
 #### `readScaledInt16BE(buffer, offset, scale)`
@@ -63,13 +65,15 @@ Read and scale a signed 16-bit integer from a buffer.
 
 **Example:**
 
-```typescript
-import { readScaledInt16BE } from '@ya-modbus/driver-sdk'
+<!-- embedme examples/api-examples.ts#L32-L37 -->
 
-// Device stores correction offset as signed integer ×10 (-50 = -5.0°C)
-const buffer = await transport.readHoldingRegisters(0x103, 1)
-const correction = readScaledInt16BE(buffer, 0, 10)
-// correction = -5.0
+```ts
+  const buffer = await transport.readHoldingRegisters(0x103, 1)
+  const correction = readScaledInt16BE(buffer, 0, 10)
+  // correction = -5.0
+  return correction
+}
+
 ```
 
 #### `readScaledUInt32BE(buffer, offset, scale)`
@@ -88,13 +92,15 @@ Read and scale an unsigned 32-bit integer from a buffer (2 consecutive registers
 
 **Example:**
 
-```typescript
-import { readScaledUInt32BE } from '@ya-modbus/driver-sdk'
+<!-- embedme examples/api-examples.ts#L41-L46 -->
 
-// Device stores total energy as 32-bit integer ×100 (1000000 = 10000.00 kWh)
-const buffer = await transport.readHoldingRegisters(0x0007, 2)
-const totalEnergy = readScaledUInt32BE(buffer, 0, 100)
-// totalEnergy = 10000.0
+```ts
+  const buffer = await transport.readHoldingRegisters(0x0007, 2)
+  const totalEnergy = readScaledUInt32BE(buffer, 0, 100)
+  // totalEnergy = 10000.0
+  return totalEnergy
+}
+
 ```
 
 #### `writeScaledUInt16BE(value, scale)`
@@ -112,12 +118,13 @@ Encode and scale a value to an unsigned 16-bit integer buffer.
 
 **Example:**
 
-```typescript
-import { writeScaledUInt16BE } from '@ya-modbus/driver-sdk'
+<!-- embedme examples/api-examples.ts#L50-L53 -->
 
-// Write humidity correction of 5.5% (stored as 55)
-const buffer = writeScaledUInt16BE(5.5, 10)
-await transport.writeMultipleRegisters(0x104, buffer)
+```ts
+  const buffer = writeScaledUInt16BE(5.5, 10)
+  await transport.writeMultipleRegisters(0x104, buffer)
+}
+
 ```
 
 #### `writeScaledInt16BE(value, scale)`
@@ -135,12 +142,13 @@ Encode and scale a value to a signed 16-bit integer buffer.
 
 **Example:**
 
-```typescript
-import { writeScaledInt16BE } from '@ya-modbus/driver-sdk'
+<!-- embedme examples/api-examples.ts#L57-L60 -->
 
-// Write temperature correction of -3.5°C (stored as -35)
-const buffer = writeScaledInt16BE(-3.5, 10)
-await transport.writeMultipleRegisters(0x103, buffer)
+```ts
+  const buffer = writeScaledInt16BE(-3.5, 10)
+  await transport.writeMultipleRegisters(0x103, buffer)
+}
+
 ```
 
 ### Validation Functions
@@ -159,18 +167,18 @@ Create a type-safe enum validator function.
 
 **Example:**
 
-```typescript
-import { createEnumValidator, formatEnumError } from '@ya-modbus/driver-sdk'
+<!-- embedme examples/api-examples.ts#L64-L74 -->
 
-const VALID_BAUD_RATES = [9600, 14400, 19200] as const
-type ValidBaudRate = (typeof VALID_BAUD_RATES)[number]
-
+```ts
 const isValidBaudRate = createEnumValidator(VALID_BAUD_RATES)
 
-if (!isValidBaudRate(value)) {
-  throw new Error(formatEnumError('baud rate', VALID_BAUD_RATES))
+export function validateBaudRate(value: unknown): ValidBaudRate {
+  if (!isValidBaudRate(value)) {
+    throw new Error(formatEnumError('baud rate', VALID_BAUD_RATES))
+  }
+  // value is now typed as ValidBaudRate (9600 | 14400 | 19200)
+  return value
 }
-// value is now typed as ValidBaudRate (9600 | 14400 | 19200)
 ```
 
 #### `createRangeValidator(min, max)`
@@ -186,15 +194,16 @@ Create a numeric range validator function.
 
 **Example:**
 
-```typescript
-import { createRangeValidator, formatRangeError } from '@ya-modbus/driver-sdk'
+<!-- embedme examples/api-examples.ts#L78-L85 -->
 
-const isValidAddress = createRangeValidator(1, 247)
-
-if (!isValidAddress(value)) {
-  throw new Error(formatRangeError('device address', 1, 247))
+```ts
+export function validateAddress(value: unknown): number {
+  if (!isValidAddress(value)) {
+    throw new Error(formatRangeError('device address', 1, 247))
+  }
+  // value is a finite number between 1 and 247
+  return value
 }
-// value is a finite number between 1 and 247
 ```
 
 #### `isValidInteger(value)`
@@ -209,12 +218,14 @@ Validate that a value is a finite integer.
 
 **Example:**
 
-```typescript
-import { isValidInteger } from '@ya-modbus/driver-sdk'
+<!-- embedme examples/api-examples.ts#L89-L93 -->
 
-if (!isValidInteger(value)) {
-  throw new Error('Device address must be an integer')
+```ts
+    throw new Error('Device address must be an integer')
+  }
+  return value
 }
+
 ```
 
 ### Error Formatting
@@ -235,11 +246,13 @@ Format a range validation error message.
 
 **Example:**
 
-```typescript
-import { formatRangeError } from '@ya-modbus/driver-sdk'
+<!-- embedme examples/api-examples.ts#L96-L99 -->
 
-formatRangeError('device address', 1, 247)
-// => 'Invalid device address: must be between 1 and 247'
+```ts
+  return formatRangeError('device address', 1, 247)
+  // => 'Invalid device address: must be between 1 and 247'
+}
+
 ```
 
 #### `formatEnumError(name, values)`
@@ -255,11 +268,13 @@ Format an enum validation error message.
 
 **Example:**
 
-```typescript
-import { formatEnumError } from '@ya-modbus/driver-sdk'
+<!-- embedme examples/api-examples.ts#L102-L105 -->
 
-formatEnumError('baud rate', [9600, 14400, 19200])
-// => 'Invalid baud rate: must be one of 9600, 14400, 19200'
+```ts
+  return formatEnumError('baud rate', [9600, 14400, 19200])
+  // => 'Invalid baud rate: must be one of 9600, 14400, 19200'
+}
+
 ```
 
 ## Edge Case Handling
@@ -273,29 +288,40 @@ All codec functions include comprehensive edge case validation:
 
 **Example:**
 
-```typescript
-// Throws: Invalid scale: must be greater than 0
-readScaledUInt16BE(buffer, 0, 0)
+<!-- embedme examples/api-examples.ts#L108-L120 -->
 
-// Throws: Invalid value: must be a finite number
-writeScaledUInt16BE(NaN, 10)
+```ts
+  const _buffer = Buffer.alloc(2)
 
-// Throws: Invalid scaled value: 65536 is outside uint16 range (0 to 65535)
-writeScaledUInt16BE(6553.6, 10)
+  // Throws: Invalid scale: must be greater than 0
+  // readScaledUInt16BE(_buffer, 0, 0)
+
+  // Throws: Invalid value: must be a finite number
+  // writeScaledUInt16BE(NaN, 10)
+
+  // Throws: Invalid scaled value: 65536 is outside uint16 range (0 to 65535)
+  // writeScaledUInt16BE(6553.6, 10)
+
+  console.log('Edge cases demonstrated')
+}
 ```
 
 ## TypeScript Support
 
 All functions include full TypeScript type definitions with type narrowing support:
 
-```typescript
-const isValidBaudRate = createEnumValidator([9600, 14400, 19200] as const)
+<!-- embedme examples/api-examples.ts#L123-L132 -->
 
-let value: unknown = getUserInput()
+```ts
+export function demoTypeNarrowing(): void {
+  const isValidBaudRateNarrow = createEnumValidator([9600, 14400, 19200] as const)
 
-if (isValidBaudRate(value)) {
-  // TypeScript knows: value is 9600 | 14400 | 19200
-  const encoded = encodeBaudRate(value)
+  const value: unknown = getUserInput()
+
+  if (isValidBaudRateNarrow(value)) {
+    // TypeScript knows: value is 9600 | 14400 | 19200
+    console.log('Valid baud rate:', value)
+  }
 }
 ```
 
@@ -303,27 +329,20 @@ if (isValidBaudRate(value)) {
 
 Typical driver implementation pattern:
 
-```typescript
-import type { DeviceDriver } from '@ya-modbus/driver-types'
-import {
-  readScaledUInt16BE,
-  readScaledInt16BE,
-  writeScaledUInt16BE,
-  createEnumValidator,
-  formatEnumError,
-} from '@ya-modbus/driver-sdk'
+<!-- embedme examples/api-examples.ts#L139-L171 -->
 
-const VALID_BAUD_RATES = [9600, 14400, 19200] as const
-const isValidBaudRate = createEnumValidator(VALID_BAUD_RATES)
-
-export const createDriver = async (config): Promise<DeviceDriver> => {
+```ts
+export function createExampleDriver(transport: Transport): DeviceDriver {
   // Validate configuration
-  if (!isValidBaudRate(config.baudRate)) {
+  if (!isValidBaudRate(9600)) {
     throw new Error(formatEnumError('baud rate', VALID_BAUD_RATES))
   }
 
   return {
     name: 'my-device',
+    manufacturer: 'Example Corp',
+    model: 'EX-100',
+    dataPoints: [],
 
     async readDataPoint(id: string) {
       if (id === 'temperature') {
@@ -334,16 +353,18 @@ export const createDriver = async (config): Promise<DeviceDriver> => {
         const buffer = await transport.readHoldingRegisters(0x103, 1)
         return readScaledInt16BE(buffer, 0, 10)
       }
+      return null
     },
 
-    async writeDataPoint(id: string, value: number) {
-      if (id === 'correction') {
+    async writeDataPoint(id: string, value: unknown) {
+      if (id === 'correction' && typeof value === 'number') {
         const buffer = writeScaledInt16BE(value, 10)
         await transport.writeMultipleRegisters(0x103, buffer)
       }
     },
-  }
-}
+
+    readDataPoints(_ids: string[]) {
+      return Promise.resolve({})
 ```
 
 ## See Also

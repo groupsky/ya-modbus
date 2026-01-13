@@ -18,9 +18,9 @@ npm install @ya-modbus/transport
 
 ## Usage
 
-```typescript
-import { createTransport } from '@ya-modbus/transport'
+<!-- embedme examples/example-usage.ts#L4-L22 -->
 
+```ts
 // RTU (serial) transport
 const rtuTransport = await createTransport({
   port: '/dev/ttyUSB0',

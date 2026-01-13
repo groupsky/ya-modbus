@@ -12,46 +12,50 @@ npm install @ya-modbus/driver-loader
 
 ### Auto-detect driver from current directory
 
-```typescript
-import { loadDriver } from '@ya-modbus/driver-loader'
+<!-- embedme examples/api-examples.ts#L17-L20 -->
 
-const driver = await loadDriver({})
+```ts
+export async function autoDetectExample(): Promise<void> {
+  const driver = await loadDriver({})
+  console.log('Loaded driver:', driver)
+}
 ```
 
 ### Load specific driver package
 
-```typescript
-import { loadDriver } from '@ya-modbus/driver-loader'
+<!-- embedme examples/api-examples.ts#L23-L26 -->
 
-const driver = await loadDriver({ driverPackage: '@ya-modbus/driver-xymd1' })
+```ts
+export async function loadSpecificExample(): Promise<void> {
+  const driver = await loadDriver({ driverPackage: '@ya-modbus/driver-xymd1' })
+  console.log('Loaded driver:', driver)
+}
 ```
 
 ### Error Handling
 
 The driver-loader exports custom error classes for type-safe error handling:
 
-```typescript
-import {
-  loadDriver,
-  ValidationError,
-  DriverNotFoundError,
-  PackageJsonError,
-} from '@ya-modbus/driver-loader'
+<!-- embedme examples/api-examples.ts#L29-L47 -->
 
-try {
-  const driver = await loadDriver({ driverPackage: 'my-driver' })
-} catch (error) {
-  // Type-safe error handling with instanceof
-  if (error instanceof DriverNotFoundError) {
-    console.error(`Package not found: ${error.packageName}`)
-    console.error(`Install with: npm install ${error.packageName}`)
-  } else if (error instanceof ValidationError) {
-    console.error(`Validation failed for field: ${error.field}`)
-    console.error(`Error: ${error.message}`)
-  } else if (error instanceof PackageJsonError) {
-    console.error('package.json issue:', error.message)
-  } else {
-    console.error('Unexpected error:', error)
+```ts
+export async function errorHandlingExample(): Promise<void> {
+  try {
+    const driver = await loadDriver({ driverPackage: 'my-driver' })
+    console.log('Loaded driver:', driver)
+  } catch (error) {
+    // Type-safe error handling with instanceof
+    if (error instanceof DriverNotFoundError) {
+      console.error(`Package not found: ${error.packageName}`)
+      console.error(`Install with: npm install ${error.packageName}`)
+    } else if (error instanceof ValidationError) {
+      console.error(`Validation failed for field: ${error.field ?? 'unknown'}`)
+      console.error(`Error: ${error.message}`)
+    } else if (error instanceof PackageJsonError) {
+      console.error('package.json issue:', error.message)
+    } else {
+      console.error('Unexpected error:', error)
+    }
   }
 }
 ```
@@ -73,18 +77,25 @@ try {
 
 You can provide a custom logger to control warning and debug output:
 
-```typescript
-import { loadDriver, type Logger } from '@ya-modbus/driver-loader'
+<!-- embedme examples/api-examples.ts#L50-L65 -->
 
-const logger: Logger = {
-  warn: (msg) => myLogger.warning('[DRIVER]', msg),
-  debug: (msg) => myLogger.debug('[DRIVER]', msg), // Optional
-}
+```ts
+export async function customLoggingExample(): Promise<void> {
+  const myLogger = {
+    warning: (prefix: string, msg: string) => console.warn(prefix, msg),
+    debug: (prefix: string, msg: string) => console.debug(prefix, msg),
+  }
 
-const driver = await loadDriver({
-  driverPackage: 'my-driver',
-  logger,
-})
+  const logger: Logger = {
+    warn: (msg) => myLogger.warning('[DRIVER]', msg),
+    debug: (msg) => myLogger.debug('[DRIVER]', msg), // Optional
+  }
+
+  const driver = await loadDriver({
+    driverPackage: 'my-driver',
+    logger,
+  })
+  console.log('Loaded driver:', driver)
 ```
 
 ## API
@@ -121,17 +132,17 @@ Clears the driver cache. Useful for testing or when you need to reload drivers.
 - **After package updates:** Force reload of updated driver packages
 - **During development:** Reload drivers after making changes
 
-```typescript
-import { clearDriverCache } from '@ya-modbus/driver-loader'
+<!-- embedme examples/api-examples.ts#L69-L76 -->
 
-// In test setup
-beforeEach(() => {
+```ts
+export function clearCacheExample(): void {
+  // In test setup
   clearDriverCache() // Ensure each test starts with clean cache
-})
 
-// After updating a driver package
-await updateDriver('my-driver')
-clearDriverCache() // Force reload on next loadDriver call
+  // After updating a driver package
+  // await updateDriver('my-driver')
+  clearDriverCache() // Force reload on next loadDriver call
+}
 ```
 
 ### `getDriverCacheStats(): DriverCacheStats`
@@ -155,38 +166,41 @@ Returns cache statistics including hits, misses, and current cache size.
 
 **Example:**
 
-```typescript
-import { loadDriver, getDriverCacheStats } from '@ya-modbus/driver-loader'
+<!-- embedme examples/api-examples.ts#L79-L87 -->
 
-// First load - cache miss
-await loadDriver({ driverPackage: 'my-driver' })
-console.log(getDriverCacheStats()) // { hits: 0, misses: 1, size: 1 }
+```ts
+export async function cacheStatsExample(): Promise<void> {
+  // First load - cache miss
+  await loadDriver({ driverPackage: 'my-driver' })
+  console.log(getDriverCacheStats()) // { hits: 0, misses: 1, size: 1 }
 
-// Second load - cache hit
-await loadDriver({ driverPackage: 'my-driver' })
-console.log(getDriverCacheStats()) // { hits: 1, misses: 1, size: 1 }
+  // Second load - cache hit
+  await loadDriver({ driverPackage: 'my-driver' })
+  console.log(getDriverCacheStats()) // { hits: 1, misses: 1, size: 1 }
+}
 ```
 
 ## Testing Utilities
 
 The package provides testing utilities for applications using driver-loader.
 
-```typescript
-import { createMockDriver, mockSystemDeps } from '@ya-modbus/driver-loader/testing'
+<!-- embedme examples/api-examples.ts#L124-L137 -->
 
-// Create a mock driver
-const mockDriver = createMockDriver({
-  defaultConfig: { baudRate: 9600 },
-  devices: { test: { manufacturer: 'Test', model: 'Model' } },
-})
+```ts
+  const mockDriver = createMockDriver({
+    defaultConfig: { baudRate: 9600 },
+    devices: { test: { manufacturer: 'Test', model: 'Model' } },
+  })
 
-// Create mock system dependencies
-const deps = mockSystemDeps({
-  importModule: jest.fn().mockResolvedValue(mockDriver),
-})
+  // Create mock system dependencies
+  const deps = mockSystemDeps({
+    importModule: mockFn().mockResolvedValue(mockDriver),
+  })
 
-// Use with loadDriver in tests
-const driver = await loadDriver({ driverPackage: 'test-driver' }, deps)
+  // Use with loadDriver in tests
+  void loadDriver({ driverPackage: 'test-driver' }, deps)
+}
+
 ```
 
 ### `createMockDriver(options?: MockDriverOptions): LoadedDriver`
@@ -262,36 +276,31 @@ If driver validation fails with configuration errors:
 
 1. **ValidationError - Invalid DEFAULT_CONFIG:**
 
-   ```typescript
-   // ❌ Wrong
-   export const DEFAULT_CONFIG = { speed: 9600 } // Should be "baudRate"
+   <!-- embedme examples/api-examples.ts#L110-L111 -->
 
-   // ✅ Correct
-   export const DEFAULT_CONFIG = { baudRate: 9600 }
+   ```ts
+   // Example of correct DEFAULT_CONFIG
+   export const DEFAULT_CONFIG_CORRECT = { baudRate: 9600 }
    ```
 
 2. **ValidationError - Invalid SUPPORTED_CONFIG:**
 
-   ```typescript
-   // ❌ Wrong
-   export const SUPPORTED_CONFIG = { baudRates: [9600] } // Should be "validBaudRates"
+   <!-- embedme examples/api-examples.ts#L113-L114 -->
 
-   // ✅ Correct
-   export const SUPPORTED_CONFIG = { validBaudRates: [9600, 19200] }
+   ```ts
+   // Example of correct SUPPORTED_CONFIG
+   export const SUPPORTED_CONFIG_CORRECT = { validBaudRates: [9600, 19200] }
    ```
 
 3. **ValidationError - Missing createDriver:**
 
-   ```typescript
-   // ❌ Wrong
-   export function makeDriver() {
-     ...
-   }
+   <!-- embedme examples/api-examples.ts#L143-L146 -->
 
-   // ✅ Correct
-   export function createDriver() {
-     ...
-   }
+   ```ts
+   type MockSystemDeps = (opts: { importModule: unknown }) => Record<string, unknown>
+
+   // Correct createDriver export pattern
+   export function createDriver(): void {
    ```
 
 4. **PackageJsonError - Not a driver package:**
@@ -309,14 +318,12 @@ If driver validation fails with configuration errors:
 
    Ensure DEFAULT_CONFIG values are within SUPPORTED_CONFIG constraints:
 
-   ```typescript
-   // ❌ Inconsistent
-   export const DEFAULT_CONFIG = { baudRate: 115200 }
-   export const SUPPORTED_CONFIG = { validBaudRates: [9600, 19200] }
+   <!-- embedme examples/api-examples.ts#L148-L150 -->
 
-   // ✅ Consistent
-   export const DEFAULT_CONFIG = { baudRate: 9600 }
-   export const SUPPORTED_CONFIG = { validBaudRates: [9600, 19200] }
+   ```ts
+   }
+
+   // Consistent configuration example
    ```
 
 ### Getting More Help
@@ -325,27 +332,38 @@ For additional debugging:
 
 1. **Enable verbose logging:**
 
-   ```typescript
-   const logger = {
-     warn: (msg: string) => console.warn('[DRIVER]', msg),
-     debug: (msg: string) => console.debug('[DRIVER]', msg),
-   }
+   <!-- embedme examples/api-examples.ts#L90-L98 -->
 
-   const driver = await loadDriver({ logger })
+   ```ts
+   export async function verboseLoggingExample(): Promise<void> {
+     const logger = {
+       warn: (msg: string) => console.warn('[DRIVER]', msg),
+       debug: (msg: string) => console.debug('[DRIVER]', msg),
+     }
+
+     const driver = await loadDriver({ logger })
+     console.log('Loaded driver:', driver)
+   }
    ```
 
 2. **Check cache statistics:**
 
-   ```typescript
-   import { getDriverCacheStats } from '@ya-modbus/driver-loader'
+   <!-- embedme examples/api-examples.ts#L101-L103 -->
 
-   console.log(getDriverCacheStats())
+   ```ts
+   export function checkCacheExample(): void {
+     console.log(getDriverCacheStats())
+   }
    ```
 
 3. **Clear the cache:**
-   ```typescript
-   import { clearDriverCache } from '@ya-modbus/driver-loader'
-   clearDriverCache()
+
+   <!-- embedme examples/api-examples.ts#L106-L108 -->
+
+   ```ts
+   export function clearCacheTroubleshoot(): void {
+     clearDriverCache()
+   }
    ```
 
 ## License
