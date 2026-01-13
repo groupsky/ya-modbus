@@ -23,61 +23,91 @@ npm install @ya-modbus/driver-or-we-516
 
 ## Usage
 
-```typescript
-import { createDriver } from '@ya-modbus/driver-or-we-516'
+<!-- embedme examples/example-rtu.ts -->
+
+```ts
+#!/usr/bin/env tsx
 import { createRTUTransport } from '@ya-modbus/transport'
 
-// Create transport
+import { createDriver, DEFAULT_CONFIG } from '@ya-modbus/driver-or-we-516'
+
+const port = process.argv[2] ?? '/dev/ttyUSB0'
+const slaveId = parseInt(process.argv[3] ?? String(DEFAULT_CONFIG.defaultAddress), 10)
+
+// Create transport with default configuration
 const transport = await createRTUTransport({
-  port: '/dev/ttyUSB0',
-  baudRate: 9600,
-  parity: 'odd',
-  dataBits: 8,
-  stopBits: 1,
-  slaveId: 1,
+  port,
+  baudRate: DEFAULT_CONFIG.baudRate,
+  parity: DEFAULT_CONFIG.parity,
+  dataBits: DEFAULT_CONFIG.dataBits,
+  stopBits: DEFAULT_CONFIG.stopBits,
+  slaveId,
+  timeout: 1000,
 })
 
-// Create driver
-const driver = await createDriver({ transport })
+try {
+  // Create driver
+  const driver = await createDriver({ transport })
 
-// Read voltages and frequency
-const values = await driver.readDataPoints(['voltage_l1', 'voltage_l2', 'voltage_l3', 'frequency'])
-console.log(values)
-// { voltage_l1: 230.5, voltage_l2: 231.2, voltage_l3: 229.8, frequency: 50.01 }
+  // Read voltages and frequency
+  const values = await driver.readDataPoints([
+    'voltage_l1',
+    'voltage_l2',
+    'voltage_l3',
+    'frequency',
+  ])
+  console.log(values)
 
-// Read total active energy
-const energy = await driver.readDataPoint('active_energy_total')
-console.log(`Total energy: ${energy} kWh`)
+  // Read total active energy
+  const energy = await driver.readDataPoint('active_energy_total')
+  console.log(`Total energy: ${String(energy)} kWh`)
 
-// Read all power values
-const power = await driver.readDataPoints([
-  'active_power_total',
-  'reactive_power_total',
-  'apparent_power_total',
-  'power_factor_total',
-])
-console.log(power)
+  // Read all power values
+  const power = await driver.readDataPoints([
+    'active_power_total',
+    'reactive_power_total',
+    'apparent_power_total',
+    'power_factor_total',
+  ])
+  console.log(power)
+
+  // Change device address from 1 to 5
+  await driver.writeDataPoint('device_address', 5)
+  console.log('Device address changed to 5')
+
+  // Set baud rate to 4800
+  await driver.writeDataPoint('baud_rate', 4800)
+  console.log('Baud rate changed to 4800')
+
+  // Set S0 output rate (impulses per kWh)
+  await driver.writeDataPoint('s0_output_rate', 1000.0)
+  console.log('S0 output rate set to 1000')
+
+  // Set combined code for bidirectional energy calculation
+  await driver.writeDataPoint('combined_code', 5)
+  console.log('Combined code set to 5')
+} finally {
+  await transport.close()
+}
 ```
 
 ### Using Default Configuration
 
 The driver exports a `DEFAULT_CONFIG` constant with factory-default device settings:
 
-```typescript
-import { createDriver, DEFAULT_CONFIG } from '@ya-modbus/driver-or-we-516'
-import { createRTUTransport } from '@ya-modbus/transport'
+<!-- embedme examples/example-rtu.ts#L9-L18 -->
 
-// Use default configuration for connecting to factory-default device
+```ts
+// Create transport with default configuration
 const transport = await createRTUTransport({
-  port: '/dev/ttyUSB0',
-  baudRate: DEFAULT_CONFIG.baudRate, // 9600
-  parity: DEFAULT_CONFIG.parity, // 'odd'
-  dataBits: DEFAULT_CONFIG.dataBits, // 8
-  stopBits: DEFAULT_CONFIG.stopBits, // 1
-  slaveId: DEFAULT_CONFIG.defaultAddress, // 1
+  port,
+  baudRate: DEFAULT_CONFIG.baudRate,
+  parity: DEFAULT_CONFIG.parity,
+  dataBits: DEFAULT_CONFIG.dataBits,
+  stopBits: DEFAULT_CONFIG.stopBits,
+  slaveId,
+  timeout: 1000,
 })
-
-const driver = await createDriver({ transport })
 ```
 
 ## Data Points
@@ -167,31 +197,36 @@ All float values are IEEE 754 single-precision (32-bit) big-endian.
 
 ### Change Device Address
 
-```typescript
-// Change address from 1 to 5
+<!-- embedme examples/example-rtu.ts#L46-L47 -->
+
+```ts
+// Change device address from 1 to 5
 await driver.writeDataPoint('device_address', 5)
 ```
 
 ### Change Baud Rate
 
-```typescript
+<!-- embedme examples/example-rtu.ts#L50-L51 -->
+
+```ts
 // Set baud rate to 4800
 await driver.writeDataPoint('baud_rate', 4800)
 ```
 
 ### Configure S0 Pulse Output
 
-```typescript
+<!-- embedme examples/example-rtu.ts#L54-L55 -->
+
+```ts
 // Set S0 output rate (impulses per kWh)
 await driver.writeDataPoint('s0_output_rate', 1000.0)
 ```
 
 ### Configure Combined Code (Bidirectional Mode)
 
-```typescript
-// Read current combined code setting
-const mode = await driver.readDataPoint('combined_code')
+<!-- embedme examples/example-rtu.ts#L58-L59 -->
 
+```ts
 // Set combined code for bidirectional energy calculation
 await driver.writeDataPoint('combined_code', 5)
 ```
