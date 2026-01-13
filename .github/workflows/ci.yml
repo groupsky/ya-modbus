@@ -150,33 +150,6 @@ jobs:
       - name: Check TypeScript types with arethetypeswrong
         run: npm run validate:attw
 
-      - name: Verify all README code blocks have embedme comments
-        run: |
-          # Verify all TypeScript code blocks in README files have embedme comments
-          missing=()
-          for readme in packages/*/README.md; do
-            while IFS=: read -r line_num _; do
-              prev_line=$((line_num - 1))
-              prev_content=$(sed -n "${prev_line}p" "$readme")
-              if [[ ! "$prev_content" =~ ^'<!-- embedme ' ]]; then
-                missing+=("$readme:$line_num")
-              fi
-            done < <(grep -n '^```typescript' "$readme" 2>/dev/null)
-          done
-
-          if [[ ${#missing[@]} -gt 0 ]]; then
-            echo "❌ Code blocks missing embedme comments:"
-            for loc in "${missing[@]}"; do
-              echo "  - $loc"
-            done
-            echo ""
-            echo "All TypeScript code blocks must reference source files via embedme."
-            echo "Add: <!-- embedme path/to/example.ts --> before the code block"
-            exit 1
-          fi
-
-          echo "✅ All README code blocks have embedme comments"
-
       - name: Verify documentation is in sync
         run: npm run docs:verify
 

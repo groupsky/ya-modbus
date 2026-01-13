@@ -52,7 +52,7 @@ try {
   // Read device configuration
   const address = await driver.readDataPoint('device_address')
   const baudRate = await driver.readDataPoint('baud_rate')
-  console.log(`Device: address=${address}, baudRate=${baudRate}`)
+  console.log(`Device: address=${String(address)}, baudRate=${String(baudRate)}`)
 } finally {
   await transport.close()
 }
