@@ -27,9 +27,8 @@ npm install @ya-modbus/driver-or-we-516
 
 ```ts
 #!/usr/bin/env tsx
-import { createRTUTransport } from '@ya-modbus/transport'
-
 import { createDriver, DEFAULT_CONFIG } from '@ya-modbus/driver-or-we-516'
+import { createRTUTransport } from '@ya-modbus/transport'
 
 const port = process.argv[2] ?? '/dev/ttyUSB0'
 const slaveId = parseInt(process.argv[3] ?? String(DEFAULT_CONFIG.defaultAddress), 10)
@@ -98,7 +97,6 @@ The driver exports a `DEFAULT_CONFIG` constant with factory-default device setti
 <!-- embedme examples/example-rtu.ts#L9-L18 -->
 
 ```ts
-// Create transport with default configuration
 const transport = await createRTUTransport({
   port,
   baudRate: DEFAULT_CONFIG.baudRate,
@@ -200,8 +198,8 @@ All float values are IEEE 754 single-precision (32-bit) big-endian.
 <!-- embedme examples/example-rtu.ts#L46-L47 -->
 
 ```ts
-// Change device address from 1 to 5
 await driver.writeDataPoint('device_address', 5)
+console.log('Device address changed to 5')
 ```
 
 ### Change Baud Rate
@@ -209,8 +207,8 @@ await driver.writeDataPoint('device_address', 5)
 <!-- embedme examples/example-rtu.ts#L50-L51 -->
 
 ```ts
-// Set baud rate to 4800
 await driver.writeDataPoint('baud_rate', 4800)
+console.log('Baud rate changed to 4800')
 ```
 
 ### Configure S0 Pulse Output
@@ -218,8 +216,8 @@ await driver.writeDataPoint('baud_rate', 4800)
 <!-- embedme examples/example-rtu.ts#L54-L55 -->
 
 ```ts
-// Set S0 output rate (impulses per kWh)
 await driver.writeDataPoint('s0_output_rate', 1000.0)
+console.log('S0 output rate set to 1000')
 ```
 
 ### Configure Combined Code (Bidirectional Mode)
@@ -227,8 +225,8 @@ await driver.writeDataPoint('s0_output_rate', 1000.0)
 <!-- embedme examples/example-rtu.ts#L58-L59 -->
 
 ```ts
-// Set combined code for bidirectional energy calculation
 await driver.writeDataPoint('combined_code', 5)
+console.log('Combined code set to 5')
 ```
 
 ## License

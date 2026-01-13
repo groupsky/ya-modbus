@@ -3,11 +3,12 @@
 import { AddressInfo, createServer, Server } from 'node:net'
 
 import { jest } from '@jest/globals'
-import type { Transport, DeviceDriver } from '@ya-modbus/driver-types'
-import { TransportManager } from '@ya-modbus/transport'
 import Aedes from 'aedes'
 import type { AedesPublishPacket } from 'aedes'
 import type { Client } from 'aedes'
+
+import type { Transport, DeviceDriver } from '@ya-modbus/driver-types'
+import { TransportManager } from '@ya-modbus/transport'
 
 import { DriverLoader } from '../driver-loader.js'
 import { createBridge } from '../index.js'

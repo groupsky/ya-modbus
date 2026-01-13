@@ -1,5 +1,6 @@
-import type { Transport } from '@ya-modbus/driver-types'
 import { Mutex } from 'async-mutex'
+
+import type { Transport } from '@ya-modbus/driver-types'
 
 import { MutexTransport } from './mutex-transport.js'
 

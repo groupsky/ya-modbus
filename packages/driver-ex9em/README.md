@@ -23,9 +23,8 @@ npm install @ya-modbus/driver-ex9em
 
 ```ts
 #!/usr/bin/env tsx
-import { createRTUTransport } from '@ya-modbus/transport'
-
 import { createDriver, DEFAULT_CONFIG } from '@ya-modbus/driver-ex9em'
+import { createRTUTransport } from '@ya-modbus/transport'
 
 const port = process.argv[2] ?? '/dev/ttyUSB0'
 const slaveId = parseInt(process.argv[3] ?? String(DEFAULT_CONFIG.defaultAddress), 10)
@@ -119,6 +118,7 @@ console.log('Device address changed to 5')
 
 // Change baud rate (requires device restart)
 await driver.writeDataPoint('baud_rate', 4800)
+console.log('Baud rate changed to 4800')
 ```
 
 **Important:** According to the device documentation, configuration changes may require a password unlock mechanism using vendor-specific Modbus function code 0x28. This mechanism is not implemented in the driver. Configuration changes may work without it on some firmware versions, but YMMV. Consult the official register map PDF in `docs/` for details.

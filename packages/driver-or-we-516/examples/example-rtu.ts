@@ -1,7 +1,6 @@
 #!/usr/bin/env tsx
-import { createRTUTransport } from '@ya-modbus/transport'
-
 import { createDriver, DEFAULT_CONFIG } from '@ya-modbus/driver-or-we-516'
+import { createRTUTransport } from '@ya-modbus/transport'
 
 const port = process.argv[2] ?? '/dev/ttyUSB0'
 const slaveId = parseInt(process.argv[3] ?? String(DEFAULT_CONFIG.defaultAddress), 10)

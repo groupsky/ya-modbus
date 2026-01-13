@@ -1,6 +1,7 @@
-import type { DataPoint } from '@ya-modbus/driver-types'
 import chalk from 'chalk'
 import Table from 'cli-table3'
+
+import type { DataPoint } from '@ya-modbus/driver-types'
 
 /**
  * Convert unknown value to string representation

@@ -26,9 +26,8 @@ npm install @ya-modbus/driver-xymd1
 
 ```ts
 #!/usr/bin/env tsx
-import { createRTUTransport } from '@ya-modbus/transport'
-
 import { createDriver } from '@ya-modbus/driver-xymd1'
+import { createRTUTransport } from '@ya-modbus/transport'
 
 const port = process.argv[2] ?? '/dev/ttyUSB0'
 const slaveId = parseInt(process.argv[3] ?? '1', 10)
@@ -80,11 +79,7 @@ To change device address or baud rate (changes take effect after device restart)
 <!-- embedme examples/example-rtu.ts#L33-L37 -->
 
 ```ts
-// Configure device address (takes effect after device restart)
-await driver.writeDataPoint('device_address', 2)
-// Configure baud rate (takes effect after device restart)
-await driver.writeDataPoint('baud_rate', 19200)
-console.log('Configuration updated (restart device to apply)')
+
 ```
 
 ### Calibration
@@ -94,11 +89,11 @@ To calibrate temperature and humidity readings (changes apply immediately):
 <!-- embedme examples/example-rtu.ts#L39-L43 -->
 
 ```ts
-// Calibrate temperature sensor
-await driver.writeDataPoint('temperature_correction', -1.5)
-// Calibrate humidity sensor
-await driver.writeDataPoint('humidity_correction', 2.0)
-console.log('Calibration applied')
+  await driver.writeDataPoint('temperature_correction', -1.5)
+  // Calibrate humidity sensor
+  await driver.writeDataPoint('humidity_correction', 2.0)
+  console.log('Calibration applied')
+} finally {
 ```
 
 ## Data Points

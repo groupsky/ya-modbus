@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals'
+
 import type { DeviceDriver } from '@ya-modbus/driver-types'
 
 import { DeviceManager } from './device-manager.js'

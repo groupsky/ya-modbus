@@ -4,9 +4,10 @@
  * CLI program for device profiler
  */
 
+import { Command, Option } from 'commander'
+
 import type { DataBits, Parity, StopBits } from '@ya-modbus/driver-types'
 import { createTransport } from '@ya-modbus/transport'
-import { Command, Option } from 'commander'
 
 import { runProfileScan } from './cli.js'
 import { MAX_PORT, MIN_PORT } from './constants.js'
