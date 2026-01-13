@@ -35,6 +35,18 @@ PREFER embedding whole files for main examples. Use line ranges for small snippe
 ```
 ````
 
+**Constants from source (no example file needed):**
+
+````markdown
+<!-- embedme src/index.ts#L89-L95 -->
+
+```ts
+// Embeds DEFAULT_CONFIG directly from source
+```
+````
+
+Constants like `DEFAULT_CONFIG`, `SUPPORTED_CONFIG`, or type definitions can be embedded directly from source files. These don't need example files or tests since they're already tested as part of the main package.
+
 **Required format:**
 
 - Use `ts` for code blocks (not `typescript`)
@@ -57,6 +69,7 @@ See: packages/driver-xymd1/examples/ for patterns
 - Bash/CLI usage examples (documentation only)
 - JSON/YAML configuration snippets
 - Type definition examples
+- Constants embedded from source files (already tested in main package)
 
 ## Verification
 

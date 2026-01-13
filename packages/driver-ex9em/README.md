@@ -88,14 +88,16 @@ try {
 
 ## Factory Default Configuration
 
-```json
-{
-  "baudRate": 9600,
-  "parity": "even",
-  "dataBits": 8,
-  "stopBits": 1,
-  "defaultAddress": 1
-}
+<!-- embedme src/index.ts#L89-L95 -->
+
+```ts
+export const DEFAULT_CONFIG = {
+  baudRate: 9600,
+  parity: 'even',
+  dataBits: 8,
+  stopBits: 1,
+  defaultAddress: 1,
+} as const satisfies DefaultSerialConfig
 ```
 
 ## Supported Configuration
