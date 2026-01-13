@@ -50,8 +50,7 @@
     "validate:attw": "./scripts/validate-attw.sh",
     "validate:packages": "npm run validate:publint && npm run validate:attw",
     "docs:sync": "embedme 'packages/*/README.md'",
-    "docs:verify": "embedme 'packages/*/README.md' && git diff --exit-code -- 'packages/*/README.md'",
-    "test:examples": "node --import tsx scripts/test-examples.ts"
+    "docs:verify": "embedme 'packages/*/README.md' && git diff --exit-code -- 'packages/*/README.md'"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
