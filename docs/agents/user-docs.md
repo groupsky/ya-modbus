@@ -16,18 +16,22 @@ All TypeScript code snippets in README.md files MUST be:
 PREFER embedding whole files. Use line ranges only when showing a small snippet without setup/teardown parts.
 
 **Whole file (preferred):**
+
 ```markdown
 <!-- embedme examples/example-usage.ts -->
 ```
 
 **Line range (when necessary):**
+
 ```markdown
 <!-- embedme examples/example-usage.ts#L10-L25 -->
 ```
 
 **Code block format** - Use `ts` (not `typescript`) with filename comment:
+
 ````markdown
 <!-- embedme examples/example-usage.ts -->
+
 ```ts
 // examples/example-usage.ts
 ```
