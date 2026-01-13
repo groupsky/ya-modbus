@@ -92,7 +92,6 @@ export async function verboseLoggingExample(): Promise<void> {
     warn: (msg: string) => console.warn('[DRIVER]', msg),
     debug: (msg: string) => console.debug('[DRIVER]', msg),
   }
-
   const driver = await loadDriver({ logger })
   console.log('Loaded driver:', driver)
 }
@@ -141,12 +140,10 @@ type CreateMockDriver = (opts: {
   devices?: Record<string, { manufacturer: string; model: string }>
 }) => unknown
 type MockSystemDeps = (opts: { importModule: unknown }) => Record<string, unknown>
-
 // Correct createDriver export pattern
 export function createDriver(): void {
   // Driver implementation
 }
-
 // Consistent configuration example
 export const DEFAULT_CONFIG_CONSISTENT = { baudRate: 9600 }
 export const SUPPORTED_CONFIG_CONSISTENT = { validBaudRates: [9600, 19200] }

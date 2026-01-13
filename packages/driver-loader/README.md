@@ -187,7 +187,6 @@ The package provides testing utilities for applications using driver-loader.
 <!-- embedme examples/api-examples.ts#L124-L137 -->
 
 ```ts
-  const mockDriver = createMockDriver({
     defaultConfig: { baudRate: 9600 },
     devices: { test: { manufacturer: 'Test', model: 'Model' } },
   })
@@ -201,6 +200,7 @@ The package provides testing utilities for applications using driver-loader.
   void loadDriver({ driverPackage: 'test-driver' }, deps)
 }
 
+// Type declarations for testing utilities
 ```
 
 ### `createMockDriver(options?: MockDriverOptions): LoadedDriver`
@@ -279,7 +279,6 @@ If driver validation fails with configuration errors:
    <!-- embedme examples/api-examples.ts#L110-L111 -->
 
    ```ts
-   // Example of correct DEFAULT_CONFIG
    export const DEFAULT_CONFIG_CORRECT = { baudRate: 9600 }
    ```
 
@@ -288,17 +287,15 @@ If driver validation fails with configuration errors:
    <!-- embedme examples/api-examples.ts#L113-L114 -->
 
    ```ts
-   // Example of correct SUPPORTED_CONFIG
    export const SUPPORTED_CONFIG_CORRECT = { validBaudRates: [9600, 19200] }
    ```
 
 3. **ValidationError - Missing createDriver:**
 
-   <!-- embedme examples/api-examples.ts#L143-L146 -->
+   <!-- embedme examples/api-examples.ts#L142-L144 -->
 
    ```ts
    type MockSystemDeps = (opts: { importModule: unknown }) => Record<string, unknown>
-
    // Correct createDriver export pattern
    export function createDriver(): void {
    ```
@@ -318,11 +315,10 @@ If driver validation fails with configuration errors:
 
    Ensure DEFAULT_CONFIG values are within SUPPORTED_CONFIG constraints:
 
-   <!-- embedme examples/api-examples.ts#L148-L150 -->
+   <!-- embedme examples/api-examples.ts#L146-L147 -->
 
    ```ts
    }
-
    // Consistent configuration example
    ```
 
@@ -332,7 +328,7 @@ For additional debugging:
 
 1. **Enable verbose logging:**
 
-   <!-- embedme examples/api-examples.ts#L90-L98 -->
+   <!-- embedme examples/api-examples.ts#L90-L97 -->
 
    ```ts
    export async function verboseLoggingExample(): Promise<void> {
@@ -340,7 +336,6 @@ For additional debugging:
        warn: (msg: string) => console.warn('[DRIVER]', msg),
        debug: (msg: string) => console.debug('[DRIVER]', msg),
      }
-
      const driver = await loadDriver({ logger })
      console.log('Loaded driver:', driver)
    }
@@ -348,7 +343,7 @@ For additional debugging:
 
 2. **Check cache statistics:**
 
-   <!-- embedme examples/api-examples.ts#L101-L103 -->
+   <!-- embedme examples/api-examples.ts#L100-L102 -->
 
    ```ts
    export function checkCacheExample(): void {
@@ -358,7 +353,7 @@ For additional debugging:
 
 3. **Clear the cache:**
 
-   <!-- embedme examples/api-examples.ts#L106-L108 -->
+   <!-- embedme examples/api-examples.ts#L105-L107 -->
 
    ```ts
    export function clearCacheTroubleshoot(): void {

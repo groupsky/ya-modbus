@@ -167,7 +167,7 @@ Create a type-safe enum validator function.
 
 **Example:**
 
-<!-- embedme examples/api-examples.ts#L64-L74 -->
+<!-- embedme examples/api-examples.ts#L65-L73 -->
 
 ```ts
 const isValidBaudRate = createEnumValidator(VALID_BAUD_RATES)
