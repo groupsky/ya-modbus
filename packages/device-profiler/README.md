@@ -36,7 +36,7 @@ Options:
 
 ### Programmatic
 
-<!-- embedme examples/example-scan.ts#L8-L20 -->
+<!-- embedme examples/api-examples.ts#L8-L20 -->
 
 ```ts
     transport,

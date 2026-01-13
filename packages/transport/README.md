@@ -18,7 +18,7 @@ npm install @ya-modbus/transport
 
 ## Usage
 
-<!-- embedme examples/example-usage.ts#L4-L22 -->
+<!-- embedme examples/api-examples.ts#L4-L22 -->
 
 ```ts
 // RTU (serial) transport

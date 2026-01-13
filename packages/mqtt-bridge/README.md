@@ -119,7 +119,7 @@ Create a `config.json` file:
 
 ## Programmatic Usage
 
-<!-- embedme examples/example-programmatic.ts#L4-L36 -->
+<!-- embedme examples/api-examples.ts#L4-L36 -->
 
 ```ts
 const bridge = createBridge({

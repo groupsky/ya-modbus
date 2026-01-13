@@ -18,10 +18,9 @@ npm install @ya-modbus/emulator
 
 ## Quick Start
 
-<!-- embedme examples/example-quickstart.ts#L4-L28 -->
+<!-- embedme examples/api-examples.ts#L9-L32 -->
 
 ```ts
-// Create emulator with TCP transport
 const emulator = new ModbusEmulator({
   transport: 'tcp',
   port: 5502,
@@ -178,10 +177,11 @@ See `examples/virtual-serial-test.md` for detailed virtual serial port testing g
 
 Simulate realistic device response times:
 
-<!-- embedme examples/example-timing.ts#L11-L19 -->
+<!-- embedme examples/api-examples.ts#L35-L43 -->
 
 ```ts
-  slaveId: 1,
+emulator.addDevice({
+  slaveId: 2,
   timing: {
     pollingInterval: 10, // Device checks for commands every 10ms
     commandDetectionDelay: [3, 8], // 3-8ms to notice command
@@ -189,19 +189,17 @@ Simulate realistic device response times:
     perRegisterDelay: 0.1, // 0.1ms per register
   },
 })
-
 ```
 
 ### Register Constraints
 
 > **🚧 Planned for v0.2.0**: Define forbidden ranges and batch size limits
 
-<!-- embedme examples/example-constraints.ts#L13-L21 -->
+<!-- embedme examples/api-examples.ts#L46-L53 -->
 
 ```ts
-// Coming in v0.2.0
 emulator.addDevice({
-  slaveId: 1,
+  slaveId: 3,
   constraints: {
     maxReadRegisters: 80,
     maxWriteRegisters: 50,
@@ -214,12 +212,11 @@ emulator.addDevice({
 
 > **🚧 Planned for v0.2.0**: Inject errors for testing error handling
 
-<!-- embedme examples/example-errors.ts#L13-L20 -->
+<!-- embedme examples/api-examples.ts#L56-L62 -->
 
 ```ts
-// Coming in v0.2.0
 emulator.addDevice({
-  slaveId: 1,
+  slaveId: 4,
   errors: {
     timeoutProbability: 0.05, // 5% timeout rate
     crcErrorProbability: 0.01, // 1% CRC error rate
