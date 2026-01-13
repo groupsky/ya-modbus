@@ -13,29 +13,33 @@ All TypeScript code snippets in README.md files MUST be:
 
 ## Embedme Pattern
 
-PREFER embedding whole files. Use line ranges only when showing a small snippet without setup/teardown parts.
+PREFER embedding whole files for main examples. Use line ranges for small snippets showing specific operations.
 
-**Whole file (preferred):**
-
-```markdown
-<!-- embedme examples/example-usage.ts -->
-```
-
-**Line range (when necessary):**
-
-```markdown
-<!-- embedme examples/example-usage.ts#L10-L25 -->
-```
-
-**Code block format** - Use `ts` for code blocks (embedme requires this):
+**Whole file (for main usage example):**
 
 ````markdown
-<!-- embedme examples/example-usage.ts -->
+<!-- embedme examples/example-rtu.ts -->
 
 ```ts
-
+// File content will be embedded here
 ```
 ````
+
+**Line range (for focused snippets):**
+
+````markdown
+<!-- embedme examples/example-rtu.ts#L33-L37 -->
+
+```ts
+// Only lines 33-37 will be embedded
+```
+````
+
+**Required format:**
+
+- Use `ts` for code blocks (not `typescript`)
+- Blank line after embedme comment, before code block
+- CI enforces all `ts`/`typescript` blocks have embedme comments
 
 See: packages/driver-xymd1/README.md for reference implementation
 

@@ -70,6 +70,8 @@ describe('example-rtu', () => {
         holding: {
           0x101: 1, // device address
           0x102: 9600, // baud rate
+          0x103: 0, // temperature correction
+          0x104: 0, // humidity correction
         },
       },
       async ({ clientPort }) => {
@@ -89,6 +91,12 @@ describe('example-rtu', () => {
 
         // Verify device configuration in output
         expect(result.stdout).toContain('Device: address=1, baudRate=9600')
+
+        // Verify configuration update message
+        expect(result.stdout).toContain('Configuration updated')
+
+        // Verify calibration message
+        expect(result.stdout).toContain('Calibration applied')
       }
     )
   }, 30000) // Longer timeout for RTU setup
