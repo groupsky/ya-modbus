@@ -13,7 +13,7 @@ All TypeScript code snippets in README.md files MUST be:
 
 ## Embedme Pattern
 
-PREFER embedding whole files where possible. Use line ranges only for long examples.
+PREFER embedding whole files. Use line ranges only when showing a small snippet without setup/teardown parts.
 
 **Whole file (preferred):**
 ```markdown
