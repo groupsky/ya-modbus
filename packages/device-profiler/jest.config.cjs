@@ -2,12 +2,15 @@ module.exports = {
   displayName: '@ya-modbus/device-profiler',
   preset: 'ts-jest',
   testEnvironment: 'node',
-  testMatch: ['<rootDir>/src/**/*.test.ts'],
+  rootDir: '.',
+  testMatch: ['<rootDir>/src/**/*.test.ts', '<rootDir>/examples/**/*.test.ts'],
+  extensionsToTreatAsEsm: ['.ts'],
   transform: {
     '^.+\\.tsx?$': [
       'ts-jest',
       {
         tsconfig: '<rootDir>/../../tsconfig.base.json',
+        useESM: true,
       },
     ],
   },

@@ -34,11 +34,11 @@ jobs:
       - name: Lint code
         run: npm run lint
 
-      - name: Run tests
-        run: npm run test:ci
-
       - name: Build packages
         run: npm run build
+
+      - name: Run tests
+        run: npm run test:ci
 
       - name: Publish preview packages
         run: |

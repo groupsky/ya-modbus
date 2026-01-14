@@ -119,9 +119,9 @@ Create a `config.json` file:
 
 ## Programmatic Usage
 
-```typescript
-import { createBridge } from '@ya-modbus/mqtt-bridge'
+<!-- embedme examples/api-examples.ts#L4-L36 -->
 
+```ts
 const bridge = createBridge({
   mqtt: {
     url: 'mqtt://localhost:1883',
@@ -154,9 +154,7 @@ await bridge.addDevice({
 
 // List devices
 const devices = bridge.listDevices()
-
-// Stop bridge
-await bridge.stop()
+console.log('Devices:', devices)
 ```
 
 ## Architecture
@@ -172,16 +170,9 @@ See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for complete bridge architect
 ## Development
 
 ```bash
-# Build
 npm run build
-
-# Test
 npm test
-
-# Lint
 npm run lint
-
-# Clean
 npm run clean
 ```
 

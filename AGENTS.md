@@ -50,5 +50,8 @@ Reading task-specific documentation prevents implementation errors and ensures y
 **Before modifying CI/CD:**
 → READ docs/agents/workflows.md
 
+**Before modifying README.md files:**
+→ READ docs/agents/user-docs.md (Code snippets, embedme, testing)
+
 **For architecture questions:**
 → READ docs/ARCHITECTURE.md

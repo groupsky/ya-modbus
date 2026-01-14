@@ -3,7 +3,7 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   rootDir: '.',
-  testMatch: ['<rootDir>/src/**/*.test.ts'],
+  testMatch: ['<rootDir>/src/**/*.test.ts', '<rootDir>/examples/**/*.test.ts'],
   extensionsToTreatAsEsm: ['.ts'],
   transform: {
     '^.+\\.tsx?$': [
