@@ -1,7 +1,7 @@
 /**
- * Jest test for example-rtu.ts
+ * Jest test for example-config.ts
  *
- * Tests the RTU example by:
+ * Tests the configuration example by:
  * 1. Setting up a virtual serial port pair with the emulator
  * 2. Running the example as a subprocess with the port argument
  * 3. Verifying the output contains expected values
@@ -49,12 +49,12 @@ async function runExample(examplePath: string, args: string[] = []): Promise<Exa
   })
 }
 
-describe('example-rtu', () => {
-  it('reads energy meter data', async () => {
+describe('example-config', () => {
+  it('configures device address and baud rate', async () => {
     // Skip if socat is not available
     const socatAvailable = await isSocatAvailable()
     if (!socatAvailable) {
-      console.warn('Skipping RTU example test: socat not available')
+      console.warn('Skipping config example test: socat not available')
       return
     }
 
@@ -64,37 +64,23 @@ describe('example-rtu', () => {
         baudRate: 9600,
         parity: 'even',
         holding: {
-          // Measurement registers (0x0000-0x000A)
-          0x0000: 2305, // voltage * 10 = 230.5V
-          0x0001: 150, // current * 10 = 15.0A
-          0x0002: 500, // frequency * 10 = 50.0Hz
-          0x0003: 3450, // active power = 3450W
-          0x0004: 500, // reactive power = 500VAr
-          0x0005: 3486, // apparent power = 3486VA
-          0x0006: 990, // power factor * 1000 = 0.990
-          0x0007: 0x0001, // total active energy high word
-          0x0008: 0x86a0, // total active energy low word (100000 = 1000.00 kWh)
-          0x0009: 0x0000, // total reactive energy high word
-          0x000a: 0x2710, // total reactive energy low word (10000 = 100.00 kVArh)
+          // Configuration registers
+          0x002a: 4, // baud rate encoding (4 = 9600)
+          0x002b: 1, // device address
         },
       },
       async ({ clientPort }) => {
         // Run the example as a subprocess
-        const examplePath = join(__dirname, 'example-rtu.ts')
+        const examplePath = join(__dirname, 'example-config.ts')
         const result = await runExample(examplePath, [clientPort])
 
         // Verify exit code and no errors
         expect(result.code).toBe(0)
         expect(result.stderr).toBe('')
 
-        // Verify voltage reading
-        expect(result.stdout).toContain('Voltage: 230.5V')
-
-        // Verify batch read values
-        expect(result.stdout).toContain('voltage')
-        expect(result.stdout).toContain('current')
-        expect(result.stdout).toContain('active_power')
-        expect(result.stdout).toContain('total_active_energy')
+        // Verify configuration changes
+        expect(result.stdout).toContain('Device address changed to 5')
+        expect(result.stdout).toContain('Baud rate changed to 4800')
       }
     )
   }, 30000) // Longer timeout for RTU setup

@@ -17,21 +17,15 @@ const transport = await createRTUTransport({
 })
 
 try {
-  // Create driver
   const driver = await createDriver({ transport })
 
-  // Read single data point
-  const voltage = await driver.readDataPoint('voltage')
-  console.log(`Voltage: ${String(voltage)}V`)
+  // Change device address (requires device restart)
+  await driver.writeDataPoint('device_address', 5)
+  console.log('Device address changed to 5')
 
-  // Read multiple data points (single transaction)
-  const values = await driver.readDataPoints([
-    'voltage',
-    'current',
-    'active_power',
-    'total_active_energy',
-  ])
-  console.log(values)
+  // Change baud rate (requires device restart)
+  await driver.writeDataPoint('baud_rate', 4800)
+  console.log('Baud rate changed to 4800')
 } finally {
   await transport.close()
 }

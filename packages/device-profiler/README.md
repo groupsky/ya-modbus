@@ -36,9 +36,16 @@ Options:
 
 ### Programmatic
 
-<!-- embedme examples/api-examples.ts#L8-L20 -->
+<!-- embedme examples/example-api.ts -->
 
 ```ts
+#!/usr/bin/env tsx
+import { RegisterType, scanRegisters } from '@ya-modbus/device-profiler'
+import type { Transport } from '@ya-modbus/driver-types'
+
+// Example function showing programmatic usage
+export async function scanDevice(transport: Transport): Promise<void> {
+  await scanRegisters({
     transport,
     type: RegisterType.Holding,
     startAddress: 0,

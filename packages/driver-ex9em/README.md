@@ -56,14 +56,6 @@ try {
     'total_active_energy',
   ])
   console.log(values)
-
-  // Change device address (requires device restart)
-  await driver.writeDataPoint('device_address', 5)
-  console.log('Device address changed to 5')
-
-  // Change baud rate (requires device restart)
-  await driver.writeDataPoint('baud_rate', 4800)
-  console.log('Baud rate changed to 4800')
 } finally {
   await transport.close()
 }
@@ -101,15 +93,21 @@ export const DEFAULT_CONFIG = {
 
 ## Supported Configuration
 
-- **Baud rates**: 1200, 2400, 4800, 9600 bps
-- **Parity**: even, none
-- **Data bits**: 8
-- **Stop bits**: 1
-- **Slave address**: 1-247 (standard Modbus range)
+<!-- embedme src/index.ts#L61-L67 -->
+
+```ts
+export const SUPPORTED_CONFIG = {
+  validBaudRates: [1200, 2400, 4800, 9600],
+  validParity: ['even', 'none'],
+  validDataBits: [8],
+  validStopBits: [1],
+  validAddressRange: [1, 247],
+} as const satisfies SupportedSerialConfig
+```
 
 ## Configuration Changes
 
-<!-- embedme examples/example-rtu.ts#L36-L42 -->
+<!-- embedme examples/example-config.ts#L22-L28 -->
 
 ```ts
 // Change device address (requires device restart)
