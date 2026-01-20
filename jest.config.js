@@ -12,13 +12,6 @@ module.exports = {
     '<rootDir>/packages/driver-xymd1',
     '<rootDir>/packages/driver-or-we-516',
   ],
-  coveragePathIgnorePatterns: [
-    '/node_modules/',
-    'src/testing/',
-    '/examples/',
-    '/index\\.ts$',
-    '/cli\\.ts$',
-  ],
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
     global: {
