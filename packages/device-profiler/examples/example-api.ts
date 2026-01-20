@@ -17,8 +17,8 @@ await scanRegisters({
   transport,
   type: RegisterType.Holding,
   startAddress: 0,
-  endAddress: 100,
-  batchSize: 10,
+  endAddress: 10,
+  batchSize: 3,
   onResult: (result) => {
     console.log(result)
   },

@@ -19,6 +19,14 @@ interface ExampleResult {
 }
 
 /**
+ * Strip ANSI color codes from string
+ */
+function stripAnsiCodes(str: string): string {
+  // eslint-disable-next-line no-control-regex
+  return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '')
+}
+
+/**
  * Run an example TypeScript file as a subprocess using tsx
  */
 async function runExample(examplePath: string, args: string[] = []): Promise<ExampleResult> {
@@ -26,6 +34,16 @@ async function runExample(examplePath: string, args: string[] = []): Promise<Exa
     const proc = spawn('node', ['--import', 'tsx', examplePath, ...args], {
       cwd: process.cwd(),
       stdio: ['ignore', 'pipe', 'pipe'],
+      env: {
+        ...process.env,
+        // Set consistent terminal width to ensure consistent util.inspect formatting
+        COLUMNS: '120',
+        // Disable ANSI color codes in console.log output
+        NO_COLOR: '1',
+        NODE_DISABLE_COLORS: '1',
+        // Unset FORCE_COLOR to allow color disabling to work
+        FORCE_COLOR: undefined,
+      },
     })
 
     let stdout = ''
@@ -73,9 +91,12 @@ describe('example-api', () => {
         expect(result.stderr).toBe('')
         expect(result.code).toBe(0)
 
+        // Strip ANSI color codes from output for consistent assertions
+        const cleanOutput = stripAnsiCodes(result.stdout)
+
         // Verify results include found register data
-        expect(result.stdout).toContain('address: 1')
-        expect(result.stdout).toContain('success: true')
+        expect(cleanOutput).toContain('address: 1')
+        expect(cleanOutput).toContain('success: true')
       }
     )
   }, 15000)
