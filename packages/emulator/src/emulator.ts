@@ -6,6 +6,7 @@ import { EmulatedDevice } from './device.js'
 import type { BaseTransport } from './transports/base.js'
 import { MemoryTransport } from './transports/memory.js'
 import { RtuTransport } from './transports/rtu.js'
+import { TcpTransport } from './transports/tcp.js'
 import type { EmulatorConfig, DeviceConfig } from './types/config.js'
 
 export class ModbusEmulator {
@@ -36,8 +37,22 @@ export class ModbusEmulator {
         ...(config.stopBits !== undefined && { stopBits: config.stopBits }),
       }
       this.transport = new RtuTransport(rtuConfig)
+    } else if (config.transport === 'tcp') {
+      if (config.port === undefined || typeof config.port !== 'number') {
+        throw new Error('TCP transport requires port (number)')
+      }
+      const tcpConfig: {
+        port: number
+        host?: string
+        maxConnections?: number
+      } = {
+        port: config.port,
+        ...(config.host !== undefined && { host: config.host }),
+        ...(config.maxConnections !== undefined && { maxConnections: config.maxConnections }),
+      }
+      this.transport = new TcpTransport(tcpConfig)
     } else {
-      throw new Error(`Unsupported transport: ${config.transport}`)
+      throw new Error(`Unsupported transport: ${String(config.transport)}`)
     }
 
     // Set up request handler

@@ -18,12 +18,19 @@ npm install @ya-modbus/transport
 
 ## Usage
 
-<!-- embedme examples/api-examples.ts#L4-L22 -->
+### RTU (serial) transport
+
+<!-- embedme examples/usage-rtu.ts -->
 
 ```ts
+#!/usr/bin/env tsx
+import { createTransport } from '@ya-modbus/transport'
+
+const port = process.argv[2] ?? '/dev/ttyUSB0'
+
 // RTU (serial) transport
-const rtuTransport = await createTransport({
-  port: '/dev/ttyUSB0',
+const transport = await createTransport({
+  port,
   baudRate: 9600,
   dataBits: 8,
   parity: 'none',
@@ -31,15 +38,38 @@ const rtuTransport = await createTransport({
   slaveId: 1,
 })
 
+// Read 10 registers starting from address 0
+const buffer = await transport.readHoldingRegisters(0, 10)
+console.log(buffer.toString('hex'))
+
+// Clean up
+await transport.close()
+```
+
+### TCP transport
+
+<!-- embedme examples/usage-tcp.ts -->
+
+```ts
+#!/usr/bin/env tsx
+import { createTransport } from '@ya-modbus/transport'
+
+const host = process.argv[2] ?? '192.168.1.100'
+const tcpPort = process.argv[3] ? parseInt(process.argv[3], 10) : undefined
+
 // TCP transport
-const tcpTransport = await createTransport({
-  host: '192.168.1.100',
-  port: 502, // optional, defaults to 502
+const transport = await createTransport({
+  host,
+  ...(tcpPort !== undefined && { port: tcpPort }),
   slaveId: 1,
 })
 
-// Use transport with driver
-await rtuTransport.readHoldingRegisters(0, 10)
+// Read 10 registers starting from address 0
+const buffer = await transport.readHoldingRegisters(0, 10)
+console.log(buffer.toString('hex'))
+
+// Clean up
+await transport.close()
 ```
 
 ## License

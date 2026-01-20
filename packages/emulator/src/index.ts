@@ -11,6 +11,7 @@ export type { EmulatedDevice as IEmulatedDevice } from './types/device.js'
 export {
   withEmulator,
   withRtuEmulator,
+  withTcpEmulator,
   createClientTransport,
   createPtyPair,
   isSocatAvailable,
@@ -19,4 +20,6 @@ export {
   type TestEmulatorContext,
   type RtuEmulatorConfig,
   type RtuEmulatorContext,
+  type TcpEmulatorConfig,
+  type TcpEmulatorContext,
 } from './testing/index.js'

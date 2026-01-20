@@ -12,3 +12,8 @@ export {
   type RtuEmulatorConfig,
   type RtuEmulatorContext,
 } from './with-rtu-emulator.js'
+export {
+  withTcpEmulator,
+  type TcpEmulatorConfig,
+  type TcpEmulatorContext,
+} from './with-tcp-emulator.js'

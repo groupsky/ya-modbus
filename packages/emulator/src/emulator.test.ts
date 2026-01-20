@@ -106,14 +106,14 @@ describe('ModbusEmulator', () => {
   })
 
   describe('configuration', () => {
-    it('should throw for unsupported TCP transport', () => {
-      expect(() => {
-        emulator = new ModbusEmulator({
-          transport: 'tcp',
-          port: 5502,
-          host: 'localhost',
-        })
-      }).toThrow('Unsupported transport: tcp')
+    it('should create TCP transport with valid config', () => {
+      emulator = new ModbusEmulator({
+        transport: 'tcp',
+        port: 0,
+        host: 'localhost',
+      })
+      expect(emulator).toBeDefined()
+      expect(emulator.getTransport()).toBeDefined()
     })
 
     it('should create RTU transport with valid config', () => {
@@ -133,6 +133,14 @@ describe('ModbusEmulator', () => {
           transport: 'rtu',
         } as any)
       }).toThrow('RTU transport requires port')
+    })
+
+    it('should throw for TCP transport without port', () => {
+      expect(() => {
+        emulator = new ModbusEmulator({
+          transport: 'tcp',
+        } as any)
+      }).toThrow('TCP transport requires port')
     })
   })
 
