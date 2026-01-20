@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, jest, afterEach } from '@jest/globals'
+
 import type { DeviceDriver } from '@ya-modbus/driver-types'
 
 import { PollingScheduler } from './polling-scheduler.js'

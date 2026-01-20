@@ -23,25 +23,35 @@ function isRTUConfig(config: TransportConfig): config is RTUConfig {
  * Create a transport instance based on configuration
  *
  * Detects whether to create RTU or TCP transport based on the config:
- * - If `port` is provided → RTU transport
- * - If `host` is provided → TCP transport
+ * - If `host` is provided → TCP transport (port is optional TCP port number)
+ * - If `port` is provided (without `host`) → RTU transport (port is serial port path)
  *
  * @param config - Transport configuration (RTU or TCP)
  * @returns Transport implementation
  * @throws Error if config is invalid
  */
 export async function createTransport(config: TransportConfig): Promise<Transport> {
-  // Validate that exactly one of port/host is provided
-  if ('port' in config && 'host' in config) {
-    throw new Error('Cannot specify both port (RTU) and host (TCP)')
+  const hasHost = 'host' in config
+  const hasPort = 'port' in config
+
+  // Validate conflicting configuration
+  // RTU uses 'port' as a string (serial port path), TCP uses 'port' as optional number
+  if (hasHost && hasPort) {
+    const portValue = (config as { port?: string | number }).port
+    if (typeof portValue === 'string') {
+      // Both host (TCP) and port as string (RTU serial port path) are provided
+      throw new Error('Cannot specify both port (RTU) and host (TCP)')
+    }
   }
 
+  // Check for TCP (has 'host')
+  if (hasHost) {
+    return createTCPTransport(config)
+  }
+
+  // Check for RTU (has 'port' as string, without 'host')
   if (isRTUConfig(config)) {
     return createRTUTransport(config)
-  }
-
-  if ('host' in config) {
-    return createTCPTransport(config)
   }
 
   throw new Error('Either port (for RTU) or host (for TCP) must be specified')

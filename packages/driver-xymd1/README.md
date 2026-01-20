@@ -22,68 +22,79 @@ npm install @ya-modbus/driver-xymd1
 
 ## Usage
 
-```typescript
+<!-- embedme examples/example-rtu.ts -->
+
+```ts
+#!/usr/bin/env tsx
 import { createDriver } from '@ya-modbus/driver-xymd1'
-import { ModbusRTU } from '@ya-modbus/transport-rtu'
+import { createRTUTransport } from '@ya-modbus/transport'
+
+const port = process.argv[2] ?? '/dev/ttyUSB0'
+const slaveId = parseInt(process.argv[3] ?? '1', 10)
 
 // Create transport
-const transport = new ModbusRTU({
-  path: '/dev/ttyUSB0',
+const transport = await createRTUTransport({
+  port,
+  slaveId,
   baudRate: 9600,
   parity: 'even',
+  dataBits: 8,
+  stopBits: 1,
+  timeout: 1000,
 })
 
-// Create driver
-const driver = await createDriver({
-  transport,
-  slaveId: 1,
-})
+try {
+  // Create driver
+  const driver = await createDriver({ transport, slaveId })
 
-// Read temperature and humidity
-const values = await driver.readDataPoints(['temperature', 'humidity'])
-console.log(values)
-// { temperature: 24.5, humidity: 65.2 }
+  // Read temperature and humidity
+  const values = await driver.readDataPoints(['temperature', 'humidity'])
+  console.log(values) // { temperature: 24.5, humidity: 65.2 }
 
-// Read current device configuration
-const currentAddress = await driver.readDataPoint('device_address')
-const currentBaudRate = await driver.readDataPoint('baud_rate')
-console.log(`Current config: address=${currentAddress}, baudRate=${currentBaudRate}`)
+  // Read device configuration
+  const address = await driver.readDataPoint('device_address')
+  const baudRate = await driver.readDataPoint('baud_rate')
+  console.log(`Device: address=${String(address)}, baudRate=${String(baudRate)}`)
 
-// Configure device address (requires device restart to take effect)
-await driver.writeDataPoint('device_address', 5)
+  // Configure device address (takes effect after device restart)
+  await driver.writeDataPoint('device_address', 2)
+  // Configure baud rate (takes effect after device restart)
+  await driver.writeDataPoint('baud_rate', 19200)
+  console.log('Configuration updated (restart device to apply)')
 
-// Configure baud rate (requires device restart to take effect)
-await driver.writeDataPoint('baud_rate', 19200)
-
-// Calibrate sensor (applied immediately)
-await driver.writeDataPoint('temperature_correction', -1.5)
-await driver.writeDataPoint('humidity_correction', 2.0)
+  // Calibrate temperature sensor
+  await driver.writeDataPoint('temperature_correction', -1.5)
+  // Calibrate humidity sensor
+  await driver.writeDataPoint('humidity_correction', 2.0)
+  console.log('Calibration applied')
+} finally {
+  await transport.close()
+}
 ```
 
-### Using Default Configuration
+### Configuration
 
-The driver exports a `DEFAULT_CONFIG` constant with factory-default device settings:
+To change device address or baud rate (changes take effect after device restart):
 
-```typescript
-import { createDriver, DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
-import { ModbusRTU } from '@ya-modbus/transport-rtu'
+<!-- embedme examples/example-rtu.ts#L33-L37 -->
 
-// Use default configuration for connecting to factory-default device
-const transport = new ModbusRTU({
-  path: '/dev/ttyUSB0',
-  baudRate: DEFAULT_CONFIG.baudRate, // 9600
-  parity: DEFAULT_CONFIG.parity, // 'even'
-  dataBits: DEFAULT_CONFIG.dataBits, // 8
-  stopBits: DEFAULT_CONFIG.stopBits, // 1
-})
+```ts
 
-const driver = await createDriver({
-  transport,
-  slaveId: DEFAULT_CONFIG.defaultAddress, // 1
-})
 ```
 
-This ensures your code always uses the correct factory defaults and makes it easier to update if device specifications change.
+### Calibration
+
+To calibrate temperature and humidity readings (changes apply immediately):
+
+<!-- embedme examples/example-rtu.ts#L39-L43 -->
+
+```ts
+  await driver.writeDataPoint('temperature_correction', -1.5)
+  // Calibrate humidity sensor
+  await driver.writeDataPoint('humidity_correction', 2.0)
+  console.log('Calibration applied')
+} finally {
+```
 
 ## Data Points
 
@@ -106,27 +117,18 @@ This ensures your code always uses the correct factory defaults and makes it eas
 | Calibration   | 0x103    | Holding | 16-bit signed   | Temperature correction (×10, -100 to +100) |
 | Calibration   | 0x104    | Holding | 16-bit signed   | Humidity correction (×10, -100 to +100)    |
 
-## Calibration
+## Calibration Guide
 
 The XYMD01 supports temperature and humidity correction to calibrate sensor readings against reference measurements.
 
-### Using the Driver API
+**Calibration process:**
 
-```typescript
-// Example: Calibrate temperature
-// 1. Measure actual temperature with reference device: 23.0°C
-// 2. Read XYMD01 sensor: 25.5°C
-// 3. Calculate correction: 23.0 - 25.5 = -2.5°C
+1. Measure actual value with a reference device (e.g., 23.0°C)
+2. Read XYMD01 sensor value (e.g., 25.5°C)
+3. Calculate correction: actual - sensor = 23.0 - 25.5 = -2.5°C
+4. Apply correction using `driver.writeDataPoint('temperature_correction', -2.5)`
 
-await driver.writeDataPoint('temperature_correction', -2.5)
-
-// Verify corrected reading
-const temp = await driver.readDataPoint('temperature')
-// temp should now be approximately 23.0°C
-
-// Example: Calibrate humidity
-await driver.writeDataPoint('humidity_correction', 1.5)
-```
+See the [Calibration](#calibration) section above for the driver API usage.
 
 ### Using the CLI
 

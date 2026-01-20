@@ -1,5 +1,6 @@
-import type { Transport } from '@ya-modbus/driver-types'
 import type ModbusRTU from 'modbus-serial'
+
+import type { Transport } from '@ya-modbus/driver-types'
 
 import { withRetry, type RetryLogger } from './retry.js'
 

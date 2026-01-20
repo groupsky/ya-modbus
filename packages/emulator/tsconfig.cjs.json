@@ -4,5 +4,6 @@
     "outDir": "dist/cjs",
     "rootDir": "src"
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [{ "path": "../driver-types/tsconfig.cjs.json" }]
 }

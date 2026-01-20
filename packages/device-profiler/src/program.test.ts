@@ -46,6 +46,9 @@ describe('CLI Program - Integration Tests', () => {
    */
   async function captureHelpOutput(args: string[]): Promise<string> {
     const stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation()
+    // Set consistent terminal width to ensure consistent help text wrapping
+    const originalColumns = process.stdout.columns
+    Object.defineProperty(process.stdout, 'columns', { value: 80, writable: true })
 
     try {
       // Help output triggers process.exit(0), which our mock throws
@@ -58,6 +61,7 @@ describe('CLI Program - Integration Tests', () => {
       return stdoutWriteSpy.mock.calls.map((call) => call[0]).join('')
     } finally {
       stdoutWriteSpy.mockRestore()
+      Object.defineProperty(process.stdout, 'columns', { value: originalColumns, writable: true })
     }
   }
 
