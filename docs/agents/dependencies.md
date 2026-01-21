@@ -41,8 +41,10 @@ paths: package.json
 - GROUP interdependent packages together in dependabot.yml
 - Packages with peer dependencies MUST be updated atomically (e.g., eslint + @typescript-eslint/\*)
 - Monorepo packages from same source SHOULD be grouped (e.g., @lerna-lite/\*)
+- Packages MUST be grouped with their corresponding @types/\* packages (e.g., js-yaml + @types/js-yaml)
 - GROUP minor/patch updates only; major updates need individual review
 - USE `patterns: ['@scope/*']` for scoped packages, specific names otherwise
+- EXCLUDE grouped @types/\* packages from the generic npm-types group
 - See `.github/dependabot.yml` groups section for examples
 
 ## Update Workflow

@@ -57,6 +57,7 @@ updates:
         patterns:
           - 'eslint'
           - 'eslint-*'
+          - 'typescript-eslint'
           - '@typescript-eslint/eslint-plugin'
           - '@typescript-eslint/parser'
         update-types:
@@ -105,6 +106,7 @@ updates:
           - '@types/*'
         exclude-patterns:
           - '@types/jest'
+          - '@types/js-yaml'
         update-types:
           - 'minor'
           - 'patch'
@@ -121,6 +123,15 @@ updates:
         applies-to: version-updates
         patterns:
           - '@lerna-lite/*'
+        update-types:
+          - 'minor'
+          - 'patch'
+      # YAML processing - types must stay synchronized with runtime
+      npm-yaml:
+        applies-to: version-updates
+        patterns:
+          - 'js-yaml'
+          - '@types/js-yaml'
         update-types:
           - 'minor'
           - 'patch'
