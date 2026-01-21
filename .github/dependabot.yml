@@ -116,6 +116,14 @@ updates:
         update-types:
           - 'minor'
           - 'patch'
+      # Lerna monorepo management - MUST be upgraded together
+      npm-lerna:
+        applies-to: version-updates
+        patterns:
+          - '@lerna-lite/*'
+        update-types:
+          - 'minor'
+          - 'patch'
       # Note: Security updates are not grouped - they create immediate individual PRs
     open-pull-requests-limit: 10
     rebase-strategy: 'auto'
