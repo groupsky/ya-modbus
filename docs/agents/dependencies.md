@@ -36,6 +36,15 @@ paths: package.json
 - Avoid unnecessary transitive dependencies
 - Document critical dependencies that are non-obvious
 
+## Dependency Grouping
+
+- GROUP interdependent packages together in dependabot.yml
+- Packages with peer dependencies MUST be updated atomically (e.g., eslint + @typescript-eslint/\*)
+- Monorepo packages from same source SHOULD be grouped (e.g., @lerna-lite/\*)
+- Group minor/patch updates only; major updates need individual review
+- Use `patterns: ['@scope/*']` for scoped packages, specific names otherwise
+- See `.github/dependabot.yml` groups section for examples
+
 ## Update Workflow
 
 1. Run `npm audit` to identify issues
