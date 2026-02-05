@@ -158,6 +158,16 @@ export class SlaveTransport implements Transport {
     })
   }
 
+  /**
+   * Close the underlying client connection.
+   *
+   * IMPORTANT: This method does not use mutex protection and should only
+   * be called during shutdown via TransportManager.closeAll(). Calling
+   * this while operations are in progress may cause connection errors.
+   *
+   * Individual SlaveTransport instances should NOT call close() directly
+   * as the client is shared across multiple devices on the same bus.
+   */
   async close(): Promise<void> {
     // Don't use mutex for close operation
     return new Promise<void>((resolve) => {
