@@ -40,6 +40,13 @@ export interface TransportStats {
  * - All devices on the same bus share the same client and mutex
  * - Slave ID is set dynamically before each operation
  * - No more hardcoded slave IDs that affect all devices on a bus
+ *
+ * IMPORTANT: Shared Resource Ownership
+ * Multiple SlaveTransport instances share the same client and mutex. This is
+ * intentional and correct:
+ * - Shared client: Avoids port contention (can't open serial port twice)
+ * - Shared mutex: Ensures serialized access to the bus
+ * - SlaveTransport.close(): Does not close shared client (use closeAll() for cleanup)
  */
 export class TransportManager {
   private readonly connections = new Map<string, ConnectionEntry>()
@@ -60,9 +67,7 @@ export class TransportManager {
     let entry = this.connections.get(key)
     if (!entry) {
       // Create new client for this physical connection
-      const client = isRTU
-        ? await this.createRTUClient(config)
-        : await this.createTCPClient(config)
+      const client = isRTU ? await this.createRTUClient(config) : await this.createTCPClient(config)
 
       entry = {
         client,
