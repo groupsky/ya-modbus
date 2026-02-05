@@ -1,0 +1,16 @@
+{
+  "slaveId": 1,
+  "registers": {
+    "holding": {
+      "0": 250,
+      "1": 180,
+      "2": 4500
+    }
+  },
+  "timing": {
+    "pollingInterval": 10,
+    "commandDetectionDelay": [2, 5],
+    "processingDelay": [1, 3],
+    "perRegisterDelay": 0.1
+  }
+}
