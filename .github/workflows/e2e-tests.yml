@@ -1,0 +1,209 @@
+name: E2E Integration Tests
+
+on:
+  schedule:
+    # Run at 2:30 AM UTC daily (avoid top of hour for lower GitHub Actions load)
+    - cron: '30 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  check-changes:
+    name: Check for Recent Changes
+    runs-on: ubuntu-latest
+    outputs:
+      has_changes: ${{ steps.check.outputs.has_changes }}
+      last_commit: ${{ steps.check.outputs.last_commit }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for changes in last 24 hours
+        id: check
+        run: |
+          # Get last commit timestamp
+          last_commit=$(git log -1 --format=%ct)
+          current=$(date +%s)
+          hours_ago=$(( (current - last_commit) / 3600 ))
+
+          # Get last commit message
+          last_msg=$(git log -1 --format=%s)
+
+          echo "last_commit=$last_msg" >> $GITHUB_OUTPUT
+
+          # Run if changes in last 24 hours or manual trigger
+          if [ $hours_ago -lt 24 ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "✓ Changes detected ($hours_ago hours ago) or manual trigger - will run tests"
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "✗ No changes in last 24 hours - skipping tests"
+          fi
+
+  e2e-tests:
+    name: E2E Integration Tests
+    needs: check-changes
+    if: needs.check-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y socat bats mosquitto-clients
+
+      - name: Verify system dependencies
+        run: |
+          echo "Checking installed versions..."
+          socat -V | head -1
+          bats --version
+          docker --version
+          docker-compose --version
+          mosquitto_sub --help | head -1 || echo "mosquitto_sub installed"
+          node --version
+          npm --version
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Start Docker services
+        run: |
+          cd tests/e2e
+          docker-compose up -d
+
+          echo "Waiting for services to be healthy..."
+          timeout 60 sh -c 'until docker-compose ps | grep -q healthy; do
+            echo "Still waiting...";
+            docker-compose ps;
+            sleep 2;
+          done'
+
+          echo "Services are ready:"
+          docker-compose ps
+
+      - name: Setup test environment
+        run: |
+          cd tests/e2e
+          ./setup/create-virtual-ports.sh
+
+          echo "Virtual ports created:"
+          ls -la /tmp/ttyV* || echo "No ports found"
+
+      - name: Run E2E tests
+        run: |
+          cd tests/e2e
+          bats --formatter tap tests/*.bats
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "=== Docker Compose Services ==="
+          cd tests/e2e
+          docker-compose ps
+
+          echo -e "\n=== Docker Logs ==="
+          docker-compose logs
+
+          echo -e "\n=== Socat Logs ==="
+          cat /tmp/socat-*.log || echo "No socat logs found"
+
+          echo -e "\n=== Emulator Logs ==="
+          cat /tmp/emulator-*.log || echo "No emulator logs found"
+
+          echo -e "\n=== Virtual Ports ==="
+          ls -la /tmp/ttyV* || echo "No virtual ports found"
+
+          echo -e "\n=== Processes ==="
+          ps aux | grep -E '(socat|node|docker)' | grep -v grep || echo "No relevant processes"
+
+      - name: Upload logs as artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-logs-${{ github.run_number }}
+          path: |
+            /tmp/socat-*.log
+            /tmp/emulator-*.log
+            tests/e2e/docker-compose.yml
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Cleanup test environment
+        if: always()
+        run: |
+          cd tests/e2e
+
+          echo "Running cleanup script..."
+          ./setup/cleanup.sh
+
+          echo "Stopping Docker services..."
+          docker-compose down -v
+
+          echo "Verifying cleanup..."
+          ls -la /tmp/ttyV* 2>/dev/null || echo "✓ Virtual ports cleaned up"
+          ps aux | grep socat | grep -v grep || echo "✓ socat processes cleaned up"
+
+  notify-on-failure:
+    name: Notify on Failure
+    needs: [check-changes, e2e-tests]
+    if: failure() && needs.check-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create issue on failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🔴 E2E Tests Failed';
+            const body = `E2E integration tests failed in scheduled run.
+
+            **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            **Last Commit:** ${{ needs.check-changes.outputs.last_commit }}
+            **Branch:** ${{ github.ref_name }}
+
+            Please investigate the failure and fix any issues.
+
+            Logs are available as artifacts in the workflow run.`;
+
+            // Check if there's already an open issue about this
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'e2e-test-failure',
+              per_page: 1
+            });
+
+            if (issues.data.length === 0) {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['e2e-test-failure', 'bug', 'ci']
+              });
+              console.log('Created new issue for E2E test failure');
+            } else {
+              // Comment on existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues.data[0].number,
+                body: `Another failure occurred:\n\n${body}`
+              });
+              console.log('Added comment to existing E2E failure issue');
+            }
