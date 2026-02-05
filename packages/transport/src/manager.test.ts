@@ -1,51 +1,58 @@
-import type { Transport } from '@ya-modbus/driver-types'
+import type ModbusRTU from 'modbus-serial'
 
-import { createTransport } from './factory.js'
 import type { RTUConfig, TCPConfig } from './factory.js'
 import { TransportManager } from './manager.js'
 
-jest.mock('./factory.js')
+jest.mock('modbus-serial')
 
 describe('TransportManager', () => {
   let manager: TransportManager
-  let mockTransport1: jest.Mocked<Transport>
-  let mockTransport2: jest.Mocked<Transport>
+  let mockClient1: jest.Mocked<ModbusRTU>
+  let mockClient2: jest.Mocked<ModbusRTU>
+
+  const createMockClient = (): jest.Mocked<ModbusRTU> => {
+    return {
+      connectRTUBuffered: jest.fn().mockResolvedValue(undefined),
+      connectTCP: jest.fn().mockResolvedValue(undefined),
+      setID: jest.fn(),
+      setTimeout: jest.fn(),
+      close: jest.fn((callback?: () => void) => {
+        if (callback) callback()
+      }),
+      readHoldingRegisters: jest.fn(),
+      readInputRegisters: jest.fn(),
+      readCoils: jest.fn(),
+      readDiscreteInputs: jest.fn(),
+      writeRegister: jest.fn(),
+      writeRegisters: jest.fn(),
+      writeCoil: jest.fn(),
+      writeCoils: jest.fn(),
+    } as unknown as jest.Mocked<ModbusRTU>
+  }
 
   beforeEach(() => {
     jest.clearAllMocks()
+
+    mockClient1 = createMockClient()
+    mockClient2 = createMockClient()
+
+    // Mock the ModbusRTU constructor to return our mock clients
+    const ModbusRTUMock = jest.requireMock('modbus-serial')
+    ModbusRTUMock.mockImplementation(() => {
+      // Return mockClient1 first, then mockClient2 for subsequent calls
+      const calls = ModbusRTUMock.mock.calls.length
+      return calls === 1 ? mockClient1 : mockClient2
+    })
+
     manager = new TransportManager()
-
-    mockTransport1 = {
-      readHoldingRegisters: jest.fn(),
-      readInputRegisters: jest.fn(),
-      readCoils: jest.fn(),
-      readDiscreteInputs: jest.fn(),
-      writeSingleRegister: jest.fn(),
-      writeSingleCoil: jest.fn(),
-      writeMultipleRegisters: jest.fn(),
-      writeMultipleCoils: jest.fn(),
-      close: jest.fn(),
-    }
-
-    mockTransport2 = {
-      readHoldingRegisters: jest.fn(),
-      readInputRegisters: jest.fn(),
-      readCoils: jest.fn(),
-      readDiscreteInputs: jest.fn(),
-      writeSingleRegister: jest.fn(),
-      writeSingleCoil: jest.fn(),
-      writeMultipleRegisters: jest.fn(),
-      writeMultipleCoils: jest.fn(),
-      close: jest.fn(),
-    }
   })
 
   afterEach(async () => {
     await manager.closeAll()
   })
 
-  describe('Transport Pooling', () => {
-    test('should return same transport instance for identical RTU configurations', async () => {
+  describe('Client Pooling', () => {
+    test('should create only one client for identical RTU configurations', async () => {
       const config: RTUConfig = {
         port: '/dev/ttyUSB0',
         baudRate: 9600,
@@ -55,16 +62,32 @@ describe('TransportManager', () => {
         slaveId: 1,
       }
 
-      jest.mocked(createTransport).mockResolvedValueOnce(mockTransport1)
-
       const transport1 = await manager.getTransport(config)
       const transport2 = await manager.getTransport(config)
 
-      expect(createTransport).toHaveBeenCalledTimes(1)
-      expect(transport1).toBe(transport2)
+      // Should create only one client
+      const ModbusRTUMock = jest.requireMock('modbus-serial')
+      expect(ModbusRTUMock).toHaveBeenCalledTimes(1)
+
+      // Should return different transport instances (new SlaveTransport each time)
+      expect(transport1).not.toBe(transport2)
+
+      // Verify both transports work
+      mockClient1.readHoldingRegisters.mockResolvedValue({
+        data: [0x1234],
+        buffer: Buffer.from([0x12, 0x34]),
+      } as never)
+
+      await transport1.readHoldingRegisters(0, 1)
+      await transport2.readHoldingRegisters(0, 1)
+
+      // Both should use the same client
+      expect(mockClient1.readHoldingRegisters).toHaveBeenCalledTimes(2)
+      expect(mockClient1.setID).toHaveBeenCalledTimes(2)
+      expect(mockClient1.setID).toHaveBeenCalledWith(1)
     })
 
-    test('should return same transport for different slave IDs on same RTU port', async () => {
+    test('should return different SlaveTransport instances for different slave IDs sharing same client', async () => {
       const config1: RTUConfig = {
         port: '/dev/ttyUSB0',
         baudRate: 9600,
@@ -79,16 +102,35 @@ describe('TransportManager', () => {
         slaveId: 2, // Different slave ID, same bus
       }
 
-      jest.mocked(createTransport).mockResolvedValueOnce(mockTransport1)
-
       const transport1 = await manager.getTransport(config1)
       const transport2 = await manager.getTransport(config2)
 
-      expect(createTransport).toHaveBeenCalledTimes(1)
-      expect(transport1).toBe(transport2)
+      // Should create only one client (shared by both slaves)
+      const ModbusRTUMock = jest.requireMock('modbus-serial')
+      expect(ModbusRTUMock).toHaveBeenCalledTimes(1)
+
+      // Should return different transport instances
+      expect(transport1).not.toBe(transport2)
+
+      // Verify both transports use the same client but different slave IDs
+      mockClient1.readHoldingRegisters.mockResolvedValue({
+        data: [0x1234],
+        buffer: Buffer.from([0x12, 0x34]),
+      } as never)
+
+      await transport1.readHoldingRegisters(0, 1)
+      await transport2.readHoldingRegisters(0, 1)
+
+      // Both should use the same client
+      expect(mockClient1.readHoldingRegisters).toHaveBeenCalledTimes(2)
+
+      // But with different slave IDs
+      expect(mockClient1.setID).toHaveBeenCalledTimes(2)
+      expect(mockClient1.setID).toHaveBeenNthCalledWith(1, 1)
+      expect(mockClient1.setID).toHaveBeenNthCalledWith(2, 2)
     })
 
-    test('should create separate transports for different RTU ports', async () => {
+    test('should create separate clients for different RTU ports', async () => {
       const config1: RTUConfig = {
         port: '/dev/ttyUSB0',
         baudRate: 9600,
@@ -103,17 +145,37 @@ describe('TransportManager', () => {
         port: '/dev/ttyUSB1', // Different port
       }
 
-      jest.mocked(createTransport).mockResolvedValueOnce(mockTransport1)
-      jest.mocked(createTransport).mockResolvedValueOnce(mockTransport2)
-
       const transport1 = await manager.getTransport(config1)
       const transport2 = await manager.getTransport(config2)
 
-      expect(createTransport).toHaveBeenCalledTimes(2)
+      // Should create two clients (different ports)
+      const ModbusRTUMock = jest.requireMock('modbus-serial')
+      expect(ModbusRTUMock).toHaveBeenCalledTimes(2)
+
+      // Should return different transport instances
       expect(transport1).not.toBe(transport2)
+
+      // Verify they use different clients
+      mockClient1.readHoldingRegisters.mockResolvedValue({
+        data: [0x1111],
+        buffer: Buffer.from([0x11, 0x11]),
+      } as never)
+
+      mockClient2.readHoldingRegisters.mockResolvedValue({
+        data: [0x2222],
+        buffer: Buffer.from([0x22, 0x22]),
+      } as never)
+
+      const result1 = await transport1.readHoldingRegisters(0, 1)
+      const result2 = await transport2.readHoldingRegisters(0, 1)
+
+      expect(mockClient1.readHoldingRegisters).toHaveBeenCalledTimes(1)
+      expect(mockClient2.readHoldingRegisters).toHaveBeenCalledTimes(1)
+      expect(result1).toEqual(Buffer.from([0x11, 0x11]))
+      expect(result2).toEqual(Buffer.from([0x22, 0x22]))
     })
 
-    test('should create separate transports for different RTU baud rates', async () => {
+    test('should create separate clients for different RTU baud rates', async () => {
       const config1: RTUConfig = {
         port: '/dev/ttyUSB0',
         baudRate: 9600,
@@ -128,31 +190,51 @@ describe('TransportManager', () => {
         baudRate: 19200, // Different baud rate
       }
 
-      jest.mocked(createTransport).mockResolvedValueOnce(mockTransport1)
-      jest.mocked(createTransport).mockResolvedValueOnce(mockTransport2)
-
       const transport1 = await manager.getTransport(config1)
       const transport2 = await manager.getTransport(config2)
 
-      expect(createTransport).toHaveBeenCalledTimes(2)
+      // Should create two clients (different baud rates)
+      const ModbusRTUMock = jest.requireMock('modbus-serial')
+      expect(ModbusRTUMock).toHaveBeenCalledTimes(2)
+
+      // Should return different transport instances
       expect(transport1).not.toBe(transport2)
     })
 
-    test('should pool TCP transports for same host:port', async () => {
-      const config: TCPConfig = {
+    test('should pool TCP clients for same host:port with different slave IDs', async () => {
+      const config1: TCPConfig = {
         host: '192.168.1.100',
         port: 502,
         slaveId: 1,
       }
 
-      jest.mocked(createTransport).mockResolvedValueOnce(mockTransport1)
+      const config2: TCPConfig = {
+        ...config1,
+        slaveId: 2, // Different slave ID
+      }
 
-      const transport1 = await manager.getTransport(config)
-      const transport2 = await manager.getTransport(config)
+      const transport1 = await manager.getTransport(config1)
+      const transport2 = await manager.getTransport(config2)
 
-      // TCP transports should be pooled - same instance for same host:port
-      expect(createTransport).toHaveBeenCalledTimes(1)
-      expect(transport1).toBe(transport2)
+      // Should create only one client (same host:port)
+      const ModbusRTUMock = jest.requireMock('modbus-serial')
+      expect(ModbusRTUMock).toHaveBeenCalledTimes(1)
+
+      // Should return different transport instances
+      expect(transport1).not.toBe(transport2)
+
+      // Verify both transports use the same client but different slave IDs
+      mockClient1.readHoldingRegisters.mockResolvedValue({
+        data: [0x1234],
+        buffer: Buffer.from([0x12, 0x34]),
+      } as never)
+
+      await transport1.readHoldingRegisters(0, 1)
+      await transport2.readHoldingRegisters(0, 1)
+
+      expect(mockClient1.readHoldingRegisters).toHaveBeenCalledTimes(2)
+      expect(mockClient1.setID).toHaveBeenNthCalledWith(1, 1)
+      expect(mockClient1.setID).toHaveBeenNthCalledWith(2, 2)
     })
   })
 
@@ -169,28 +251,32 @@ describe('TransportManager', () => {
 
       const executionOrder: string[] = []
 
-      mockTransport1.readHoldingRegisters.mockImplementation(async () => {
+      mockClient1.readHoldingRegisters.mockImplementation(async () => {
         executionOrder.push('op1-start')
         await new Promise((resolve) => setTimeout(resolve, 50))
         executionOrder.push('op1-end')
-        return Buffer.alloc(4)
+        return {
+          data: [0x1234],
+          buffer: Buffer.from([0x12, 0x34]),
+        } as never
       })
 
-      mockTransport1.readInputRegisters.mockImplementation(async () => {
+      mockClient1.readInputRegisters.mockImplementation(async () => {
         executionOrder.push('op2-start')
         await new Promise((resolve) => setTimeout(resolve, 10))
         executionOrder.push('op2-end')
-        return Buffer.alloc(4)
+        return {
+          data: [0x5678],
+          buffer: Buffer.from([0x56, 0x78]),
+        } as never
       })
-
-      jest.mocked(createTransport).mockResolvedValue(mockTransport1)
 
       const transport = await manager.getTransport(config)
 
-      // Start two operations concurrently on the wrapped transport
-      // The mutex wrapper should serialize them automatically
-      const promise1 = transport.readHoldingRegisters(1, 0, 2)
-      const promise2 = transport.readInputRegisters(1, 0, 2)
+      // Start two operations concurrently
+      // The mutex should serialize them automatically
+      const promise1 = transport.readHoldingRegisters(0, 1)
+      const promise2 = transport.readInputRegisters(0, 1)
 
       await Promise.all([promise1, promise2])
 
@@ -213,32 +299,33 @@ describe('TransportManager', () => {
 
       const executionOrder: string[] = []
 
-      mockTransport1.readHoldingRegisters.mockImplementation(async () => {
+      mockClient1.readHoldingRegisters.mockImplementation(async () => {
         executionOrder.push('tcp1-start')
         await new Promise((resolve) => setTimeout(resolve, 50))
         executionOrder.push('tcp1-end')
-        return Buffer.alloc(4)
+        return {
+          data: [0x1111],
+          buffer: Buffer.from([0x11, 0x11]),
+        } as never
       })
 
-      mockTransport2.readHoldingRegisters.mockImplementation(async () => {
+      mockClient2.readHoldingRegisters.mockImplementation(async () => {
         executionOrder.push('tcp2-start')
         await new Promise((resolve) => setTimeout(resolve, 10))
         executionOrder.push('tcp2-end')
-        return Buffer.alloc(4)
+        return {
+          data: [0x2222],
+          buffer: Buffer.from([0x22, 0x22]),
+        } as never
       })
-
-      jest
-        .mocked(createTransport)
-        .mockResolvedValueOnce(mockTransport1)
-        .mockResolvedValueOnce(mockTransport2)
 
       const transport1 = await manager.getTransport(config1)
       const transport2 = await manager.getTransport(config2)
 
       // Start two TCP operations concurrently on different connections
       // Different connections have separate mutexes, so they execute concurrently
-      const promise1 = transport1.readHoldingRegisters(0, 2)
-      const promise2 = transport2.readHoldingRegisters(0, 2)
+      const promise1 = transport1.readHoldingRegisters(0, 1)
+      const promise2 = transport2.readHoldingRegisters(0, 1)
 
       await Promise.all([promise1, promise2])
 
@@ -255,28 +342,32 @@ describe('TransportManager', () => {
 
       const executionOrder: string[] = []
 
-      mockTransport1.readHoldingRegisters.mockImplementation(async () => {
+      mockClient1.readHoldingRegisters.mockImplementation(async () => {
         executionOrder.push('op1-start')
         await new Promise((resolve) => setTimeout(resolve, 50))
         executionOrder.push('op1-end')
-        return Buffer.alloc(4)
+        return {
+          data: [0x1234],
+          buffer: Buffer.from([0x12, 0x34]),
+        } as never
       })
 
-      mockTransport1.readInputRegisters.mockImplementation(async () => {
+      mockClient1.readInputRegisters.mockImplementation(async () => {
         executionOrder.push('op2-start')
         await new Promise((resolve) => setTimeout(resolve, 10))
         executionOrder.push('op2-end')
-        return Buffer.alloc(4)
+        return {
+          data: [0x5678],
+          buffer: Buffer.from([0x56, 0x78]),
+        } as never
       })
-
-      jest.mocked(createTransport).mockResolvedValue(mockTransport1)
 
       const transport = await manager.getTransport(config)
 
       // Start two operations concurrently on the same TCP transport
-      // The mutex wrapper should serialize them automatically
-      const promise1 = transport.readHoldingRegisters(0, 2)
-      const promise2 = transport.readInputRegisters(0, 2)
+      // The mutex should serialize them automatically
+      const promise1 = transport.readHoldingRegisters(0, 1)
+      const promise2 = transport.readInputRegisters(0, 1)
 
       await Promise.all([promise1, promise2])
 
@@ -284,7 +375,7 @@ describe('TransportManager', () => {
       expect(executionOrder).toEqual(['op1-start', 'op1-end', 'op2-start', 'op2-end'])
     })
 
-    test('should propagate errors from mutex-wrapped operations', async () => {
+    test('should propagate errors from operations', async () => {
       const config: RTUConfig = {
         port: '/dev/ttyUSB0',
         baudRate: 9600,
@@ -295,18 +386,62 @@ describe('TransportManager', () => {
       }
 
       const testError = new Error('Modbus error')
-      mockTransport1.readHoldingRegisters.mockRejectedValue(testError)
-
-      jest.mocked(createTransport).mockResolvedValue(mockTransport1)
+      mockClient1.readHoldingRegisters.mockRejectedValue(testError)
 
       const transport = await manager.getTransport(config)
 
-      await expect(transport.readHoldingRegisters(1, 0, 2)).rejects.toThrow('Modbus error')
+      // Should fail after retries (default 3)
+      await expect(transport.readHoldingRegisters(0, 1)).rejects.toThrow('Modbus error')
+      expect(mockClient1.readHoldingRegisters).toHaveBeenCalledTimes(3)
+    })
+
+    test('should serialize operations across different slaves on same bus', async () => {
+      const config1: RTUConfig = {
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'even',
+        stopBits: 1,
+        slaveId: 1,
+      }
+
+      const config2: RTUConfig = {
+        ...config1,
+        slaveId: 2,
+      }
+
+      const executionOrder: string[] = []
+
+      mockClient1.readHoldingRegisters.mockImplementation(async () => {
+        const slaveId = mockClient1.setID.mock.calls[mockClient1.setID.mock.calls.length - 1][0]
+        executionOrder.push(`start-slave${slaveId}`)
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        executionOrder.push(`end-slave${slaveId}`)
+        return {
+          data: [0x0000],
+          buffer: Buffer.from([0x00, 0x00]),
+        } as never
+      })
+
+      const transport1 = await manager.getTransport(config1)
+      const transport2 = await manager.getTransport(config2)
+
+      // Start operations on different slaves concurrently
+      const promise1 = transport1.readHoldingRegisters(0, 1)
+      const promise2 = transport2.readHoldingRegisters(0, 1)
+
+      await Promise.all([promise1, promise2])
+
+      // Operations should be serialized even across different slaves
+      expect(executionOrder).toEqual(['start-slave1', 'end-slave1', 'start-slave2', 'end-slave2'])
+      expect(mockClient1.setID).toHaveBeenCalledTimes(2)
+      expect(mockClient1.setID).toHaveBeenNthCalledWith(1, 1)
+      expect(mockClient1.setID).toHaveBeenNthCalledWith(2, 2)
     })
   })
 
-  describe('Reference Counting', () => {
-    test('should track transport references', async () => {
+  describe('Stats Tracking', () => {
+    test('should track client connections', async () => {
       const config: RTUConfig = {
         port: '/dev/ttyUSB0',
         baudRate: 9600,
@@ -316,19 +451,18 @@ describe('TransportManager', () => {
         slaveId: 1,
       }
 
-      jest.mocked(createTransport).mockResolvedValue(mockTransport1)
-
+      // Multiple getTransport calls with same config should create only one client
       await manager.getTransport(config)
       await manager.getTransport(config)
       await manager.getTransport(config)
 
       const stats = manager.getStats()
-      expect(stats.totalTransports).toBe(1)
+      expect(stats.totalTransports).toBe(1) // One client connection
       expect(stats.rtuTransports).toBe(1)
       expect(stats.tcpTransports).toBe(0)
     })
 
-    test('should provide stats for multiple transport types', async () => {
+    test('should provide stats for multiple connection types', async () => {
       const rtuConfig: RTUConfig = {
         port: '/dev/ttyUSB0',
         baudRate: 9600,
@@ -344,20 +478,42 @@ describe('TransportManager', () => {
         slaveId: 1,
       }
 
-      jest.mocked(createTransport).mockResolvedValue(mockTransport1)
-
       await manager.getTransport(rtuConfig)
       await manager.getTransport(tcpConfig)
 
       const stats = manager.getStats()
-      expect(stats.totalTransports).toBe(2)
+      expect(stats.totalTransports).toBe(2) // Two client connections
       expect(stats.rtuTransports).toBe(1)
       expect(stats.tcpTransports).toBe(1)
+    })
+
+    test('should count connections not transport instances', async () => {
+      const config1: RTUConfig = {
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'even',
+        stopBits: 1,
+        slaveId: 1,
+      }
+
+      const config2: RTUConfig = {
+        ...config1,
+        slaveId: 2, // Different slave, same bus
+      }
+
+      await manager.getTransport(config1)
+      await manager.getTransport(config2)
+
+      // Two different slaves on same bus should count as ONE connection
+      const stats = manager.getStats()
+      expect(stats.totalTransports).toBe(1)
+      expect(stats.rtuTransports).toBe(1)
     })
   })
 
   describe('Lifecycle Management', () => {
-    test('should close all transports on closeAll', async () => {
+    test('should close all clients on closeAll', async () => {
       const config1: RTUConfig = {
         port: '/dev/ttyUSB0',
         baudRate: 9600,
@@ -376,21 +532,17 @@ describe('TransportManager', () => {
         slaveId: 1,
       }
 
-      jest
-        .mocked(createTransport)
-        .mockResolvedValueOnce(mockTransport1)
-        .mockResolvedValueOnce(mockTransport2)
-
       await manager.getTransport(config1)
       await manager.getTransport(config2)
 
       await manager.closeAll()
 
-      expect(mockTransport1.close).toHaveBeenCalledTimes(1)
-      expect(mockTransport2.close).toHaveBeenCalledTimes(1)
+      // Both clients should be closed
+      expect(mockClient1.close).toHaveBeenCalledTimes(1)
+      expect(mockClient2.close).toHaveBeenCalledTimes(1)
     })
 
-    test('should clear all transports after closeAll', async () => {
+    test('should clear all connections after closeAll', async () => {
       const config: RTUConfig = {
         port: '/dev/ttyUSB0',
         baudRate: 9600,
@@ -399,8 +551,6 @@ describe('TransportManager', () => {
         stopBits: 1,
         slaveId: 1,
       }
-
-      jest.mocked(createTransport).mockResolvedValue(mockTransport1)
 
       await manager.getTransport(config)
       await manager.closeAll()
@@ -419,14 +569,39 @@ describe('TransportManager', () => {
         slaveId: 1,
       }
 
-      mockTransport1.close.mockRejectedValue(new Error('Close failed'))
-
-      jest.mocked(createTransport).mockResolvedValue(mockTransport1)
+      // Mock client.close to throw an error
+      mockClient1.close.mockImplementation(() => {
+        throw new Error('Close failed')
+      })
 
       await manager.getTransport(config)
 
       // Should not throw even if close fails
       await expect(manager.closeAll()).resolves.toBeUndefined()
+    })
+
+    test('should close client only once even if shared by multiple slaves', async () => {
+      const config1: RTUConfig = {
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'even',
+        stopBits: 1,
+        slaveId: 1,
+      }
+
+      const config2: RTUConfig = {
+        ...config1,
+        slaveId: 2, // Different slave, same bus
+      }
+
+      await manager.getTransport(config1)
+      await manager.getTransport(config2)
+
+      await manager.closeAll()
+
+      // Should close the shared client only once
+      expect(mockClient1.close).toHaveBeenCalledTimes(1)
     })
   })
 })

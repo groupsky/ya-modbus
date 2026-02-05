@@ -1,17 +1,16 @@
 import type { Transport } from '@ya-modbus/driver-types'
 import { Mutex } from 'async-mutex'
+import ModbusRTU from 'modbus-serial'
 
-import { createTransport, type TransportConfig } from './factory.js'
-import type { RTUConfig } from './factory.js'
-import { MutexTransport } from './mutex-transport.js'
+import type { RTUConfig, TCPConfig, TransportConfig } from './factory.js'
+import { SlaveTransport } from './slave-transport.js'
 
 /**
- * Transport pool entry with mutex serialization
+ * Connection pool entry with shared client and mutex
  */
-interface TransportEntry {
-  rawTransport: Transport // Underlying transport
-  wrappedTransport: Transport // Mutex-wrapped transport
-  mutex?: Mutex
+interface ConnectionEntry {
+  client: ModbusRTU // Shared modbus-serial client
+  mutex: Mutex // Shared mutex for serializing operations
   config: TransportConfig
   isRTU: boolean
 }
@@ -26,92 +25,71 @@ export interface TransportStats {
 }
 
 /**
- * TransportManager pools transport instances and provides mutex-based
- * serialization for all transport operations to prevent concurrent access issues.
+ * TransportManager pools modbus-serial clients and provides slave-specific transports.
  *
  * Key behaviors:
- * - All transports (RTU and TCP) are pooled by connection configuration
- * - RTU transports are pooled by bus configuration (port, baud rate, parity, etc.)
- * - TCP transports are pooled by host and port
- * - Multiple devices on the same connection share a single transport instance
+ * - Pools modbus-serial clients by physical connection (excluding slave ID)
+ * - RTU clients are pooled by bus configuration (port, baud rate, parity, etc.)
+ * - TCP clients are pooled by host and port
+ * - Returns SlaveTransport instances that set the slave ID before each operation
+ * - Multiple devices on the same connection share a single client and mutex
  * - All operations are serialized using async-mutex to prevent race conditions
  *
- * Why TCP needs mutex protection:
- * - Many Modbus devices allow only one or a limited number of TCP connections
- * - Even with multiple connections, devices often process requests sequentially
- * - Concurrent requests can cause timeouts, dropped packets, or incorrect responses
- * - Serialization ensures reliable communication regardless of device limitations
+ * This architecture solves the multi-device problem:
+ * - Each device gets its own SlaveTransport with its own slave ID
+ * - All devices on the same bus share the same client and mutex
+ * - Slave ID is set dynamically before each operation
+ * - No more hardcoded slave IDs that affect all devices on a bus
  */
 export class TransportManager {
-  private readonly transports = new Map<string, TransportEntry>()
+  private readonly connections = new Map<string, ConnectionEntry>()
 
   /**
    * Get or create a transport for the given configuration.
-   * Returns mutex-wrapped shared transport if one exists for the same connection.
+   * Returns a new SlaveTransport instance bound to the slave ID in the config.
+   * Multiple devices on the same physical connection share the same client and mutex.
    *
    * @param config - RTU or TCP transport configuration
-   * @returns Transport instance wrapped with mutex for thread-safe operations
+   * @returns SlaveTransport instance for the specific slave device
    */
   async getTransport(config: TransportConfig): Promise<Transport> {
-    const key = this.getConnectionKey(config)
+    const key = this.getPhysicalConnectionKey(config)
     const isRTU = this.isRTUConfig(config)
 
-    // For RTU, reuse existing transport if available
-    if (isRTU) {
-      const entry = this.transports.get(key)
-      if (entry) {
-        return entry.wrappedTransport
-      }
+    // Get or create the shared connection
+    let entry = this.connections.get(key)
+    if (!entry) {
+      // Create new client for this physical connection
+      const client = isRTU
+        ? await this.createRTUClient(config)
+        : await this.createTCPClient(config)
 
-      // Create new RTU transport with mutex wrapper
-      const rawTransport = await createTransport(config)
-      const mutex = new Mutex()
-      const wrappedTransport = new MutexTransport(rawTransport, mutex)
-
-      const newEntry: TransportEntry = {
-        rawTransport,
-        wrappedTransport,
-        mutex,
+      entry = {
+        client,
+        mutex: new Mutex(),
         config,
-        isRTU: true,
+        isRTU,
       }
-      this.transports.set(key, newEntry)
-      return wrappedTransport
+      this.connections.set(key, entry)
     }
 
-    // For TCP, reuse existing transport if available
-    // TCP is pooled like RTU because many devices support only one connection
-    // or process requests sequentially even with multiple connections
-    const entry = this.transports.get(key)
-    if (entry) {
-      return entry.wrappedTransport
-    }
-
-    // Create new TCP transport with mutex wrapper
-    // Mutex prevents concurrent requests that could cause timeouts or errors
-    const rawTransport = await createTransport(config)
-    const mutex = new Mutex()
-    const wrappedTransport = new MutexTransport(rawTransport, mutex)
-
-    const newEntry: TransportEntry = {
-      rawTransport,
-      wrappedTransport,
-      mutex,
-      config,
-      isRTU: false,
-    }
-    this.transports.set(key, newEntry)
-
-    return wrappedTransport
+    // Return a new SlaveTransport for this specific slave
+    return new SlaveTransport(
+      config.slaveId,
+      entry.client,
+      entry.mutex,
+      config.maxRetries ?? 3,
+      config.logger
+    )
   }
 
   /**
-   * Get statistics about managed transports
+   * Get statistics about managed connections
    *
    * @returns Transport statistics
    */
   getStats(): TransportStats {
-    const entries = Array.from(this.transports.values())
+    const entries = Array.from(this.connections.values())
     return {
       totalTransports: entries.length,
       rtuTransports: entries.filter((e) => e.isRTU).length,
@@ -120,38 +98,80 @@ export class TransportManager {
   }
 
   /**
-   * Close all managed transports and clear the pool.
+   * Close all managed connections and clear the pool.
    * Errors during close are logged but do not stop the process.
    */
   async closeAll(): Promise<void> {
-    const closePromises = Array.from(this.transports.values()).map(async (entry) => {
+    const closePromises = Array.from(this.connections.values()).map(async (entry) => {
       try {
-        await entry.rawTransport.close()
+        await new Promise<void>((resolve) => {
+          entry.client.close(resolve)
+        })
       } catch (error) {
-        // Log but don't throw - we want to close all transports
-        console.error('Error closing transport:', error)
+        // Log but don't throw - we want to close all connections
+        console.error('Error closing connection:', error)
       }
     })
 
     await Promise.all(closePromises)
-    this.transports.clear()
+    this.connections.clear()
   }
 
   /**
-   * Generate a unique key for a transport configuration.
+   * Generate a unique key for a physical connection.
+   * Excludes slave ID so multiple devices on the same bus share a connection.
    * For RTU: Key includes all bus parameters (port, baud, parity, etc.)
    * For TCP: Key includes host and port
    *
    * @param config - Transport configuration
-   * @returns Connection key string
+   * @returns Physical connection key string
    */
-  private getConnectionKey(config: TransportConfig): string {
+  private getPhysicalConnectionKey(config: TransportConfig): string {
     if (this.isRTUConfig(config)) {
       return `rtu:${config.port}:${config.baudRate}:${config.dataBits}:${config.parity}:${config.stopBits}`
     }
 
     // TCP config - safe to access host/port because isRTUConfig returned false
     return `tcp:${config.host}:${config.port ?? 502}`
+  }
+
+  /**
+   * Create and configure an RTU modbus-serial client.
+   * Does NOT set slave ID - that's handled by SlaveTransport.
+   *
+   * @param config - RTU configuration
+   * @returns Connected ModbusRTU client
+   */
+  private async createRTUClient(config: RTUConfig): Promise<ModbusRTU> {
+    const client = new ModbusRTU()
+
+    await client.connectRTUBuffered(config.port, {
+      baudRate: config.baudRate,
+      dataBits: config.dataBits,
+      parity: config.parity,
+      stopBits: config.stopBits,
+    })
+
+    client.setTimeout(config.timeout ?? 1000)
+
+    return client
+  }
+
+  /**
+   * Create and configure a TCP modbus-serial client.
+   * Does NOT set slave ID - that's handled by SlaveTransport.
+   *
+   * @param config - TCP configuration
+   * @returns Connected ModbusRTU client
+   */
+  private async createTCPClient(config: TCPConfig): Promise<ModbusRTU> {
+    const client = new ModbusRTU()
+
+    await client.connectTCP(config.host, { port: config.port ?? 502 })
+
+    client.setTimeout(config.timeout ?? 1000)
+
+    return client
   }
 
   /**
