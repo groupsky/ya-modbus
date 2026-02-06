@@ -95,7 +95,7 @@ jobs:
           timeout 60 sh -c 'until docker-compose ps | grep -q healthy; do
             echo "Still waiting...";
             docker-compose ps;
-            sleep 2;
+            sleep 0.1;
           done'
 
           echo "Services are ready:"
