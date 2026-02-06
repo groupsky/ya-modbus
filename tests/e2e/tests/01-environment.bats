@@ -16,12 +16,32 @@ load helpers
   assert_success
 }
 
-@test "node is installed and correct version" {
+@test "node is installed" {
   run node --version
   assert_success
+}
 
-  # Check Node.js version is 20, 22, or 24
-  [[ "$output" =~ v(20|22|24) ]]
+@test "node version matches package.json engines" {
+  local project_root
+  project_root=$(get_project_root)
+
+  # Read engines.node from package.json and check if current version matches
+  run node -e "
+    const pkg = require('$project_root/package.json');
+    const nodeVersion = process.version.slice(1).split('.')[0];
+    const engines = pkg.engines.node;
+
+    // Parse engines.node (e.g., '20 || 22 || 24')
+    const allowed = engines.split('||').map(v => v.trim());
+    const matches = allowed.some(v => nodeVersion === v || nodeVersion.startsWith(v + '.'));
+
+    if (!matches) {
+      console.error(\`Node.js v\${nodeVersion} does not match engines requirement: \${engines}\`);
+      process.exit(1);
+    }
+    console.log(\`✓ Node.js v\${nodeVersion} matches engines: \${engines}\`);
+  "
+  assert_success
 }
 
 @test "mosquitto_sub client is available" {
@@ -45,16 +65,40 @@ load helpers
   assert_success
 }
 
-@test "can connect to MQTT broker" {
-  run timeout 5 mosquitto_sub -h localhost -p 1883 -t "test/topic" -C 1 &
+@test "can connect and subscribe to MQTT broker" {
+  # Subscribe and capture one message, with timeout
+  local output_file="/tmp/mqtt-sub-test-$$.txt"
+
+  mosquitto_sub -h localhost -p 1883 -t "test/topic" -C 1 > "$output_file" 2>&1 &
   local sub_pid=$!
 
+  # Wait for subscription to be established
   sleep 1
 
+  # Publish test message
   run mosquitto_pub -h localhost -p 1883 -t "test/topic" -m "test message"
   assert_success
 
-  wait "$sub_pid" || true
+  # Wait for subscriber to receive message (or timeout)
+  local timeout=5
+  local elapsed=0
+  while [ $elapsed -lt $timeout ]; do
+    if ! kill -0 "$sub_pid" 2>/dev/null; then
+      break
+    fi
+    sleep 0.5
+    elapsed=$((elapsed + 1))
+  done
+
+  # Kill subscriber if still running
+  kill "$sub_pid" 2>/dev/null || true
+  wait "$sub_pid" 2>/dev/null || true
+
+  # Verify message was received
+  run cat "$output_file"
+  assert_output_contains "test message"
+
+  rm -f "$output_file"
 }
 
 @test "virtual serial port pair 1 exists" {
