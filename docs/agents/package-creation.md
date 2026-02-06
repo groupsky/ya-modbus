@@ -30,24 +30,29 @@ See: packages/driver-xymd1/tsconfig.cjs.json for CJS build config
 
 CRITICAL: Add references to BOTH tsconfig files for each dependency.
 
-### Package Types: CLI vs Library
+### TypeScript Configuration
 
-**Library packages** (drivers, transport, etc.):
+ALL packages MUST use consistent tsconfig structure:
 
-- Use `rootDir: "src"` in tsconfig
-- Output: `dist/esm/index.js` and `dist/cjs/index.js`
-- Exports point to `dist/{esm,cjs}/index.js`
+**tsconfig.esm.json and tsconfig.cjs.json:**
 
-**CLI packages** (cli, device-profiler, mqtt-bridge):
+- Use `rootDir: "."` (NEVER use `rootDir: "src"`)
+- Include `["src"]` for library packages
+- Include `["src", "bin"]` for packages with CLI executables
+- Output: `dist/esm/src/` and `dist/cjs/src/` for all packages
 
-- Use `rootDir: "."` in tsconfig
-- Include both `src` and `bin` directories
-- Output: `dist/esm/src/` and `dist/esm/bin/`
-- Exports point to `dist/{esm,cjs}/src/index.js`
-- Bin field points to `dist/esm/bin/*.js`
+**package.json structure:**
 
-See: packages/cli/tsconfig.esm.json for CLI package structure
-See: packages/driver-xymd1/tsconfig.esm.json for library package structure
+- `main`: `"./dist/cjs/src/index.js"`
+- `module`: `"./dist/esm/src/index.js"`
+- `types`: `"./dist/esm/src/index.d.ts"`
+- `exports["."]` points to `dist/{esm,cjs}/src/index.js`
+- `bin` (if present): `"./dist/esm/bin/<name>.js"`
+
+CRITICAL: Using `rootDir: "."` for all packages ensures consistent output structure and prevents configuration errors when adding bin executables.
+
+See: packages/cli for reference package with bin executable
+See: packages/driver-xymd1 for reference library package
 
 ### CommonJS Module Interop
 
