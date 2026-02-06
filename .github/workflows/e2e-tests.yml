@@ -14,6 +14,8 @@ permissions:
 jobs:
   check-changes:
     name: Check for Recent Changes
+    # Skip check on manual trigger - always run tests
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,7 +53,8 @@ jobs:
   e2e-tests:
     name: E2E Integration Tests
     needs: check-changes
-    if: needs.check-changes.outputs.has_changes == 'true'
+    # Run if manual trigger OR if scheduled with recent changes
+    if: always() && (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.has_changes == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -117,7 +120,7 @@ jobs:
       - name: Run E2E tests
         run: |
           cd tests/e2e
-          bats --formatter tap tests/*.bats
+          ./vendor/bats-core/bin/bats --formatter tap tests/*.bats
 
       - name: Collect logs on failure
         if: failure()
