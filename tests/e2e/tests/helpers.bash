@@ -71,14 +71,18 @@ stop_mqtt_subscriber() {
   fi
 }
 
-# Start emulator in background
+# Start emulator in background using CLI
 start_test_emulator() {
-  local port=$1
-  shift
-  local device_configs=("$@")
+  local config_file=$1
   local log_file="/tmp/emulator-$$.log"
+  local project_root
+  project_root=$(get_project_root)
 
-  node tests/e2e/setup/start-emulator.js "$port" "${device_configs[@]}" > "$log_file" 2>&1 &
+  # Use the built emulator CLI
+  node "$project_root/packages/emulator/dist/esm/bin/ya-modbus-emulator.js" \
+    --config "$config_file" \
+    --quiet \
+    > "$log_file" 2>&1 &
   local pid=$!
 
   echo "$pid" > "/tmp/emulator-$pid.pid"
