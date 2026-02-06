@@ -105,6 +105,11 @@ async function main() {
 
     // Keep process running
     logInfo('Emulator running. Press Ctrl+C to stop.')
+
+    // Prevent process from exiting - use setInterval to keep event loop alive
+    setInterval(() => {
+      // Empty interval to keep process alive
+    }, 1000000)
   } catch (error) {
     logError(`Failed to start emulator: ${error.message}`)
     process.exit(1)

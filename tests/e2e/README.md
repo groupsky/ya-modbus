@@ -16,15 +16,10 @@ End-to-end integration tests for ya-modbus using real services and BATS testing 
   sudo apt-get install socat
   ```
 
-- **BATS** - Bash testing framework
-
-  ```bash
-  # macOS
-  brew install bats-core
-
-  # Ubuntu/Debian
-  sudo apt-get install bats
-  ```
+- **BATS** - Bash testing framework (included as git submodule)
+  - No system installation required
+  - The test runner will automatically initialize the submodule if needed
+  - Manual initialization: `git submodule update --init --recursive tests/e2e/vendor/bats-core`
 
 - **Docker & Docker Compose** - Service orchestration
   - Follow [official Docker installation guide](https://docs.docker.com/get-docker/)

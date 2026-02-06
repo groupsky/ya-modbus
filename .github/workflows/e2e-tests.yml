@@ -51,6 +51,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -61,13 +63,13 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y socat bats mosquitto-clients
+          sudo apt-get install -y socat mosquitto-clients
 
       - name: Verify system dependencies
         run: |
           echo "Checking installed versions..."
           socat -V | head -1
-          bats --version
+          tests/e2e/vendor/bats-core/bin/bats --version
           docker --version
           docker-compose --version
           mosquitto_sub --help | head -1 || echo "mosquitto_sub installed"

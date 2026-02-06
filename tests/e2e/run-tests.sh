@@ -12,6 +12,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BATS_BIN="$SCRIPT_DIR/vendor/bats-core/bin/bats"
 
 # Colors for output
 RED='\033[0;31m'
@@ -45,9 +46,13 @@ check_dependencies() {
     missing=1
   fi
 
-  if ! command -v bats &> /dev/null; then
-    log_error "bats is not installed"
-    missing=1
+  # Check for bats - either from submodule or system installation
+  if [ ! -x "$BATS_BIN" ]; then
+    log_warn "bats submodule not found, initializing..."
+    if ! git submodule update --init --recursive "$SCRIPT_DIR/vendor/bats-core" &> /dev/null; then
+      log_error "Failed to initialize bats submodule"
+      missing=1
+    fi
   fi
 
   if ! command -v docker-compose &> /dev/null && ! command -v docker &> /dev/null; then
@@ -63,7 +68,6 @@ check_dependencies() {
   if [ $missing -eq 1 ]; then
     log_error "Missing dependencies. Please install them first."
     log_info "  socat: brew install socat (macOS) or apt-get install socat (Linux)"
-    log_info "  bats: brew install bats-core (macOS) or apt-get install bats (Linux)"
     log_info "  docker: Follow official Docker installation guide"
     log_info "  node: Use nvm or official installer"
     exit 1
@@ -128,10 +132,10 @@ run_tests() {
 
   if [ -n "$test_pattern" ]; then
     log_info "Running tests matching pattern: $test_pattern"
-    bats "$SCRIPT_DIR/tests/"*"$test_pattern"*.bats
+    "$BATS_BIN" "$SCRIPT_DIR/tests/"*"$test_pattern"*.bats
   else
     log_info "Running all tests..."
-    bats "$SCRIPT_DIR/tests/"*.bats
+    "$BATS_BIN" "$SCRIPT_DIR/tests/"*.bats
   fi
 }
 
