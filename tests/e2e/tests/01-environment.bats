@@ -69,26 +69,27 @@ load helpers
   # Subscribe and capture one message, with timeout
   local output_file="/tmp/mqtt-sub-test-$$.txt"
 
-  mosquitto_sub -h localhost -p 1883 -t "test/topic" -C 1 > "$output_file" 2>&1 &
+  # Use a specific client ID so we can verify connection in logs
+  local client_id="bats-test-$$"
+  mosquitto_sub -h localhost -p 1883 -t "test/topic" -i "$client_id" -C 1 > "$output_file" 2>&1 &
   local sub_pid=$!
 
-  # Wait for subscription to be established (verify process is running)
-  local timeout=30
+  # Wait for subscription to be established by checking mosquitto logs
+  local timeout=300
   local elapsed=0
   while [ $elapsed -lt $timeout ]; do
-    if kill -0 "$sub_pid" 2>/dev/null; then
+    if docker-compose -f tests/e2e/docker-compose.yml logs mqtt 2>/dev/null | grep -q "New client connected.*as $client_id"; then
       break
     fi
     sleep 0.1
     elapsed=$((elapsed + 1))
   done
 
-  # Give subscription additional time to fully establish
-  local wait_count=0
-  while [ $wait_count -lt 20 ]; do
-    sleep 0.1
-    wait_count=$((wait_count + 1))
-  done
+  # Verify subscriber is still running
+  if ! kill -0 "$sub_pid" 2>/dev/null; then
+    echo "Subscriber process died unexpectedly" >&2
+    return 1
+  fi
 
   # Publish test message
   run mosquitto_pub -h localhost -p 1883 -t "test/topic" -m "test message"

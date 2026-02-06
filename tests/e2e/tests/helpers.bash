@@ -45,14 +45,16 @@ start_mqtt_subscriber() {
   local topic=${1:-"modbus/#"}
   local output_file=${2:-"/tmp/mqtt-messages-$$.txt"}
 
-  mosquitto_sub -h localhost -p 1883 -t "$topic" -v > "$output_file" 2>&1 &
+  # Use a unique client ID so we can verify connection in mosquitto logs
+  local client_id="bats-subscriber-$$"
+  mosquitto_sub -h localhost -p 1883 -t "$topic" -i "$client_id" -v > "$output_file" 2>&1 &
   local pid=$!
 
-  # Wait for subscriber to be running (verify process started)
-  local timeout=30
+  # Wait for subscriber to connect by checking mosquitto logs
+  local timeout=300
   local elapsed=0
   while [ $elapsed -lt $timeout ]; do
-    if kill -0 "$pid" 2>/dev/null; then
+    if docker-compose -f tests/e2e/docker-compose.yml logs mqtt 2>/dev/null | grep -q "New client connected.*as $client_id"; then
       break
     fi
     sleep 0.1
