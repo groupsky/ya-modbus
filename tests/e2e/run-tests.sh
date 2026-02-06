@@ -55,8 +55,11 @@ check_dependencies() {
     fi
   fi
 
-  if ! command -v docker-compose &> /dev/null && ! command -v docker &> /dev/null; then
-    log_error "docker-compose is not installed"
+  if ! command -v docker &> /dev/null; then
+    log_error "docker is not installed"
+    missing=1
+  elif ! docker compose version &> /dev/null; then
+    log_error "docker compose is not available"
     missing=1
   fi
 
@@ -82,14 +85,14 @@ setup() {
 
   # Start Docker services
   log_info "Starting MQTT broker..."
-  docker-compose -f "$SCRIPT_DIR/docker-compose.yml" up -d
+  docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d
 
   # Wait for MQTT broker to be healthy
   log_info "Waiting for MQTT broker to be ready..."
   local timeout=300
   local elapsed=0
   while [ $elapsed -lt $timeout ]; do
-    if docker-compose -f "$SCRIPT_DIR/docker-compose.yml" ps | grep -q "healthy"; then
+    if docker compose -f "$SCRIPT_DIR/docker-compose.yml" ps | grep -q "healthy"; then
       log_info "MQTT broker is ready"
       break
     fi
@@ -99,7 +102,7 @@ setup() {
 
   if [ $elapsed -ge $timeout ]; then
     log_error "Timeout waiting for MQTT broker"
-    docker-compose -f "$SCRIPT_DIR/docker-compose.yml" logs
+    docker compose -f "$SCRIPT_DIR/docker-compose.yml" logs
     return 1
   fi
 
@@ -119,7 +122,7 @@ cleanup() {
 
   # Stop Docker services
   log_info "Stopping Docker services..."
-  docker-compose -f "$SCRIPT_DIR/docker-compose.yml" down -v
+  docker compose -f "$SCRIPT_DIR/docker-compose.yml" down -v
 
   log_info "Cleanup complete"
 }

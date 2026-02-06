@@ -3,7 +3,7 @@
     "type": "rtu",
     "port": "/tmp/ttyV2",
     "baudRate": 9600,
-    "parity": "none"
+    "parity": "even"
   },
   "devices": [
     {

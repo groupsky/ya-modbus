@@ -102,7 +102,7 @@ The infrastructure currently provides:
 - Emulator functionality tests (02-emulator.bats)
 - Cleanup verification tests (99-cleanup.bats)
 
-Additional test scenarios (MQTT bridge, CLI, device profiler) are tracked in issue #242.
+The infrastructure supports additional test scenarios including MQTT bridge integration, CLI command testing, and device profiler functionality.
 
 ## Test Scenario Examples
 

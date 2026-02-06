@@ -44,22 +44,27 @@ wait_for_port() {
 start_mqtt_subscriber() {
   local topic=${1:-"modbus/#"}
   local output_file=${2:-"/tmp/mqtt-messages-$$.txt"}
+  local compose_file="tests/e2e/docker-compose.yml"
 
   # Use a unique client ID so we can verify connection in mosquitto logs
   local client_id="bats-subscriber-$$"
   mosquitto_sub -h localhost -p 1883 -t "$topic" -i "$client_id" -v > "$output_file" 2>&1 &
   local pid=$!
 
-  # Wait for subscriber to connect by checking mosquitto logs
-  local timeout=300
-  local elapsed=0
-  while [ $elapsed -lt $timeout ]; do
-    if docker-compose -f tests/e2e/docker-compose.yml logs mqtt 2>/dev/null | grep -q "New client connected.*as $client_id"; then
-      break
-    fi
-    sleep 0.1
-    elapsed=$((elapsed + 1))
-  done
+  # Wait for subscriber to connect by following broker logs
+  # Use timeout command to prevent hanging, and grep for connection message
+  if ! timeout 30s sh -c "docker compose -f '$compose_file' logs --follow mqtt 2>&1 | grep -q 'New client connected.*as $client_id'" 2>/dev/null; then
+    # Fallback to polling if docker compose follow fails
+    local timeout=300
+    local elapsed=0
+    while [ $elapsed -lt $timeout ]; do
+      if docker compose -f "$compose_file" logs mqtt 2>/dev/null | grep -q "New client connected.*as $client_id"; then
+        break
+      fi
+      sleep 0.1
+      elapsed=$((elapsed + 1))
+    done
+  fi
 
   # Check if still running
   if ! kill -0 "$pid" 2>/dev/null; then
@@ -97,24 +102,35 @@ start_test_emulator() {
 
   echo "$pid" > "/tmp/emulator-$pid.pid"
 
-  # Wait for emulator to start (verify process is running)
+  # Wait for emulator to be ready by checking log file
   local timeout=50
   local elapsed=0
+  local emulator_ready=0
+
   while [ $elapsed -lt $timeout ]; do
-    if kill -0 "$pid" 2>/dev/null; then
-      # Process exists, give it a moment to initialize
-      local init_count=0
-      while [ $init_count -lt 20 ]; do
-        sleep 0.1
-        init_count=$((init_count + 1))
-      done
+    # Check if process is still alive
+    if ! kill -0 "$pid" 2>/dev/null; then
+      echo "Emulator process died during startup" >&2
+      cat "$log_file" >&2
+      return 1
+    fi
+
+    # Check log file for startup completion or listen message
+    if [ -f "$log_file" ] && grep -q -E "(started|listening|ready)" "$log_file" 2>/dev/null; then
+      emulator_ready=1
       break
     fi
+
     sleep 0.1
     elapsed=$((elapsed + 1))
   done
 
-  # Check if still running
+  # If no readiness signal found but process is alive, give it a brief moment
+  if [ $emulator_ready -eq 0 ] && kill -0 "$pid" 2>/dev/null; then
+    sleep 0.5
+  fi
+
+  # Final check if still running
   if ! kill -0 "$pid" 2>/dev/null; then
     echo "Failed to start emulator" >&2
     cat "$log_file" >&2
@@ -159,7 +175,7 @@ stop_test_emulator() {
 is_docker_service_healthy() {
   local service_name=$1
 
-  docker-compose -f tests/e2e/docker-compose.yml ps "$service_name" 2>/dev/null | grep -q "healthy"
+  docker compose -f tests/e2e/docker-compose.yml ps "$service_name" 2>/dev/null | grep -q "healthy"
 }
 
 # Assert command success

@@ -75,7 +75,7 @@ jobs:
           socat -V | head -1
           tests/e2e/vendor/bats-core/bin/bats --version
           docker --version
-          docker-compose --version
+          docker compose version
           mosquitto_sub --help | head -1 || echo "mosquitto_sub installed"
           node --version
           npm --version
@@ -89,17 +89,17 @@ jobs:
       - name: Start Docker services
         run: |
           cd tests/e2e
-          docker-compose up -d
+          docker compose up -d
 
           echo "Waiting for services to be healthy..."
-          timeout 60 sh -c 'until docker-compose ps | grep -q healthy; do
+          timeout 60 sh -c 'until docker compose ps | grep -q healthy; do
             echo "Still waiting...";
-            docker-compose ps;
+            docker compose ps;
             sleep 0.1;
           done'
 
           echo "Services are ready:"
-          docker-compose ps
+          docker compose ps
 
       - name: Setup test environment
         run: |
@@ -119,10 +119,10 @@ jobs:
         run: |
           echo "=== Docker Compose Services ==="
           cd tests/e2e
-          docker-compose ps
+          docker compose ps
 
           echo -e "\n=== Docker Logs ==="
-          docker-compose logs
+          docker compose logs
 
           echo -e "\n=== Socat Logs ==="
           cat /tmp/socat-*.log || echo "No socat logs found"
@@ -157,7 +157,7 @@ jobs:
           ./setup/cleanup.sh
 
           echo "Stopping Docker services..."
-          docker-compose down -v
+          docker compose down -v
 
           echo "Verifying cleanup..."
           ls -la /tmp/ttyV* 2>/dev/null || echo "✓ Virtual ports cleaned up"

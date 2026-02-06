@@ -85,7 +85,17 @@ main() {
 
   # Kill mqtt-bridge processes
   log_info "Killing mqtt-bridge processes..."
-  pkill -f "ya-modbus-bridge" || true
+  for pid_file in /tmp/bridge-*.pid; do
+    [ -f "$pid_file" ] || continue
+    kill_from_pidfile "$pid_file"
+  done
+
+  # Fallback: kill any remaining bridge processes by pattern match
+  # This handles cases where PID files weren't created
+  if pgrep -f "ya-modbus-bridge" > /dev/null 2>&1; then
+    log_warn "Found bridge processes without PID files, cleaning up..."
+    pkill -f "ya-modbus-bridge" || true
+  fi
 
   # Remove virtual port symlinks
   log_info "Removing virtual port symlinks..."

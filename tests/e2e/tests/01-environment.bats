@@ -11,8 +11,8 @@ load helpers
   assert_success
 }
 
-@test "docker-compose is installed" {
-  run docker-compose --version
+@test "docker compose is installed" {
+  run docker compose --version
   assert_success
 }
 
@@ -50,7 +50,7 @@ load helpers
 }
 
 @test "MQTT broker is running" {
-  run docker-compose -f tests/e2e/docker-compose.yml ps mqtt
+  run docker compose -f tests/e2e/docker-compose.yml ps mqtt
   assert_success
   assert_output_contains "ya-modbus-test-mqtt"
 }
@@ -78,7 +78,7 @@ load helpers
   local timeout=300
   local elapsed=0
   while [ $elapsed -lt $timeout ]; do
-    if docker-compose -f tests/e2e/docker-compose.yml logs mqtt 2>/dev/null | grep -q "New client connected.*as $client_id"; then
+    if docker compose -f tests/e2e/docker-compose.yml logs mqtt 2>/dev/null | grep -q "New client connected.*as $client_id"; then
       break
     fi
     sleep 0.1
@@ -128,23 +128,32 @@ load helpers
 }
 
 @test "virtual serial ports are connected" {
-  # Write to one port, read from the other
-  echo "test" > /tmp/ttyV0 &
-  local write_pid=$!
+  # Create temporary file for reading
+  local read_output="/tmp/port-test-$$"
 
-  # Wait for write to complete
-  local timeout=20
-  local elapsed=0
-  while [ $elapsed -lt $timeout ]; do
-    if ! kill -0 "$write_pid" 2>/dev/null; then
-      break
-    fi
-    sleep 0.1
-    elapsed=$((elapsed + 1))
-  done
+  # Start reader first
+  timeout 3 cat /tmp/ttyV1 > "$read_output" &
+  local read_pid=$!
 
-  run timeout 2 cat /tmp/ttyV1
+  # Give reader time to start
+  sleep 0.2
+
+  # Write to paired port
+  if ! echo "test" > /tmp/ttyV0; then
+    kill "$read_pid" 2>/dev/null || true
+    rm -f "$read_output"
+    return 1
+  fi
+
+  # Wait for reader to complete or timeout
+  wait "$read_pid" 2>/dev/null || true
+
+  # Verify data was received
+  run cat "$read_output"
   assert_output_contains "test"
+
+  # Cleanup
+  rm -f "$read_output"
 }
 
 @test "project packages are built" {
