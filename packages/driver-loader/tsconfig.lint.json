@@ -4,5 +4,5 @@
   // - Path mappings to resolve package imports from source
   // - noEmit: true for linting without build
   "extends": "../../tsconfig.lint-base.json",
-  "include": ["src/**/*.ts", "__mocks__/**/*.ts"]
+  "include": ["src/**/*.ts", "__mocks__/**/*.ts", "examples/**/*.ts"]
 }

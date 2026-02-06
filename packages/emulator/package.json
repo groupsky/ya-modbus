@@ -44,6 +44,7 @@
     "typecheck": "../../node_modules/.bin/tsc --noEmit"
   },
   "dependencies": {
+    "@ya-modbus/driver-types": "*",
     "commander": "^14.0.2",
     "js-yaml": "^4.1.0",
     "modbus-serial": "^8.0.23"

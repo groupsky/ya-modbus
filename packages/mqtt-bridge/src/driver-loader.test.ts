@@ -1,4 +1,5 @@
 import { describe, it, expect, jest } from '@jest/globals'
+
 import type { LoadedDriver } from '@ya-modbus/driver-loader'
 import type { DeviceDriver, CreateDriverFunction, Transport } from '@ya-modbus/driver-types'
 import { TransportManager } from '@ya-modbus/transport'

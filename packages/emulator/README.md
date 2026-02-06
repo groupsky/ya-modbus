@@ -18,10 +18,9 @@ npm install @ya-modbus/emulator
 
 ## Quick Start
 
-```typescript
-import { ModbusEmulator } from '@ya-modbus/emulator'
+<!-- embedme examples/api-examples.ts#L9-L32 -->
 
-// Create emulator with TCP transport
+```ts
 const emulator = new ModbusEmulator({
   transport: 'tcp',
   port: 5502,
@@ -178,9 +177,11 @@ See `examples/virtual-serial-test.md` for detailed virtual serial port testing g
 
 Simulate realistic device response times:
 
-```typescript
+<!-- embedme examples/api-examples.ts#L35-L43 -->
+
+```ts
 emulator.addDevice({
-  slaveId: 1,
+  slaveId: 2,
   timing: {
     pollingInterval: 10, // Device checks for commands every 10ms
     commandDetectionDelay: [3, 8], // 3-8ms to notice command
@@ -194,10 +195,11 @@ emulator.addDevice({
 
 > **🚧 Planned for v0.2.0**: Define forbidden ranges and batch size limits
 
-```typescript
-// Coming in v0.2.0
+<!-- embedme examples/api-examples.ts#L46-L53 -->
+
+```ts
 emulator.addDevice({
-  slaveId: 1,
+  slaveId: 3,
   constraints: {
     maxReadRegisters: 80,
     maxWriteRegisters: 50,
@@ -210,10 +212,11 @@ emulator.addDevice({
 
 > **🚧 Planned for v0.2.0**: Inject errors for testing error handling
 
-```typescript
-// Coming in v0.2.0
+<!-- embedme examples/api-examples.ts#L56-L62 -->
+
+```ts
 emulator.addDevice({
-  slaveId: 1,
+  slaveId: 4,
   errors: {
     timeoutProbability: 0.05, // 5% timeout rate
     crcErrorProbability: 0.01, // 1% CRC error rate

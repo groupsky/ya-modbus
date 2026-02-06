@@ -19,35 +19,46 @@ npm install @ya-modbus/driver-ex9em
 
 ## Usage
 
-```typescript
+<!-- embedme examples/example-rtu.ts -->
+
+```ts
+#!/usr/bin/env tsx
 import { createDriver, DEFAULT_CONFIG } from '@ya-modbus/driver-ex9em'
-import { createRTUTransport } from '@ya-modbus/transport-rtu'
+import { createRTUTransport } from '@ya-modbus/transport'
+
+const port = process.argv[2] ?? '/dev/ttyUSB0'
+const slaveId = parseInt(process.argv[3] ?? String(DEFAULT_CONFIG.defaultAddress), 10)
 
 // Create transport with factory default settings
 const transport = await createRTUTransport({
-  port: '/dev/ttyUSB0',
+  port,
   baudRate: DEFAULT_CONFIG.baudRate,
   parity: DEFAULT_CONFIG.parity,
   dataBits: DEFAULT_CONFIG.dataBits,
   stopBits: DEFAULT_CONFIG.stopBits,
-  slaveId: DEFAULT_CONFIG.defaultAddress,
+  slaveId,
+  timeout: 1000,
 })
 
-// Create driver
-const driver = await createDriver({ transport })
+try {
+  // Create driver
+  const driver = await createDriver({ transport })
 
-// Read single data point
-const voltage = await driver.readDataPoint('voltage')
-console.log(`Voltage: ${voltage}V`)
+  // Read single data point
+  const voltage = await driver.readDataPoint('voltage')
+  console.log(`Voltage: ${String(voltage)}V`)
 
-// Read multiple data points (single transaction)
-const values = await driver.readDataPoints([
-  'voltage',
-  'current',
-  'active_power',
-  'total_active_energy',
-])
-console.log(values)
+  // Read multiple data points (single transaction)
+  const values = await driver.readDataPoints([
+    'voltage',
+    'current',
+    'active_power',
+    'total_active_energy',
+  ])
+  console.log(values)
+} finally {
+  await transport.close()
+}
 ```
 
 ## Available Data Points
@@ -68,34 +79,44 @@ console.log(values)
 
 ## Factory Default Configuration
 
-```typescript
-{
+<!-- embedme src/index.ts#L89-L95 -->
+
+```ts
+export const DEFAULT_CONFIG = {
   baudRate: 9600,
   parity: 'even',
   dataBits: 8,
   stopBits: 1,
-  defaultAddress: 1
-}
+  defaultAddress: 1,
+} as const satisfies DefaultSerialConfig
 ```
 
 ## Supported Configuration
 
-- **Baud rates**: 1200, 2400, 4800, 9600 bps
-- **Parity**: even, none
-- **Data bits**: 8
-- **Stop bits**: 1
-- **Slave address**: 1-247 (standard Modbus range)
+<!-- embedme src/index.ts#L61-L67 -->
+
+```ts
+export const SUPPORTED_CONFIG = {
+  validBaudRates: [1200, 2400, 4800, 9600],
+  validParity: ['even', 'none'],
+  validDataBits: [8],
+  validStopBits: [1],
+  validAddressRange: [1, 247],
+} as const satisfies SupportedSerialConfig
+```
 
 ## Configuration Changes
 
-```typescript
-// Change device address
+<!-- embedme examples/example-config.ts#L22-L28 -->
+
+```ts
+// Change device address (requires device restart)
 await driver.writeDataPoint('device_address', 5)
+console.log('Device address changed to 5')
 
-// Change baud rate
+// Change baud rate (requires device restart)
 await driver.writeDataPoint('baud_rate', 4800)
-
-// Note: Restart the device for changes to take effect
+console.log('Baud rate changed to 4800')
 ```
 
 **Important:** According to the device documentation, configuration changes may require a password unlock mechanism using vendor-specific Modbus function code 0x28. This mechanism is not implemented in the driver. Configuration changes may work without it on some firmware versions, but YMMV. Consult the official register map PDF in `docs/` for details.
