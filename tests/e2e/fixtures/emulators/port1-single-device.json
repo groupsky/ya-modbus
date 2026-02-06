@@ -1,7 +1,9 @@
 {
   "transport": {
-    "type": "memory",
-    "port": "/tmp/ttyV0"
+    "type": "rtu",
+    "port": "/tmp/ttyV0",
+    "baudRate": 9600,
+    "parity": "none"
   },
   "devices": [
     {
