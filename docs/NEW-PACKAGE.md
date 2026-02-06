@@ -170,11 +170,13 @@ Packages typically extend the base tsconfig:
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "."
   },
   "include": ["src"]
 }
 ```
+
+**IMPORTANT:** Always use `rootDir: "."` (not `"src"`). This ensures consistent output structure across all packages and prevents configuration errors when adding bin executables later.
 
 ### Engine Requirements
 
