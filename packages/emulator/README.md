@@ -18,13 +18,14 @@ npm install @ya-modbus/emulator
 
 ## Quick Start
 
+### Memory Transport (fastest for unit tests)
+
 ```typescript
 import { ModbusEmulator } from '@ya-modbus/emulator'
 
-// Create emulator with TCP transport
+// Create emulator with in-memory transport
 const emulator = new ModbusEmulator({
-  transport: 'tcp',
-  port: 5502,
+  transport: 'memory',
 })
 
 // Add a device
@@ -46,6 +47,70 @@ await emulator.start()
 
 // Stop emulator
 await emulator.stop()
+```
+
+### RTU Transport (serial port)
+
+```typescript
+import { ModbusEmulator } from '@ya-modbus/emulator'
+
+// Create emulator with RTU transport
+const emulator = new ModbusEmulator({
+  transport: 'rtu',
+  port: '/dev/ttyUSB0', // or 'COM3' on Windows
+  baudRate: 9600,
+  parity: 'none',
+  dataBits: 8,
+  stopBits: 1,
+})
+
+// Add devices
+emulator.addDevice({
+  slaveId: 1,
+  registers: {
+    holding: { 0: 230, 1: 52 },
+  },
+})
+
+emulator.addDevice({
+  slaveId: 2,
+  registers: {
+    holding: { 0: 500, 1: 100 },
+  },
+})
+
+// Start emulator
+await emulator.start()
+
+// Use with your driver tests
+// ...
+
+// Stop emulator
+await emulator.stop()
+```
+
+### TCP Transport (network)
+
+```typescript
+import { ModbusEmulator } from '@ya-modbus/emulator'
+
+// Create emulator with TCP transport
+const emulator = new ModbusEmulator({
+  transport: 'tcp',
+  port: 5502,
+  host: '0.0.0.0',
+})
+
+// Add a device
+emulator.addDevice({
+  slaveId: 1,
+  registers: {
+    holding: { 0: 230, 1: 52 },
+  },
+})
+
+// Start emulator
+await emulator.start()
 ```
 
 ## CLI Usage
@@ -144,8 +209,6 @@ devices:
 See `examples/config-files/` for more examples.
 
 ### Testing with Virtual Serial Ports
-
-> **⚠️ Note**: RTU transport is currently a placeholder for v0.1.0. Serial port communication will be implemented in v0.2.0. Use the memory transport for testing in this version.
 
 For testing without physical hardware, create virtual serial port pairs:
 
