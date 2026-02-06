@@ -604,7 +604,7 @@ cat > packages/my-package/tsconfig.json << 'EOF'
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "."
   },
   "include": ["src"]
 }
