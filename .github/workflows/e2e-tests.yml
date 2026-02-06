@@ -6,6 +6,11 @@ on:
     - cron: '30 2 * * *'
   workflow_dispatch: # Allow manual trigger
 
+# Default permissions for all jobs (principle of least privilege)
+# Individual jobs can override with more specific permissions
+permissions:
+  contents: read
+
 jobs:
   check-changes:
     name: Check for Recent Changes
