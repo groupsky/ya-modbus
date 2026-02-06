@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/transport",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Modbus transport implementations for ya-modbus",
   "keywords": [
     "modbus",
@@ -43,7 +43,7 @@
     "typecheck": "../../node_modules/.bin/tsc --noEmit"
   },
   "dependencies": {
-    "@ya-modbus/driver-types": "^0.7.0",
+    "@ya-modbus/driver-types": "^0.7.1",
     "async-mutex": "^0.5.0",
     "modbus-serial": "^8.0.18"
   },

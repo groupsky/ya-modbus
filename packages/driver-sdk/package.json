@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/driver-sdk",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Runtime SDK for ya-modbus device drivers with transformation utilities and helpers",
   "keywords": [
     "modbus",
@@ -53,7 +53,7 @@
     "typecheck": "../../node_modules/.bin/tsc --noEmit"
   },
   "dependencies": {
-    "@ya-modbus/driver-types": "^0.7.0"
+    "@ya-modbus/driver-types": "^0.7.1"
   },
   "engines": {
     "node": ">=20.0.0"
