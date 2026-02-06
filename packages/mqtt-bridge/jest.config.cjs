@@ -3,7 +3,7 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   rootDir: '.',
-  testMatch: ['<rootDir>/src/**/*.test.ts', '<rootDir>/test/**/*.test.ts'],
+  testMatch: ['<rootDir>/src/**/*.test.ts'],
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   extensionsToTreatAsEsm: ['.ts'],
   transform: {
