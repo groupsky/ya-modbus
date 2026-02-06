@@ -66,14 +66,14 @@ create_port_pair() {
   echo "$pid" > "$pid_file"
 
   # Wait for ports to be created
-  local timeout=10
+  local timeout=100
   local elapsed=0
   while [ $elapsed -lt $timeout ]; do
     if [ -L "$port1" ] && [ -L "$port2" ]; then
       log_info "Port pair created successfully (PID: $pid)"
       return 0
     fi
-    sleep 0.5
+    sleep 0.1
     elapsed=$((elapsed + 1))
   done
 

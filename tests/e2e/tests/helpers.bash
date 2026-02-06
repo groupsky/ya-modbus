@@ -13,7 +13,7 @@ wait_for_file() {
     if [ -e "$file" ]; then
       return 0
     fi
-    sleep 1
+    sleep 0.1
     elapsed=$((elapsed + 1))
   done
 
@@ -32,7 +32,7 @@ wait_for_port() {
     if nc -z "$host" "$port" 2>/dev/null; then
       return 0
     fi
-    sleep 1
+    sleep 0.1
     elapsed=$((elapsed + 1))
   done
 
@@ -48,8 +48,16 @@ start_mqtt_subscriber() {
   mosquitto_sub -h localhost -p 1883 -t "$topic" -v > "$output_file" 2>&1 &
   local pid=$!
 
-  # Give it a moment to connect
-  sleep 1
+  # Wait for subscriber to be running (verify process started)
+  local timeout=30
+  local elapsed=0
+  while [ $elapsed -lt $timeout ]; do
+    if kill -0 "$pid" 2>/dev/null; then
+      break
+    fi
+    sleep 0.1
+    elapsed=$((elapsed + 1))
+  done
 
   # Check if still running
   if ! kill -0 "$pid" 2>/dev/null; then
@@ -87,8 +95,22 @@ start_test_emulator() {
 
   echo "$pid" > "/tmp/emulator-$pid.pid"
 
-  # Wait a moment for emulator to start
-  sleep 2
+  # Wait for emulator to start (verify process is running)
+  local timeout=50
+  local elapsed=0
+  while [ $elapsed -lt $timeout ]; do
+    if kill -0 "$pid" 2>/dev/null; then
+      # Process exists, give it a moment to initialize
+      local init_count=0
+      while [ $init_count -lt 20 ]; do
+        sleep 0.1
+        init_count=$((init_count + 1))
+      done
+      break
+    fi
+    sleep 0.1
+    elapsed=$((elapsed + 1))
+  done
 
   # Check if still running
   if ! kill -0 "$pid" 2>/dev/null; then
@@ -108,7 +130,17 @@ stop_test_emulator() {
 
   if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
     kill "$pid" 2>/dev/null || true
-    sleep 1
+
+    # Wait for graceful shutdown
+    local timeout=10
+    local elapsed=0
+    while [ $elapsed -lt $timeout ]; do
+      if ! kill -0 "$pid" 2>/dev/null; then
+        break
+      fi
+      sleep 0.1
+      elapsed=$((elapsed + 1))
+    done
 
     # Force kill if still running
     if kill -0 "$pid" 2>/dev/null; then

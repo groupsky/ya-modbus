@@ -84,26 +84,26 @@ docker-compose -f tests/e2e/docker-compose.yml down -v
 
 ```
 tests/e2e/
-├── README.md                       # This file
-├── DESIGN.md                       # Design documentation
-├── run-tests.sh                    # Main test runner
-├── docker-compose.yml              # MQTT broker service
+├── README.md                        # This file
+├── DESIGN.md                        # Design documentation
+├── run-tests.sh                     # Main test runner
+├── docker-compose.yml               # MQTT broker service
 ├── setup/
-│   ├── create-virtual-ports.sh     # Create socat port pairs
-│   ├── start-emulator.js           # Start Modbus emulators
-│   └── cleanup.sh                  # Cleanup all resources
+│   ├── create-virtual-ports.sh      # Create socat port pairs
+│   └── cleanup.sh                   # Cleanup all resources
 ├── fixtures/
-│   ├── mosquitto.conf              # MQTT broker config
-│   ├── bridge-config.json          # mqtt-bridge config
-│   └── devices/                    # Device configurations
-│       ├── ex9em-device1.json
-│       ├── xymd1-device1.json
-│       └── or-we-516-device2.json
-└── tests/
-    ├── helpers.bash                # Shared helper functions
-    ├── 01-environment.bats         # Environment setup tests
-    ├── 02-emulator.bats            # Emulator tests
-    └── 99-cleanup.bats             # Cleanup verification
+│   ├── emulators/
+│   │   ├── port1-single-device.json # Single device emulator config
+│   │   └── port2-multi-device.json  # Multi-device emulator config
+│   ├── mosquitto.conf               # MQTT broker config
+│   └── bridge-config.json           # mqtt-bridge config
+├── tests/
+│   ├── helpers.bash                 # Shared helper functions
+│   ├── 01-environment.bats          # Environment setup tests
+│   ├── 02-emulator.bats             # Emulator tests
+│   └── 99-cleanup.bats              # Cleanup verification
+└── vendor/
+    └── bats-core/                   # BATS framework (git submodule)
 ```
 
 ## Writing Tests
@@ -141,10 +141,10 @@ teardown() {
 See `tests/helpers.bash` for all available helpers:
 
 - `wait_for_file <file> [timeout]` - Wait for file to exist
-- `wait_for_port <host> <port> [timeout]` - Wait for port to listen
-- `start_mqtt_subscriber <topic> [output_file]` - Start MQTT subscriber
+- `wait_for_port <host> <port> [timeout]` - Wait for network port to listen
+- `start_mqtt_subscriber <topic> [output_file]` - Start MQTT subscriber (returns PID)
 - `stop_mqtt_subscriber <pid>` - Stop MQTT subscriber
-- `start_test_emulator <port> <device_configs...>` - Start emulator
+- `start_test_emulator <config_file>` - Start emulator with config (returns PID)
 - `stop_test_emulator <pid>` - Stop emulator
 - `is_docker_service_healthy <service>` - Check Docker service health
 - `assert_success` - Assert command succeeded

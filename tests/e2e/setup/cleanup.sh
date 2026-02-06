@@ -40,7 +40,17 @@ kill_from_pidfile() {
   if kill -0 "$pid" 2>/dev/null; then
     log_info "Killing process $pid"
     kill "$pid" 2>/dev/null || true
-    sleep 0.5
+
+    # Wait for graceful shutdown
+    local timeout=10
+    local elapsed=0
+    while [ $elapsed -lt $timeout ]; do
+      if ! kill -0 "$pid" 2>/dev/null; then
+        break
+      fi
+      sleep 0.1
+      elapsed=$((elapsed + 1))
+    done
 
     # Force kill if still running
     if kill -0 "$pid" 2>/dev/null; then

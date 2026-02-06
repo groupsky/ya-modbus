@@ -86,14 +86,14 @@ setup() {
 
   # Wait for MQTT broker to be healthy
   log_info "Waiting for MQTT broker to be ready..."
-  local timeout=30
+  local timeout=300
   local elapsed=0
   while [ $elapsed -lt $timeout ]; do
     if docker-compose -f "$SCRIPT_DIR/docker-compose.yml" ps | grep -q "healthy"; then
       log_info "MQTT broker is ready"
       break
     fi
-    sleep 1
+    sleep 0.1
     elapsed=$((elapsed + 1))
   done
 

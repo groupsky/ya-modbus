@@ -72,21 +72,36 @@ load helpers
   mosquitto_sub -h localhost -p 1883 -t "test/topic" -C 1 > "$output_file" 2>&1 &
   local sub_pid=$!
 
-  # Wait for subscription to be established
-  sleep 1
+  # Wait for subscription to be established (verify process is running)
+  local timeout=30
+  local elapsed=0
+  while [ $elapsed -lt $timeout ]; do
+    if kill -0 "$sub_pid" 2>/dev/null; then
+      break
+    fi
+    sleep 0.1
+    elapsed=$((elapsed + 1))
+  done
+
+  # Give subscription additional time to fully establish
+  local wait_count=0
+  while [ $wait_count -lt 20 ]; do
+    sleep 0.1
+    wait_count=$((wait_count + 1))
+  done
 
   # Publish test message
   run mosquitto_pub -h localhost -p 1883 -t "test/topic" -m "test message"
   assert_success
 
   # Wait for subscriber to receive message (or timeout)
-  local timeout=5
-  local elapsed=0
+  timeout=50
+  elapsed=0
   while [ $elapsed -lt $timeout ]; do
     if ! kill -0 "$sub_pid" 2>/dev/null; then
       break
     fi
-    sleep 0.5
+    sleep 0.1
     elapsed=$((elapsed + 1))
   done
 
@@ -114,7 +129,18 @@ load helpers
 @test "virtual serial ports are connected" {
   # Write to one port, read from the other
   echo "test" > /tmp/ttyV0 &
-  sleep 0.5
+  local write_pid=$!
+
+  # Wait for write to complete
+  local timeout=20
+  local elapsed=0
+  while [ $elapsed -lt $timeout ]; do
+    if ! kill -0 "$write_pid" 2>/dev/null; then
+      break
+    fi
+    sleep 0.1
+    elapsed=$((elapsed + 1))
+  done
 
   run timeout 2 cat /tmp/ttyV1
   assert_output_contains "test"

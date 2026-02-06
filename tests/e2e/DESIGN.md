@@ -72,31 +72,41 @@ Infrastructure-level end-to-end testing for ya-modbus using real services, shell
 
 ```
 tests/e2e/
-├── DESIGN.md                    # This file
-├── docker-compose.yml           # Service orchestration
+├── DESIGN.md                            # This file
+├── README.md                            # User documentation
+├── docker-compose.yml                   # Service orchestration
+├── run-tests.sh                         # Main test runner script
 ├── setup/
-│   ├── create-virtual-ports.sh  # Create socat port pairs
-│   ├── start-emulators.sh       # Start emulator containers
-│   ├── start-mqtt.sh            # Start MQTT broker
-│   └── cleanup.sh               # Cleanup all resources
+│   ├── create-virtual-ports.sh          # Create socat port pairs
+│   └── cleanup.sh                       # Cleanup all resources
 ├── fixtures/
-│   ├── devices/
-│   │   ├── ex9em-config.json   # ex9em emulator config
-│   │   ├── xymd1-config.json   # xymd1 emulator config
-│   │   └── or-we-516-config.json
-│   ├── bridge-config.json      # mqtt-bridge configuration
-│   └── mosquitto.conf          # MQTT broker config
+│   ├── emulators/
+│   │   ├── port1-single-device.json     # Single device emulator config
+│   │   └── port2-multi-device.json      # Multi-device emulator config
+│   ├── bridge-config.json               # mqtt-bridge configuration
+│   └── mosquitto.conf                   # MQTT broker config
 ├── tests/
-│   ├── helpers.bash            # Shared BATS helpers
-│   ├── 01-environment.bats     # Test environment setup
-│   ├── 02-mqtt-bridge.bats     # Test mqtt-bridge
-│   ├── 03-cli.bats             # Test CLI commands
-│   ├── 04-device-profiler.bats # Test device-profiler
-│   └── 99-cleanup.bats         # Cleanup tests
-└── run-tests.sh                # Main test runner script
+│   ├── helpers.bash                     # Shared BATS helpers
+│   ├── 01-environment.bats              # Test environment setup
+│   ├── 02-emulator.bats                 # Test emulator functionality
+│   └── 99-cleanup.bats                  # Cleanup tests
+└── vendor/
+    └── bats-core/                       # BATS testing framework (git submodule)
 ```
 
-## Test Scenarios
+## Current Implementation
+
+The infrastructure currently provides:
+
+- Environment validation tests (01-environment.bats)
+- Emulator functionality tests (02-emulator.bats)
+- Cleanup verification tests (99-cleanup.bats)
+
+Additional test scenarios (MQTT bridge, CLI, device profiler) are tracked in issue #242.
+
+## Test Scenario Examples
+
+These examples illustrate how the infrastructure can be used for integration testing.
 
 ### Scenario 1: MQTT Bridge with Single Device
 
@@ -561,23 +571,6 @@ export KEEP_LOGS=1  # Don't delete logs after test
 - Set reasonable timeouts for all operations
 - Use `timeout` command for long-running processes
 - Fail fast on timeout, don't retry indefinitely
-
-## Future Enhancements
-
-### Phase 2
-
-- Test with TCP transport (not just RTU)
-- Test error scenarios (timeouts, disconnections)
-- Test with all available drivers
-- Performance benchmarking
-- Parallel test execution
-
-### Phase 3
-
-- Load testing (many devices, high frequency)
-- Long-running stability tests (24+ hours)
-- Memory leak detection
-- Coverage tracking for integration scenarios
 
 ## References
 
