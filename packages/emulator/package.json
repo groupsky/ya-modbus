@@ -14,7 +14,7 @@
   "main": "./dist/cjs/index.js",
   "types": "./dist/esm/index.d.ts",
   "bin": {
-    "ya-modbus-emulator": "./bin/ya-modbus-emulator.js"
+    "ya-modbus-emulator": "./dist/esm/bin/ya-modbus-emulator.js"
   },
   "files": [
     "dist",

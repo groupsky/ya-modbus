@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 
-// Entry point for CLI - delegates to compiled TypeScript
+/**
+ * CLI entry point for Modbus emulator
+ *
+ * This file is the executable entry point for the emulator CLI.
+ * The actual CLI implementation is in src/cli.ts
+ */
+
 import { main } from '../src/cli.js'
 
 // Run the CLI
