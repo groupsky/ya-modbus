@@ -1,0 +1,14 @@
+# Basic TCP emulator configuration
+# Usage: ya-modbus-emulator --config basic-tcp.yaml
+
+transport:
+  type: tcp
+  host: 0.0.0.0
+  port: 502
+
+devices:
+  - slaveId: 1
+    registers:
+      holding:
+        0: 230 # Voltage * 10 = 23.0V
+        1: 52 # Current * 10 = 5.2A
