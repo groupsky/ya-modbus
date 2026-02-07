@@ -64,42 +64,32 @@ export class RtuTransport extends BaseTransport {
       },
     }
 
-    // Build options, including only defined serial port parameters
-    // Using any to work around exactOptionalPropertyTypes incompatibility
-    // with conditional spread syntax. Runtime behavior is correct.
-    /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
-    const options: any = {
-      path: this.config.port,
-      unitID: 255, // Listen to all unit IDs
-    }
-
-    // Add optional parameters only if defined
-    if (this.config.baudRate !== undefined) {
-      options.baudRate = this.config.baudRate
-    }
-    if (this.config.parity !== undefined) {
-      options.parity = this.config.parity
-    }
-    if (this.config.dataBits !== undefined) {
-      options.dataBits = this.config.dataBits
-    }
-    if (this.config.stopBits !== undefined) {
-      options.stopBits = this.config.stopBits
-    }
+    // Build options with only defined serial port parameters
+    // Filter out undefined values to satisfy exactOptionalPropertyTypes
+    const options = Object.fromEntries(
+      Object.entries({
+        path: this.config.port,
+        unitID: 255, // Listen to all unit IDs
+        baudRate: this.config.baudRate,
+        parity: this.config.parity,
+        dataBits: this.config.dataBits,
+        stopBits: this.config.stopBits,
+      }).filter(([, value]) => value !== undefined)
+    ) as unknown as ConstructorParameters<typeof ServerSerial>[1]
 
     // Create and start server
     return new Promise<void>((resolve, reject) => {
-      options.openCallback = (err: Error | null) => {
-        if (err) {
-          reject(err)
-        } else {
-          this.started = true
-          resolve()
-        }
-      }
-
-      this.server = new ServerSerial(serviceVector, options)
-      /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+      this.server = new ServerSerial(serviceVector, {
+        ...options,
+        openCallback: (err: Error | null) => {
+          if (err) {
+            reject(err)
+          } else {
+            this.started = true
+            resolve()
+          }
+        },
+      })
 
       // Handle errors
       this.server.on('error', (err) => {
