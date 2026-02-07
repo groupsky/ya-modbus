@@ -100,8 +100,8 @@ export class TcpTransport extends BaseTransport {
         resolve()
       })
 
-      // Handle errors
-      server.on('error', (err: Error) => {
+      // Handle errors - cast to EventEmitter as modbus-serial types don't include 'error' event
+      ;(server as unknown as EventEmitter).on('error', (err: Error) => {
         if (isInitializing) {
           clearTimeout(timeout)
           isInitializing = false
