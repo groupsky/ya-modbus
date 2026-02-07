@@ -13,6 +13,9 @@ let capturedServiceVector: any = null
 let mockServerInstance: any
 let initializedListener: (() => void) | undefined
 let errorListener: ((err: Error) => void) | undefined
+let eventListeners: Map<string, Set<(...args: unknown[]) => void>>
+// Track removeAllListeners calls across all mock instances
+let allRemoveAllListenersCalls: Array<{ event?: string }> = []
 
 // Mock modbus-serial
 jest.mock('modbus-serial', () => {
@@ -24,6 +27,7 @@ jest.mock('modbus-serial', () => {
       // Reset listeners
       initializedListener = undefined
       errorListener = undefined
+      eventListeners = new Map()
 
       // Create mock instance
       mockServerInstance = {
@@ -34,6 +38,22 @@ jest.mock('modbus-serial', () => {
           } else if (event === 'error') {
             errorListener = listener
           }
+          // Track listeners
+          if (!eventListeners.has(event)) {
+            eventListeners.set(event, new Set())
+          }
+          eventListeners.get(event)!.add(listener)
+        }),
+        removeAllListeners: jest.fn((event?: string) => {
+          allRemoveAllListenersCalls.push({ event })
+          if (event) {
+            eventListeners.delete(event)
+          } else {
+            eventListeners.clear()
+          }
+        }),
+        listenerCount: jest.fn((event: string) => {
+          return eventListeners.get(event)?.size ?? 0
         }),
         socks: new Map(),
       }
@@ -55,6 +75,7 @@ describe('TcpTransport', () => {
 
   beforeEach(() => {
     capturedServiceVector = null
+    allRemoveAllListenersCalls = []
     jest.clearAllMocks()
   })
 
@@ -93,6 +114,43 @@ describe('TcpTransport', () => {
       transport = new TcpTransport({ host: 'localhost', port: 502 })
       await transport.start()
       await expect(transport.start()).rejects.toThrow('Transport already started')
+    })
+
+    it('should not accumulate event listeners after repeated start/stop cycles', async () => {
+      // This test verifies the fix for issue #253: Event listener memory leak
+      // Before the fix, listeners are never removed during stop()
+      // Each start() adds listeners, so repeated cycles on the same server accumulate them
+
+      // Track listener counts across multiple transports using the same mock server
+      const listenerCounts: number[] = []
+
+      // Run 5 start/stop cycles
+      for (let i = 0; i < 5; i++) {
+        transport = new TcpTransport({ host: 'localhost', port: 502 })
+        await transport.start()
+
+        // Record listener count after start
+        const count =
+          mockServerInstance.listenerCount('initialized') +
+          mockServerInstance.listenerCount('error')
+        listenerCounts.push(count)
+
+        await transport.stop()
+      }
+
+      // After the fix: all cycles should have the same listener count (2 listeners per cycle)
+      // Before the fix: listener count would grow with each cycle
+      const EXPECTED_LISTENERS_PER_CYCLE = 2 // 'initialized' + 'error'
+      const CYCLE_COUNT = 5
+
+      // Verify listener counts remain constant (primary regression test)
+      expect(listenerCounts).toEqual(Array(CYCLE_COUNT).fill(EXPECTED_LISTENERS_PER_CYCLE))
+
+      // Verify no listener accumulation - the most important behavior
+      const minCount = Math.min(...listenerCounts)
+      const maxCount = Math.max(...listenerCounts)
+      expect(maxCount).toBe(minCount) // All counts should be equal (no growth)
+      expect(maxCount).toBe(EXPECTED_LISTENERS_PER_CYCLE) // Should match expected count
     })
   })
 
@@ -140,6 +198,7 @@ describe('TcpTransport', () => {
               errorListener = listener
             }
           }),
+          removeAllListeners: jest.fn(),
           socks: new Map(),
         }
 
