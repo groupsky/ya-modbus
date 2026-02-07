@@ -6,10 +6,16 @@ import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals
 
 import { RtuTransport } from './rtu.js'
 
+// Store captured service vector for testing
+let capturedServiceVector: any = null
+
 // Mock modbus-serial
 jest.mock('modbus-serial', () => {
   return {
-    ServerSerial: jest.fn().mockImplementation((_vector: any, options: any) => {
+    ServerSerial: jest.fn().mockImplementation((vector: any, options: any) => {
+      // Capture service vector for testing
+      capturedServiceVector = vector
+
       // Call openCallback immediately to simulate successful connection
       if (options.openCallback) {
         setImmediate(() => options.openCallback(null))
@@ -26,6 +32,10 @@ jest.mock('modbus-serial', () => {
 
 describe('RtuTransport', () => {
   let transport: RtuTransport
+
+  beforeEach(() => {
+    capturedServiceVector = null
+  })
 
   afterEach(async () => {
     await transport?.stop()
@@ -92,6 +102,278 @@ describe('RtuTransport', () => {
       await expect(stoppedTransport.send(1, Buffer.from([0x01, 0x03]))).rejects.toThrow(
         'Transport not started'
       )
+    })
+
+    it('should resolve when sending after start', async () => {
+      await expect(transport.send(1, Buffer.from([0x01, 0x03]))).resolves.toBeUndefined()
+    })
+  })
+
+  describe('error handling', () => {
+    it('should reject on start error', async () => {
+      const { ServerSerial } = await import('modbus-serial')
+      const startError = new Error('Failed to open port')
+
+      ;(ServerSerial as any).mockImplementationOnce((vector: any, options: any) => {
+        if (options.openCallback) {
+          setImmediate(() => options.openCallback(startError))
+        }
+        return {
+          close: jest.fn(),
+          on: jest.fn(),
+          socks: new Map(),
+        }
+      })
+
+      transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+      await expect(transport.start()).rejects.toThrow('Failed to open port')
+    })
+
+    it('should reject on stop error', async () => {
+      const { ServerSerial } = await import('modbus-serial')
+      const closeError = new Error('Failed to close port')
+      let closeCallback: ((err: Error | null) => void) | undefined
+      ;(ServerSerial as any).mockImplementationOnce((vector: any, options: any) => {
+        if (options.openCallback) {
+          setImmediate(() => options.openCallback(null))
+        }
+        return {
+          close: jest.fn((cb: (err: Error | null) => void) => {
+            closeCallback = cb
+          }),
+          on: jest.fn(),
+          socks: new Map(),
+        }
+      })
+
+      const testTransport = new RtuTransport({ port: '/dev/ttyUSB0' })
+      await testTransport.start()
+
+      const stopPromise = testTransport.stop()
+      setImmediate(() => closeCallback?.(closeError))
+
+      await expect(stopPromise).rejects.toThrow('Failed to close port')
+    })
+
+    it('should handle error event', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+      let errorHandler: ((err: Error) => void) | undefined
+
+      const { ServerSerial } = await import('modbus-serial')
+      ;(ServerSerial as any).mockImplementationOnce((vector: any, options: any) => {
+        if (options.openCallback) {
+          setImmediate(() => options.openCallback(null))
+        }
+        return {
+          close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
+          on: jest.fn((event: string, handler: any) => {
+            if (event === 'error') {
+              errorHandler = handler
+            }
+          }),
+          socks: new Map(),
+        }
+      })
+
+      transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+      await transport.start()
+
+      // Trigger error event
+      const testError = new Error('Serial port error')
+      errorHandler?.(testError)
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('RTU transport error:', testError)
+      consoleErrorSpy.mockRestore()
+    })
+  })
+
+  describe('service vector', () => {
+    beforeEach(async () => {
+      transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+      await transport.start()
+    })
+
+    it('should handle getHoldingRegister request', async () => {
+      const mockHandler = jest.fn().mockResolvedValue(
+        Buffer.from([0x01, 0x03, 0x02, 0x00, 0xe6]) // Response: 230
+      )
+      transport.onRequest(mockHandler)
+
+      const result = await capturedServiceVector.getHoldingRegister(0, 1)
+
+      expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
+      expect(result).toEqual([230])
+    })
+
+    it('should handle getInputRegister request', async () => {
+      const mockHandler = jest.fn().mockResolvedValue(
+        Buffer.from([0x01, 0x04, 0x02, 0x00, 0x34]) // Response: 52
+      )
+      transport.onRequest(mockHandler)
+
+      const result = await capturedServiceVector.getInputRegister(0, 1)
+
+      expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
+      expect(result).toEqual([52])
+    })
+
+    it('should handle getMultipleHoldingRegisters request', async () => {
+      const mockHandler = jest.fn().mockResolvedValue(
+        Buffer.from([0x01, 0x03, 0x04, 0x00, 0xe6, 0x00, 0x34]) // Response: [230, 52]
+      )
+      transport.onRequest(mockHandler)
+
+      const result = await capturedServiceVector.getMultipleHoldingRegisters(0, 2, 1)
+
+      expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
+      expect(result).toEqual([230, 52])
+    })
+
+    it('should handle getMultipleInputRegisters request', async () => {
+      const mockHandler = jest.fn().mockResolvedValue(
+        Buffer.from([0x01, 0x04, 0x04, 0x00, 0xe6, 0x00, 0x34]) // Response: [230, 52]
+      )
+      transport.onRequest(mockHandler)
+
+      const result = await capturedServiceVector.getMultipleInputRegisters(0, 2, 1)
+
+      expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
+      expect(result).toEqual([230, 52])
+    })
+
+    it('should handle setRegister request', async () => {
+      const mockHandler = jest.fn().mockResolvedValue(
+        Buffer.from([0x01, 0x06, 0x00, 0x00, 0x00, 0xe6]) // Response
+      )
+      transport.onRequest(mockHandler)
+
+      await capturedServiceVector.setRegister(0, 230, 1)
+
+      expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
+      const request = mockHandler.mock.calls[0][1]
+      expect(request[1]).toBe(0x06) // Function code
+      expect(request.readUInt16BE(4)).toBe(230) // Value
+    })
+
+    it('should handle setRegisterArray request', async () => {
+      const mockHandler = jest.fn().mockResolvedValue(
+        Buffer.from([0x01, 0x10, 0x00, 0x00, 0x00, 0x02]) // Response
+      )
+      transport.onRequest(mockHandler)
+
+      await capturedServiceVector.setRegisterArray(0, [230, 52], 1)
+
+      expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
+      const request = mockHandler.mock.calls[0][1]
+      expect(request[1]).toBe(0x10) // Function code
+      expect(request.readUInt16BE(4)).toBe(2) // Register count
+    })
+
+    it('should handle getCoil request', async () => {
+      const mockHandler = jest.fn().mockResolvedValue(
+        Buffer.from([0x01, 0x01, 0x01, 0x01]) // Response: true
+      )
+      transport.onRequest(mockHandler)
+
+      const result = await capturedServiceVector.getCoil(0, 1)
+
+      expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
+      expect(result).toBe(true)
+    })
+
+    it('should handle getCoil request returning false', async () => {
+      const mockHandler = jest.fn().mockResolvedValue(
+        Buffer.from([0x01, 0x01, 0x01, 0x00]) // Response: false
+      )
+      transport.onRequest(mockHandler)
+
+      const result = await capturedServiceVector.getCoil(0, 1)
+
+      expect(result).toBe(false)
+    })
+
+    it('should handle getDiscreteInput request', async () => {
+      const mockHandler = jest.fn().mockResolvedValue(
+        Buffer.from([0x01, 0x02, 0x01, 0x01]) // Response: true
+      )
+      transport.onRequest(mockHandler)
+
+      const result = await capturedServiceVector.getDiscreteInput(0, 1)
+
+      expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
+      expect(result).toBe(true)
+    })
+
+    it('should handle setCoil request', async () => {
+      const mockHandler = jest.fn().mockResolvedValue(
+        Buffer.from([0x01, 0x05, 0x00, 0x00, 0xff, 0x00]) // Response
+      )
+      transport.onRequest(mockHandler)
+
+      await capturedServiceVector.setCoil(0, true, 1)
+
+      expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
+      const request = mockHandler.mock.calls[0][1]
+      expect(request[1]).toBe(0x05) // Function code
+      expect(request.readUInt16BE(4)).toBe(0xff00) // True value
+    })
+
+    it('should handle setCoil request with false', async () => {
+      const mockHandler = jest.fn().mockResolvedValue(
+        Buffer.from([0x01, 0x05, 0x00, 0x00, 0x00, 0x00]) // Response
+      )
+      transport.onRequest(mockHandler)
+
+      await capturedServiceVector.setCoil(0, false, 1)
+
+      const request = mockHandler.mock.calls[0][1]
+      expect(request.readUInt16BE(4)).toBe(0x0000) // False value
+    })
+
+    it('should throw error when request handler not set', async () => {
+      await expect(capturedServiceVector.getHoldingRegister(0, 1)).rejects.toThrow(
+        'No request handler set'
+      )
+    })
+
+    it('should throw error on invalid register read response', async () => {
+      const mockHandler = jest.fn().mockResolvedValue(
+        Buffer.from([0x01, 0x03, 0x02]) // Invalid: missing data
+      )
+      transport.onRequest(mockHandler)
+
+      await expect(capturedServiceVector.getHoldingRegister(0, 1)).rejects.toThrow(
+        'Invalid response'
+      )
+    })
+
+    it('should throw error on invalid coil read response', async () => {
+      const mockHandler = jest.fn().mockResolvedValue(
+        Buffer.from([0x01, 0x01, 0x01]) // Invalid: missing coil byte
+      )
+      transport.onRequest(mockHandler)
+
+      await expect(capturedServiceVector.getCoil(0, 1)).rejects.toThrow('Invalid response')
+    })
+
+    it('should throw error on undefined byte count in register response', async () => {
+      const mockHandler = jest.fn().mockResolvedValue(
+        Buffer.from([0x01, 0x03]) // Invalid: undefined byte count
+      )
+      transport.onRequest(mockHandler)
+
+      await expect(capturedServiceVector.getHoldingRegister(0, 1)).rejects.toThrow(
+        'Invalid response'
+      )
+    })
+
+    it('should throw error on undefined coil byte in coil response', async () => {
+      const mockHandler = jest.fn().mockResolvedValue(
+        Buffer.from([0x01, 0x01, 0x01]) // Invalid: undefined coil byte at index 3
+      )
+      transport.onRequest(mockHandler)
+
+      await expect(capturedServiceVector.getCoil(0, 1)).rejects.toThrow('Invalid response')
     })
   })
 
