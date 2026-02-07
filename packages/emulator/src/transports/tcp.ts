@@ -213,7 +213,7 @@ export class TcpTransport extends BaseTransport {
 
     const request = buildRegisterReadRequest({ unitID, functionCode, addr, length })
     const response = await this.requestHandler(unitID, request)
-    return parseRegisterReadResponse(response)
+    return parseRegisterReadResponse(response, { unitID, functionCode })
   }
 
   /**
@@ -248,7 +248,7 @@ export class TcpTransport extends BaseTransport {
 
     const request = buildCoilReadRequest({ unitID, functionCode, addr, length })
     const response = await this.requestHandler(unitID, request)
-    return parseCoilReadResponse(response)
+    return parseCoilReadResponse(response, { unitID, functionCode })
   }
 
   /**
