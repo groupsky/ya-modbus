@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.8](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.10.7...@ya-modbus/emulator@0.10.8) (2026-02-07)
+
+### Bug Fixes
+
+- **emulator:** convert service vector callbacks to callback-style for modbus-serial compatibility ([#303](https://github.com/groupsky/ya-modbus/issues/303)) ([#304](https://github.com/groupsky/ya-modbus/issues/304)) ([3e30034](https://github.com/groupsky/ya-modbus/commit/3e3003429ec7e2f50fb98f639f4138b03caf714e)), closes [yaacov/node-modbus-serial#548](https://github.com/yaacov/node-modbus-serial/issues/548) [#305](https://github.com/groupsky/ya-modbus/issues/305) [#306](https://github.com/groupsky/ya-modbus/issues/306) [#307](https://github.com/groupsky/ya-modbus/issues/307) [#308](https://github.com/groupsky/ya-modbus/issues/308) [yaacov/node-modbus-serial#548](https://github.com/yaacov/node-modbus-serial/issues/548)
+
 ## [0.10.7](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.10.6...@ya-modbus/emulator@0.10.7) (2026-02-07)
 
 **Note:** Version bump only for package @ya-modbus/emulator
