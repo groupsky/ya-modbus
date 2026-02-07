@@ -53,8 +53,8 @@ export class TcpTransport extends BaseTransport {
         cb: (err: Error | null, value: number) => void
       ) => {
         this.handleRegisterRead(unitID, 0x03, addr, 1)
-          .then((values) => cb(null, values[0]))
-          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err))))
+          .then((values) => cb(null, values[0] ?? 0))
+          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err)), 0))
       },
       getInputRegister: (
         addr: number,
@@ -62,8 +62,8 @@ export class TcpTransport extends BaseTransport {
         cb: (err: Error | null, value: number) => void
       ) => {
         this.handleRegisterRead(unitID, 0x04, addr, 1)
-          .then((values) => cb(null, values[0]))
-          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err))))
+          .then((values) => cb(null, values[0] ?? 0))
+          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err)), 0))
       },
       getMultipleHoldingRegisters: (
         addr: number,
@@ -73,7 +73,7 @@ export class TcpTransport extends BaseTransport {
       ) => {
         this.handleRegisterRead(unitID, 0x03, addr, length)
           .then((values) => cb(null, values))
-          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err))))
+          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err)), []))
       },
       getMultipleInputRegisters: (
         addr: number,
@@ -83,7 +83,7 @@ export class TcpTransport extends BaseTransport {
       ) => {
         this.handleRegisterRead(unitID, 0x04, addr, length)
           .then((values) => cb(null, values))
-          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err))))
+          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err)), []))
       },
       setRegister: async (addr: number, value: number, unitID: number) => {
         return this.handleRegisterWrite(unitID, 0x06, addr, [value])
@@ -94,7 +94,7 @@ export class TcpTransport extends BaseTransport {
       getCoil: (addr: number, unitID: number, cb: (err: Error | null, value: boolean) => void) => {
         this.handleCoilRead(unitID, 0x01, addr, 1)
           .then((value) => cb(null, value))
-          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err))))
+          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err)), false))
       },
       getDiscreteInput: (
         addr: number,
@@ -103,7 +103,7 @@ export class TcpTransport extends BaseTransport {
       ) => {
         this.handleCoilRead(unitID, 0x02, addr, 1)
           .then((value) => cb(null, value))
-          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err))))
+          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err)), false))
       },
       setCoil: async (addr: number, value: boolean, unitID: number) => {
         return this.handleCoilWrite(unitID, 0x05, addr, value)

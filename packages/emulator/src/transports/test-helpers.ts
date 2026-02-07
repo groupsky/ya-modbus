@@ -29,7 +29,6 @@ export const callServiceVector = <T>(
   return new Promise((resolve, reject) => {
     // Try callback style first
     try {
-       
       method(...args, (callbackErr: Error | null, result?: T) => {
         if (callbackErr) {
           reject(callbackErr)
@@ -39,10 +38,9 @@ export const callServiceVector = <T>(
       })
     } catch {
       // If that fails, maybe it's Promise-style
-       
+
       const result = method(...args)
       if (result instanceof Promise) {
-         
         result.then(resolve).catch(reject)
       } else {
         resolve(result as T)
