@@ -85,7 +85,7 @@ export class RtuTransport extends BaseTransport {
     return new Promise<void>((resolve, reject) => {
       this.server = new ServerSerial(serviceVector, {
         ...options,
-        openCallback: (err) => {
+        openCallback: (err: Error | null) => {
           if (err) {
             reject(err)
           } else {
@@ -119,7 +119,7 @@ export class RtuTransport extends BaseTransport {
           reject(err)
         } else {
           this.started = false
-          this.server = undefined
+          delete this.server
           resolve()
         }
       })
