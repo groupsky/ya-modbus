@@ -50,7 +50,7 @@ describe('Modbus Protocol Helpers', () => {
       // Response: unit=1, func=3, byteCount=2, value=230
       const response = Buffer.from([0x01, 0x03, 0x02, 0x00, 0xe6])
 
-      const values = parseRegisterReadResponse(response)
+      const values = parseRegisterReadResponse(response, { unitID: 1, functionCode: 0x03 })
 
       expect(values).toEqual([230])
     })
@@ -59,7 +59,7 @@ describe('Modbus Protocol Helpers', () => {
       // Response: unit=1, func=3, byteCount=4, values=[230, 52]
       const response = Buffer.from([0x01, 0x03, 0x04, 0x00, 0xe6, 0x00, 0x34])
 
-      const values = parseRegisterReadResponse(response)
+      const values = parseRegisterReadResponse(response, { unitID: 1, functionCode: 0x03 })
 
       expect(values).toEqual([230, 52])
     })
@@ -67,13 +67,71 @@ describe('Modbus Protocol Helpers', () => {
     it('should throw error on invalid response length', () => {
       const response = Buffer.from([0x01, 0x03, 0x02]) // Missing data
 
-      expect(() => parseRegisterReadResponse(response)).toThrow('Invalid response')
+      expect(() => parseRegisterReadResponse(response, { unitID: 1, functionCode: 0x03 })).toThrow(
+        'Invalid response'
+      )
     })
 
     it('should throw error on undefined byte count', () => {
       const response = Buffer.from([0x01, 0x03]) // Missing byte count
 
-      expect(() => parseRegisterReadResponse(response)).toThrow('Invalid response')
+      expect(() => parseRegisterReadResponse(response, { unitID: 1, functionCode: 0x03 })).toThrow(
+        'Invalid response'
+      )
+    })
+
+    it('should throw error when unitID does not match', () => {
+      const response = Buffer.from([0x02, 0x03, 0x02, 0x00, 0xe6])
+
+      expect(() => parseRegisterReadResponse(response, { unitID: 1, functionCode: 0x03 })).toThrow(
+        'Response unitID mismatch: expected 1, got 2'
+      )
+    })
+
+    it('should throw error when functionCode does not match (non-exception)', () => {
+      const response = Buffer.from([0x01, 0x04, 0x02, 0x00, 0xe6])
+
+      expect(() => parseRegisterReadResponse(response, { unitID: 1, functionCode: 0x03 })).toThrow(
+        'Response function code mismatch: expected 3, got 4'
+      )
+    })
+
+    it('should throw error on Modbus exception response', () => {
+      // Exception response: unit=1, func=0x83 (0x03 + 0x80), exceptionCode=2
+      const response = Buffer.from([0x01, 0x83, 0x02])
+
+      expect(() => parseRegisterReadResponse(response, { unitID: 1, functionCode: 0x03 })).toThrow(
+        'Modbus exception response: function code 3, exception code 2'
+      )
+    })
+
+    it('should throw error when byte count is odd', () => {
+      const response = Buffer.from([0x01, 0x03, 0x03, 0x00, 0xe6, 0x00])
+
+      expect(() => parseRegisterReadResponse(response, { unitID: 1, functionCode: 0x03 })).toThrow(
+        'Invalid byte count: 3 (must be even for 16-bit registers)'
+      )
+    })
+
+    it('should throw error when byte count exceeds maximum', () => {
+      const byteCount = 252 // Exceeds max of 250
+      const response = Buffer.alloc(3 + byteCount)
+      response[0] = 0x01
+      response[1] = 0x03
+      response[2] = byteCount
+
+      expect(() => parseRegisterReadResponse(response, { unitID: 1, functionCode: 0x03 })).toThrow(
+        'Invalid byte count: 252 (maximum is 250)'
+      )
+    })
+
+    it('should throw error when byte count does not match buffer length', () => {
+      // Declares 6 bytes but only provides 4
+      const response = Buffer.from([0x01, 0x03, 0x06, 0x00, 0xe6, 0x00, 0x34])
+
+      expect(() => parseRegisterReadResponse(response, { unitID: 1, functionCode: 0x03 })).toThrow(
+        'Invalid response: buffer length 7 does not match expected length 9 (3 + byteCount 6)'
+      )
     })
   })
 
@@ -159,7 +217,7 @@ describe('Modbus Protocol Helpers', () => {
       // Response: unit=1, func=1, byteCount=1, coilByte=0x01 (bit 0 = 1)
       const response = Buffer.from([0x01, 0x01, 0x01, 0x01])
 
-      const value = parseCoilReadResponse(response)
+      const value = parseCoilReadResponse(response, { unitID: 1, functionCode: 0x01 })
 
       expect(value).toBe(true)
     })
@@ -168,7 +226,7 @@ describe('Modbus Protocol Helpers', () => {
       // Response: unit=1, func=1, byteCount=1, coilByte=0x00 (bit 0 = 0)
       const response = Buffer.from([0x01, 0x01, 0x01, 0x00])
 
-      const value = parseCoilReadResponse(response)
+      const value = parseCoilReadResponse(response, { unitID: 1, functionCode: 0x01 })
 
       expect(value).toBe(false)
     })
@@ -177,7 +235,7 @@ describe('Modbus Protocol Helpers', () => {
       // Response: coilByte=0xFF (bit 0 = 1)
       const response = Buffer.from([0x01, 0x01, 0x01, 0xff])
 
-      const value = parseCoilReadResponse(response)
+      const value = parseCoilReadResponse(response, { unitID: 1, functionCode: 0x01 })
 
       expect(value).toBe(true)
     })
@@ -186,7 +244,7 @@ describe('Modbus Protocol Helpers', () => {
       // Response: coilByte=0xFE (bit 0 = 0, other bits = 1)
       const response = Buffer.from([0x01, 0x01, 0x01, 0xfe])
 
-      const value = parseCoilReadResponse(response)
+      const value = parseCoilReadResponse(response, { unitID: 1, functionCode: 0x01 })
 
       expect(value).toBe(false)
     })
@@ -194,19 +252,50 @@ describe('Modbus Protocol Helpers', () => {
     it('should throw error on invalid response length', () => {
       const response = Buffer.from([0x01, 0x01, 0x01]) // Missing coil byte
 
-      expect(() => parseCoilReadResponse(response)).toThrow('Invalid response')
+      expect(() => parseCoilReadResponse(response, { unitID: 1, functionCode: 0x01 })).toThrow(
+        'Invalid response'
+      )
     })
 
     it('should throw error on undefined byte count', () => {
       const response = Buffer.from([0x01, 0x01]) // Missing byte count
 
-      expect(() => parseCoilReadResponse(response)).toThrow('Invalid response')
+      expect(() => parseCoilReadResponse(response, { unitID: 1, functionCode: 0x01 })).toThrow(
+        'Invalid response'
+      )
     })
 
     it('should throw error on undefined coil byte', () => {
       const response = Buffer.from([0x01, 0x01, 0x01]) // byte count present but no data
 
-      expect(() => parseCoilReadResponse(response)).toThrow('Invalid response')
+      expect(() => parseCoilReadResponse(response, { unitID: 1, functionCode: 0x01 })).toThrow(
+        'Invalid response'
+      )
+    })
+
+    it('should throw error when unitID does not match', () => {
+      const response = Buffer.from([0x02, 0x01, 0x01, 0x01])
+
+      expect(() => parseCoilReadResponse(response, { unitID: 1, functionCode: 0x01 })).toThrow(
+        'Response unitID mismatch: expected 1, got 2'
+      )
+    })
+
+    it('should throw error when functionCode does not match (non-exception)', () => {
+      const response = Buffer.from([0x01, 0x02, 0x01, 0x01])
+
+      expect(() => parseCoilReadResponse(response, { unitID: 1, functionCode: 0x01 })).toThrow(
+        'Response function code mismatch: expected 1, got 2'
+      )
+    })
+
+    it('should throw error on Modbus exception response', () => {
+      // Exception response: unit=1, func=0x81 (0x01 + 0x80), exceptionCode=3
+      const response = Buffer.from([0x01, 0x81, 0x03])
+
+      expect(() => parseCoilReadResponse(response, { unitID: 1, functionCode: 0x01 })).toThrow(
+        'Modbus exception response: function code 1, exception code 3'
+      )
     })
   })
 
