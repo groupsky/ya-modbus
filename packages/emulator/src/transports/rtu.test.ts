@@ -5,9 +5,11 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals'
 
 import { RtuTransport } from './rtu.js'
+import { callServiceVector } from './test-helpers.js'
 
 // Store captured service vector for testing
 let capturedServiceVector: any = null
+
 let mockServerInstance: any
 let eventListeners: Map<string, Set<(...args: unknown[]) => void>>
 // Track removeAllListeners calls across all mock instances
@@ -323,10 +325,14 @@ describe('RtuTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      const result = await capturedServiceVector.getHoldingRegister(0, 1)
+      const result = await callServiceVector<number>(
+        capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+        0,
+        1
+      )
 
       expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
-      expect(result).toEqual([230])
+      expect(result).toEqual(230)
     })
 
     it('should handle getInputRegister request', async () => {
@@ -335,10 +341,14 @@ describe('RtuTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      const result = await capturedServiceVector.getInputRegister(0, 1)
+      const result = await callServiceVector<number>(
+        capturedServiceVector.getInputRegister.bind(capturedServiceVector),
+        0,
+        1
+      )
 
       expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
-      expect(result).toEqual([52])
+      expect(result).toEqual(52)
     })
 
     it('should handle getMultipleHoldingRegisters request', async () => {
@@ -347,7 +357,12 @@ describe('RtuTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      const result = await capturedServiceVector.getMultipleHoldingRegisters(0, 2, 1)
+      const result = await callServiceVector<number[]>(
+        capturedServiceVector.getMultipleHoldingRegisters.bind(capturedServiceVector),
+        0,
+        2,
+        1
+      )
 
       expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
       expect(result).toEqual([230, 52])
@@ -359,7 +374,12 @@ describe('RtuTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      const result = await capturedServiceVector.getMultipleInputRegisters(0, 2, 1)
+      const result = await callServiceVector<number[]>(
+        capturedServiceVector.getMultipleInputRegisters.bind(capturedServiceVector),
+        0,
+        2,
+        1
+      )
 
       expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
       expect(result).toEqual([230, 52])
@@ -399,7 +419,11 @@ describe('RtuTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      const result = await capturedServiceVector.getCoil(0, 1)
+      const result = await callServiceVector<boolean>(
+        capturedServiceVector.getCoil.bind(capturedServiceVector),
+        0,
+        1
+      )
 
       expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
       expect(result).toBe(true)
@@ -411,7 +435,11 @@ describe('RtuTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      const result = await capturedServiceVector.getCoil(0, 1)
+      const result = await callServiceVector<boolean>(
+        capturedServiceVector.getCoil.bind(capturedServiceVector),
+        0,
+        1
+      )
 
       expect(result).toBe(false)
     })
@@ -422,7 +450,11 @@ describe('RtuTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      const result = await capturedServiceVector.getDiscreteInput(0, 1)
+      const result = await callServiceVector<boolean>(
+        capturedServiceVector.getDiscreteInput.bind(capturedServiceVector),
+        0,
+        1
+      )
 
       expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
       expect(result).toBe(true)
@@ -455,9 +487,13 @@ describe('RtuTransport', () => {
     })
 
     it('should throw error when request handler not set', async () => {
-      await expect(capturedServiceVector.getHoldingRegister(0, 1)).rejects.toThrow(
-        'No request handler set'
-      )
+      await expect(
+        callServiceVector(
+          capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+          0,
+          1
+        )
+      ).rejects.toThrow('No request handler set')
     })
 
     it('should throw error on invalid register read response', async () => {
@@ -466,9 +502,13 @@ describe('RtuTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      await expect(capturedServiceVector.getHoldingRegister(0, 1)).rejects.toThrow(
-        'Invalid response'
-      )
+      await expect(
+        callServiceVector(
+          capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+          0,
+          1
+        )
+      ).rejects.toThrow('Invalid response')
     })
 
     it('should throw error on invalid coil read response', async () => {
@@ -477,7 +517,9 @@ describe('RtuTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      await expect(capturedServiceVector.getCoil(0, 1)).rejects.toThrow('Invalid response')
+      await expect(
+        callServiceVector(capturedServiceVector.getCoil.bind(capturedServiceVector), 0, 1)
+      ).rejects.toThrow('Invalid response')
     })
 
     it('should throw error on undefined byte count in register response', async () => {
@@ -486,9 +528,13 @@ describe('RtuTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      await expect(capturedServiceVector.getHoldingRegister(0, 1)).rejects.toThrow(
-        'Invalid response'
-      )
+      await expect(
+        callServiceVector(
+          capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+          0,
+          1
+        )
+      ).rejects.toThrow('Invalid response')
     })
 
     it('should throw error on undefined coil byte in coil response', async () => {
@@ -497,7 +543,9 @@ describe('RtuTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      await expect(capturedServiceVector.getCoil(0, 1)).rejects.toThrow('Invalid response')
+      await expect(
+        callServiceVector(capturedServiceVector.getCoil.bind(capturedServiceVector), 0, 1)
+      ).rejects.toThrow('Invalid response')
     })
   })
 
@@ -654,6 +702,22 @@ describe('RtuTransport', () => {
           lock: false,
         })
       )
+    })
+  })
+
+  describe('edge cases', () => {
+    it('should handle stop() when server is not initialized', async () => {
+      transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+      // Don't call start(), just call stop()
+      await expect(transport.stop()).resolves.not.toThrow()
+    })
+
+    it('should handle stop() called multiple times', async () => {
+      transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+      await transport.start()
+      await transport.stop()
+      // Second stop should work fine
+      await expect(transport.stop()).resolves.not.toThrow()
     })
   })
 })

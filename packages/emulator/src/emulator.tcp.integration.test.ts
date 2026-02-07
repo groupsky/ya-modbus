@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals'
 
 import { ModbusEmulator } from './emulator.js'
+import { callServiceVector } from './transports/test-helpers.js'
 
 // Store captured service vector for testing
 let capturedServiceVector: any = null
@@ -72,13 +73,21 @@ describe('ModbusEmulator with TCP transport', () => {
     })
 
     it('should read single holding register via TCP service vector', async () => {
-      const result = await capturedServiceVector.getHoldingRegister(0, 1)
-      expect(result).toEqual([230])
+      const result = await callServiceVector<number>(
+        capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+        0,
+        1
+      )
+      expect(result).toEqual(230)
     })
 
     it('should read single input register via TCP service vector', async () => {
-      const result = await capturedServiceVector.getInputRegister(0, 1)
-      expect(result).toEqual([52])
+      const result = await callServiceVector<number>(
+        capturedServiceVector.getInputRegister.bind(capturedServiceVector),
+        0,
+        1
+      )
+      expect(result).toEqual(52)
     })
 
     it('should read multiple holding registers via TCP service vector', async () => {
@@ -89,7 +98,12 @@ describe('ModbusEmulator with TCP transport', () => {
         },
       })
 
-      const result = await capturedServiceVector.getMultipleHoldingRegisters(0, 2, 2)
+      const result = await callServiceVector<number[]>(
+        capturedServiceVector.getMultipleHoldingRegisters.bind(capturedServiceVector),
+        0,
+        2,
+        2
+      )
       expect(result).toEqual([100, 200])
     })
 
@@ -101,7 +115,12 @@ describe('ModbusEmulator with TCP transport', () => {
         },
       })
 
-      const result = await capturedServiceVector.getMultipleInputRegisters(0, 2, 2)
+      const result = await callServiceVector<number[]>(
+        capturedServiceVector.getMultipleInputRegisters.bind(capturedServiceVector),
+        0,
+        2,
+        2
+      )
       expect(result).toEqual([150, 250])
     })
   })
@@ -126,8 +145,12 @@ describe('ModbusEmulator with TCP transport', () => {
       await capturedServiceVector.setRegister(0, 300, 1)
 
       // Verify by reading back
-      const result = await capturedServiceVector.getHoldingRegister(0, 1)
-      expect(result).toEqual([300])
+      const result = await callServiceVector<number>(
+        capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+        0,
+        1
+      )
+      expect(result).toEqual(300)
     })
 
     it('should write multiple registers via TCP service vector', async () => {
@@ -141,7 +164,12 @@ describe('ModbusEmulator with TCP transport', () => {
       await capturedServiceVector.setRegisterArray(0, [400, 500], 2)
 
       // Verify by reading back
-      const result = await capturedServiceVector.getMultipleHoldingRegisters(0, 2, 2)
+      const result = await callServiceVector<number[]>(
+        capturedServiceVector.getMultipleHoldingRegisters.bind(capturedServiceVector),
+        0,
+        2,
+        2
+      )
       expect(result).toEqual([400, 500])
     })
   })
@@ -169,11 +197,19 @@ describe('ModbusEmulator with TCP transport', () => {
     })
 
     it('should route requests to correct device via unit ID', async () => {
-      const result1 = await capturedServiceVector.getHoldingRegister(0, 1)
-      expect(result1).toEqual([100])
+      const result1 = await callServiceVector<number>(
+        capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+        0,
+        1
+      )
+      expect(result1).toEqual(100)
 
-      const result2 = await capturedServiceVector.getHoldingRegister(0, 2)
-      expect(result2).toEqual([200])
+      const result2 = await callServiceVector<number>(
+        capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+        0,
+        2
+      )
+      expect(result2).toEqual(200)
     })
   })
 
@@ -190,7 +226,13 @@ describe('ModbusEmulator with TCP transport', () => {
       await emulator.start()
 
       // Requesting from non-existent device 99 should throw
-      await expect(capturedServiceVector.getHoldingRegister(0, 99)).rejects.toThrow()
+      await expect(
+        callServiceVector(
+          capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+          0,
+          99
+        )
+      ).rejects.toThrow()
     })
   })
 
