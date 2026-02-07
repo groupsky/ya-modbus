@@ -20,7 +20,6 @@ interface CliOptions {
   slaveId?: number
   verbose?: boolean
   quiet?: boolean
-  logRequests?: boolean
 }
 
 const program = new Command()
@@ -41,7 +40,6 @@ program
   .option('-s, --slave-id <id>', 'Slave ID (required if no config file)', parseInt)
   .option('-v, --verbose', 'Enable verbose logging')
   .option('-q, --quiet', 'Suppress all output except errors')
-  .option('--log-requests', 'Log all Modbus requests/responses')
 
 program.parse()
 
@@ -78,6 +76,7 @@ async function main(): Promise<void> {
           stopBits: fileConfig.transport.stopBits,
         }),
         ...(fileConfig.transport.lock !== undefined && { lock: fileConfig.transport.lock }),
+        ...(options.verbose === true && { verbose: true }),
       }
 
       devices = fileConfig.devices as Array<{ slaveId: number }>
@@ -102,6 +101,7 @@ async function main(): Promise<void> {
           parity: options.parity as 'none' | 'even' | 'odd',
         }),
         ...(typeof options.lock === 'boolean' && { lock: options.lock }),
+        ...(options.verbose === true && { verbose: true }),
       }
 
       devices = [{ slaveId: options.slaveId }]

@@ -21,6 +21,8 @@ export interface EmulatorConfig {
   dataBits?: 7 | 8
   /** Enable exclusive port locking (RTU) - default: true */
   lock?: boolean
+  /** Enable verbose logging of operations */
+  verbose?: boolean
 }
 
 export interface RegisterStorage {
