@@ -67,6 +67,17 @@ teardown() {
   # Stop emulator
   stop_test_emulator "$EMULATOR_PID"
 
+  # Wait for process to be fully reaped (not even a zombie)
+  local timeout=30
+  local elapsed=0
+  while [ $elapsed -lt $timeout ]; do
+    if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
+      break
+    fi
+    sleep 0.1
+    elapsed=$((elapsed + 1))
+  done
+
   # Verify process is not running
   run kill -0 "$EMULATOR_PID"
   assert_failure
