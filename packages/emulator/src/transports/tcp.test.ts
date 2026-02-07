@@ -180,6 +180,65 @@ describe('TcpTransport', () => {
   })
 
   describe('error handling', () => {
+    it('should handle stop() called during initialization', async () => {
+      // Test for issue #275: Race condition when stop() is called during initialization
+      // When start() Promise is pending and stop() is called, the start() Promise should
+      // reject and event listeners should be cleaned up properly
+      const { ServerTCP } = await import('modbus-serial')
+      let localMockInstance: any
+      ;(ServerTCP as any).mockImplementationOnce((vector: any, _options: any) => {
+        capturedServiceVector = vector
+        initializedListener = undefined
+        errorListener = undefined
+        eventListeners = new Map()
+
+        // Create mock that extends EventEmitter
+        localMockInstance = Object.create(EventEmitter.prototype)
+        Object.assign(localMockInstance, {
+          close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
+          socks: new Map(),
+        })
+
+        // Initialize EventEmitter state
+        EventEmitter.call(localMockInstance)
+
+        // Override on() to track listeners
+        const originalOn = localMockInstance.on.bind(localMockInstance)
+        localMockInstance.on = jest.fn((event: string, listener: any) => {
+          if (event === 'initialized') {
+            initializedListener = listener
+          } else if (event === 'error') {
+            errorListener = listener
+          }
+          if (!eventListeners.has(event)) {
+            eventListeners.set(event, new Set())
+          }
+          eventListeners.get(event)!.add(listener)
+          return originalOn(event, listener)
+        })
+
+        // Don't emit initialized automatically - let test control timing
+
+        return localMockInstance
+      })
+
+      const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
+      const startPromise = testTransport.start()
+
+      // Call stop() while initialization is still pending
+      await testTransport.stop()
+
+      // start() Promise should reject with appropriate error
+      await expect(startPromise).rejects.toThrow('Transport stopped during initialization')
+
+      // Verify event listeners are cleaned up
+      expect(localMockInstance.listenerCount('initialized')).toBe(0)
+      expect(localMockInstance.listenerCount('error')).toBe(0)
+
+      // Server should not be closed (it never fully initialized), just cleaned up
+      expect(localMockInstance.close).not.toHaveBeenCalled()
+    }, 15000)
+
     it('should not leak event listeners when start() fails due to port binding error', async () => {
       // Test for issue #274: Event listeners should be cleaned up on initialization failure
       // Before the fix, when start() fails with an error event, the 'initialized' and 'error'
