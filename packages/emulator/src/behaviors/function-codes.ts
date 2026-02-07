@@ -137,7 +137,9 @@ function handleWriteSingleRegister(
 
   device.setHoldingRegister(address, value)
 
-  verboseLogger?.logWrite(slaveId, 0x06, address, 1, [value])
+  if (verboseLogger) {
+    verboseLogger.logWrite(slaveId, 0x06, address, 1, [value])
+  }
 
   // Echo the request as response
   return request
@@ -168,14 +170,20 @@ function handleWriteMultipleRegisters(
   }
 
   // Write registers
-  const values: number[] = []
-  for (let i = 0; i < quantity; i++) {
-    const value = request.readUInt16BE(7 + i * 2)
-    device.setHoldingRegister(startAddress + i, value)
-    values.push(value)
+  if (verboseLogger) {
+    const values: number[] = []
+    for (let i = 0; i < quantity; i++) {
+      const value = request.readUInt16BE(7 + i * 2)
+      device.setHoldingRegister(startAddress + i, value)
+      values.push(value)
+    }
+    verboseLogger.logWrite(slaveId, 0x10, startAddress, quantity, values)
+  } else {
+    for (let i = 0; i < quantity; i++) {
+      const value = request.readUInt16BE(7 + i * 2)
+      device.setHoldingRegister(startAddress + i, value)
+    }
   }
-
-  verboseLogger?.logWrite(slaveId, 0x10, startAddress, quantity, values)
 
   // Response: slave_id + function_code + start_address + quantity
   const response = Buffer.alloc(6)
