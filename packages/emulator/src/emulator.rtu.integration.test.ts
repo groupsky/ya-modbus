@@ -19,21 +19,23 @@ let capturedServiceVector: any = null
 // Mock modbus-serial
 jest.mock('modbus-serial', () => {
   return {
-    ServerSerial: jest.fn().mockImplementation((vector: any, options: any) => {
-      // Capture service vector for testing
-      capturedServiceVector = vector
+    ServerSerial: jest
+      .fn()
+      .mockImplementation((vector: any, options: any, _serialportOptions?: any) => {
+        // Capture service vector for testing
+        capturedServiceVector = vector
 
-      // Call openCallback immediately to simulate successful connection
-      if (options.openCallback) {
-        setImmediate(() => options.openCallback(null))
-      }
+        // Call openCallback immediately to simulate successful connection
+        if (options.openCallback) {
+          setImmediate(() => options.openCallback(null))
+        }
 
-      return {
-        close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
-        on: jest.fn(),
-        socks: new Map(),
-      }
-    }),
+        return {
+          close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
+          on: jest.fn(),
+          socks: new Map(),
+        }
+      }),
   }
 })
 
