@@ -34,24 +34,13 @@ export interface CoilWriteRequest {
 }
 
 /**
- * Builds a Modbus register read request buffer
+ * Validates common Modbus response header fields
+ * Returns the validated byteCount for further processing
  */
-export function buildRegisterReadRequest(params: RegisterReadRequest): Buffer {
-  const request = Buffer.alloc(6)
-  request[0] = params.unitID
-  request[1] = params.functionCode
-  request.writeUInt16BE(params.addr, 2)
-  request.writeUInt16BE(params.length, 4)
-  return request
-}
-
-/**
- * Parses register values from a Modbus response buffer
- */
-export function parseRegisterReadResponse(
+function validateModbusResponseHeader(
   response: Buffer,
   request: { unitID: number; functionCode: number }
-): number[] {
+): number {
   // Validate minimum response length
   if (response.length < 3) {
     throw new Error(
@@ -87,6 +76,30 @@ export function parseRegisterReadResponse(
   if (byteCount === undefined) {
     throw new Error('Invalid response: byte count is undefined')
   }
+
+  return byteCount
+}
+
+/**
+ * Builds a Modbus register read request buffer
+ */
+export function buildRegisterReadRequest(params: RegisterReadRequest): Buffer {
+  const request = Buffer.alloc(6)
+  request[0] = params.unitID
+  request[1] = params.functionCode
+  request.writeUInt16BE(params.addr, 2)
+  request.writeUInt16BE(params.length, 4)
+  return request
+}
+
+/**
+ * Parses register values from a Modbus response buffer
+ */
+export function parseRegisterReadResponse(
+  response: Buffer,
+  request: { unitID: number; functionCode: number }
+): number[] {
+  const byteCount = validateModbusResponseHeader(response, request)
 
   // Validate byte count is even (registers are 16-bit)
   if (byteCount % 2 !== 0) {
@@ -161,41 +174,7 @@ export function parseCoilReadResponse(
   response: Buffer,
   request: { unitID: number; functionCode: number }
 ): boolean {
-  // Validate minimum response length
-  if (response.length < 3) {
-    throw new Error(
-      `Invalid response: buffer length ${response.length} is too short (minimum 3 bytes)`
-    )
-  }
-
-  const responseUnitID = response[0]
-  const responseFunctionCode = response[1]
-  const byteCount = response[2]
-
-  // Validate unitID matches
-  if (responseUnitID !== request.unitID) {
-    throw new Error(`Response unitID mismatch: expected ${request.unitID}, got ${responseUnitID}`)
-  }
-
-  // Check for Modbus exception response (function code with 0x80 bit set)
-  if (responseFunctionCode !== undefined && (responseFunctionCode & 0x80) !== 0) {
-    const exceptionCode = byteCount // In exception responses, byte 2 is the exception code
-    throw new Error(
-      `Modbus exception response: function code ${request.functionCode}, exception code ${exceptionCode}`
-    )
-  }
-
-  // Validate function code matches
-  if (responseFunctionCode !== request.functionCode) {
-    throw new Error(
-      `Response function code mismatch: expected ${request.functionCode}, got ${responseFunctionCode}`
-    )
-  }
-
-  // Validate byte count exists
-  if (byteCount === undefined) {
-    throw new Error('Invalid response: byte count is undefined')
-  }
+  const byteCount = validateModbusResponseHeader(response, request)
 
   // Validate byte count does not exceed Modbus maximum
   if (byteCount > 250) {
