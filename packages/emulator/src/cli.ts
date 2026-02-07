@@ -149,11 +149,6 @@ async function main(): Promise<void> {
     process.on('SIGTERM', () => {
       void shutdown()
     })
-
-    // Keep process alive - setInterval creates an active handle in the event loop
-    setInterval(() => {
-      // Empty interval to prevent process exit
-    }, 1000000)
   } catch (error) {
     console.error('[ERROR]', error instanceof Error ? error.message : String(error))
     process.exit(1)
