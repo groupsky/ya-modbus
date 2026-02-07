@@ -135,30 +135,37 @@ load helpers
   timeout 3 cat /tmp/ttyV1 > "$read_output" &
   local read_pid=$!
 
-  # Give reader time to start and open the port
-  sleep 0.5
+  # Loop: write data and check if received
+  local max_attempts=30
+  local attempt=0
+  local data_received=0
 
-  # Write to paired port
-  if ! echo "test" > /tmp/ttyV0; then
-    kill "$read_pid" 2>/dev/null || true
+  while [ $attempt -lt $max_attempts ]; do
+    # Write test data to paired port
+    echo "test" > /tmp/ttyV0 2>/dev/null || true
+
+    # Check if data was received
+    if [ -s "$read_output" ]; then
+      data_received=1
+      break
+    fi
+
+    # Wait a bit before next attempt
+    sleep 0.1
+    attempt=$((attempt + 1))
+  done
+
+  # Kill the reader
+  kill "$read_pid" 2>/dev/null || true
+  wait "$read_pid" 2>/dev/null || true
+
+  # Verify data was received
+  if [ $data_received -eq 0 ]; then
+    echo "Timeout: No data received after $max_attempts attempts" >&2
     rm -f "$read_output"
     return 1
   fi
 
-  # Wait briefly for data to arrive
-  sleep 0.1
-
-  # Check if data was received, then kill the reader
-  if [ -s "$read_output" ]; then
-    # Data received, kill the reader immediately
-    kill "$read_pid" 2>/dev/null || true
-    wait "$read_pid" 2>/dev/null || true
-  else
-    # No data yet, wait for timeout
-    wait "$read_pid" 2>/dev/null || true
-  fi
-
-  # Verify data was received
   run cat "$read_output"
   assert_output_contains "test"
 
