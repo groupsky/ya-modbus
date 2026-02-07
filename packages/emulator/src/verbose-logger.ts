@@ -17,11 +17,8 @@ export class VerboseLogger {
     }
 
     const values = this.parseReadResponse(response)
-    const formattedValues = values.map((v) => `0x${v.toString(16).toUpperCase().padStart(4, '0')}`)
-
-    console.log(
-      `[VERBOSE] READ slave=${slaveId} func=0x${functionCode.toString(16).toUpperCase().padStart(2, '0')} addr=0x${address.toString(16).toUpperCase().padStart(4, '0')} count=${count} values=[${formattedValues.join(', ')}]`
-    )
+    const formattedValues = this.formatValues(values)
+    console.log(this.formatMessage('READ', slaveId, functionCode, address, count, formattedValues))
   }
 
   logWrite(
@@ -35,11 +32,27 @@ export class VerboseLogger {
       return
     }
 
-    const formattedValues = values.map((v) => `0x${v.toString(16).toUpperCase().padStart(4, '0')}`)
+    const formattedValues = this.formatValues(values)
+    console.log(this.formatMessage('WRITE', slaveId, functionCode, address, count, formattedValues))
+  }
 
-    console.log(
-      `[VERBOSE] WRITE slave=${slaveId} func=0x${functionCode.toString(16).toUpperCase().padStart(2, '0')} addr=0x${address.toString(16).toUpperCase().padStart(4, '0')} count=${count} values=[${formattedValues.join(', ')}]`
-    )
+  private formatHex(value: number, width: number): string {
+    return `0x${value.toString(16).toUpperCase().padStart(width, '0')}`
+  }
+
+  private formatValues(values: number[]): string {
+    return values.map((v) => this.formatHex(v, 4)).join(', ')
+  }
+
+  private formatMessage(
+    operation: 'READ' | 'WRITE',
+    slaveId: number,
+    functionCode: number,
+    address: number,
+    count: number,
+    formattedValues: string
+  ): string {
+    return `[VERBOSE] ${operation} slave=${slaveId} func=${this.formatHex(functionCode, 2)} addr=${this.formatHex(address, 4)} count=${count} values=[${formattedValues}]`
   }
 
   private parseReadResponse(response: Buffer): number[] {
