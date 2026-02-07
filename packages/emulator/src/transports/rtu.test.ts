@@ -325,14 +325,14 @@ describe('RtuTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      const result = await callServiceVector<number[]>(
+      const result = await callServiceVector<number>(
         capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
         0,
         1
       )
 
       expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
-      expect(result).toEqual([230])
+      expect(result).toEqual(230)
     })
 
     it('should handle getInputRegister request', async () => {
@@ -341,14 +341,14 @@ describe('RtuTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      const result = await callServiceVector<number[]>(
+      const result = await callServiceVector<number>(
         capturedServiceVector.getInputRegister.bind(capturedServiceVector),
         0,
         1
       )
 
       expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
-      expect(result).toEqual([52])
+      expect(result).toEqual(52)
     })
 
     it('should handle getMultipleHoldingRegisters request', async () => {

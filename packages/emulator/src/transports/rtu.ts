@@ -52,26 +52,26 @@ export class RtuTransport extends BaseTransport {
       getHoldingRegister: (
         addr: number,
         unitID: number,
-        cb: (err: Error | null, values?: number[]) => void
+        cb: (err: Error | null, value: number) => void
       ) => {
         this.handleRegisterRead(unitID, 0x03, addr, 1)
-          .then((values) => cb(null, values))
+          .then((values) => cb(null, values[0]))
           .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err))))
       },
       getInputRegister: (
         addr: number,
         unitID: number,
-        cb: (err: Error | null, values?: number[]) => void
+        cb: (err: Error | null, value: number) => void
       ) => {
         this.handleRegisterRead(unitID, 0x04, addr, 1)
-          .then((values) => cb(null, values))
+          .then((values) => cb(null, values[0]))
           .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err))))
       },
       getMultipleHoldingRegisters: (
         addr: number,
         length: number,
         unitID: number,
-        cb: (err: Error | null, values?: number[]) => void
+        cb: (err: Error | null, values: number[]) => void
       ) => {
         this.handleRegisterRead(unitID, 0x03, addr, length)
           .then((values) => cb(null, values))
@@ -81,7 +81,7 @@ export class RtuTransport extends BaseTransport {
         addr: number,
         length: number,
         unitID: number,
-        cb: (err: Error | null, values?: number[]) => void
+        cb: (err: Error | null, values: number[]) => void
       ) => {
         this.handleRegisterRead(unitID, 0x04, addr, length)
           .then((values) => cb(null, values))
@@ -93,7 +93,7 @@ export class RtuTransport extends BaseTransport {
       setRegisterArray: async (addr: number, values: number[], unitID: number) => {
         return this.handleRegisterWrite(unitID, 0x10, addr, values)
       },
-      getCoil: (addr: number, unitID: number, cb: (err: Error | null, value?: boolean) => void) => {
+      getCoil: (addr: number, unitID: number, cb: (err: Error | null, value: boolean) => void) => {
         this.handleCoilRead(unitID, 0x01, addr, 1)
           .then((value) => cb(null, value))
           .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err))))
@@ -101,7 +101,7 @@ export class RtuTransport extends BaseTransport {
       getDiscreteInput: (
         addr: number,
         unitID: number,
-        cb: (err: Error | null, value?: boolean) => void
+        cb: (err: Error | null, value: boolean) => void
       ) => {
         this.handleCoilRead(unitID, 0x02, addr, 1)
           .then((value) => cb(null, value))

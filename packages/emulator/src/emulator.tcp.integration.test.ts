@@ -73,21 +73,21 @@ describe('ModbusEmulator with TCP transport', () => {
     })
 
     it('should read single holding register via TCP service vector', async () => {
-      const result = await callServiceVector<number[]>(
+      const result = await callServiceVector<number>(
         capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
         0,
         1
       )
-      expect(result).toEqual([230])
+      expect(result).toEqual(230)
     })
 
     it('should read single input register via TCP service vector', async () => {
-      const result = await callServiceVector<number[]>(
+      const result = await callServiceVector<number>(
         capturedServiceVector.getInputRegister.bind(capturedServiceVector),
         0,
         1
       )
-      expect(result).toEqual([52])
+      expect(result).toEqual(52)
     })
 
     it('should read multiple holding registers via TCP service vector', async () => {
@@ -145,12 +145,12 @@ describe('ModbusEmulator with TCP transport', () => {
       await capturedServiceVector.setRegister(0, 300, 1)
 
       // Verify by reading back
-      const result = await callServiceVector<number[]>(
+      const result = await callServiceVector<number>(
         capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
         0,
         1
       )
-      expect(result).toEqual([300])
+      expect(result).toEqual(300)
     })
 
     it('should write multiple registers via TCP service vector', async () => {
@@ -197,19 +197,19 @@ describe('ModbusEmulator with TCP transport', () => {
     })
 
     it('should route requests to correct device via unit ID', async () => {
-      const result1 = await callServiceVector<number[]>(
+      const result1 = await callServiceVector<number>(
         capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
         0,
         1
       )
-      expect(result1).toEqual([100])
+      expect(result1).toEqual(100)
 
-      const result2 = await callServiceVector<number[]>(
+      const result2 = await callServiceVector<number>(
         capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
         0,
         2
       )
-      expect(result2).toEqual([200])
+      expect(result2).toEqual(200)
     })
   })
 

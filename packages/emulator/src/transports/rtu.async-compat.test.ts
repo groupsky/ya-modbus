@@ -136,8 +136,8 @@ describe('RtuTransport async callback compatibility', () => {
     it('should work correctly when simulating real modbus-serial behavior (fixes #303)', () => {
       // Now using callback-style, this should work with real modbus-serial behavior
       return expect(
-        simulateModbusSerialCall<number[]>(capturedServiceVector.getHoldingRegister, 0, 1)
-      ).resolves.toEqual([230])
+        simulateModbusSerialCall<number>(capturedServiceVector.getHoldingRegister, 0, 1)
+      ).resolves.toEqual(230)
     })
 
     it('should work for getMultipleHoldingRegisters', () => {
@@ -154,8 +154,8 @@ describe('RtuTransport async callback compatibility', () => {
 
     it('should work for getInputRegister', () => {
       return expect(
-        simulateModbusSerialCall<number[]>(capturedServiceVector.getInputRegister, 0, 1)
-      ).resolves.toEqual([52])
+        simulateModbusSerialCall<number>(capturedServiceVector.getInputRegister, 0, 1)
+      ).resolves.toEqual(52)
     })
 
     it('should work for getMultipleInputRegisters', () => {
