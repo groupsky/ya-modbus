@@ -135,8 +135,9 @@ load helpers
   timeout 3 cat /tmp/ttyV1 > "$read_output" &
   local read_pid=$!
 
-  # Give reader time to start
-  sleep 0.2
+  # Give reader time to start and open the port
+  # Increased from 0.2s to 0.5s for reliability on slow systems
+  sleep 0.5
 
   # Write to paired port
   if ! echo "test" > /tmp/ttyV0; then

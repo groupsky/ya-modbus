@@ -37,6 +37,16 @@ End-to-end integration tests for ya-modbus using real services and BATS testing 
   sudo apt-get install mosquitto-clients
   ```
 
+- **netcat** - Port connectivity testing
+
+  ```bash
+  # macOS
+  brew install netcat
+
+  # Ubuntu/Debian
+  sudo apt-get install netcat-openbsd
+  ```
+
 ### Build Packages
 
 Packages must be built before running tests:

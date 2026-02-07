@@ -51,20 +51,17 @@ start_mqtt_subscriber() {
   mosquitto_sub -h localhost -p 1883 -t "$topic" -i "$client_id" -v > "$output_file" 2>&1 &
   local pid=$!
 
-  # Wait for subscriber to connect by following broker logs
-  # Use timeout command to prevent hanging, and grep for connection message
-  if ! timeout 30s sh -c "docker compose -f '$compose_file' logs --follow mqtt 2>&1 | grep -q 'New client connected.*as $client_id'" 2>/dev/null; then
-    # Fallback to polling if docker compose follow fails
-    local timeout=300
-    local elapsed=0
-    while [ $elapsed -lt $timeout ]; do
-      if docker compose -f "$compose_file" logs mqtt 2>/dev/null | grep -q "New client connected.*as $client_id"; then
-        break
-      fi
-      sleep 0.1
-      elapsed=$((elapsed + 1))
-    done
-  fi
+  # Wait for subscriber to connect by polling broker logs
+  # Polling is more reliable than logs --follow which can cause broken pipe with grep -q
+  local timeout=300
+  local elapsed=0
+  while [ $elapsed -lt $timeout ]; do
+    if docker compose -f "$compose_file" logs mqtt 2>/dev/null | grep -q "New client connected.*as $client_id"; then
+      break
+    fi
+    sleep 0.1
+    elapsed=$((elapsed + 1))
+  done
 
   # Check if still running
   if ! kill -0 "$pid" 2>/dev/null; then

@@ -37,8 +37,21 @@ kill_from_pidfile() {
 
   local pid=$(cat "$pid_file")
 
+  # Validate PID exists and is not reused
   if kill -0 "$pid" 2>/dev/null; then
-    log_info "Killing process $pid"
+    # Basic sanity check: if process exists, verify it's one of our expected processes
+    if [ -f "/proc/$pid/cmdline" ]; then
+      local cmdline=$(cat "/proc/$pid/cmdline" 2>/dev/null | tr '\0' ' ')
+      # Only kill if cmdline contains expected keywords (socat, node, emulator, bridge)
+      if echo "$cmdline" | grep -q -E "(socat|node|emulator|bridge)" 2>/dev/null; then
+        log_info "Killing process $pid ($cmdline)"
+      else
+        log_warn "Skipping PID $pid - doesn't match expected process type"
+        rm -f "$pid_file"
+        return 0
+      fi
+    fi
+
     kill "$pid" 2>/dev/null || true
 
     # Wait for graceful shutdown

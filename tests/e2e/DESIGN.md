@@ -106,6 +106,8 @@ The infrastructure supports additional test scenarios including MQTT bridge inte
 
 ## Test Scenario Examples
 
+> **⚠️ IMPORTANT:** The scenarios below are **examples and templates** showing how the E2E infrastructure can be used for integration testing. They represent **planned capabilities**, not current implementation. Only the infrastructure tests listed in "Current Implementation" above are currently implemented.
+
 These examples illustrate how the infrastructure can be used for integration testing.
 
 ### Scenario 1: MQTT Bridge with Single Device
