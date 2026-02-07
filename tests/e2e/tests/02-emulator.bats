@@ -74,13 +74,28 @@ teardown() {
     if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
       break
     fi
+    # Check if it's a zombie process
+    if [ -f "/proc/$EMULATOR_PID/stat" ]; then
+      local state=$(awk '{print $3}' "/proc/$EMULATOR_PID/stat" 2>/dev/null)
+      if [ "$state" = "Z" ]; then
+        # It's a zombie, which is acceptable - process has terminated
+        break
+      fi
+    fi
     sleep 0.1
     elapsed=$((elapsed + 1))
   done
 
-  # Verify process is not running
-  run kill -0 "$EMULATOR_PID"
-  assert_failure
+  # Verify process is either gone or a zombie (both mean it terminated)
+  if kill -0 "$EMULATOR_PID" 2>/dev/null; then
+    # Still exists, check if it's a zombie
+    if [ -f "/proc/$EMULATOR_PID/stat" ]; then
+      local state=$(awk '{print $3}' "/proc/$EMULATOR_PID/stat" 2>/dev/null)
+      [ "$state" = "Z" ] || return 1
+    else
+      return 1
+    fi
+  fi
 }
 
 @test "emulator logs are created" {
