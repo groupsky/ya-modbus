@@ -5,34 +5,11 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals'
 
 import { ModbusEmulator } from './emulator.js'
+import { callServiceVector } from './transports/test-helpers.js'
 
 // Store captured service vector for testing
 let capturedServiceVector: any = null
 let initializedListener: (() => void) | undefined
-
-// Helper to convert callback-style service vector methods to Promise for testing
-const callServiceVector = <T>(method: (...args: any[]) => any, ...args: any[]): Promise<T> => {
-  return new Promise((resolve, reject) => {
-    // Try callback style first
-    try {
-      method(...args, (callbackErr: Error | null, result?: T) => {
-        if (callbackErr) {
-          reject(callbackErr)
-        } else {
-          resolve(result as T)
-        }
-      })
-    } catch {
-      // If that fails, maybe it's Promise-style
-      const result = method(...args)
-      if (result instanceof Promise) {
-        result.then(resolve).catch(reject)
-      } else {
-        resolve(result)
-      }
-    }
-  })
-}
 
 // Mock modbus-serial ServerTCP
 jest.mock('modbus-serial', () => {
