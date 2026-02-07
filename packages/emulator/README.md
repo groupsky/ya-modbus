@@ -7,7 +7,7 @@ Software Modbus device emulator for testing device drivers without physical hard
 - **Realistic device simulation**: Mimic actual device constraints and timing characteristics
 - **Test acceleration**: Enable fast, deterministic testing without hardware
 - **Edge case coverage**: Simulate error conditions and edge cases
-- **Multiple transports**: RTU (virtual/real serial ports) and in-memory
+- **Multiple transports**: TCP, RTU (virtual/real serial ports), and in-memory
 - **Custom function codes**: Support vendor-specific Modbus extensions
 
 ## Installation
@@ -43,6 +43,43 @@ emulator.addDevice({
 await emulator.start()
 
 // Use with your driver tests
+// ...
+
+// Stop emulator
+await emulator.stop()
+```
+
+### TCP Transport (network)
+
+```typescript
+import { ModbusEmulator } from '@ya-modbus/emulator'
+
+// Create emulator with TCP transport
+const emulator = new ModbusEmulator({
+  transport: 'tcp',
+  host: '0.0.0.0', // Listen on all interfaces
+  port: 502, // Standard Modbus TCP port
+})
+
+// Add devices
+emulator.addDevice({
+  slaveId: 1,
+  registers: {
+    holding: { 0: 230, 1: 52 },
+  },
+})
+
+emulator.addDevice({
+  slaveId: 2,
+  registers: {
+    holding: { 0: 500, 1: 100 },
+  },
+})
+
+// Start emulator
+await emulator.start()
+
+// Use with your driver tests (clients connect to localhost:502)
 // ...
 
 // Stop emulator
@@ -124,6 +161,22 @@ Options:
 ### Configuration Files
 
 Create a YAML or JSON configuration file to define devices and behaviors:
+
+**Basic TCP Example** (`basic-tcp.yaml`):
+
+```yaml
+transport:
+  type: tcp
+  host: 0.0.0.0
+  port: 502
+
+devices:
+  - slaveId: 1
+    registers:
+      holding:
+        0: 230 # Voltage * 10 = 23.0V
+        1: 52 # Current * 10 = 5.2A
+```
 
 **Basic RTU Example** (`basic-rtu.yaml`):
 
