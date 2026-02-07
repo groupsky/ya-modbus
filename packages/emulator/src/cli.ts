@@ -37,9 +37,7 @@ program
   .option('-H, --host <host>', 'TCP host address (default: 0.0.0.0)')
   .option('-b, --baud-rate <rate>', 'Serial baud rate (default: 9600)', parseInt)
   .option('--parity <type>', 'Serial parity: none|even|odd (default: none)')
-  .option('--lock <boolean>', 'Enable serial port locking (default: true)', (value) =>
-    value === 'true' ? true : value === 'false' ? false : undefined
-  )
+  .option('--no-lock', 'Disable serial port locking (enabled by default)')
   .option('-s, --slave-id <id>', 'Slave ID (required if no config file)', parseInt)
   .option('-v, --verbose', 'Enable verbose logging')
   .option('-q, --quiet', 'Suppress all output except errors')
@@ -103,7 +101,7 @@ async function main(): Promise<void> {
         ...(options.parity !== undefined && {
           parity: options.parity as 'none' | 'even' | 'odd',
         }),
-        ...(options.lock !== undefined && { lock: options.lock }),
+        ...(typeof options.lock === 'boolean' && { lock: options.lock }),
       }
 
       devices = [{ slaveId: options.slaveId }]
