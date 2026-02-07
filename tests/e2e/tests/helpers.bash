@@ -149,20 +149,36 @@ stop_test_emulator() {
   if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
     kill "$pid" 2>/dev/null || true
 
-    # Wait for graceful shutdown
-    local timeout=10
+    # Wait for process to be fully reaped (not even a zombie)
+    local timeout=30
     local elapsed=0
     while [ $elapsed -lt $timeout ]; do
       if ! kill -0 "$pid" 2>/dev/null; then
         break
       fi
+      # Check if it's a zombie process
+      if [ -f "/proc/$pid/stat" ]; then
+        local state=$(awk '{print $3}' "/proc/$pid/stat" 2>/dev/null)
+        if [ "$state" = "Z" ]; then
+          # It's a zombie, which is acceptable - process has terminated
+          break
+        fi
+      fi
       sleep 0.1
       elapsed=$((elapsed + 1))
     done
 
-    # Force kill if still running
+    # Force kill if still running (not a zombie)
     if kill -0 "$pid" 2>/dev/null; then
-      kill -9 "$pid" 2>/dev/null || true
+      # Check if it's a zombie before force killing
+      if [ -f "/proc/$pid/stat" ]; then
+        local state=$(awk '{print $3}' "/proc/$pid/stat" 2>/dev/null)
+        if [ "$state" != "Z" ]; then
+          kill -9 "$pid" 2>/dev/null || true
+        fi
+      else
+        kill -9 "$pid" 2>/dev/null || true
+      fi
     fi
 
     wait "$pid" 2>/dev/null || true

@@ -64,27 +64,8 @@ teardown() {
 
   EMULATOR_PID="$output"
 
-  # Stop emulator
+  # Stop emulator (includes waiting for graceful shutdown or zombie state)
   stop_test_emulator "$EMULATOR_PID"
-
-  # Wait for process to be fully reaped (not even a zombie)
-  local timeout=30
-  local elapsed=0
-  while [ $elapsed -lt $timeout ]; do
-    if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
-      break
-    fi
-    # Check if it's a zombie process
-    if [ -f "/proc/$EMULATOR_PID/stat" ]; then
-      local state=$(awk '{print $3}' "/proc/$EMULATOR_PID/stat" 2>/dev/null)
-      if [ "$state" = "Z" ]; then
-        # It's a zombie, which is acceptable - process has terminated
-        break
-      fi
-    fi
-    sleep 0.1
-    elapsed=$((elapsed + 1))
-  done
 
   # Verify process is either gone or a zombie (both mean it terminated)
   if kill -0 "$EMULATOR_PID" 2>/dev/null; then
