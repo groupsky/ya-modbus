@@ -83,17 +83,34 @@ export class TcpTransport extends BaseTransport {
     const server = new ServerTCP(serviceVector, options)
     this.server = server
 
-    // Wait for initialized event
-    return new Promise<void>((resolve) => {
+    // Wait for initialized event with timeout
+    return new Promise<void>((resolve, reject) => {
+      let isInitializing = true
+
+      const timeout = setTimeout(() => {
+        isInitializing = false
+        delete this.server
+        reject(new Error('TCP server initialization timeout after 10s'))
+      }, 10000)
+
       server.on('initialized', () => {
+        clearTimeout(timeout)
+        isInitializing = false
         this.started = true
         resolve()
       })
 
       // Handle errors
-      server.on('error', (err) => {
-        // Log error but don't stop server
-        console.error('TCP transport error:', err)
+      server.on('error', (err: Error) => {
+        if (isInitializing) {
+          clearTimeout(timeout)
+          isInitializing = false
+          delete this.server
+          reject(err)
+        } else {
+          // Log errors that occur after initialization
+          console.error('TCP transport error:', err)
+        }
       })
     })
   }
