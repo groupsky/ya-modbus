@@ -54,6 +54,22 @@ This will:
   - Lower values scan faster but may cause errors
   - Recommended: 100ms minimum
 
+- `--id <spec>` - Limit search to specific slave IDs (can be specified multiple times)
+  - Format: Single IDs or ranges separated by commas (e.g., `1,2,3-5`)
+  - Multiple `--id` flags are merged and deduplicated
+  - Dramatically reduces scan time when you know which IDs to search
+  - Examples:
+    - `--id 1` - Search only slave ID 1
+    - `--id 1,2,3` - Search IDs 1, 2, and 3
+    - `--id 1-5` - Search IDs 1 through 5
+    - `--id 1,3-5,10` - Search IDs 1, 3, 4, 5, and 10
+    - `--id 1-3 --id 5-7` - Search IDs 1, 2, 3, 5, 6, and 7
+
+- `--max-devices <count>` - Maximum devices to find (default: `1`, use `0` for unlimited)
+  - Stops scanning after finding specified number of devices
+  - Use `0` to find all devices on the bus
+  - Speeds up discovery when you only need to find one device
+
 ### Output Options
 
 - `--format <type>` - Output format (default: `table`)
@@ -188,12 +204,14 @@ Discovery time depends on several factors:
 
 **Examples:**
 
-| Strategy | Driver | Combinations | Timeout | Est. Time  |
-| -------- | ------ | ------------ | ------- | ---------- |
-| Quick    | No     | ~2,964       | 1000ms  | ~50 min    |
-| Quick    | Yes    | ~1,482       | 1000ms  | ~25 min    |
-| Thorough | No     | ~23,712      | 1000ms  | ~6.5 hours |
-| Thorough | Yes    | ~1,482       | 1000ms  | ~25 min    |
+| Strategy | Driver | ID Filter | Combinations | Timeout | Est. Time  |
+| -------- | ------ | --------- | ------------ | ------- | ---------- |
+| Quick    | No     | None      | ~2,964       | 1000ms  | ~50 min    |
+| Quick    | No     | 1-5       | ~60          | 1000ms  | ~1 min     |
+| Quick    | Yes    | None      | ~1,482       | 1000ms  | ~25 min    |
+| Quick    | Yes    | 1-5       | ~30          | 1000ms  | ~30 sec    |
+| Thorough | No     | None      | ~23,712      | 1000ms  | ~6.5 hours |
+| Thorough | Yes    | None      | ~1,482       | 1000ms  | ~25 min    |
 
 **Note:** Actual time is usually much faster because:
 
@@ -202,10 +220,11 @@ Discovery time depends on several factors:
 
 ### Optimization Tips
 
-1. **Use a driver** - Reduces combinations by 50-90%
-2. **Lower timeout** - Use 250-500ms if devices respond quickly
-3. **Start with quick strategy** - Finds 90% of devices
-4. **Know your device** - If you know slave ID, modify the scan manually
+1. **Filter slave IDs** - Use `--id` if you know which IDs to search (reduces combinations by up to 98%)
+2. **Use a driver** - Reduces combinations by 50-90%
+3. **Lower timeout** - Use 250-500ms if devices respond quickly
+4. **Start with quick strategy** - Finds 90% of devices
+5. **Stop after first device** - Default `--max-devices 1` stops after finding one device
 
 ### Progress Monitoring
 
@@ -390,6 +409,26 @@ Discover on Windows COM port:
 ```bash
 ya-modbus discover --port COM3
 ```
+
+### Example 8: Search Specific Slave IDs
+
+Search only specific slave IDs to dramatically reduce scan time:
+
+```bash
+# Search only ID 1
+ya-modbus discover --port /dev/ttyUSB0 --id 1
+
+# Search IDs 1-5
+ya-modbus discover --port /dev/ttyUSB0 --id 1-5
+
+# Search specific IDs: 1, 2, 3, 10, 11, 12
+ya-modbus discover --port /dev/ttyUSB0 --id 1-3,10-12
+
+# Search IDs from multiple specifications (merged and deduplicated)
+ya-modbus discover --port /dev/ttyUSB0 --id 1,2 --id 3-5
+```
+
+**Performance benefit:** Searching only 5 IDs instead of all 247 reduces combinations by ~98%, completing in seconds instead of minutes.
 
 ## Advanced Usage
 
