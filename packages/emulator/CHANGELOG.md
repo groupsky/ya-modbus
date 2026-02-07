@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.5](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.10.4...@ya-modbus/emulator@0.10.5) (2026-02-07)
+
+### Bug Fixes
+
+- **emulator:** clean up RTU transport event listener on initialization failure ([#283](https://github.com/groupsky/ya-modbus/issues/283)) ([4588194](https://github.com/groupsky/ya-modbus/commit/4588194adffc417317316850c515afdbf2d7f00a)), closes [#280](https://github.com/groupsky/ya-modbus/issues/280) [#274](https://github.com/groupsky/ya-modbus/issues/274) [#253](https://github.com/groupsky/ya-modbus/issues/253) [#274](https://github.com/groupsky/ya-modbus/issues/274) [#280](https://github.com/groupsky/ya-modbus/issues/280) [#274](https://github.com/groupsky/ya-modbus/issues/274) [#253](https://github.com/groupsky/ya-modbus/issues/253)
+- **emulator:** clean up TCP transport event listeners on initialization failure ([#284](https://github.com/groupsky/ya-modbus/issues/284)) ([bd6fad7](https://github.com/groupsky/ya-modbus/commit/bd6fad737fe851b0f12ce22a3f3ee667d3fe6949)), closes [#274](https://github.com/groupsky/ya-modbus/issues/274) [#253](https://github.com/groupsky/ya-modbus/issues/253) [#274](https://github.com/groupsky/ya-modbus/issues/274) [#253](https://github.com/groupsky/ya-modbus/issues/253) [#280](https://github.com/groupsky/ya-modbus/issues/280)
+
 ## [0.10.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.10.3...@ya-modbus/emulator@0.10.4) (2026-02-07)
 
 ### Bug Fixes
