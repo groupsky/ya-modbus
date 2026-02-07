@@ -44,7 +44,7 @@ wait_for_port() {
 start_mqtt_subscriber() {
   local topic=${1:-"modbus/#"}
   local output_file=${2:-"/tmp/mqtt-messages-$$.txt"}
-  local compose_file="tests/e2e/docker-compose.yml"
+  local compose_file="docker-compose.yml"
 
   # Use a unique client ID so we can verify connection in mosquitto logs
   local client_id="bats-subscriber-$$"
@@ -175,7 +175,7 @@ stop_test_emulator() {
 is_docker_service_healthy() {
   local service_name=$1
 
-  docker compose -f tests/e2e/docker-compose.yml ps "$service_name" 2>/dev/null | grep -q "healthy"
+  docker compose -f docker-compose.yml ps "$service_name" 2>/dev/null | grep -q "healthy"
 }
 
 # Assert command success

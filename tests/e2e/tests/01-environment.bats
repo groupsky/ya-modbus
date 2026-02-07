@@ -50,7 +50,7 @@ load helpers
 }
 
 @test "MQTT broker is running" {
-  run docker compose -f tests/e2e/docker-compose.yml ps mqtt
+  run docker compose -f docker-compose.yml ps mqtt
   assert_success
   assert_output_contains "ya-modbus-test-mqtt"
 }

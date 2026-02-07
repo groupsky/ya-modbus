@@ -7,11 +7,11 @@
 load helpers
 
 @test "cleanup script exists and is executable" {
-  [ -x "tests/e2e/setup/cleanup.sh" ]
+  [ -x "setup/cleanup.sh" ]
 }
 
 @test "cleanup script runs without errors" {
-  run tests/e2e/setup/cleanup.sh
+  run setup/cleanup.sh
   assert_success
 }
 
@@ -21,7 +21,7 @@ load helpers
   touch /tmp/emulator-test.log
 
   # Run cleanup
-  run tests/e2e/setup/cleanup.sh
+  run setup/cleanup.sh
   assert_success
 
   # Verify files are removed
