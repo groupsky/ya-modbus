@@ -7,6 +7,15 @@
 import { ServerSerial } from 'modbus-serial'
 import type { IServiceVector } from 'modbus-serial/ServerTCP'
 
+import {
+  buildRegisterReadRequest,
+  parseRegisterReadResponse,
+  buildRegisterWriteRequest,
+  buildCoilReadRequest,
+  parseCoilReadResponse,
+  buildCoilWriteRequest,
+} from '../utils/modbus-protocol-helpers.js'
+
 import { BaseTransport } from './base.js'
 
 export interface RtuTransportConfig {
@@ -156,29 +165,9 @@ export class RtuTransport extends BaseTransport {
       throw new Error('No request handler set')
     }
 
-    // Build Modbus request buffer
-    const request = Buffer.alloc(6)
-    request[0] = unitID
-    request[1] = functionCode
-    request.writeUInt16BE(addr, 2)
-    request.writeUInt16BE(length, 4)
-
-    // Call handler
+    const request = buildRegisterReadRequest({ unitID, functionCode, addr, length })
     const response = await this.requestHandler(unitID, request)
-
-    // Parse response
-    const byteCount = response[2]
-    if (byteCount === undefined || response.length < 3 + byteCount) {
-      throw new Error('Invalid response')
-    }
-
-    // Extract register values
-    const values: number[] = []
-    for (let i = 0; i < byteCount / 2; i++) {
-      values.push(response.readUInt16BE(3 + i * 2))
-    }
-
-    return values
+    return parseRegisterReadResponse(response)
   }
 
   /**
@@ -194,30 +183,7 @@ export class RtuTransport extends BaseTransport {
       throw new Error('No request handler set')
     }
 
-    // Build Modbus request buffer
-    let request: Buffer
-    if (functionCode === 0x06) {
-      // Write single register
-      request = Buffer.alloc(6)
-      request[0] = unitID
-      request[1] = functionCode
-      request.writeUInt16BE(addr, 2)
-      request.writeUInt16BE(values[0] ?? 0, 4)
-    } else {
-      // Write multiple registers
-      const byteCount = values.length * 2
-      request = Buffer.alloc(7 + byteCount)
-      request[0] = unitID
-      request[1] = functionCode
-      request.writeUInt16BE(addr, 2)
-      request.writeUInt16BE(values.length, 4)
-      request[6] = byteCount
-      for (let i = 0; i < values.length; i++) {
-        request.writeUInt16BE(values[i] ?? 0, 7 + i * 2)
-      }
-    }
-
-    // Call handler and ignore response
+    const request = buildRegisterWriteRequest({ unitID, functionCode, addr, values })
     await this.requestHandler(unitID, request)
   }
 
@@ -234,27 +200,9 @@ export class RtuTransport extends BaseTransport {
       throw new Error('No request handler set')
     }
 
-    // Build Modbus request buffer
-    const request = Buffer.alloc(6)
-    request[0] = unitID
-    request[1] = functionCode
-    request.writeUInt16BE(addr, 2)
-    request.writeUInt16BE(length, 4)
-
-    // Call handler
+    const request = buildCoilReadRequest({ unitID, functionCode, addr, length })
     const response = await this.requestHandler(unitID, request)
-
-    // Parse response - get first bit from first byte of coil data
-    const byteCount = response[2]
-    if (byteCount === undefined || response.length < 4) {
-      throw new Error('Invalid response')
-    }
-
-    const coilByte = response[3]
-    if (coilByte === undefined) {
-      throw new Error('Invalid response')
-    }
-    return (coilByte & 0x01) === 1
+    return parseCoilReadResponse(response)
   }
 
   /**
@@ -270,14 +218,7 @@ export class RtuTransport extends BaseTransport {
       throw new Error('No request handler set')
     }
 
-    // Build Modbus request buffer
-    const request = Buffer.alloc(6)
-    request[0] = unitID
-    request[1] = functionCode
-    request.writeUInt16BE(addr, 2)
-    request.writeUInt16BE(value ? 0xff00 : 0x0000, 4)
-
-    // Call handler and ignore response
+    const request = buildCoilWriteRequest({ unitID, functionCode, addr, value })
     await this.requestHandler(unitID, request)
   }
 }
