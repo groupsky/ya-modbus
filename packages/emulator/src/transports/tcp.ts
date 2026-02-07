@@ -92,10 +92,10 @@ export class TcpTransport extends BaseTransport {
 
       const cleanupOnError = (): void => {
         isInitializing = false
-        this.initReject = undefined
+        delete this.initReject
         if (this.initTimeout) {
           clearTimeout(this.initTimeout)
-          this.initTimeout = undefined
+          delete this.initTimeout
         }
         EventEmitter.prototype.removeAllListeners.call(server, 'initialized')
         EventEmitter.prototype.removeAllListeners.call(server, 'error')
@@ -104,10 +104,10 @@ export class TcpTransport extends BaseTransport {
 
       const cleanupOnSuccess = (): void => {
         isInitializing = false
-        this.initReject = undefined
+        delete this.initReject
         if (this.initTimeout) {
           clearTimeout(this.initTimeout)
-          this.initTimeout = undefined
+          delete this.initTimeout
         }
         EventEmitter.prototype.removeAllListeners.call(server, 'initialized')
         EventEmitter.prototype.removeAllListeners.call(server, 'error')
@@ -141,7 +141,7 @@ export class TcpTransport extends BaseTransport {
     // Clear initialization timeout if pending
     if (this.initTimeout) {
       clearTimeout(this.initTimeout)
-      this.initTimeout = undefined
+      delete this.initTimeout
     }
 
     // Clean up event listeners FIRST to prevent race condition (issue #294)
@@ -154,7 +154,7 @@ export class TcpTransport extends BaseTransport {
     // If initialization is pending, reject it
     if (this.initReject) {
       this.initReject(new Error('Transport stopped during initialization'))
-      this.initReject = undefined
+      delete this.initReject
     }
 
     if (!this.server) {
