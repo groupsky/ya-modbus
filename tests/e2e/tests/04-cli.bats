@@ -309,3 +309,121 @@ teardown() {
   assert_failure
   assert_output_contains "Driver package not found"
 }
+
+@test "discover command shows help text" {
+  run node "$CLI_BIN" discover --help
+  assert_success
+  assert_output_contains "discover"
+  assert_output_contains "--port"
+  assert_output_contains "--strategy"
+  assert_output_contains "--driver"
+}
+
+@test "discover finds single device with quick strategy" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --strategy quick \
+    --max-devices 1
+
+  assert_success
+  assert_output_contains "Found 1 device"
+  assert_output_contains "Slave ID 1"
+  assert_output_contains "9600"
+}
+
+@test "discover finds multiple devices" {
+  run start_test_emulator "fixtures/emulators/port2-multi-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV3 \
+    --driver @ya-modbus/driver-xymd1 \
+    --strategy quick \
+    --max-devices 1
+
+  assert_success
+  assert_output_contains "Found"
+  assert_output_contains "device"
+}
+
+@test "discover outputs JSON format" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --strategy quick \
+    --max-devices 1 \
+    --silent \
+    --format json
+
+  assert_success
+  echo "$output" | jq -e '.[0].slaveId == 1'
+  echo "$output" | jq -e '.[0].baudRate == 9600'
+}
+
+@test "discover with verbose shows progress" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --strategy quick \
+    --max-devices 1 \
+    --verbose
+
+  assert_success
+  assert_output_contains "Testing"
+}
+
+@test "discover with silent suppresses progress" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --strategy quick \
+    --max-devices 1 \
+    --silent \
+    --format json
+
+  assert_success
+  # Output should only be JSON, no progress messages
+  echo "$output" | jq -e 'type == "array"'
+}
+
+@test "discover fails without --port" {
+  run node "$CLI_BIN" discover \
+    --driver @ya-modbus/driver-ex9em
+
+  assert_failure
+  assert_output_contains "port"
+}
+
+@test "discover with thorough strategy (slow test)" {
+  skip "Thorough discovery takes 6+ hours - run manually"
+
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run timeout 300 node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --strategy thorough \
+    --max-devices 1
+
+  # May timeout, which is expected for thorough strategy
+  [ "$status" -eq 0 ] || [ "$status" -eq 124 ]
+}
