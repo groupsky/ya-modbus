@@ -42,6 +42,9 @@ export interface GeneratorOptions {
 
   /** Driver-provided supported configuration constraints */
   supportedConfig?: SupportedSerialConfig
+
+  /** Optional list of specific slave IDs to test (overrides addressRange) */
+  slaveIds?: number[]
 }
 
 /**
@@ -59,21 +62,35 @@ function clampSlaveId(id: number): number {
  * 2. Address 1 (most common)
  * 3. Address 2
  * 4. Remaining addresses sequentially (3, 4, 5, ...)
+ *
+ * @param range - Min/max slave ID range (used when filter not provided)
+ * @param defaultAddress - Optional default address to prioritize first
+ * @param filter - Optional list of specific IDs to test (overrides range)
  */
 function* generateSlaveIds(
   range: readonly [number, number],
-  defaultAddress?: number
+  defaultAddress?: number,
+  filter?: number[]
 ): Generator<number> {
-  const [minId, maxId] = range
-  const start = clampSlaveId(minId)
-  const end = clampSlaveId(maxId)
-
   const yielded = new Set<number>()
 
-  // Helper to yield if not already yielded and in range
+  // Determine which IDs we're working with
+  let idsToYield: number[]
+  if (filter !== undefined) {
+    // Use filtered IDs (even if empty array)
+    idsToYield = filter
+  } else {
+    // Use full range
+    const [minId, maxId] = range
+    const start = clampSlaveId(minId)
+    const end = clampSlaveId(maxId)
+    idsToYield = Array.from({ length: end - start + 1 }, (_, i) => start + i)
+  }
+
+  // Helper to yield if valid and not already yielded
   function* yieldIfValid(id: number): Generator<number> {
     const clamped = clampSlaveId(id)
-    if (clamped >= start && clamped <= end && !yielded.has(clamped)) {
+    if (idsToYield.includes(clamped) && !yielded.has(clamped)) {
       yielded.add(clamped)
       yield clamped
     }
@@ -89,7 +106,7 @@ function* generateSlaveIds(
   yield* yieldIfValid(2)
 
   // 3. Remaining addresses sequentially
-  for (let id = start; id <= end; id++) {
+  for (const id of idsToYield) {
     if (!yielded.has(id)) {
       yielded.add(id)
       yield id
@@ -150,7 +167,7 @@ export interface ParameterGroup {
  * ```
  */
 export function* generateParameterGroups(options: GeneratorOptions): Generator<ParameterGroup> {
-  const { strategy, defaultConfig, supportedConfig } = options
+  const { strategy, defaultConfig, supportedConfig, slaveIds: slaveIdFilter } = options
 
   // Get parameter arrays
   let { baudRates, parities, dataBits, stopBits } = getParameterArrays(strategy, supportedConfig)
@@ -165,7 +182,9 @@ export function* generateParameterGroups(options: GeneratorOptions): Generator<P
   }
 
   // Generate slave IDs once (reused for each serial config)
-  const slaveIds = Array.from(generateSlaveIds(addressRange, defaultConfig?.defaultAddress))
+  const slaveIds = Array.from(
+    generateSlaveIds(addressRange, defaultConfig?.defaultAddress, slaveIdFilter)
+  )
 
   // Generate groups: iterate serial params (baud × parity × data × stop)
   // For each serial config, create a group with all slave IDs
@@ -227,7 +246,7 @@ export function* generateParameterGroups(options: GeneratorOptions): Generator<P
 export function* generateParameterCombinations(
   options: GeneratorOptions
 ): Generator<ParameterCombination> {
-  const { strategy, defaultConfig, supportedConfig } = options
+  const { strategy, defaultConfig, supportedConfig, slaveIds: slaveIdFilter } = options
 
   // Get parameter arrays
   let { baudRates, parities, dataBits, stopBits } = getParameterArrays(strategy, supportedConfig)
@@ -245,7 +264,9 @@ export function* generateParameterCombinations(
   // - Default config combination first
   // - Then iterate: slave IDs (prioritized) × baud rates (prioritized) × parity × data × stop
 
-  const slaveIds = Array.from(generateSlaveIds(addressRange, defaultConfig?.defaultAddress))
+  const slaveIds = Array.from(
+    generateSlaveIds(addressRange, defaultConfig?.defaultAddress, slaveIdFilter)
+  )
 
   for (const slaveId of slaveIds) {
     for (const baudRate of baudRates) {

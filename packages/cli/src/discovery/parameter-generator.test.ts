@@ -565,4 +565,160 @@ describe('generateParameterGroups', () => {
       expect(groupCount).toBe(4) // 2 baud × 2 parity = 4 groups total
     })
   })
+
+  describe('slave ID filtering', () => {
+    test('filters to specific slave IDs when provided', () => {
+      const options: GeneratorOptions = {
+        strategy: 'quick',
+        slaveIds: [1, 5, 10],
+        supportedConfig: {
+          validBaudRates: [9600],
+          validParity: ['none'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 247],
+        },
+      }
+
+      const groups = Array.from(generateParameterGroups(options))
+
+      // Should have 1 group (1 serial config)
+      expect(groups).toHaveLength(1)
+
+      // Group should only have the 3 filtered IDs
+      expect(groups[0].combinations).toHaveLength(3)
+
+      const slaveIds = groups[0].combinations.map((c) => c.slaveId)
+      expect(slaveIds).toEqual([1, 5, 10])
+    })
+
+    test('prioritizes defaultAddress even when filtering', () => {
+      const defaultConfig: DefaultSerialConfig = {
+        baudRate: 9600,
+        parity: 'none',
+        dataBits: 8,
+        stopBits: 1,
+        defaultAddress: 10,
+      }
+
+      const options: GeneratorOptions = {
+        strategy: 'quick',
+        defaultConfig,
+        slaveIds: [1, 5, 10, 15],
+        supportedConfig: {
+          validBaudRates: [9600],
+          validParity: ['none'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 247],
+        },
+      }
+
+      const groups = Array.from(generateParameterGroups(options))
+      const slaveIds = groups[0].combinations.map((c) => c.slaveId)
+
+      // defaultAddress (10) should be first, then 1, then 5, 15
+      expect(slaveIds[0]).toBe(10)
+      expect(slaveIds[1]).toBe(1)
+      expect(slaveIds).toEqual([10, 1, 5, 15])
+    })
+
+    test('ignores defaultAddress if not in filtered IDs', () => {
+      const defaultConfig: DefaultSerialConfig = {
+        baudRate: 9600,
+        parity: 'none',
+        dataBits: 8,
+        stopBits: 1,
+        defaultAddress: 42, // Not in filtered list
+      }
+
+      const options: GeneratorOptions = {
+        strategy: 'quick',
+        defaultConfig,
+        slaveIds: [1, 5, 10],
+        supportedConfig: {
+          validBaudRates: [9600],
+          validParity: ['none'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 247],
+        },
+      }
+
+      const groups = Array.from(generateParameterGroups(options))
+      const slaveIds = groups[0].combinations.map((c) => c.slaveId)
+
+      // Should still use filtered IDs, prioritizing 1 first
+      expect(slaveIds).toEqual([1, 5, 10])
+    })
+
+    test('filters work with multiple serial configs', () => {
+      const options: GeneratorOptions = {
+        strategy: 'quick',
+        slaveIds: [1, 2],
+        supportedConfig: {
+          validBaudRates: [9600, 19200],
+          validParity: ['none', 'even'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 247],
+        },
+      }
+
+      const groups = Array.from(generateParameterGroups(options))
+
+      // Should have 4 groups: 2 baud × 2 parity
+      expect(groups).toHaveLength(4)
+
+      // Each group should have only 2 IDs
+      for (const group of groups) {
+        expect(group.combinations).toHaveLength(2)
+        const slaveIds = group.combinations.map((c) => c.slaveId)
+        expect(slaveIds).toEqual([1, 2])
+      }
+    })
+
+    test('empty slaveIds array generates no combinations', () => {
+      const options: GeneratorOptions = {
+        strategy: 'quick',
+        slaveIds: [],
+        supportedConfig: {
+          validBaudRates: [9600],
+          validParity: ['none'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 247],
+        },
+      }
+
+      const groups = Array.from(generateParameterGroups(options))
+
+      // Should have 1 group but with no combinations
+      expect(groups).toHaveLength(1)
+      expect(groups[0].combinations).toHaveLength(0)
+    })
+
+    test('filters work with generateParameterCombinations', () => {
+      const options: GeneratorOptions = {
+        strategy: 'quick',
+        slaveIds: [1, 3, 5],
+        supportedConfig: {
+          validBaudRates: [9600, 19200],
+          validParity: ['none'],
+          validDataBits: [8],
+          validStopBits: [1],
+          validAddressRange: [1, 247],
+        },
+      }
+
+      const combinations = Array.from(generateParameterCombinations(options))
+
+      // Should have: 3 IDs × 2 baud rates × 1 parity × 1 data × 1 stop = 6
+      expect(combinations).toHaveLength(6)
+
+      // Extract unique slave IDs
+      const uniqueIds = [...new Set(combinations.map((c) => c.slaveId))]
+      expect(uniqueIds.sort()).toEqual([1, 3, 5])
+    })
+  })
 })
