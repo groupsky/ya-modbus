@@ -227,7 +227,8 @@ describe('ModbusEmulator RTU Integration', () => {
           dataBits: 8,
           stopBits: 1,
           unitID: 255,
-        })
+        }),
+        expect.any(Object)
       )
     })
   })
