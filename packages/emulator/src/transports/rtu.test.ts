@@ -505,5 +505,33 @@ describe('RtuTransport', () => {
         })
       )
     })
+
+    it('should pass lock option with all other serial parameters', async () => {
+      const { ServerSerial } = await import('modbus-serial')
+      transport = new RtuTransport({
+        port: '/dev/ttyUSB0',
+        baudRate: 19200,
+        parity: 'even',
+        dataBits: 8,
+        stopBits: 2,
+        lock: false,
+      })
+      await transport.start()
+
+      expect(ServerSerial).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          path: '/dev/ttyUSB0',
+          baudRate: 19200,
+          parity: 'even',
+          dataBits: 8,
+          stopBits: 2,
+          unitID: 255,
+        }),
+        expect.objectContaining({
+          lock: false,
+        })
+      )
+    })
   })
 })
