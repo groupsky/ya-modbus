@@ -178,6 +178,77 @@ describe('TcpTransport', () => {
   })
 
   describe('error handling', () => {
+    it('should reject start() on port binding error', async () => {
+      // Test for issue #254: start() should reject when port binding fails
+      const { ServerTCP } = await import('modbus-serial')
+      const bindError = new Error('listen EADDRINUSE: address already in use')
+      let errorCallback: ((err: Error) => void) | undefined
+      ;(ServerTCP as any).mockImplementationOnce((vector: any, _options: any) => {
+        capturedServiceVector = vector
+        initializedListener = undefined
+        errorListener = undefined
+
+        const localMockInstance = {
+          close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
+          on: jest.fn((event: string, listener: any) => {
+            if (event === 'initialized') {
+              initializedListener = listener
+            } else if (event === 'error') {
+              errorListener = listener
+              errorCallback = listener
+            }
+          }),
+          removeAllListeners: jest.fn(),
+          socks: new Map(),
+        }
+
+        // Simulate error during initialization (instead of initialized event)
+        setImmediate(() => {
+          if (errorCallback) {
+            errorCallback(bindError)
+          }
+        })
+
+        return localMockInstance
+      })
+
+      const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
+      await expect(testTransport.start()).rejects.toThrow(
+        'listen EADDRINUSE: address already in use'
+      )
+    })
+
+    it('should reject start() on initialization timeout', async () => {
+      // Test for issue #254: start() should timeout if server never emits initialized or error
+      const { ServerTCP } = await import('modbus-serial')
+
+      ;(ServerTCP as any).mockImplementationOnce((vector: any, _options: any) => {
+        capturedServiceVector = vector
+        initializedListener = undefined
+        errorListener = undefined
+
+        const localMockInstance = {
+          close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
+          on: jest.fn((event: string, listener: any) => {
+            if (event === 'initialized') {
+              initializedListener = listener
+            } else if (event === 'error') {
+              errorListener = listener
+            }
+          }),
+          removeAllListeners: jest.fn(),
+          socks: new Map(),
+        }
+
+        // Don't emit initialized or error - simulate hanging server
+
+        return localMockInstance
+      })
+
+      const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
+      await expect(testTransport.start()).rejects.toThrow(/timeout/i)
+    }, 15000) // Increase test timeout to allow for implementation timeout
+
     it('should reject on stop error', async () => {
       const { ServerTCP } = await import('modbus-serial')
       const closeError = new Error('Failed to close server')
