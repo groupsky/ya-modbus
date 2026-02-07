@@ -80,6 +80,9 @@ export class RtuTransport extends BaseTransport {
 
     // Create and start server
     return new Promise<void>((resolve, reject) => {
+      // Disable port locking for compatibility with virtual serial ports (socat PTYs)
+      // socat pseudo-terminals don't properly reset exclusive locks (TIOCEXCL)
+      // See: https://github.com/Fazecast/jSerialComm/issues/159
       this.server = new ServerSerial(
         serviceVector,
         {
