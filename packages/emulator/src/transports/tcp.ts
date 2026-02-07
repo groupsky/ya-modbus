@@ -89,6 +89,8 @@ export class TcpTransport extends BaseTransport {
 
       const timeout = setTimeout(() => {
         isInitializing = false
+        EventEmitter.prototype.removeAllListeners.call(server, 'initialized')
+        EventEmitter.prototype.removeAllListeners.call(server, 'error')
         delete this.server
         reject(new Error('TCP server initialization timeout after 10s'))
       }, 10000)
@@ -105,6 +107,8 @@ export class TcpTransport extends BaseTransport {
         if (isInitializing) {
           clearTimeout(timeout)
           isInitializing = false
+          EventEmitter.prototype.removeAllListeners.call(server, 'initialized')
+          EventEmitter.prototype.removeAllListeners.call(server, 'error')
           delete this.server
           reject(err)
         } else {
