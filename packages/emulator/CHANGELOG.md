@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.7](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.10.6...@ya-modbus/emulator@0.10.7) (2026-02-07)
+
+**Note:** Version bump only for package @ya-modbus/emulator
+
 ## [0.10.6](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.10.5...@ya-modbus/emulator@0.10.6) (2026-02-07)
 
 ### Bug Fixes
