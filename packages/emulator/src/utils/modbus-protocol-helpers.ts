@@ -192,14 +192,27 @@ export function parseCoilReadResponse(
     )
   }
 
-  // Validate byte count exists and buffer has enough data
-  if (byteCount === undefined || response.length < 4) {
-    throw new Error('Invalid response')
+  // Validate byte count exists
+  if (byteCount === undefined) {
+    throw new Error('Invalid response: byte count is undefined')
+  }
+
+  // Validate byte count does not exceed Modbus maximum
+  if (byteCount > 250) {
+    throw new Error(`Invalid byte count: ${byteCount} (maximum is 250)`)
+  }
+
+  // Validate buffer length matches expected length
+  const expectedLength = 3 + byteCount
+  if (response.length !== expectedLength) {
+    throw new Error(
+      `Invalid response: buffer length ${response.length} does not match expected length ${expectedLength} (3 + byteCount ${byteCount})`
+    )
   }
 
   const coilByte = response[3]
   if (coilByte === undefined) {
-    throw new Error('Invalid response')
+    throw new Error('Invalid response: coil data byte is undefined')
   }
   return (coilByte & 0x01) === 1
 }

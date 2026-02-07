@@ -297,6 +297,36 @@ describe('Modbus Protocol Helpers', () => {
         'Modbus exception response: function code 1, exception code 3'
       )
     })
+
+    it('should throw error when byte count exceeds maximum', () => {
+      const byteCount = 252 // Exceeds max of 250
+      const response = Buffer.alloc(3 + byteCount)
+      response[0] = 0x01
+      response[1] = 0x01
+      response[2] = byteCount
+
+      expect(() => parseCoilReadResponse(response, { unitID: 1, functionCode: 0x01 })).toThrow(
+        'Invalid byte count: 252 (maximum is 250)'
+      )
+    })
+
+    it('should throw error when byte count does not match buffer length', () => {
+      // Declares 2 bytes but only provides 1
+      const response = Buffer.from([0x01, 0x01, 0x02, 0x01])
+
+      expect(() => parseCoilReadResponse(response, { unitID: 1, functionCode: 0x01 })).toThrow(
+        'Invalid response: buffer length 4 does not match expected length 5 (3 + byteCount 2)'
+      )
+    })
+
+    it('should throw error when buffer has extra bytes', () => {
+      // Declares 1 byte but provides 4 extra bytes
+      const response = Buffer.from([0x01, 0x01, 0x01, 0x01, 0xff, 0xff, 0xff, 0xff])
+
+      expect(() => parseCoilReadResponse(response, { unitID: 1, functionCode: 0x01 })).toThrow(
+        'Invalid response: buffer length 8 does not match expected length 4 (3 + byteCount 1)'
+      )
+    })
   })
 
   describe('buildCoilWriteRequest', () => {
