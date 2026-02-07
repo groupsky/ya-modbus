@@ -2,17 +2,60 @@
 #
 # Main test runner for E2E tests
 #
-# Usage: ./run-tests.sh [test-pattern]
+# Usage: ./run-tests.sh [OPTIONS] [test-pattern]
+#
+# Options:
+#   --timing, -t        Show timing information for each test
+#   --verbose, -v       Verbose output (show all test output)
+#   --tap              Use TAP format output
+#   --help, -h         Show this help message
 #
 # Examples:
 #   ./run-tests.sh                    # Run all tests
-#   ./run-tests.sh 02-mqtt-bridge     # Run specific test file
+#   ./run-tests.sh --timing           # Run all tests with timing
+#   ./run-tests.sh -t -v 02-emulator  # Run emulator tests with timing and verbose output
+#   ./run-tests.sh --tap              # Run all tests in TAP format
 #
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BATS_BIN="$SCRIPT_DIR/vendor/bats-core/bin/bats"
+
+# Parse flags
+BATS_FLAGS=()
+TEST_PATTERN=""
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --timing|-t)
+      BATS_FLAGS+=(--timing)
+      shift
+      ;;
+    --verbose|-v)
+      BATS_FLAGS+=(--show-output-of-passing-tests)
+      shift
+      ;;
+    --tap)
+      BATS_FLAGS+=(--tap)
+      shift
+      ;;
+    --help|-h)
+      sed -n '2,/^$/p' "$0" | sed 's/^# \?//'
+      exit 0
+      ;;
+    -*)
+      echo "Unknown option: $1" >&2
+      echo "Use --help for usage information" >&2
+      exit 1
+      ;;
+    *)
+      TEST_PATTERN="$1"
+      shift
+      ;;
+  esac
+done
 
 # Colors for output
 RED='\033[0;31m'
@@ -129,16 +172,23 @@ cleanup() {
 
 # Run tests
 run_tests() {
-  local test_pattern=${1:-}
-
   log_step "Running E2E tests..."
 
-  if [ -n "$test_pattern" ]; then
-    log_info "Running tests matching pattern: $test_pattern"
-    "$BATS_BIN" "$SCRIPT_DIR/tests/"*"$test_pattern"*.bats
+  # Build BATS command with flags
+  local bats_cmd=("$BATS_BIN" "${BATS_FLAGS[@]}")
+
+  if [ -n "$TEST_PATTERN" ]; then
+    log_info "Running tests matching pattern: $TEST_PATTERN"
+    if [ ${#BATS_FLAGS[@]} -gt 0 ]; then
+      log_info "BATS flags: ${BATS_FLAGS[*]}"
+    fi
+    "${bats_cmd[@]}" "$SCRIPT_DIR/tests/"*"$TEST_PATTERN"*.bats
   else
     log_info "Running all tests..."
-    "$BATS_BIN" "$SCRIPT_DIR/tests/"*.bats
+    if [ ${#BATS_FLAGS[@]} -gt 0 ]; then
+      log_info "BATS flags: ${BATS_FLAGS[*]}"
+    fi
+    "${bats_cmd[@]}" "$SCRIPT_DIR/tests/"*.bats
   fi
 }
 
@@ -160,7 +210,7 @@ main() {
   echo
 
   # Run tests
-  run_tests "$@"
+  run_tests
   local exit_code=$?
 
   echo
