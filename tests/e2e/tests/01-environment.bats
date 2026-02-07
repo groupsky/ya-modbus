@@ -136,7 +136,6 @@ load helpers
   local read_pid=$!
 
   # Give reader time to start and open the port
-  # Increased from 0.2s to 0.5s for reliability on slow systems
   sleep 0.5
 
   # Write to paired port
@@ -146,8 +145,18 @@ load helpers
     return 1
   fi
 
-  # Wait for reader to complete or timeout
-  wait "$read_pid" 2>/dev/null || true
+  # Wait briefly for data to arrive
+  sleep 0.1
+
+  # Check if data was received, then kill the reader
+  if [ -s "$read_output" ]; then
+    # Data received, kill the reader immediately
+    kill "$read_pid" 2>/dev/null || true
+    wait "$read_pid" 2>/dev/null || true
+  else
+    # No data yet, wait for timeout
+    wait "$read_pid" 2>/dev/null || true
+  fi
 
   # Verify data was received
   run cat "$read_output"
