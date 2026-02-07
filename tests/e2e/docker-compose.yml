@@ -1,0 +1,24 @@
+# E2E Test Environment
+# This compose file sets up the MQTT broker for testing.
+# Emulators run on the host because they need access to virtual serial ports.
+
+services:
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: ya-modbus-test-mqtt
+    ports:
+      - '1883:1883'
+    volumes:
+      - ./fixtures/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    healthcheck:
+      test: ['CMD', 'mosquitto_sub', '-t', '$$SYS/#', '-C', '1', '-i', 'healthcheck', '-W', '3']
+      interval: 3s
+      timeout: 2s
+      retries: 10
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    name: ya-modbus-test
+    driver: bridge

@@ -1,0 +1,29 @@
+{
+  "description": "XYMD1 temperature controller on port 2 (OR-WE-516 removed due to parity incompatibility)",
+  "transport": {
+    "type": "rtu",
+    "port": "/tmp/ttyV2",
+    "baudRate": 9600,
+    "parity": "even",
+    "lock": false
+  },
+  "devices": [
+    {
+      "slaveId": 1,
+      "deviceType": "XYMD1",
+      "registers": {
+        "holding": {
+          "0": 250,
+          "1": 450,
+          "2": 4500
+        }
+      },
+      "timing": {
+        "pollingInterval": 10,
+        "commandDetectionDelay": [2, 5],
+        "processingDelay": [1, 3],
+        "perRegisterDelay": 0.1
+      }
+    }
+  ]
+}

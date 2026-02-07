@@ -45,6 +45,7 @@
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
+    "test:e2e": "cd tests/e2e && ./run-tests.sh",
     "prepare": "husky",
     "validate:publint": "./scripts/validate-publint.sh",
     "validate:attw": "./scripts/validate-attw.sh",

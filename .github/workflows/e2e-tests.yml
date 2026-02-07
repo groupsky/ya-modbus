@@ -1,0 +1,178 @@
+name: E2E Integration Tests
+
+on:
+  schedule:
+    # Run at 2:30 AM UTC daily (avoid top of hour for lower GitHub Actions load)
+    - cron: '30 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+# Prevent concurrent runs from conflicting over shared resources
+concurrency:
+  group: e2e-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+# Default permissions for all jobs (principle of least privilege)
+# Individual jobs can override with more specific permissions
+permissions:
+  contents: read
+
+jobs:
+  check-changes:
+    name: Check for Recent Changes
+    # Skip check on manual trigger - always run tests
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      has_changes: ${{ steps.check.outputs.has_changes }}
+      last_commit: ${{ steps.check.outputs.last_commit }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check for changes in last 24 hours
+        id: check
+        run: |
+          # Get last commit timestamp
+          last_commit=$(git log -1 --format=%ct)
+          current=$(date +%s)
+          hours_ago=$(( (current - last_commit) / 3600 ))
+
+          # Get last commit message
+          last_msg=$(git log -1 --format=%s)
+
+          echo "last_commit=$last_msg" >> $GITHUB_OUTPUT
+
+          # Run if changes in last 24 hours or manual trigger
+          if [ $hours_ago -lt 24 ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "✓ Changes detected ($hours_ago hours ago) or manual trigger - will run tests"
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "✗ No changes in last 24 hours - skipping tests"
+          fi
+
+  e2e-tests:
+    name: E2E Integration Tests
+    needs: check-changes
+    # Run if manual trigger OR if scheduled with recent changes
+    if: always() && (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.has_changes == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y socat mosquitto-clients netcat-openbsd
+
+      - name: Verify system dependencies
+        run: |
+          echo "Checking installed versions..."
+          socat -V | head -1
+          nc -h 2>&1 | head -1 || echo "netcat installed"
+          tests/e2e/vendor/bats-core/bin/bats --version
+          docker --version
+          docker compose version
+          mosquitto_sub --help | head -1 || echo "mosquitto_sub installed"
+          node --version
+          npm --version
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Start Docker services
+        run: |
+          cd tests/e2e
+          docker compose up -d
+
+          echo "Waiting for services to be healthy..."
+          timeout 60 sh -c 'until docker compose ps | grep -q healthy; do
+            echo "Still waiting...";
+            docker compose ps;
+            sleep 0.1;
+          done'
+
+          echo "Services are ready:"
+          docker compose ps
+
+      - name: Setup test environment
+        run: |
+          cd tests/e2e
+          ./setup/create-virtual-ports.sh
+
+          echo "Virtual ports created:"
+          ls -la /tmp/ttyV* || echo "No ports found"
+
+      - name: Run E2E tests
+        run: |
+          cd tests/e2e
+          ./vendor/bats-core/bin/bats --formatter tap tests/*.bats
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "=== Docker Compose Services ==="
+          cd tests/e2e
+          docker compose ps
+
+          echo -e "\n=== Docker Logs ==="
+          docker compose logs
+
+          echo -e "\n=== Socat Logs ==="
+          cat /tmp/socat-*.log || echo "No socat logs found"
+
+          echo -e "\n=== Emulator Logs ==="
+          cat /tmp/emulator-*.log || echo "No emulator logs found"
+
+          echo -e "\n=== Virtual Ports ==="
+          ls -la /tmp/ttyV* || echo "No virtual ports found"
+
+          echo -e "\n=== Processes ==="
+          ps aux | grep -E '(socat|node|docker)' | grep -v grep || echo "No relevant processes"
+
+      - name: Upload logs as artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-logs-${{ github.run_number }}
+          path: |
+            /tmp/socat-*.log
+            /tmp/emulator-*.log
+            tests/e2e/docker-compose.yml
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Cleanup test environment
+        if: always()
+        run: |
+          cd tests/e2e
+
+          echo "Running cleanup script..."
+          ./setup/cleanup.sh
+
+          echo "Stopping Docker services..."
+          docker compose down -v
+
+          echo "Verifying cleanup..."
+          ls -la /tmp/ttyV* 2>/dev/null || echo "✓ Virtual ports cleaned up"
+          ps aux | grep socat | grep -v grep || echo "✓ socat processes cleaned up"
