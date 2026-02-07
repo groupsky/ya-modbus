@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.6](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.10.5...@ya-modbus/emulator@0.10.6) (2026-02-07)
+
+### Bug Fixes
+
+- **emulator:** prevent race condition when stop() called during TCP initialization ([#292](https://github.com/groupsky/ya-modbus/issues/292)) ([b6b3af9](https://github.com/groupsky/ya-modbus/commit/b6b3af9a6ef9d6d64e8ce14b607970cf3c65a6ad)), closes [#275](https://github.com/groupsky/ya-modbus/issues/275) [#275](https://github.com/groupsky/ya-modbus/issues/275) [#293](https://github.com/groupsky/ya-modbus/issues/293) [#294](https://github.com/groupsky/ya-modbus/issues/294) [#295](https://github.com/groupsky/ya-modbus/issues/295) [#296](https://github.com/groupsky/ya-modbus/issues/296) [#297](https://github.com/groupsky/ya-modbus/issues/297) [#298](https://github.com/groupsky/ya-modbus/issues/298) [#299](https://github.com/groupsky/ya-modbus/issues/299)
+
 ## [0.10.5](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.10.4...@ya-modbus/emulator@0.10.5) (2026-02-07)
 
 ### Bug Fixes
