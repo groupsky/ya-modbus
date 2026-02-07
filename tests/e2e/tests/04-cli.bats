@@ -238,3 +238,74 @@ teardown() {
   assert_output_contains '"baudRate"'
   assert_output_contains '"parity"'
 }
+
+@test "show-defaults command shows help text" {
+  run node "$CLI_BIN" show-defaults --help
+  assert_success
+  assert_output_contains "show-defaults"
+  assert_output_contains "--driver"
+  assert_output_contains "--format"
+}
+
+@test "show-defaults displays driver configuration" {
+  run node "$CLI_BIN" show-defaults \
+    --driver @ya-modbus/driver-ex9em
+
+  assert_success
+  assert_output_contains "DEFAULT_CONFIG"
+  assert_output_contains "baudRate"
+  assert_output_contains "9600"
+  assert_output_contains "parity"
+  assert_output_contains "even"
+}
+
+@test "show-defaults displays supported configuration" {
+  run node "$CLI_BIN" show-defaults \
+    --driver @ya-modbus/driver-ex9em
+
+  assert_success
+  assert_output_contains "SUPPORTED_CONFIG"
+  assert_output_contains "validBaudRates"
+  assert_output_contains "validParity"
+}
+
+@test "show-defaults outputs JSON format" {
+  run node "$CLI_BIN" show-defaults \
+    --driver @ya-modbus/driver-ex9em \
+    --format json
+
+  assert_success
+
+  # Validate JSON structure
+  echo "$output" | jq -e 'has("defaultConfig")'
+  echo "$output" | jq -e 'has("supportedConfig")'
+  echo "$output" | jq -e '.defaultConfig.baudRate == 9600'
+  echo "$output" | jq -e '.defaultConfig.parity == "even"'
+}
+
+@test "show-defaults works with single-device driver" {
+  run node "$CLI_BIN" show-defaults \
+    --driver @ya-modbus/driver-or-we-516
+
+  assert_success
+  assert_output_contains "DEFAULT_CONFIG"
+  assert_output_contains "baudRate"
+  assert_output_contains "9600"
+  assert_output_contains "parity"
+  assert_output_contains "odd"
+}
+
+@test "show-defaults fails without --driver" {
+  run node "$CLI_BIN" show-defaults
+
+  assert_failure
+  assert_output_contains "driver"
+}
+
+@test "show-defaults fails with non-existent driver" {
+  run node "$CLI_BIN" show-defaults \
+    --driver @ya-modbus/driver-nonexistent
+
+  assert_failure
+  assert_output_contains "Driver package not found"
+}
