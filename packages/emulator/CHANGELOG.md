@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.8.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.7.1...@ya-modbus/emulator@0.8.0) (2026-02-07)
+
+### Features
+
+- **emulator:** implement RTU transport using modbus-serial ([#243](https://github.com/groupsky/ya-modbus/issues/243)) ([71d0757](https://github.com/groupsky/ya-modbus/commit/71d0757bbbab9ae4e611c7e58baea85f2ca09501)), closes [#244](https://github.com/groupsky/ya-modbus/issues/244) [#245](https://github.com/groupsky/ya-modbus/issues/245) [#246](https://github.com/groupsky/ya-modbus/issues/246) [#247](https://github.com/groupsky/ya-modbus/issues/247) [#248](https://github.com/groupsky/ya-modbus/issues/248) [#249](https://github.com/groupsky/ya-modbus/issues/249) [#250](https://github.com/groupsky/ya-modbus/issues/250)
+
 ## [0.7.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.7.0...@ya-modbus/emulator@0.7.1) (2026-02-06)
 
 **Note:** Version bump only for package @ya-modbus/emulator
