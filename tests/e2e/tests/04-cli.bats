@@ -27,24 +27,32 @@ teardown() {
   run node "$CLI_BIN" --help
   assert_success
   assert_output_contains "Usage: ya-modbus"
+  assert_output_contains "[options] [command]"
+  assert_output_contains "Device Operations:"
 }
 
 @test "read command shows help text" {
   run node "$CLI_BIN" read --help
   assert_success
-  assert_output_contains "read"
+  assert_output_contains "Read data points from device"
+  assert_output_contains "--data-point"
+  assert_output_contains "--all"
 }
 
 @test "write command shows help text" {
   run node "$CLI_BIN" write --help
   assert_success
-  assert_output_contains "write"
+  assert_output_contains "Write data point to device"
+  assert_output_contains "--data-point"
+  assert_output_contains "--value"
+  assert_output_contains "--verify"
 }
 
 @test "list-devices command shows help text" {
   run node "$CLI_BIN" list-devices --help
   assert_success
-  assert_output_contains "list-devices"
+  assert_output_contains "List supported devices"
+  assert_output_contains "--driver"
 }
 
 @test "read command fails with invalid slave ID" {
@@ -54,6 +62,7 @@ teardown() {
     --driver @ya-modbus/driver-ex9em \
     --data-point voltage
   assert_failure
+  assert_output_contains "Invalid slave ID"
 }
 
 @test "read command fails without port or host" {
@@ -62,6 +71,7 @@ teardown() {
     --driver @ya-modbus/driver-ex9em \
     --data-point voltage
   assert_failure
+  assert_output_contains "cannot open"
 }
 
 @test "read command fails without data point" {
@@ -70,6 +80,7 @@ teardown() {
     --slave-id 1 \
     --driver @ya-modbus/driver-ex9em
   assert_failure
+  assert_output_contains "--data-point"
 }
 
 @test "can read voltage from ex9em device" {
@@ -87,7 +98,10 @@ teardown() {
     --data-point voltage
 
   assert_success
-  assert_output_contains "230"
+  assert_output_contains "voltage"
+  assert_output_contains "230.0"
+  assert_output_contains "V"
+  assert_output_contains "Performance:"
 }
 
 @test "can read multiple data points from ex9em device" {
@@ -105,9 +119,13 @@ teardown() {
     --data-point voltage current frequency
 
   assert_success
+  # Verify all three data points present with values
   assert_output_contains "voltage"
+  assert_output_contains "230.0"
   assert_output_contains "current"
+  assert_output_contains "5.2"
   assert_output_contains "frequency"
+  assert_output_contains "50.0"
 }
 
 @test "can read data in JSON format" {
@@ -126,7 +144,11 @@ teardown() {
     --format json
 
   assert_success
+  # Validate JSON structure
+  assert_output_contains '"data"'
   assert_output_contains '"voltage"'
+  assert_output_contains '"driver"'
+  assert_output_contains '"performance"'
   assert_output_contains "230"
 }
 
@@ -146,6 +168,8 @@ teardown() {
     --yes
 
   assert_success
+  assert_output_contains "Successfully wrote"
+  assert_output_contains "device_address"
 }
 
 @test "can write and verify device_address" {
@@ -165,6 +189,8 @@ teardown() {
     --verify
 
   assert_success
+  assert_output_contains "Successfully wrote"
+  assert_output_contains "Verification:"
 }
 
 @test "write command fails for non-writable data point" {
@@ -183,6 +209,7 @@ teardown() {
     --yes
 
   assert_failure
+  assert_output_contains "read-only"
 }
 
 @test "list-devices command shows ex9em driver" {
@@ -190,6 +217,8 @@ teardown() {
     --driver @ya-modbus/driver-ex9em
 
   assert_success
+  assert_output_contains "driver does not export"
+  assert_output_contains "single-device driver"
 }
 
 @test "list-devices shows message for single-device driver" {
@@ -206,5 +235,9 @@ teardown() {
     --format json
 
   assert_success
+  # Validate JSON structure for single-device driver
   assert_output_contains '"devices": null'
+  assert_output_contains '"defaultConfig"'
+  assert_output_contains '"baudRate"'
+  assert_output_contains '"parity"'
 }
