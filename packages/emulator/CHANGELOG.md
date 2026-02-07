@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.9.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.8.0...@ya-modbus/emulator@0.9.0) (2026-02-07)
+
+### Features
+
+- **emulator:** implement TCP transport ([#252](https://github.com/groupsky/ya-modbus/issues/252)) ([3df8fda](https://github.com/groupsky/ya-modbus/commit/3df8fdac2c279ca13fb314867daa2ffc32194481)), closes [#244](https://github.com/groupsky/ya-modbus/issues/244)
+
 # [0.8.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.7.1...@ya-modbus/emulator@0.8.0) (2026-02-07)
 
 ### Features
