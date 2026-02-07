@@ -84,7 +84,6 @@ teardown() {
 }
 
 @test "can read voltage from ex9em device" {
-  skip "Known issue: RTU read operations return exception 4 (see issue #248)"
   # Start emulator
   run start_test_emulator "fixtures/emulators/port1-single-device.json"
   assert_success
@@ -98,14 +97,13 @@ teardown() {
     --data-point voltage
 
   assert_success
-  assert_output_contains "voltage"
+  assert_output_contains "Voltage"
   assert_output_contains "230.0"
   assert_output_contains "V"
   assert_output_contains "Performance:"
 }
 
 @test "can read multiple data points from ex9em device" {
-  skip "Known issue: RTU read operations return exception 4 (see issue #248)"
   # Start emulator
   run start_test_emulator "fixtures/emulators/port1-single-device.json"
   assert_success
@@ -120,16 +118,15 @@ teardown() {
 
   assert_success
   # Verify all three data points present with values
-  assert_output_contains "voltage"
+  assert_output_contains "Voltage"
   assert_output_contains "230.0"
-  assert_output_contains "current"
-  assert_output_contains "5.2"
-  assert_output_contains "frequency"
+  assert_output_contains "Current"
+  assert_output_contains "52.0"
+  assert_output_contains "Frequency"
   assert_output_contains "50.0"
 }
 
 @test "can read data in JSON format" {
-  skip "Known issue: RTU read operations return exception 4 (see issue #248)"
   # Start emulator
   run start_test_emulator "fixtures/emulators/port1-single-device.json"
   assert_success
@@ -145,7 +142,7 @@ teardown() {
 
   assert_success
   # Validate JSON structure
-  assert_output_contains '"data"'
+  assert_output_contains '"dataPoints"'
   assert_output_contains '"voltage"'
   assert_output_contains '"driver"'
   assert_output_contains '"performance"'
