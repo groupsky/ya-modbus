@@ -2,6 +2,8 @@
  * Tests for TcpTransport
  */
 
+import { EventEmitter } from 'node:events'
+
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals'
 
 import { TcpTransport } from './tcp.js'
@@ -178,6 +180,122 @@ describe('TcpTransport', () => {
   })
 
   describe('error handling', () => {
+    it('should not leak event listeners when start() fails due to port binding error', async () => {
+      // Test for issue #274: Event listeners should be cleaned up on initialization failure
+      // Before the fix, when start() fails with an error event, the 'initialized' and 'error'
+      // listeners remain attached to the server instance, causing a memory leak
+      const { ServerTCP } = await import('modbus-serial')
+      const bindError = new Error('listen EADDRINUSE: address already in use')
+      let errorCallback: ((err: Error) => void) | undefined
+      let localMockInstance: any
+      ;(ServerTCP as any).mockImplementationOnce((vector: any, _options: any) => {
+        capturedServiceVector = vector
+        initializedListener = undefined
+        errorListener = undefined
+        eventListeners = new Map()
+
+        // Create mock that extends EventEmitter so EventEmitter.prototype.removeAllListeners.call() works
+        localMockInstance = Object.create(EventEmitter.prototype)
+        Object.assign(localMockInstance, {
+          close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
+          socks: new Map(),
+        })
+
+        // Initialize EventEmitter state
+        EventEmitter.call(localMockInstance)
+
+        // Override on() to track listeners in both EventEmitter and our test Map
+        const originalOn = localMockInstance.on.bind(localMockInstance)
+        localMockInstance.on = jest.fn((event: string, listener: any) => {
+          if (event === 'initialized') {
+            initializedListener = listener
+          } else if (event === 'error') {
+            errorListener = listener
+            errorCallback = listener
+          }
+          // Track listeners in our Map
+          if (!eventListeners.has(event)) {
+            eventListeners.set(event, new Set())
+          }
+          eventListeners.get(event)!.add(listener)
+          // Also add to real EventEmitter
+          return originalOn(event, listener)
+        })
+
+        // Simulate error during initialization (instead of initialized event)
+        setImmediate(() => {
+          if (errorCallback) {
+            errorCallback(bindError)
+          }
+        })
+
+        return localMockInstance
+      })
+
+      const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
+      await expect(testTransport.start()).rejects.toThrow(
+        'listen EADDRINUSE: address already in use'
+      )
+
+      // After failed start(), verify no listeners remain attached
+      // This prevents memory leaks when repeatedly attempting to start on a busy port
+      expect(localMockInstance.listenerCount('initialized')).toBe(0)
+      expect(localMockInstance.listenerCount('error')).toBe(0)
+    })
+
+    it('should not leak event listeners when start() fails due to timeout', async () => {
+      // Test for issue #274: Event listeners should be cleaned up on initialization timeout
+      // Before the fix, when start() times out waiting for 'initialized' event, the listeners
+      // remain attached to the server instance, causing a memory leak
+      const { ServerTCP } = await import('modbus-serial')
+      let localMockInstance: any
+      ;(ServerTCP as any).mockImplementationOnce((vector: any, _options: any) => {
+        capturedServiceVector = vector
+        initializedListener = undefined
+        errorListener = undefined
+        eventListeners = new Map()
+
+        // Create mock that extends EventEmitter so EventEmitter.prototype.removeAllListeners.call() works
+        localMockInstance = Object.create(EventEmitter.prototype)
+        Object.assign(localMockInstance, {
+          close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
+          socks: new Map(),
+        })
+
+        // Initialize EventEmitter state
+        EventEmitter.call(localMockInstance)
+
+        // Override on() to track listeners in both EventEmitter and our test Map
+        const originalOn = localMockInstance.on.bind(localMockInstance)
+        localMockInstance.on = jest.fn((event: string, listener: any) => {
+          if (event === 'initialized') {
+            initializedListener = listener
+          } else if (event === 'error') {
+            errorListener = listener
+          }
+          // Track listeners in our Map
+          if (!eventListeners.has(event)) {
+            eventListeners.set(event, new Set())
+          }
+          eventListeners.get(event)!.add(listener)
+          // Also add to real EventEmitter
+          return originalOn(event, listener)
+        })
+
+        // Don't emit initialized or error - simulate hanging server
+
+        return localMockInstance
+      })
+
+      const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
+      await expect(testTransport.start()).rejects.toThrow(/timeout/i)
+
+      // After failed start() due to timeout, verify no listeners remain attached
+      // This prevents memory leaks when start() hangs and times out
+      expect(localMockInstance.listenerCount('initialized')).toBe(0)
+      expect(localMockInstance.listenerCount('error')).toBe(0)
+    }, 15000) // Increase test timeout to allow for implementation timeout
+
     it('should reject start() on port binding error', async () => {
       // Test for issue #254: start() should reject when port binding fails
       const { ServerTCP } = await import('modbus-serial')
