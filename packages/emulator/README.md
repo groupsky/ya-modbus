@@ -155,10 +155,55 @@ Options:
   -s, --slave-id <id>      Slave ID (required if no config file)
   -v, --verbose            Enable verbose logging
   -q, --quiet              Suppress all output except errors
-  --log-requests           Log all Modbus requests/responses
   -V, --version            output the version number
   -h, --help               display help for command
 ```
+
+### Verbose Logging
+
+Enable verbose logging to see detailed Modbus operations for debugging and testing:
+
+**CLI:**
+
+```bash
+# With config file
+ya-modbus-emulator --config config.yaml --verbose
+
+# Or directly
+ya-modbus-emulator --transport rtu --port /dev/ttyUSB0 --slave-id 1 --verbose
+```
+
+**Programmatic:**
+
+```typescript
+const emulator = new ModbusEmulator({
+  transport: 'memory',
+  verbose: true,
+})
+```
+
+**Output Format:**
+
+```
+[VERBOSE] READ slave=1 func=0x03 addr=0x0000 count=2 values=[0x1234, 0x5678]
+[VERBOSE] WRITE slave=1 func=0x06 addr=0x0005 count=1 values=[0x9ABC]
+[VERBOSE] WRITE slave=2 func=0x10 addr=0x0010 count=3 values=[0xAABB, 0xCCDD, 0xEEFF]
+```
+
+Each log entry includes:
+
+- **Operation type**: READ or WRITE
+- **Slave ID**: Which device handled the request
+- **Function code**: Modbus function (0x03=Read Holding, 0x04=Read Input, 0x06=Write Single, 0x10=Write Multiple)
+- **Starting address**: Register address in hexadecimal
+- **Register count**: Number of registers accessed
+- **Values**: Register values in hexadecimal
+
+Verbose logging is useful for:
+
+- **E2E testing**: Verify exact data flow in integration tests
+- **Driver development**: Debug communication with emulated devices
+- **Protocol validation**: Ensure correct Modbus message formatting
 
 ### Configuration Files
 

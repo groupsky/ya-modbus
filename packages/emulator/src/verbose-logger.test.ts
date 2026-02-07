@@ -16,10 +16,18 @@ describe('VerboseLogger', () => {
   })
 
   describe('disabled logger', () => {
-    test('does not log when disabled', () => {
+    test('does not log read operations when disabled', () => {
       const logger = new VerboseLogger(false)
 
       logger.logRead(1, 0x03, 0x0000, 2, Buffer.from([0x01, 0x23, 0x45, 0x67]))
+
+      expect(consoleLogSpy).not.toHaveBeenCalled()
+    })
+
+    test('does not log write operations when disabled', () => {
+      const logger = new VerboseLogger(false)
+
+      logger.logWrite(1, 0x06, 0x0005, 1, [0x1234])
 
       expect(consoleLogSpy).not.toHaveBeenCalled()
     })
