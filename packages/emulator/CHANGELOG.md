@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.10.3...@ya-modbus/emulator@0.10.4) (2026-02-07)
+
+### Bug Fixes
+
+- **emulator:** reject TCP start() Promise on port binding errors ([#277](https://github.com/groupsky/ya-modbus/issues/277)) ([8bdfff2](https://github.com/groupsky/ya-modbus/commit/8bdfff24a93926ba9157cbedfd23b4c59b5acbbf)), closes [#274](https://github.com/groupsky/ya-modbus/issues/274) [#275](https://github.com/groupsky/ya-modbus/issues/275) [#276](https://github.com/groupsky/ya-modbus/issues/276) [#254](https://github.com/groupsky/ya-modbus/issues/254)
+
 ## [0.10.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.10.2...@ya-modbus/emulator@0.10.3) (2026-02-07)
 
 ### Bug Fixes
