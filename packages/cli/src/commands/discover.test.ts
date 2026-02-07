@@ -516,4 +516,128 @@ describe('Discover Command', () => {
       expect(stdoutWriteSpy).not.toHaveBeenCalled()
     })
   })
+
+  describe('--id option (slave ID filtering)', () => {
+    test('should show filtered IDs when --id is specified', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        id: '1,2,3',
+        format: 'table',
+      })
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('Slave IDs: 1, 2, 3 (3 IDs)')
+    })
+
+    test('should show "all" when --id is not specified', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        format: 'table',
+      })
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('Slave IDs: 1-247 (all)')
+    })
+
+    test('should parse ID ranges correctly', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        id: '1-5,10',
+        format: 'table',
+      })
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('Slave IDs: 1, 2, 3, 4, 5, 10 (6 IDs)')
+    })
+
+    test('should merge multiple --id specifications', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        id: ['1,2', '3-5'],
+        format: 'table',
+      })
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('Slave IDs: 1, 2, 3, 4, 5 (5 IDs)')
+    })
+
+    test('should deduplicate merged ID specifications', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        id: ['1-3', '2-4'],
+        format: 'table',
+      })
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('Slave IDs: 1, 2, 3, 4 (4 IDs)')
+    })
+
+    test('should pass filtered IDs to scanner', async () => {
+      const scanSpy = jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        id: '1,5,10',
+        format: 'table',
+      })
+
+      expect(scanSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slaveIds: [1, 5, 10],
+        }),
+        expect.anything()
+      )
+    })
+
+    test('should not pass slaveIds to scanner when --id not specified', async () => {
+      const scanSpy = jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        format: 'table',
+      })
+
+      // Should not have slaveIds property in generator options
+      const generatorOptions = scanSpy.mock.calls[0][0]
+      expect(generatorOptions).not.toHaveProperty('slaveIds')
+    })
+
+    test('should handle invalid ID specification with error', async () => {
+      await expect(
+        discoverCommand({
+          port: '/dev/ttyUSB0',
+          id: 'invalid',
+          format: 'table',
+        })
+      ).rejects.toThrow(/invalid/i)
+    })
+
+    test('should handle out-of-range IDs with error', async () => {
+      await expect(
+        discoverCommand({
+          port: '/dev/ttyUSB0',
+          id: '0,1,2',
+          format: 'table',
+        })
+      ).rejects.toThrow(/valid Modbus slave address/i)
+    })
+
+    test('should not show filtered IDs in silent mode', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        id: '1,2,3',
+        format: 'table',
+        silent: true,
+      })
+
+      expect(consoleLogSpy).not.toHaveBeenCalledWith(expect.stringContaining('Slave IDs'))
+    })
+  })
 })
