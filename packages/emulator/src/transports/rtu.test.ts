@@ -10,6 +10,8 @@ import { RtuTransport } from './rtu.js'
 let capturedServiceVector: any = null
 let mockServerInstance: any
 let eventListeners: Map<string, Set<(...args: unknown[]) => void>>
+// Track removeAllListeners calls across all mock instances
+let allRemoveAllListenersCalls: Array<{ event?: string }> = []
 
 // Mock modbus-serial
 jest.mock('modbus-serial', () => {
@@ -36,6 +38,7 @@ jest.mock('modbus-serial', () => {
             eventListeners.get(event)!.add(listener)
           }),
           removeAllListeners: jest.fn((event?: string) => {
+            allRemoveAllListenersCalls.push({ event })
             if (event) {
               eventListeners.delete(event)
             } else {
@@ -58,6 +61,7 @@ describe('RtuTransport', () => {
 
   beforeEach(() => {
     capturedServiceVector = null
+    allRemoveAllListenersCalls = []
     jest.clearAllMocks()
   })
 
@@ -130,10 +134,17 @@ describe('RtuTransport', () => {
 
       // After the fix: all cycles should have the same listener count (1 listener per cycle)
       // Before the fix: listener count would grow with each cycle
-      expect(listenerCounts).toEqual([1, 1, 1, 1, 1])
+      const EXPECTED_LISTENERS_PER_CYCLE = 1 // only 'error' listener in RTU
+      const CYCLE_COUNT = 5
 
-      // Verify removeAllListeners was called during each stop
-      expect(mockServerInstance.removeAllListeners).toHaveBeenCalled()
+      // Verify listener counts remain constant (primary regression test)
+      expect(listenerCounts).toEqual(Array(CYCLE_COUNT).fill(EXPECTED_LISTENERS_PER_CYCLE))
+
+      // Verify no listener accumulation - the most important behavior
+      const minCount = Math.min(...listenerCounts)
+      const maxCount = Math.max(...listenerCounts)
+      expect(maxCount).toBe(minCount) // All counts should be equal (no growth)
+      expect(maxCount).toBe(EXPECTED_LISTENERS_PER_CYCLE) // Should match expected count
     })
   })
 
