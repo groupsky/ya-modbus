@@ -233,5 +233,64 @@ describe('ModbusEmulator RTU Integration', () => {
         expect.any(Object)
       )
     })
+
+    it('should pass lock: false through full stack', async () => {
+      const { ServerSerial } = await import('modbus-serial')
+
+      emulator = new ModbusEmulator({
+        transport: 'rtu',
+        port: '/dev/ttyUSB0',
+        lock: false,
+      })
+
+      await emulator.start()
+
+      expect(ServerSerial).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(Object),
+        expect.objectContaining({
+          lock: false,
+        })
+      )
+    })
+
+    it('should pass lock: true through full stack', async () => {
+      const { ServerSerial } = await import('modbus-serial')
+
+      emulator = new ModbusEmulator({
+        transport: 'rtu',
+        port: '/dev/ttyUSB0',
+        lock: true,
+      })
+
+      await emulator.start()
+
+      expect(ServerSerial).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(Object),
+        expect.objectContaining({
+          lock: true,
+        })
+      )
+    })
+
+    it('should default to lock: true when not specified', async () => {
+      const { ServerSerial } = await import('modbus-serial')
+
+      emulator = new ModbusEmulator({
+        transport: 'rtu',
+        port: '/dev/ttyUSB0',
+      })
+
+      await emulator.start()
+
+      expect(ServerSerial).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(Object),
+        expect.objectContaining({
+          lock: true,
+        })
+      )
+    })
   })
 })
