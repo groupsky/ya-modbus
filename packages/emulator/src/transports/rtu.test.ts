@@ -8,6 +8,8 @@ import { RtuTransport } from './rtu.js'
 
 // Store captured service vector for testing
 let capturedServiceVector: any = null
+let mockServerInstance: any
+let eventListeners: Map<string, Set<(...args: unknown[]) => void>>
 
 // Mock modbus-serial
 jest.mock('modbus-serial', () => {
@@ -17,17 +19,36 @@ jest.mock('modbus-serial', () => {
       .mockImplementation((vector: any, options: any, _serialportOptions?: any) => {
         // Capture service vector for testing
         capturedServiceVector = vector
+        eventListeners = new Map()
 
         // Call openCallback immediately to simulate successful connection
         if (options.openCallback) {
           setImmediate(() => options.openCallback(null))
         }
 
-        return {
+        mockServerInstance = {
           close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
-          on: jest.fn(),
+          on: jest.fn((event: string, listener: (...args: unknown[]) => void) => {
+            // Track listeners
+            if (!eventListeners.has(event)) {
+              eventListeners.set(event, new Set())
+            }
+            eventListeners.get(event)!.add(listener)
+          }),
+          removeAllListeners: jest.fn((event?: string) => {
+            if (event) {
+              eventListeners.delete(event)
+            } else {
+              eventListeners.clear()
+            }
+          }),
+          listenerCount: jest.fn((event: string) => {
+            return eventListeners.get(event)?.size ?? 0
+          }),
           socks: new Map(),
         }
+
+        return mockServerInstance
       }),
   }
 })
@@ -37,6 +58,7 @@ describe('RtuTransport', () => {
 
   beforeEach(() => {
     capturedServiceVector = null
+    jest.clearAllMocks()
   })
 
   afterEach(async () => {
@@ -85,6 +107,33 @@ describe('RtuTransport', () => {
       transport = new RtuTransport({ port: '/dev/ttyUSB0' })
       await transport.start()
       await expect(transport.start()).rejects.toThrow('Transport already started')
+    })
+
+    it('should not accumulate event listeners after repeated start/stop cycles', async () => {
+      // This test verifies the fix for issue #253: Event listener memory leak
+      // RTU transport has the same issue as TCP - 'error' listener is never removed
+
+      // Track listener counts across multiple transports
+      const listenerCounts: number[] = []
+
+      // Run 5 start/stop cycles
+      for (let i = 0; i < 5; i++) {
+        transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+        await transport.start()
+
+        // Record listener count after start (only 'error' listener in RTU)
+        const count = mockServerInstance.listenerCount('error')
+        listenerCounts.push(count)
+
+        await transport.stop()
+      }
+
+      // After the fix: all cycles should have the same listener count (1 listener per cycle)
+      // Before the fix: listener count would grow with each cycle
+      expect(listenerCounts).toEqual([1, 1, 1, 1, 1])
+
+      // Verify removeAllListeners was called during each stop
+      expect(mockServerInstance.removeAllListeners).toHaveBeenCalled()
     })
   })
 
@@ -144,6 +193,7 @@ describe('RtuTransport', () => {
             closeCallback = cb
           }),
           on: jest.fn(),
+          removeAllListeners: jest.fn(),
           socks: new Map(),
         }
       })
@@ -173,6 +223,7 @@ describe('RtuTransport', () => {
               errorHandler = handler
             }
           }),
+          removeAllListeners: jest.fn(),
           socks: new Map(),
         }
       })
