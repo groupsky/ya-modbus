@@ -8,13 +8,20 @@ import { MemoryTransport } from './transports/memory.js'
 import { RtuTransport } from './transports/rtu.js'
 import { TcpTransport } from './transports/tcp.js'
 import type { EmulatorConfig, DeviceConfig } from './types/config.js'
+import { VerboseLogger } from './verbose-logger.js'
 
 export class ModbusEmulator {
   private devices: Map<number, EmulatedDevice> = new Map()
   private transport: BaseTransport
   private started = false
+  private verboseLogger?: VerboseLogger
 
   constructor(config: EmulatorConfig) {
+    // Create verbose logger if enabled
+    if (config.verbose === true) {
+      this.verboseLogger = new VerboseLogger(true)
+    }
+
     // Create transport based on config
     if (config.transport === 'memory') {
       this.transport = new MemoryTransport()
@@ -98,7 +105,7 @@ export class ModbusEmulator {
 
     // Import dynamically to avoid circular dependency issues
     const { handleModbusRequest } = await import('./behaviors/function-codes.js')
-    return handleModbusRequest(device, request)
+    return handleModbusRequest(device, request, this.verboseLogger)
   }
 
   /**
@@ -152,5 +159,9 @@ export class ModbusEmulator {
 
   getDevice(slaveId: number): EmulatedDevice | undefined {
     return this.devices.get(slaveId)
+  }
+
+  getVerboseLogger(): VerboseLogger | undefined {
+    return this.verboseLogger
   }
 }

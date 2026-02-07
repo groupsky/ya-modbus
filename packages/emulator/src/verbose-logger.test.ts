@@ -5,21 +5,14 @@
 import { VerboseLogger } from './verbose-logger.js'
 
 describe('VerboseLogger', () => {
-  let originalStdoutWrite: typeof process.stdout.write
-  let capturedOutput: string[]
+  let consoleLogSpy: jest.SpyInstance
 
   beforeEach(() => {
-    capturedOutput = []
-    originalStdoutWrite = process.stdout.write
-    // Capture stdout
-    process.stdout.write = ((chunk: string | Uint8Array): boolean => {
-      capturedOutput.push(chunk.toString())
-      return true
-    }) as typeof process.stdout.write
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation()
   })
 
   afterEach(() => {
-    process.stdout.write = originalStdoutWrite
+    consoleLogSpy.mockRestore()
   })
 
   describe('disabled logger', () => {
@@ -28,7 +21,7 @@ describe('VerboseLogger', () => {
 
       logger.logRead(1, 0x03, 0x0000, 2, Buffer.from([0x01, 0x23, 0x45, 0x67]))
 
-      expect(capturedOutput).toHaveLength(0)
+      expect(consoleLogSpy).not.toHaveBeenCalled()
     })
   })
 
@@ -38,8 +31,8 @@ describe('VerboseLogger', () => {
 
       logger.logRead(1, 0x03, 0x0000, 2, Buffer.from([0x01, 0x03, 0x04, 0x01, 0x23, 0x45, 0x67]))
 
-      expect(capturedOutput).toHaveLength(1)
-      const output = capturedOutput[0]
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1)
+      const output = consoleLogSpy.mock.calls[0]?.[0] as string
       expect(output).toContain('[VERBOSE]')
       expect(output).toContain('READ')
       expect(output).toContain('slave=1')
@@ -60,8 +53,8 @@ describe('VerboseLogger', () => {
         Buffer.from([0x01, 0x04, 0x06, 0xab, 0xcd, 0xef, 0x01, 0x12, 0x34])
       )
 
-      expect(capturedOutput).toHaveLength(1)
-      const output = capturedOutput[0]
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1)
+      const output = consoleLogSpy.mock.calls[0]?.[0] as string
       expect(output).toContain('READ')
       expect(output).toContain('slave=1')
       expect(output).toContain('func=0x04')
@@ -75,8 +68,8 @@ describe('VerboseLogger', () => {
 
       logger.logWrite(1, 0x06, 0x0005, 1, [0x1234])
 
-      expect(capturedOutput).toHaveLength(1)
-      const output = capturedOutput[0]
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1)
+      const output = consoleLogSpy.mock.calls[0]?.[0] as string
       expect(output).toContain('WRITE')
       expect(output).toContain('slave=1')
       expect(output).toContain('func=0x06')
@@ -90,8 +83,8 @@ describe('VerboseLogger', () => {
 
       logger.logWrite(1, 0x10, 0x0100, 4, [0x1111, 0x2222, 0x3333, 0x4444])
 
-      expect(capturedOutput).toHaveLength(1)
-      const output = capturedOutput[0]
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1)
+      const output = consoleLogSpy.mock.calls[0]?.[0] as string
       expect(output).toContain('WRITE')
       expect(output).toContain('slave=1')
       expect(output).toContain('func=0x10')
@@ -105,8 +98,8 @@ describe('VerboseLogger', () => {
 
       logger.logWrite(1, 0x10, 0x0000, 0, [])
 
-      expect(capturedOutput).toHaveLength(1)
-      const output = capturedOutput[0]
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1)
+      const output = consoleLogSpy.mock.calls[0]?.[0] as string
       expect(output).toContain('values=[]')
     })
 
@@ -115,8 +108,8 @@ describe('VerboseLogger', () => {
 
       logger.logRead(1, 0x03, 0x0001, 1, Buffer.from([0x01, 0x03, 0x02, 0xff, 0xee]))
 
-      expect(capturedOutput).toHaveLength(1)
-      const output = capturedOutput[0]
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1)
+      const output = consoleLogSpy.mock.calls[0]?.[0] as string
       expect(output).toContain('addr=0x0001')
     })
 
@@ -125,8 +118,8 @@ describe('VerboseLogger', () => {
 
       logger.logWrite(1, 0x06, 0x0000, 1, [0x0001])
 
-      expect(capturedOutput).toHaveLength(1)
-      const output = capturedOutput[0]
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1)
+      const output = consoleLogSpy.mock.calls[0]?.[0] as string
       expect(output).toContain('values=[0x0001]')
     })
   })
@@ -138,8 +131,9 @@ describe('VerboseLogger', () => {
 
       logger.logRead(1, 0x03, 0x0000, 2, response)
 
-      expect(capturedOutput).toHaveLength(1)
-      expect(capturedOutput[0]).toContain('values=[0x0123, 0x4567]')
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1)
+      const output = consoleLogSpy.mock.calls[0]?.[0] as string
+      expect(output).toContain('values=[0x0123, 0x4567]')
     })
 
     test('handles short response buffer gracefully', () => {
@@ -148,8 +142,9 @@ describe('VerboseLogger', () => {
 
       logger.logRead(1, 0x03, 0x0000, 2, response)
 
-      expect(capturedOutput).toHaveLength(1)
-      expect(capturedOutput[0]).toContain('values=[]')
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1)
+      const output = consoleLogSpy.mock.calls[0]?.[0] as string
+      expect(output).toContain('values=[]')
     })
 
     test('handles malformed response with incorrect byte count', () => {
@@ -158,8 +153,9 @@ describe('VerboseLogger', () => {
 
       logger.logRead(1, 0x03, 0x0000, 1, response)
 
-      expect(capturedOutput).toHaveLength(1)
-      expect(capturedOutput[0]).toContain('values=[0x1234]')
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1)
+      const output = consoleLogSpy.mock.calls[0]?.[0] as string
+      expect(output).toContain('values=[0x1234]')
     })
 
     test('handles odd number of bytes in response', () => {
@@ -168,8 +164,9 @@ describe('VerboseLogger', () => {
 
       logger.logRead(1, 0x03, 0x0000, 2, response)
 
-      expect(capturedOutput).toHaveLength(1)
-      expect(capturedOutput[0]).toContain('values=[0x1234]')
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1)
+      const output = consoleLogSpy.mock.calls[0]?.[0] as string
+      expect(output).toContain('values=[0x1234]')
     })
 
     test('handles response with exact byte count', () => {
@@ -178,8 +175,9 @@ describe('VerboseLogger', () => {
 
       logger.logRead(1, 0x03, 0x0000, 2, response)
 
-      expect(capturedOutput).toHaveLength(1)
-      expect(capturedOutput[0]).toContain('values=[0x1234, 0x5678]')
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1)
+      const output = consoleLogSpy.mock.calls[0]?.[0] as string
+      expect(output).toContain('values=[0x1234, 0x5678]')
     })
   })
 })
