@@ -1,4 +1,5 @@
 {
+  "description": "Multiple devices on port 2: XYMD1 temperature controller and OR-WE-516 relay",
   "transport": {
     "type": "rtu",
     "port": "/tmp/ttyV2",
@@ -9,6 +10,7 @@
   "devices": [
     {
       "slaveId": 1,
+      "deviceType": "XYMD1",
       "registers": {
         "holding": {
           "0": 250,
@@ -25,6 +27,7 @@
     },
     {
       "slaveId": 2,
+      "deviceType": "OR-WE-516",
       "registers": {
         "holding": {
           "0": 500,

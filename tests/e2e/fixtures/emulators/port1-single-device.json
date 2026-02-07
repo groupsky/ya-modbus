@@ -1,4 +1,5 @@
 {
+  "description": "Single EX9EM energy meter device on port 1",
   "transport": {
     "type": "rtu",
     "port": "/tmp/ttyV0",
@@ -9,6 +10,7 @@
   "devices": [
     {
       "slaveId": 1,
+      "deviceType": "EX9EM",
       "registers": {
         "holding": {
           "0": 2300,
