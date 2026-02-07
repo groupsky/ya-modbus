@@ -191,6 +191,66 @@ describe('RtuTransport', () => {
       await expect(transport.start()).rejects.toThrow('Failed to open port')
     })
 
+    it('should clean up error listener when start() fails due to openCallback error', async () => {
+      // Test for issue #280: RTU transport leaks 'error' event listener on initialization failure
+      // When openCallback is called with an error, start() rejects but the 'error' listener
+      // added on line 116 of rtu.ts is never removed, causing a memory leak
+      const { EventEmitter } = await import('events')
+      const { ServerSerial } = await import('modbus-serial')
+      const startError = new Error('Failed to open port')
+      let mockInstance: any
+      ;(ServerSerial as any).mockImplementationOnce((vector: any, options: any) => {
+        capturedServiceVector = vector
+        eventListeners = new Map()
+
+        // Simulate openCallback error (port can't be opened)
+        if (options.openCallback) {
+          setImmediate(() => options.openCallback(startError))
+        }
+
+        // Create mock that inherits from EventEmitter to support EventEmitter.prototype.removeAllListeners.call()
+        const localMockInstance = Object.create(EventEmitter.prototype)
+        EventEmitter.call(localMockInstance)
+
+        // Add mock methods and properties
+        localMockInstance.close = jest.fn((cb: (err: Error | null) => void) => cb(null))
+        localMockInstance.socks = new Map()
+
+        // Wrap the on() method to track listeners in both EventEmitter and test Map
+        const originalOn = localMockInstance.on.bind(localMockInstance)
+        localMockInstance.on = jest.fn((event: string, listener: (...args: unknown[]) => void) => {
+          // Track in test Map for assertions
+          if (!eventListeners.has(event)) {
+            eventListeners.set(event, new Set())
+          }
+          eventListeners.get(event)!.add(listener)
+          // Register with real EventEmitter
+          return originalOn(event, listener)
+        })
+
+        mockInstance = localMockInstance
+        return localMockInstance
+      })
+
+      // Spy on EventEmitter.prototype.removeAllListeners to intercept calls via .call()
+      const prototypeSpy = jest.spyOn(EventEmitter.prototype, 'removeAllListeners')
+
+      transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+
+      // Start should fail due to openCallback error
+      await expect(transport.start()).rejects.toThrow('Failed to open port')
+
+      // After the fix: removeAllListeners('error') should be called during failed start
+      // Before the fix: no cleanup happens, 'error' listener remains on the server instance
+      expect(prototypeSpy).toHaveBeenCalledWith('error')
+
+      // Verify that the 'error' listener was actually removed from EventEmitter
+      expect(mockInstance.listenerCount('error')).toBe(0)
+
+      // Clean up spy
+      prototypeSpy.mockRestore()
+    })
+
     it('should reject on stop error', async () => {
       const { ServerSerial } = await import('modbus-serial')
       const closeError = new Error('Failed to close port')
