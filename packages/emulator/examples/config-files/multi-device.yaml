@@ -3,9 +3,9 @@
 
 transport:
   type: rtu
-  port: /dev/pts/10
+  port: /dev/pts/10 # Virtual serial port (socat PTY)
   baudRate: 9600
-  lock: false # Disable port locking for virtual serial ports (socat PTYs)
+  lock: false # Required for virtual ports - they don't support TIOCEXCL properly
 
 devices:
   # Power meter (slave 1)
