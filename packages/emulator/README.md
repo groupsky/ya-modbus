@@ -7,7 +7,7 @@ Software Modbus device emulator for testing device drivers without physical hard
 - **Realistic device simulation**: Mimic actual device constraints and timing characteristics
 - **Test acceleration**: Enable fast, deterministic testing without hardware
 - **Edge case coverage**: Simulate error conditions and edge cases
-- **Multiple transports**: TCP, RTU (virtual/real serial ports), and in-memory
+- **Multiple transports**: RTU (virtual/real serial ports) and in-memory
 - **Custom function codes**: Support vendor-specific Modbus extensions
 
 ## Installation
@@ -87,30 +87,6 @@ await emulator.start()
 
 // Stop emulator
 await emulator.stop()
-```
-
-### TCP Transport (network)
-
-```typescript
-import { ModbusEmulator } from '@ya-modbus/emulator'
-
-// Create emulator with TCP transport
-const emulator = new ModbusEmulator({
-  transport: 'tcp',
-  port: 5502,
-  host: '0.0.0.0',
-})
-
-// Add a device
-emulator.addDevice({
-  slaveId: 1,
-  registers: {
-    holding: { 0: 230, 1: 52 },
-  },
-})
-
-// Start emulator
-await emulator.start()
 ```
 
 ## CLI Usage
