@@ -4,6 +4,8 @@
  * This implementation uses modbus-serial ServerTCP for protocol handling.
  */
 
+import { EventEmitter } from 'events'
+
 import { ServerTCP } from 'modbus-serial'
 import type { IServiceVector } from 'modbus-serial/ServerTCP'
 
@@ -102,8 +104,9 @@ export class TcpTransport extends BaseTransport {
     }
 
     // Clean up event listeners to prevent memory leaks (issue #253)
-    this.server.removeAllListeners('initialized')
-    this.server.removeAllListeners('error')
+    // Use EventEmitter.prototype since modbus-serial doesn't expose these methods in types
+    EventEmitter.prototype.removeAllListeners.call(this.server, 'initialized')
+    EventEmitter.prototype.removeAllListeners.call(this.server, 'error')
 
     return new Promise<void>((resolve, reject) => {
       if (!this.server) {

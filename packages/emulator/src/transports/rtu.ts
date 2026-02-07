@@ -4,6 +4,8 @@
  * This implementation uses modbus-serial ServerSerial for protocol handling.
  */
 
+import { EventEmitter } from 'events'
+
 import { ServerSerial } from 'modbus-serial'
 import type { IServiceVector } from 'modbus-serial/ServerTCP'
 
@@ -122,7 +124,8 @@ export class RtuTransport extends BaseTransport {
     }
 
     // Clean up event listeners to prevent memory leaks (issue #253)
-    this.server.removeAllListeners('error')
+    // Use EventEmitter.prototype since modbus-serial doesn't expose these methods in types
+    EventEmitter.prototype.removeAllListeners.call(this.server, 'error')
 
     return new Promise<void>((resolve, reject) => {
       if (!this.server) {
