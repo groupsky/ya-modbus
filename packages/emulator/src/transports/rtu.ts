@@ -15,6 +15,7 @@ export interface RtuTransportConfig {
   parity?: 'none' | 'even' | 'odd'
   dataBits?: 7 | 8
   stopBits?: 1 | 2
+  lock?: boolean
 }
 
 export class RtuTransport extends BaseTransport {
@@ -79,17 +80,24 @@ export class RtuTransport extends BaseTransport {
 
     // Create and start server
     return new Promise<void>((resolve, reject) => {
-      this.server = new ServerSerial(serviceVector, {
-        ...options,
-        openCallback: (err: Error | null) => {
-          if (err) {
-            reject(err)
-          } else {
-            this.started = true
-            resolve()
-          }
+      this.server = new ServerSerial(
+        serviceVector,
+        {
+          ...options,
+          openCallback: (err: Error | null) => {
+            if (err) {
+              reject(err)
+            } else {
+              this.started = true
+              resolve()
+            }
+          },
         },
-      })
+        // @ts-expect-error - ServerSerial accepts third parameter serialportOptions but typedef is incomplete
+        {
+          lock: this.config.lock ?? true,
+        }
+      )
 
       // Handle errors
       this.server.on('error', (err) => {
