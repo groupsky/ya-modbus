@@ -4,6 +4,7 @@ import type { DiscoveryStrategy } from '../discovery/parameter-generator.js'
 import { ProgressTracker } from '../discovery/progress.js'
 import { scanForDevices } from '../discovery/scanner.js'
 import { formatDiscoveryJSON, formatDiscoveryTable } from '../formatters/discovery-results.js'
+import { parseIdRange } from '../utils/parse-id-range.js'
 
 /**
  * Discover command options
@@ -18,6 +19,7 @@ export interface DiscoverOptions {
   timeout?: number
   delay?: number
   maxDevices?: number
+  id?: string | string[]
   verbose?: boolean
   silent?: boolean
 
@@ -42,10 +44,29 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
   const verbose = options.verbose ?? false
   const silent = options.silent ?? false
 
+  // Parse and merge ID specifications
+  let slaveIds: number[] | undefined
+  if (options.id) {
+    const idSpecs = Array.isArray(options.id) ? options.id : [options.id]
+    const allIds = new Set<number>()
+
+    for (const spec of idSpecs) {
+      const ids = parseIdRange(spec)
+      ids.forEach((id) => allIds.add(id))
+    }
+
+    slaveIds = Array.from(allIds).sort((a, b) => a - b)
+  }
+
   if (!silent) {
     console.log(`Starting Modbus device discovery on ${options.port}...`)
     console.log(`Strategy: ${strategy}`)
     console.log(`Timeout: ${timeout}ms, Delay: ${delay}ms`)
+    if (slaveIds) {
+      console.log(`Slave IDs: ${slaveIds.join(', ')} (${slaveIds.length} IDs)`)
+    } else {
+      console.log('Slave IDs: 1-247 (all)')
+    }
     if (maxDevices === 0) {
       console.log('Mode: Find all devices')
     } else {
@@ -101,6 +122,10 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
 
   if (driverMetadata?.supportedConfig && 'validBaudRates' in driverMetadata.supportedConfig) {
     generatorOptions.supportedConfig = driverMetadata.supportedConfig
+  }
+
+  if (slaveIds) {
+    generatorOptions.slaveIds = slaveIds
   }
 
   const totalCombinations = countParameterCombinations(generatorOptions)
