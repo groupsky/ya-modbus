@@ -343,13 +343,13 @@ teardown() {
 
   run node "$CLI_BIN" discover \
     --port /tmp/ttyV3 \
-    --driver @ya-modbus/driver-xymd1 \
     --strategy quick \
-    --max-devices 1
+    --max-devices 2
 
   assert_success
-  assert_output_contains "Found"
-  assert_output_contains "device"
+  assert_output_contains "Found 2 device"
+  assert_output_contains "Slave ID 1"
+  assert_output_contains "Slave ID 2"
 }
 
 @test "discover outputs JSON format" {
