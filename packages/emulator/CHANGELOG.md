@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.10.2...@ya-modbus/emulator@0.10.3) (2026-02-07)
+
+### Bug Fixes
+
+- **emulator:** remove event listeners in TCP/RTU transport stop() ([#270](https://github.com/groupsky/ya-modbus/issues/270)) ([8ce11a0](https://github.com/groupsky/ya-modbus/commit/8ce11a0a5ce5532be2a63bc1808e4ca83bbe19e8)), closes [#253](https://github.com/groupsky/ya-modbus/issues/253)
+
 ## [0.10.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.10.1...@ya-modbus/emulator@0.10.2) (2026-02-07)
 
 **Note:** Version bump only for package @ya-modbus/emulator
