@@ -178,6 +178,68 @@ describe('RtuTransport async callback compatibility', () => {
     })
   })
 
+  describe('Error handling in callback-style', () => {
+    beforeEach(async () => {
+      transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+      await transport.start()
+
+      // Mock handler that throws errors
+      const mockHandler = jest.fn().mockRejectedValue(new Error('Handler error'))
+      transport.onRequest(mockHandler)
+    })
+
+    it('should handle errors in getHoldingRegister callback', () => {
+      return expect(
+        simulateModbusSerialCall<number>(capturedServiceVector.getHoldingRegister, 0, 1)
+      ).rejects.toThrow('Handler error')
+    })
+
+    it('should handle errors in getInputRegister callback', () => {
+      return expect(
+        simulateModbusSerialCall<number>(capturedServiceVector.getInputRegister, 0, 1)
+      ).rejects.toThrow('Handler error')
+    })
+
+    it('should handle errors in getMultipleHoldingRegisters callback', () => {
+      return expect(
+        simulateModbusSerialCall<number[]>(
+          capturedServiceVector.getMultipleHoldingRegisters,
+          0,
+          1,
+          1
+        )
+      ).rejects.toThrow('Handler error')
+    })
+
+    it('should handle errors in getMultipleInputRegisters callback', () => {
+      return expect(
+        simulateModbusSerialCall<number[]>(capturedServiceVector.getMultipleInputRegisters, 0, 1, 1)
+      ).rejects.toThrow('Handler error')
+    })
+
+    it('should handle errors in getCoil callback', () => {
+      return expect(
+        simulateModbusSerialCall<boolean>(capturedServiceVector.getCoil, 0, 1)
+      ).rejects.toThrow('Handler error')
+    })
+
+    it('should handle errors in getDiscreteInput callback', () => {
+      return expect(
+        simulateModbusSerialCall<boolean>(capturedServiceVector.getDiscreteInput, 0, 1)
+      ).rejects.toThrow('Handler error')
+    })
+
+    it('should convert non-Error objects to Error in callbacks', async () => {
+      // Mock handler that throws a non-Error
+      const mockHandler = jest.fn().mockRejectedValue('string error')
+      transport.onRequest(mockHandler)
+
+      await expect(
+        simulateModbusSerialCall<number>(capturedServiceVector.getHoldingRegister, 0, 1)
+      ).rejects.toThrow('string error')
+    })
+  })
+
   describe('Callback-style (workaround)', () => {
     it('should work with callback-style service vector', async () => {
       // This test shows that callback-style works correctly with modbus-serial

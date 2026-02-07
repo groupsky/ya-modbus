@@ -704,4 +704,20 @@ describe('RtuTransport', () => {
       )
     })
   })
+
+  describe('edge cases', () => {
+    it('should handle stop() when server is not initialized', async () => {
+      transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+      // Don't call start(), just call stop()
+      await expect(transport.stop()).resolves.not.toThrow()
+    })
+
+    it('should handle stop() called multiple times', async () => {
+      transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+      await transport.start()
+      await transport.stop()
+      // Second stop should work fine
+      await expect(transport.stop()).resolves.not.toThrow()
+    })
+  })
 })

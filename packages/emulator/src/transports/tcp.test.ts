@@ -809,6 +809,22 @@ describe('TcpTransport', () => {
     })
   })
 
+  describe('edge cases', () => {
+    it('should handle stop() when server is not initialized', async () => {
+      transport = new TcpTransport({ host: 'localhost', port: 502 })
+      // Don't call start(), just call stop()
+      await expect(transport.stop()).resolves.not.toThrow()
+    })
+
+    it('should handle stop() called multiple times', async () => {
+      transport = new TcpTransport({ host: 'localhost', port: 502 })
+      await transport.start()
+      await transport.stop()
+      // Second stop should work fine
+      await expect(transport.stop()).resolves.not.toThrow()
+    })
+  })
+
   describe('configuration', () => {
     it('should pass host to ServerTCP', async () => {
       const { ServerTCP } = await import('modbus-serial')
