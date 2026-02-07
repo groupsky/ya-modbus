@@ -20,7 +20,6 @@ interface CliOptions {
   slaveId?: number
   verbose?: boolean
   quiet?: boolean
-  logRequests?: boolean
 }
 
 const program = new Command()
@@ -41,7 +40,6 @@ program
   .option('-s, --slave-id <id>', 'Slave ID (required if no config file)', parseInt)
   .option('-v, --verbose', 'Enable verbose logging')
   .option('-q, --quiet', 'Suppress all output except errors')
-  .option('--log-requests', 'Log all Modbus requests/responses')
 
 program.parse()
 
