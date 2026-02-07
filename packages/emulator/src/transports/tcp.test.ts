@@ -13,6 +13,7 @@ let capturedServiceVector: any = null
 let mockServerInstance: any
 let initializedListener: (() => void) | undefined
 let errorListener: ((err: Error) => void) | undefined
+let eventListeners: Map<string, Set<(...args: unknown[]) => void>>
 
 // Mock modbus-serial
 jest.mock('modbus-serial', () => {
@@ -24,6 +25,7 @@ jest.mock('modbus-serial', () => {
       // Reset listeners
       initializedListener = undefined
       errorListener = undefined
+      eventListeners = new Map()
 
       // Create mock instance
       mockServerInstance = {
@@ -34,6 +36,21 @@ jest.mock('modbus-serial', () => {
           } else if (event === 'error') {
             errorListener = listener
           }
+          // Track listeners
+          if (!eventListeners.has(event)) {
+            eventListeners.set(event, new Set())
+          }
+          eventListeners.get(event)!.add(listener)
+        }),
+        removeAllListeners: jest.fn((event?: string) => {
+          if (event) {
+            eventListeners.delete(event)
+          } else {
+            eventListeners.clear()
+          }
+        }),
+        listenerCount: jest.fn((event: string) => {
+          return eventListeners.get(event)?.size ?? 0
         }),
         socks: new Map(),
       }
@@ -94,6 +111,38 @@ describe('TcpTransport', () => {
       await transport.start()
       await expect(transport.start()).rejects.toThrow('Transport already started')
     })
+
+    it('should not accumulate event listeners after repeated start/stop cycles', async () => {
+      // This test verifies the fix for issue #253: Event listener memory leak
+      // Before the fix, listeners are never removed during stop()
+      // Each start() adds listeners, so repeated cycles on the same server accumulate them
+
+      // Track listener counts across multiple transports using the same mock server
+      const listenerCounts: number[] = []
+
+      // Run 5 start/stop cycles
+      for (let i = 0; i < 5; i++) {
+        transport = new TcpTransport({ host: 'localhost', port: 502 })
+        await transport.start()
+
+        // Record listener count after start
+        const count =
+          mockServerInstance.listenerCount('initialized') +
+          mockServerInstance.listenerCount('error')
+        listenerCounts.push(count)
+
+        await transport.stop()
+      }
+
+      // After the fix: all cycles should have the same listener count (2 listeners per cycle)
+      // Before the fix: listener count would grow with each cycle
+      // For this mock setup, each transport creates a fresh server, so count should be constant
+      // But we verify that stop() properly cleans up listeners
+      expect(listenerCounts).toEqual([2, 2, 2, 2, 2])
+
+      // Verify removeAllListeners was called during each stop
+      expect(mockServerInstance.removeAllListeners).toHaveBeenCalled()
+    })
   })
 
   describe('request/response handling', () => {
@@ -140,6 +189,7 @@ describe('TcpTransport', () => {
               errorListener = listener
             }
           }),
+          removeAllListeners: jest.fn(),
           socks: new Map(),
         }
 

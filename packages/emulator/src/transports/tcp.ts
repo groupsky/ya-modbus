@@ -101,6 +101,10 @@ export class TcpTransport extends BaseTransport {
       return
     }
 
+    // Clean up event listeners to prevent memory leaks (issue #253)
+    this.server.removeAllListeners('initialized')
+    this.server.removeAllListeners('error')
+
     return new Promise<void>((resolve, reject) => {
       if (!this.server) {
         resolve()
