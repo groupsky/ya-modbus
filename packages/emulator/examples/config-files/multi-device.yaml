@@ -5,6 +5,7 @@ transport:
   type: rtu
   port: /dev/pts/10
   baudRate: 9600
+  lock: false # Disable port locking for virtual serial ports (socat PTYs)
 
 devices:
   # Power meter (slave 1)

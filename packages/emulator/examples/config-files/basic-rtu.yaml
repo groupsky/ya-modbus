@@ -6,6 +6,7 @@ transport:
   port: /dev/ttyUSB0 # Linux/macOS, use COM3 on Windows
   baudRate: 9600
   parity: none
+  # lock: true # Optional - enable exclusive port locking (default: true)
 
 devices:
   - slaveId: 1
