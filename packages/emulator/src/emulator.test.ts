@@ -134,6 +134,16 @@ describe('ModbusEmulator', () => {
         } as any)
       }).toThrow('RTU transport requires port')
     })
+
+    it('should create RTU transport with lock option', () => {
+      emulator = new ModbusEmulator({
+        transport: 'rtu',
+        port: '/dev/pts/10',
+        lock: false,
+      })
+      expect(emulator).toBeDefined()
+      expect(emulator.getTransport()).toBeDefined()
+    })
   })
 
   describe('request handling', () => {

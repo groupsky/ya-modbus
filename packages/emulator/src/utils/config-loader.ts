@@ -17,6 +17,7 @@ export interface ConfigFile {
     parity?: 'none' | 'even' | 'odd'
     dataBits?: 7 | 8
     stopBits?: 1 | 2
+    lock?: boolean
   }
   devices: DeviceConfig[]
 }

@@ -28,12 +28,14 @@ export class ModbusEmulator {
         parity?: 'none' | 'even' | 'odd'
         dataBits?: 7 | 8
         stopBits?: 1 | 2
+        lock?: boolean
       } = {
         port: config.port,
         ...(config.baudRate !== undefined && { baudRate: config.baudRate }),
         ...(config.parity !== undefined && { parity: config.parity }),
         ...(config.dataBits !== undefined && { dataBits: config.dataBits }),
         ...(config.stopBits !== undefined && { stopBits: config.stopBits }),
+        ...(config.lock !== undefined && { lock: config.lock }),
       }
       this.transport = new RtuTransport(rtuConfig)
     } else {

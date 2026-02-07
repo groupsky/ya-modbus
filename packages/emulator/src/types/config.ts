@@ -19,6 +19,8 @@ export interface EmulatorConfig {
   stopBits?: 1 | 2
   /** Data bits for RTU transport */
   dataBits?: 7 | 8
+  /** Enable exclusive port locking (RTU) - default: true */
+  lock?: boolean
 }
 
 export interface RegisterStorage {
