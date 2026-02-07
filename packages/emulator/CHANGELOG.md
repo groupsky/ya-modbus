@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.11.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.10.8...@ya-modbus/emulator@0.11.0) (2026-02-07)
+
+### Features
+
+- **emulator:** add verbose logging for Modbus operations ([#316](https://github.com/groupsky/ya-modbus/issues/316)) ([2bd14aa](https://github.com/groupsky/ya-modbus/commit/2bd14aadf4c6cd8da5275824a371adb5835cc502)), closes [#309](https://github.com/groupsky/ya-modbus/issues/309) [#311](https://github.com/groupsky/ya-modbus/issues/311) [#312](https://github.com/groupsky/ya-modbus/issues/312) [#313](https://github.com/groupsky/ya-modbus/issues/313) [#310](https://github.com/groupsky/ya-modbus/issues/310) [#314](https://github.com/groupsky/ya-modbus/issues/314)
+
 ## [0.10.8](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.10.7...@ya-modbus/emulator@0.10.8) (2026-02-07)
 
 ### Bug Fixes
