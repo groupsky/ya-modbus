@@ -7,7 +7,7 @@ Software Modbus device emulator for testing device drivers without physical hard
 - **Realistic device simulation**: Mimic actual device constraints and timing characteristics
 - **Test acceleration**: Enable fast, deterministic testing without hardware
 - **Edge case coverage**: Simulate error conditions and edge cases
-- **Multiple transports**: TCP, RTU (virtual/real serial ports), and in-memory
+- **Multiple transports**: RTU (virtual/real serial ports) and in-memory
 - **Custom function codes**: Support vendor-specific Modbus extensions
 
 ## Installation
@@ -18,13 +18,14 @@ npm install @ya-modbus/emulator
 
 ## Quick Start
 
+### Memory Transport (fastest for unit tests)
+
 ```typescript
 import { ModbusEmulator } from '@ya-modbus/emulator'
 
-// Create emulator with TCP transport
+// Create emulator with in-memory transport
 const emulator = new ModbusEmulator({
-  transport: 'tcp',
-  port: 5502,
+  transport: 'memory',
 })
 
 // Add a device
@@ -35,6 +36,46 @@ emulator.addDevice({
       0: 230, // Voltage * 10 = 23.0V
       1: 52, // Current * 10 = 5.2A
     },
+  },
+})
+
+// Start emulator
+await emulator.start()
+
+// Use with your driver tests
+// ...
+
+// Stop emulator
+await emulator.stop()
+```
+
+### RTU Transport (serial port)
+
+```typescript
+import { ModbusEmulator } from '@ya-modbus/emulator'
+
+// Create emulator with RTU transport
+const emulator = new ModbusEmulator({
+  transport: 'rtu',
+  port: '/dev/ttyUSB0', // or 'COM3' on Windows
+  baudRate: 9600,
+  parity: 'none',
+  dataBits: 8,
+  stopBits: 1,
+})
+
+// Add devices
+emulator.addDevice({
+  slaveId: 1,
+  registers: {
+    holding: { 0: 230, 1: 52 },
+  },
+})
+
+emulator.addDevice({
+  slaveId: 2,
+  registers: {
+    holding: { 0: 500, 1: 100 },
   },
 })
 
@@ -144,8 +185,6 @@ devices:
 See `examples/config-files/` for more examples.
 
 ### Testing with Virtual Serial Ports
-
-> **⚠️ Note**: RTU transport is currently a placeholder for v0.1.0. Serial port communication will be implemented in v0.2.0. Use the memory transport for testing in this version.
 
 For testing without physical hardware, create virtual serial port pairs:
 
