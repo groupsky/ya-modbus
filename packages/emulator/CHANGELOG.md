@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.10.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.9.0...@ya-modbus/emulator@0.10.0) (2026-02-07)
+
+### Features
+
+- **emulator:** add configurable lock option for RTU transport ([#263](https://github.com/groupsky/ya-modbus/issues/263)) ([3e2a2f1](https://github.com/groupsky/ya-modbus/commit/3e2a2f195d6f7c14bb574aea1bb08f0ce38c23e7)), closes [#251](https://github.com/groupsky/ya-modbus/issues/251) [#264](https://github.com/groupsky/ya-modbus/issues/264) [#265](https://github.com/groupsky/ya-modbus/issues/265)
+
 # [0.9.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.8.0...@ya-modbus/emulator@0.9.0) (2026-02-07)
 
 ### Features
