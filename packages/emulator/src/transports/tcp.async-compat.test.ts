@@ -110,7 +110,7 @@ describe('TcpTransport async callback compatibility', () => {
     await transport?.stop()
   })
 
-  describe('Promise-based callbacks (current implementation)', () => {
+  describe('Callback-style implementation (fix for #303)', () => {
     beforeEach(async () => {
       transport = new TcpTransport({ host: 'localhost', port: 502 })
       await transport.start()
@@ -136,44 +136,48 @@ describe('TcpTransport async callback compatibility', () => {
       transport.onRequest(mockHandler)
     })
 
-    it('should fail when simulating real modbus-serial behavior (reproduces #303)', () => {
-      // This test simulates how modbus-serial ServerTCP actually calls the service vector
-      // The current Promise-based implementation will timeout because modbus-serial
-      // doesn't properly await the Promise
-
+    it('should work correctly when simulating real modbus-serial behavior (fixes #303)', () => {
+      // Now using callback-style, this should work with real modbus-serial behavior
       return expect(
-        simulateModbusSerialCall(capturedServiceVector.getHoldingRegister, 0, 1)
-      ).rejects.toThrow(/Modbus exception 4|timeout/)
+        simulateModbusSerialCall<number[]>(capturedServiceVector.getHoldingRegister, 0, 1)
+      ).resolves.toEqual([230])
     })
 
-    it('should fail for getMultipleHoldingRegisters', () => {
+    it('should work for getMultipleHoldingRegisters', () => {
+      // Mock returns single register, test with length 1
       return expect(
-        simulateModbusSerialCall(capturedServiceVector.getMultipleHoldingRegisters, 0, 2, 1)
-      ).rejects.toThrow(/Modbus exception 4|timeout/)
+        simulateModbusSerialCall<number[]>(
+          capturedServiceVector.getMultipleHoldingRegisters,
+          0,
+          1,
+          1
+        )
+      ).resolves.toEqual([230])
     })
 
-    it('should fail for getInputRegister', () => {
+    it('should work for getInputRegister', () => {
       return expect(
-        simulateModbusSerialCall(capturedServiceVector.getInputRegister, 0, 1)
-      ).rejects.toThrow(/Modbus exception 4|timeout/)
+        simulateModbusSerialCall<number[]>(capturedServiceVector.getInputRegister, 0, 1)
+      ).resolves.toEqual([52])
     })
 
-    it('should fail for getMultipleInputRegisters', () => {
+    it('should work for getMultipleInputRegisters', () => {
+      // Mock returns single register, test with length 1
       return expect(
-        simulateModbusSerialCall(capturedServiceVector.getMultipleInputRegisters, 0, 2, 1)
-      ).rejects.toThrow(/Modbus exception 4|timeout/)
+        simulateModbusSerialCall<number[]>(capturedServiceVector.getMultipleInputRegisters, 0, 1, 1)
+      ).resolves.toEqual([52])
     })
 
-    it('should fail for getCoil', () => {
-      return expect(simulateModbusSerialCall(capturedServiceVector.getCoil, 0, 1)).rejects.toThrow(
-        /Modbus exception 4|timeout/
-      )
+    it('should work for getCoil', () => {
+      return expect(
+        simulateModbusSerialCall<boolean>(capturedServiceVector.getCoil, 0, 1)
+      ).resolves.toBe(true)
     })
 
-    it('should fail for getDiscreteInput', () => {
+    it('should work for getDiscreteInput', () => {
       return expect(
-        simulateModbusSerialCall(capturedServiceVector.getDiscreteInput, 0, 1)
-      ).rejects.toThrow(/Modbus exception 4|timeout/)
+        simulateModbusSerialCall<boolean>(capturedServiceVector.getDiscreteInput, 0, 1)
+      ).resolves.toBe(true)
     })
   })
 

@@ -16,6 +16,30 @@ import { ModbusEmulator } from './emulator.js'
 // Store captured service vector for testing
 let capturedServiceVector: any = null
 
+// Helper to convert callback-style service vector methods to Promise for testing
+const callServiceVector = <T>(method: (...args: any[]) => any, ...args: any[]): Promise<T> => {
+  return new Promise((resolve, reject) => {
+    // Try callback style first
+    try {
+      method(...args, (callbackErr: Error | null, result?: T) => {
+        if (callbackErr) {
+          reject(callbackErr)
+        } else {
+          resolve(result as T)
+        }
+      })
+    } catch {
+      // If that fails, maybe it's Promise-style
+      const result = method(...args)
+      if (result instanceof Promise) {
+        result.then(resolve).catch(reject)
+      } else {
+        resolve(result)
+      }
+    }
+  })
+}
+
 // Mock modbus-serial
 jest.mock('modbus-serial', () => {
   return {
@@ -78,25 +102,43 @@ describe('ModbusEmulator RTU Integration', () => {
     })
 
     it('should read single holding register via RTU service vector', async () => {
-      const result = await capturedServiceVector.getHoldingRegister(0, 1)
+      const result = await callServiceVector<number[]>(
+        capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+        0,
+        1
+      )
 
       expect(result).toEqual([230])
     })
 
     it('should read multiple holding registers via RTU service vector', async () => {
-      const result = await capturedServiceVector.getMultipleHoldingRegisters(0, 3, 1)
+      const result = await callServiceVector<number[]>(
+        capturedServiceVector.getMultipleHoldingRegisters.bind(capturedServiceVector),
+        0,
+        3,
+        1
+      )
 
       expect(result).toEqual([230, 52, 1196])
     })
 
     it('should read single input register via RTU service vector', async () => {
-      const result = await capturedServiceVector.getInputRegister(0, 1)
+      const result = await callServiceVector<number[]>(
+        capturedServiceVector.getInputRegister.bind(capturedServiceVector),
+        0,
+        1
+      )
 
       expect(result).toEqual([500])
     })
 
     it('should read multiple input registers via RTU service vector', async () => {
-      const result = await capturedServiceVector.getMultipleInputRegisters(0, 2, 1)
+      const result = await callServiceVector<number[]>(
+        capturedServiceVector.getMultipleInputRegisters.bind(capturedServiceVector),
+        0,
+        2,
+        1
+      )
 
       expect(result).toEqual([500, 60])
     })
@@ -118,7 +160,11 @@ describe('ModbusEmulator RTU Integration', () => {
       await capturedServiceVector.setRegister(0, 300, 1)
 
       // Verify by reading back
-      const result = await capturedServiceVector.getHoldingRegister(0, 1)
+      const result = await callServiceVector<number[]>(
+        capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+        0,
+        1
+      )
       expect(result).toEqual([300])
     })
 
@@ -126,7 +172,12 @@ describe('ModbusEmulator RTU Integration', () => {
       await capturedServiceVector.setRegisterArray(0, [500, 100, 200], 1)
 
       // Verify by reading back
-      const result = await capturedServiceVector.getMultipleHoldingRegisters(0, 3, 1)
+      const result = await callServiceVector<number[]>(
+        capturedServiceVector.getMultipleHoldingRegisters.bind(capturedServiceVector),
+        0,
+        3,
+        1
+      )
       expect(result).toEqual([500, 100, 200])
     })
   })
@@ -157,11 +208,19 @@ describe('ModbusEmulator RTU Integration', () => {
 
     it('should route requests to correct device via unit ID', async () => {
       // Read from device 1
-      const result1 = await capturedServiceVector.getHoldingRegister(0, 1)
+      const result1 = await callServiceVector<number[]>(
+        capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+        0,
+        1
+      )
       expect(result1).toEqual([100])
 
       // Read from device 2
-      const result2 = await capturedServiceVector.getHoldingRegister(0, 2)
+      const result2 = await callServiceVector<number[]>(
+        capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+        0,
+        2
+      )
       expect(result2).toEqual([200])
     })
   })
@@ -178,7 +237,13 @@ describe('ModbusEmulator RTU Integration', () => {
       await emulator.start()
 
       // Requesting from non-existent device 99 should throw
-      await expect(capturedServiceVector.getHoldingRegister(0, 99)).rejects.toThrow()
+      await expect(
+        callServiceVector(
+          capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+          0,
+          99
+        )
+      ).rejects.toThrow()
     })
   })
 

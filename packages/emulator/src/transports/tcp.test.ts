@@ -11,6 +11,30 @@ import { TcpTransport } from './tcp.js'
 // Store captured service vector for testing
 let capturedServiceVector: any = null
 
+// Helper to convert callback-style service vector methods to Promise for testing
+const callServiceVector = <T>(method: (...args: any[]) => any, ...args: any[]): Promise<T> => {
+  return new Promise((resolve, reject) => {
+    // Try callback style first
+    try {
+      method(...args, (callbackErr: Error | null, result?: T) => {
+        if (callbackErr) {
+          reject(callbackErr)
+        } else {
+          resolve(result as T)
+        }
+      })
+    } catch {
+      // If that fails, maybe it's Promise-style
+      const result = method(...args)
+      if (result instanceof Promise) {
+        result.then(resolve).catch(reject)
+      } else {
+        resolve(result)
+      }
+    }
+  })
+}
+
 // Mock server instance - needs to be declared before the mock
 let mockServerInstance: any
 let initializedListener: (() => void) | undefined
@@ -584,7 +608,11 @@ describe('TcpTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      const result = await capturedServiceVector.getHoldingRegister(0, 1)
+      const result = await callServiceVector<number[]>(
+        capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+        0,
+        1
+      )
 
       expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
       expect(result).toEqual([230])
@@ -596,7 +624,11 @@ describe('TcpTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      const result = await capturedServiceVector.getInputRegister(0, 1)
+      const result = await callServiceVector<number[]>(
+        capturedServiceVector.getInputRegister.bind(capturedServiceVector),
+        0,
+        1
+      )
 
       expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
       expect(result).toEqual([52])
@@ -608,7 +640,12 @@ describe('TcpTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      const result = await capturedServiceVector.getMultipleHoldingRegisters(0, 2, 1)
+      const result = await callServiceVector<number[]>(
+        capturedServiceVector.getMultipleHoldingRegisters.bind(capturedServiceVector),
+        0,
+        2,
+        1
+      )
 
       expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
       expect(result).toEqual([230, 52])
@@ -620,7 +657,12 @@ describe('TcpTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      const result = await capturedServiceVector.getMultipleInputRegisters(0, 2, 1)
+      const result = await callServiceVector<number[]>(
+        capturedServiceVector.getMultipleInputRegisters.bind(capturedServiceVector),
+        0,
+        2,
+        1
+      )
 
       expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
       expect(result).toEqual([230, 52])
@@ -660,7 +702,11 @@ describe('TcpTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      const result = await capturedServiceVector.getCoil(0, 1)
+      const result = await callServiceVector<boolean>(
+        capturedServiceVector.getCoil.bind(capturedServiceVector),
+        0,
+        1
+      )
 
       expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
       expect(result).toBe(true)
@@ -672,7 +718,11 @@ describe('TcpTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      const result = await capturedServiceVector.getCoil(0, 1)
+      const result = await callServiceVector<boolean>(
+        capturedServiceVector.getCoil.bind(capturedServiceVector),
+        0,
+        1
+      )
 
       expect(result).toBe(false)
     })
@@ -683,7 +733,11 @@ describe('TcpTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      const result = await capturedServiceVector.getDiscreteInput(0, 1)
+      const result = await callServiceVector<boolean>(
+        capturedServiceVector.getDiscreteInput.bind(capturedServiceVector),
+        0,
+        1
+      )
 
       expect(mockHandler).toHaveBeenCalledWith(1, expect.any(Buffer))
       expect(result).toBe(true)
@@ -716,9 +770,13 @@ describe('TcpTransport', () => {
     })
 
     it('should throw error when request handler not set', async () => {
-      await expect(capturedServiceVector.getHoldingRegister(0, 1)).rejects.toThrow(
-        'No request handler set'
-      )
+      await expect(
+        callServiceVector(
+          capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+          0,
+          1
+        )
+      ).rejects.toThrow('No request handler set')
     })
 
     it('should throw error on invalid register read response', async () => {
@@ -727,9 +785,13 @@ describe('TcpTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      await expect(capturedServiceVector.getHoldingRegister(0, 1)).rejects.toThrow(
-        'Invalid response'
-      )
+      await expect(
+        callServiceVector(
+          capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+          0,
+          1
+        )
+      ).rejects.toThrow('Invalid response')
     })
 
     it('should throw error on invalid coil read response', async () => {
@@ -738,7 +800,9 @@ describe('TcpTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      await expect(capturedServiceVector.getCoil(0, 1)).rejects.toThrow('Invalid response')
+      await expect(
+        callServiceVector(capturedServiceVector.getCoil.bind(capturedServiceVector), 0, 1)
+      ).rejects.toThrow('Invalid response')
     })
 
     it('should throw error on undefined byte count in register response', async () => {
@@ -747,9 +811,13 @@ describe('TcpTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      await expect(capturedServiceVector.getHoldingRegister(0, 1)).rejects.toThrow(
-        'Invalid response'
-      )
+      await expect(
+        callServiceVector(
+          capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+          0,
+          1
+        )
+      ).rejects.toThrow('Invalid response')
     })
 
     it('should throw error on undefined coil byte in coil response', async () => {
@@ -758,7 +826,9 @@ describe('TcpTransport', () => {
       )
       transport.onRequest(mockHandler)
 
-      await expect(capturedServiceVector.getCoil(0, 1)).rejects.toThrow('Invalid response')
+      await expect(
+        callServiceVector(capturedServiceVector.getCoil.bind(capturedServiceVector), 0, 1)
+      ).rejects.toThrow('Invalid response')
     })
   })
 

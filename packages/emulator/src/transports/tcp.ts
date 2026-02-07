@@ -44,18 +44,46 @@ export class TcpTransport extends BaseTransport {
     }
 
     // Create service vector that bridges modbus-serial callbacks to our request handler
+    // Note: Use callback-style for read operations due to modbus-serial bug where
+    // Promise-based callbacks are not properly awaited (see #303, yaacov/node-modbus-serial#548)
     const serviceVector: IServiceVector = {
-      getHoldingRegister: async (addr: number, unitID: number) => {
-        return this.handleRegisterRead(unitID, 0x03, addr, 1)
+      getHoldingRegister: (
+        addr: number,
+        unitID: number,
+        cb: (err: Error | null, values?: number[]) => void
+      ) => {
+        this.handleRegisterRead(unitID, 0x03, addr, 1)
+          .then((values) => cb(null, values))
+          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err))))
       },
-      getInputRegister: async (addr: number, unitID: number) => {
-        return this.handleRegisterRead(unitID, 0x04, addr, 1)
+      getInputRegister: (
+        addr: number,
+        unitID: number,
+        cb: (err: Error | null, values?: number[]) => void
+      ) => {
+        this.handleRegisterRead(unitID, 0x04, addr, 1)
+          .then((values) => cb(null, values))
+          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err))))
       },
-      getMultipleHoldingRegisters: async (addr: number, length: number, unitID: number) => {
-        return this.handleRegisterRead(unitID, 0x03, addr, length)
+      getMultipleHoldingRegisters: (
+        addr: number,
+        length: number,
+        unitID: number,
+        cb: (err: Error | null, values?: number[]) => void
+      ) => {
+        this.handleRegisterRead(unitID, 0x03, addr, length)
+          .then((values) => cb(null, values))
+          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err))))
       },
-      getMultipleInputRegisters: async (addr: number, length: number, unitID: number) => {
-        return this.handleRegisterRead(unitID, 0x04, addr, length)
+      getMultipleInputRegisters: (
+        addr: number,
+        length: number,
+        unitID: number,
+        cb: (err: Error | null, values?: number[]) => void
+      ) => {
+        this.handleRegisterRead(unitID, 0x04, addr, length)
+          .then((values) => cb(null, values))
+          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err))))
       },
       setRegister: async (addr: number, value: number, unitID: number) => {
         return this.handleRegisterWrite(unitID, 0x06, addr, [value])
@@ -63,11 +91,19 @@ export class TcpTransport extends BaseTransport {
       setRegisterArray: async (addr: number, values: number[], unitID: number) => {
         return this.handleRegisterWrite(unitID, 0x10, addr, values)
       },
-      getCoil: async (addr: number, unitID: number) => {
-        return this.handleCoilRead(unitID, 0x01, addr, 1)
+      getCoil: (addr: number, unitID: number, cb: (err: Error | null, value?: boolean) => void) => {
+        this.handleCoilRead(unitID, 0x01, addr, 1)
+          .then((value) => cb(null, value))
+          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err))))
       },
-      getDiscreteInput: async (addr: number, unitID: number) => {
-        return this.handleCoilRead(unitID, 0x02, addr, 1)
+      getDiscreteInput: (
+        addr: number,
+        unitID: number,
+        cb: (err: Error | null, value?: boolean) => void
+      ) => {
+        this.handleCoilRead(unitID, 0x02, addr, 1)
+          .then((value) => cb(null, value))
+          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err))))
       },
       setCoil: async (addr: number, value: boolean, unitID: number) => {
         return this.handleCoilWrite(unitID, 0x05, addr, value)
