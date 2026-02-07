@@ -411,19 +411,3 @@ teardown() {
   assert_failure
   assert_output_contains "port"
 }
-
-@test "discover with thorough strategy (slow test)" {
-  skip "Thorough discovery takes 6+ hours - run manually"
-
-  run start_test_emulator "fixtures/emulators/port1-single-device.json"
-  assert_success
-  EMULATOR_PID="$output"
-
-  run timeout 300 node "$CLI_BIN" discover \
-    --port /tmp/ttyV1 \
-    --strategy thorough \
-    --max-devices 1
-
-  # May timeout, which is expected for thorough strategy
-  [ "$status" -eq 0 ] || [ "$status" -eq 124 ]
-}
