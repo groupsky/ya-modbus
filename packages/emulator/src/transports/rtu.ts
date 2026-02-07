@@ -91,12 +91,14 @@ export class RtuTransport extends BaseTransport {
 
     // Create and start server
     return new Promise<void>((resolve, reject) => {
-      this.server = new ServerSerial(
+      const server = new ServerSerial(
         serviceVector,
         {
           ...options,
           openCallback: (err: Error | null) => {
             if (err) {
+              // Clean up error listener to prevent memory leak (issue #280)
+              EventEmitter.prototype.removeAllListeners.call(server, 'error')
               reject(err)
             } else {
               this.started = true
@@ -110,8 +112,10 @@ export class RtuTransport extends BaseTransport {
         }
       )
 
+      this.server = server
+
       // Handle errors
-      this.server.on('error', (err) => {
+      server.on('error', (err) => {
         // Log error but don't stop server
         console.error('RTU transport error:', err)
       })
