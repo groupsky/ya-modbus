@@ -90,10 +90,9 @@ start_test_emulator() {
   local project_root
   project_root=$(get_project_root)
 
-  # Use the built emulator CLI
+  # Use the built emulator CLI (without --quiet to enable log checking)
   node "$project_root/packages/emulator/dist/esm/bin/ya-modbus-emulator.js" \
     --config "$config_file" \
-    --quiet \
     > "$log_file" 2>&1 &
   local pid=$!
 
@@ -112,8 +111,8 @@ start_test_emulator() {
       return 1
     fi
 
-    # Check log file for startup completion or listen message
-    if [ -f "$log_file" ] && grep -q -E "(started|listening|ready)" "$log_file" 2>/dev/null; then
+    # Check log file for "Emulator started successfully" message
+    if [ -f "$log_file" ] && grep -q "Emulator started successfully" "$log_file" 2>/dev/null; then
       emulator_ready=1
       break
     fi
@@ -122,9 +121,10 @@ start_test_emulator() {
     elapsed=$((elapsed + 1))
   done
 
-  # If no readiness signal found but process is alive, give it a brief moment
+  # If readiness not detected but process alive, it may have started without logging
+  # Skip the fallback sleep since we now have proper log output
   if [ $emulator_ready -eq 0 ] && kill -0 "$pid" 2>/dev/null; then
-    sleep 0.5
+    echo "Warning: Emulator running but startup message not found in logs" >&2
   fi
 
   # Final check if still running
