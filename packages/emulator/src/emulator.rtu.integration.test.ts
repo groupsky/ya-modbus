@@ -19,21 +19,23 @@ let capturedServiceVector: any = null
 // Mock modbus-serial
 jest.mock('modbus-serial', () => {
   return {
-    ServerSerial: jest.fn().mockImplementation((vector: any, options: any) => {
-      // Capture service vector for testing
-      capturedServiceVector = vector
+    ServerSerial: jest
+      .fn()
+      .mockImplementation((vector: any, options: any, _serialportOptions?: any) => {
+        // Capture service vector for testing
+        capturedServiceVector = vector
 
-      // Call openCallback immediately to simulate successful connection
-      if (options.openCallback) {
-        setImmediate(() => options.openCallback(null))
-      }
+        // Call openCallback immediately to simulate successful connection
+        if (options.openCallback) {
+          setImmediate(() => options.openCallback(null))
+        }
 
-      return {
-        close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
-        on: jest.fn(),
-        socks: new Map(),
-      }
-    }),
+        return {
+          close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
+          on: jest.fn(),
+          socks: new Map(),
+        }
+      }),
   }
 })
 
@@ -227,6 +229,66 @@ describe('ModbusEmulator RTU Integration', () => {
           dataBits: 8,
           stopBits: 1,
           unitID: 255,
+        }),
+        expect.any(Object)
+      )
+    })
+
+    it('should pass lock: false through full stack', async () => {
+      const { ServerSerial } = await import('modbus-serial')
+
+      emulator = new ModbusEmulator({
+        transport: 'rtu',
+        port: '/dev/ttyUSB0',
+        lock: false,
+      })
+
+      await emulator.start()
+
+      expect(ServerSerial).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(Object),
+        expect.objectContaining({
+          lock: false,
+        })
+      )
+    })
+
+    it('should pass lock: true through full stack', async () => {
+      const { ServerSerial } = await import('modbus-serial')
+
+      emulator = new ModbusEmulator({
+        transport: 'rtu',
+        port: '/dev/ttyUSB0',
+        lock: true,
+      })
+
+      await emulator.start()
+
+      expect(ServerSerial).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(Object),
+        expect.objectContaining({
+          lock: true,
+        })
+      )
+    })
+
+    it('should default to lock: true when not specified', async () => {
+      const { ServerSerial } = await import('modbus-serial')
+
+      emulator = new ModbusEmulator({
+        transport: 'rtu',
+        port: '/dev/ttyUSB0',
+      })
+
+      await emulator.start()
+
+      expect(ServerSerial).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(Object),
+        expect.objectContaining({
+          lock: true,
         })
       )
     })

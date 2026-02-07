@@ -53,6 +53,7 @@ const emulator = new ModbusEmulator({
   port: '/tmp/vserial0', // Linux/macOS, use COM3 on Windows
   baudRate: 9600,
   parity: 'none',
+  lock: false, // Disable locking for virtual ports (socat PTYs)
 })
 
 // Add a simulated power meter device
@@ -287,6 +288,40 @@ sudo usermod -a -G dialout $USER
 # Or set permissions on specific port
 sudo chmod 666 /tmp/vserial0
 ```
+
+### Cannot Lock Port Error
+
+```
+Error: Resource temporarily unavailable Cannot lock port
+```
+
+**Cause:** Virtual serial ports created by `socat` don't properly support exclusive locking (TIOCEXCL).
+
+**Solution:** Disable port locking for virtual ports:
+
+```typescript
+// In code
+const emulator = new ModbusEmulator({
+  transport: 'rtu',
+  port: '/tmp/vserial0',
+  lock: false, // Add this
+})
+```
+
+```bash
+# Or via CLI
+ya-modbus-emulator --transport rtu --port /tmp/vserial0 --slave-id 1 --no-lock
+```
+
+```yaml
+# Or in config file
+transport:
+  type: rtu
+  port: /tmp/vserial0
+  lock: false
+```
+
+> **Important:** Only disable locking for virtual ports. Keep it enabled (default) for real serial hardware in production.
 
 ### CRC Errors
 

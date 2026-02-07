@@ -99,6 +99,7 @@ const emulator = new ModbusEmulator({
   parity: 'none',
   dataBits: 8,
   stopBits: 1,
+  // lock: true, // Enable exclusive port locking (default)
 })
 
 // Add devices
@@ -150,6 +151,7 @@ Options:
   -H, --host <host>        TCP host address (default: 0.0.0.0)
   -b, --baud-rate <rate>   Serial baud rate (default: 9600)
   --parity <type>          Serial parity: none|even|odd (default: none)
+  --no-lock                Disable serial port locking (enabled by default)
   -s, --slave-id <id>      Slave ID (required if no config file)
   -v, --verbose            Enable verbose logging
   -q, --quiet              Suppress all output except errors
@@ -248,19 +250,32 @@ For testing without physical hardware, create virtual serial port pairs:
 socat -d -d pty,raw,echo=0 pty,raw,echo=0
 # Note the output: /dev/pts/3 <-> /dev/pts/4
 
-# Terminal 2: Start emulator on first port
-ya-modbus-emulator --transport rtu --port /dev/pts/3 --slave-id 1
+# Terminal 2: Start emulator on first port (disable locking for virtual ports)
+ya-modbus-emulator --transport rtu --port /dev/pts/3 --slave-id 1 --no-lock
 
 # Terminal 3: Run your driver tests against second port
 node test-driver.js --port /dev/pts/4
 ```
 
+> **Note:** Virtual serial ports created by `socat` don't properly support exclusive locking.
+> Use `--no-lock` flag or set `lock: false` in config files when using virtual ports.
+
 **Windows** (using com0com):
 
 1. Install [com0com](https://sourceforge.net/projects/com0com/)
 2. Create a pair: COM10 <-> COM11
-3. Start emulator: `ya-modbus-emulator --transport rtu --port COM10 --slave-id 1`
+3. Start emulator: `ya-modbus-emulator --transport rtu --port COM10 --slave-id 1 --no-lock`
 4. Run tests: `node test-driver.js --port COM11`
+
+**Troubleshooting:**
+
+If you encounter `Error: Resource temporarily unavailable Cannot lock port`:
+
+- Add `--no-lock` flag to the CLI command, OR
+- Set `lock: false` in your config file's transport section
+
+This error occurs with virtual serial ports (socat PTYs, com0com) that don't properly reset
+exclusive locks. For production use with real serial hardware, keep locking enabled (default).
 
 See `examples/virtual-serial-test.md` for detailed virtual serial port testing guide.
 

@@ -12,21 +12,23 @@ let capturedServiceVector: any = null
 // Mock modbus-serial
 jest.mock('modbus-serial', () => {
   return {
-    ServerSerial: jest.fn().mockImplementation((vector: any, options: any) => {
-      // Capture service vector for testing
-      capturedServiceVector = vector
+    ServerSerial: jest
+      .fn()
+      .mockImplementation((vector: any, options: any, _serialportOptions?: any) => {
+        // Capture service vector for testing
+        capturedServiceVector = vector
 
-      // Call openCallback immediately to simulate successful connection
-      if (options.openCallback) {
-        setImmediate(() => options.openCallback(null))
-      }
+        // Call openCallback immediately to simulate successful connection
+        if (options.openCallback) {
+          setImmediate(() => options.openCallback(null))
+        }
 
-      return {
-        close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
-        on: jest.fn(),
-        socks: new Map(),
-      }
-    }),
+        return {
+          close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
+          on: jest.fn(),
+          socks: new Map(),
+        }
+      }),
   }
 })
 
@@ -387,7 +389,8 @@ describe('RtuTransport', () => {
         expect.any(Object),
         expect.objectContaining({
           path: '/dev/ttyUSB0',
-        })
+        }),
+        expect.any(Object)
       )
     })
 
@@ -400,7 +403,8 @@ describe('RtuTransport', () => {
         expect.any(Object),
         expect.objectContaining({
           baudRate: 19200,
-        })
+        }),
+        expect.any(Object)
       )
     })
 
@@ -413,7 +417,8 @@ describe('RtuTransport', () => {
         expect.any(Object),
         expect.objectContaining({
           parity: 'even',
-        })
+        }),
+        expect.any(Object)
       )
     })
 
@@ -426,7 +431,8 @@ describe('RtuTransport', () => {
         expect.any(Object),
         expect.objectContaining({
           dataBits: 7,
-        })
+        }),
+        expect.any(Object)
       )
     })
 
@@ -439,7 +445,8 @@ describe('RtuTransport', () => {
         expect.any(Object),
         expect.objectContaining({
           stopBits: 2,
-        })
+        }),
+        expect.any(Object)
       )
     })
 
@@ -452,6 +459,77 @@ describe('RtuTransport', () => {
         expect.any(Object),
         expect.objectContaining({
           unitID: 255,
+        }),
+        expect.any(Object)
+      )
+    })
+
+    it('should default to lock: true when not specified', async () => {
+      const { ServerSerial } = await import('modbus-serial')
+      transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+      await transport.start()
+
+      expect(ServerSerial).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(Object),
+        expect.objectContaining({
+          lock: true,
+        })
+      )
+    })
+
+    it('should pass lock: false when specified', async () => {
+      const { ServerSerial } = await import('modbus-serial')
+      transport = new RtuTransport({ port: '/dev/ttyUSB0', lock: false })
+      await transport.start()
+
+      expect(ServerSerial).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(Object),
+        expect.objectContaining({
+          lock: false,
+        })
+      )
+    })
+
+    it('should pass lock: true when explicitly specified', async () => {
+      const { ServerSerial } = await import('modbus-serial')
+      transport = new RtuTransport({ port: '/dev/ttyUSB0', lock: true })
+      await transport.start()
+
+      expect(ServerSerial).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(Object),
+        expect.objectContaining({
+          lock: true,
+        })
+      )
+    })
+
+    it('should pass lock option with all other serial parameters', async () => {
+      const { ServerSerial } = await import('modbus-serial')
+      transport = new RtuTransport({
+        port: '/dev/ttyUSB0',
+        baudRate: 19200,
+        parity: 'even',
+        dataBits: 8,
+        stopBits: 2,
+        lock: false,
+      })
+      await transport.start()
+
+      expect(ServerSerial).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          path: '/dev/ttyUSB0',
+          baudRate: 19200,
+          parity: 'even',
+          dataBits: 8,
+          stopBits: 2,
+          unitID: 255,
+        }),
+        expect.objectContaining({
+          lock: false,
         })
       )
     })
