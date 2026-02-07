@@ -31,6 +31,7 @@ export class TcpTransport extends BaseTransport {
   private server?: ServerTCP
   private started = false
   private initReject?: (reason: Error) => void
+  private initTimeout?: NodeJS.Timeout
 
   constructor(config: TcpTransportConfig) {
     super()
@@ -92,6 +93,10 @@ export class TcpTransport extends BaseTransport {
       const cleanupOnError = (): void => {
         isInitializing = false
         this.initReject = undefined
+        if (this.initTimeout) {
+          clearTimeout(this.initTimeout)
+          this.initTimeout = undefined
+        }
         EventEmitter.prototype.removeAllListeners.call(server, 'initialized')
         EventEmitter.prototype.removeAllListeners.call(server, 'error')
         delete this.server
@@ -100,17 +105,20 @@ export class TcpTransport extends BaseTransport {
       const cleanupOnSuccess = (): void => {
         isInitializing = false
         this.initReject = undefined
+        if (this.initTimeout) {
+          clearTimeout(this.initTimeout)
+          this.initTimeout = undefined
+        }
         EventEmitter.prototype.removeAllListeners.call(server, 'initialized')
         EventEmitter.prototype.removeAllListeners.call(server, 'error')
       }
 
-      const timeout = setTimeout(() => {
+      this.initTimeout = setTimeout(() => {
         cleanupOnError()
         reject(new Error('TCP server initialization timeout after 10s'))
       }, 10000)
 
       server.on('initialized', () => {
-        clearTimeout(timeout)
         cleanupOnSuccess()
         this.started = true
         resolve()
@@ -119,7 +127,6 @@ export class TcpTransport extends BaseTransport {
       // Handle errors - cast to EventEmitter as modbus-serial types don't include 'error' event
       ;(server as unknown as EventEmitter).on('error', (err: Error) => {
         if (isInitializing) {
-          clearTimeout(timeout)
           cleanupOnError()
           reject(err)
         } else {
@@ -131,6 +138,19 @@ export class TcpTransport extends BaseTransport {
   }
 
   async stop(): Promise<void> {
+    // Clear initialization timeout if pending
+    if (this.initTimeout) {
+      clearTimeout(this.initTimeout)
+      this.initTimeout = undefined
+    }
+
+    // Clean up event listeners FIRST to prevent race condition (issue #294)
+    // This ensures 'initialized' can't fire after we reject the Promise
+    if (this.server) {
+      EventEmitter.prototype.removeAllListeners.call(this.server, 'initialized')
+      EventEmitter.prototype.removeAllListeners.call(this.server, 'error')
+    }
+
     // If initialization is pending, reject it
     if (this.initReject) {
       this.initReject(new Error('Transport stopped during initialization'))
@@ -140,11 +160,6 @@ export class TcpTransport extends BaseTransport {
     if (!this.server) {
       return
     }
-
-    // Clean up event listeners to prevent memory leaks (issue #253)
-    // Use EventEmitter.prototype since modbus-serial doesn't expose these methods in types
-    EventEmitter.prototype.removeAllListeners.call(this.server, 'initialized')
-    EventEmitter.prototype.removeAllListeners.call(this.server, 'error')
 
     // Only close the server if it was started, otherwise just clean up
     if (!this.started) {
