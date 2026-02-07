@@ -7,7 +7,6 @@
 import { ServerTCP } from 'modbus-serial'
 import type { IServiceVector } from 'modbus-serial/ServerTCP'
 
-import { BaseTransport } from './base.js'
 import {
   buildRegisterReadRequest,
   parseRegisterReadResponse,
@@ -15,7 +14,9 @@ import {
   buildCoilReadRequest,
   parseCoilReadResponse,
   buildCoilWriteRequest,
-} from './modbus-protocol-helpers.js'
+} from '../utils/modbus-protocol-helpers.js'
+
+import { BaseTransport } from './base.js'
 
 export interface TcpTransportConfig {
   host: string
