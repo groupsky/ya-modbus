@@ -78,6 +78,7 @@ async function main(): Promise<void> {
           stopBits: fileConfig.transport.stopBits,
         }),
         ...(fileConfig.transport.lock !== undefined && { lock: fileConfig.transport.lock }),
+        ...(options.verbose === true && { verbose: true }),
       }
 
       devices = fileConfig.devices as Array<{ slaveId: number }>
@@ -102,6 +103,7 @@ async function main(): Promise<void> {
           parity: options.parity as 'none' | 'even' | 'odd',
         }),
         ...(typeof options.lock === 'boolean' && { lock: options.lock }),
+        ...(options.verbose === true && { verbose: true }),
       }
 
       devices = [{ slaveId: options.slaveId }]
