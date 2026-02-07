@@ -238,3 +238,176 @@ teardown() {
   assert_output_contains '"baudRate"'
   assert_output_contains '"parity"'
 }
+
+@test "show-defaults command shows help text" {
+  run node "$CLI_BIN" show-defaults --help
+  assert_success
+  assert_output_contains "show-defaults"
+  assert_output_contains "--driver"
+  assert_output_contains "--format"
+}
+
+@test "show-defaults displays driver configuration" {
+  run node "$CLI_BIN" show-defaults \
+    --driver @ya-modbus/driver-ex9em
+
+  assert_success
+  assert_output_contains "DEFAULT_CONFIG"
+  assert_output_contains "baudRate"
+  assert_output_contains "9600"
+  assert_output_contains "parity"
+  assert_output_contains "even"
+}
+
+@test "show-defaults displays supported configuration" {
+  run node "$CLI_BIN" show-defaults \
+    --driver @ya-modbus/driver-ex9em
+
+  assert_success
+  assert_output_contains "SUPPORTED_CONFIG"
+  assert_output_contains "validBaudRates"
+  assert_output_contains "validParity"
+}
+
+@test "show-defaults outputs JSON format" {
+  run node "$CLI_BIN" show-defaults \
+    --driver @ya-modbus/driver-ex9em \
+    --format json
+
+  assert_success
+
+  # Validate JSON structure
+  echo "$output" | jq -e 'has("defaultConfig")'
+  echo "$output" | jq -e 'has("supportedConfig")'
+  echo "$output" | jq -e '.defaultConfig.baudRate == 9600'
+  echo "$output" | jq -e '.defaultConfig.parity == "even"'
+}
+
+@test "show-defaults works with single-device driver" {
+  run node "$CLI_BIN" show-defaults \
+    --driver @ya-modbus/driver-or-we-516
+
+  assert_success
+  assert_output_contains "DEFAULT_CONFIG"
+  assert_output_contains "baudRate"
+  assert_output_contains "9600"
+  assert_output_contains "parity"
+  assert_output_contains "odd"
+}
+
+@test "show-defaults fails without --driver" {
+  run node "$CLI_BIN" show-defaults
+
+  assert_failure
+  assert_output_contains "driver"
+}
+
+@test "show-defaults fails with non-existent driver" {
+  run node "$CLI_BIN" show-defaults \
+    --driver @ya-modbus/driver-nonexistent
+
+  assert_failure
+  assert_output_contains "Driver package not found"
+}
+
+@test "discover command shows help text" {
+  run node "$CLI_BIN" discover --help
+  assert_success
+  assert_output_contains "discover"
+  assert_output_contains "--port"
+  assert_output_contains "--strategy"
+  assert_output_contains "--driver"
+}
+
+@test "discover finds single device with quick strategy" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --strategy quick \
+    --max-devices 1
+
+  assert_success
+  assert_output_contains "Found 1 device"
+  assert_output_contains "Slave ID 1"
+  assert_output_contains "9600"
+}
+
+@test "discover finds multiple devices" {
+  run start_test_emulator "fixtures/emulators/port2-multi-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV3 \
+    --strategy quick \
+    --max-devices 2
+
+  assert_success
+  assert_output_contains "Found 2 device"
+  assert_output_contains "Slave ID 1"
+  assert_output_contains "Slave ID 2"
+}
+
+@test "discover outputs JSON format" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --strategy quick \
+    --max-devices 1 \
+    --silent \
+    --format json
+
+  assert_success
+  echo "$output" | jq -e '.[0].slaveId == 1'
+  echo "$output" | jq -e '.[0].baudRate == 9600'
+}
+
+@test "discover with verbose shows progress" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --strategy quick \
+    --max-devices 1 \
+    --verbose
+
+  assert_success
+  assert_output_contains "Testing"
+}
+
+@test "discover with silent suppresses progress" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --strategy quick \
+    --max-devices 1 \
+    --silent \
+    --format json
+
+  assert_success
+  # Output should only be JSON, no progress messages
+  echo "$output" | jq -e 'type == "array"'
+}
+
+@test "discover fails without --port" {
+  run node "$CLI_BIN" discover \
+    --driver @ya-modbus/driver-ex9em
+
+  assert_failure
+  assert_output_contains "port"
+}
