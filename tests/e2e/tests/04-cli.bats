@@ -8,6 +8,7 @@ load helpers
 
 setup() {
   EMULATOR_PID=""
+  CLI_BIN="$(get_project_root)/packages/cli/dist/esm/bin/ya-modbus.js"
   clean_test_artifacts
 }
 
@@ -19,35 +20,35 @@ teardown() {
 }
 
 @test "CLI binary exists" {
-  [ -f "../../packages/cli/dist/esm/bin/ya-modbus.js" ]
+  [ -f "$CLI_BIN" ]
 }
 
 @test "CLI shows help text" {
-  run node ../../packages/cli/dist/esm/bin/ya-modbus.js --help
+  run node "$CLI_BIN" --help
   assert_success
   assert_output_contains "Usage: ya-modbus"
 }
 
 @test "read command shows help text" {
-  run node ../../packages/cli/dist/esm/bin/ya-modbus.js read --help
+  run node "$CLI_BIN" read --help
   assert_success
   assert_output_contains "read"
 }
 
 @test "write command shows help text" {
-  run node ../../packages/cli/dist/esm/bin/ya-modbus.js write --help
+  run node "$CLI_BIN" write --help
   assert_success
   assert_output_contains "write"
 }
 
 @test "list-devices command shows help text" {
-  run node ../../packages/cli/dist/esm/bin/ya-modbus.js list-devices --help
+  run node "$CLI_BIN" list-devices --help
   assert_success
   assert_output_contains "list-devices"
 }
 
 @test "read command fails with invalid slave ID" {
-  run node ../../packages/cli/dist/esm/bin/ya-modbus.js read \
+  run node "$CLI_BIN" read \
     --port /tmp/ttyV1 \
     --slave-id 999 \
     --driver @ya-modbus/driver-ex9em \
@@ -56,7 +57,7 @@ teardown() {
 }
 
 @test "read command fails without port or host" {
-  run node ../../packages/cli/dist/esm/bin/ya-modbus.js read \
+  run node "$CLI_BIN" read \
     --slave-id 1 \
     --driver @ya-modbus/driver-ex9em \
     --data-point voltage
@@ -64,7 +65,7 @@ teardown() {
 }
 
 @test "read command fails without data point" {
-  run node ../../packages/cli/dist/esm/bin/ya-modbus.js read \
+  run node "$CLI_BIN" read \
     --port /tmp/ttyV1 \
     --slave-id 1 \
     --driver @ya-modbus/driver-ex9em
@@ -79,7 +80,7 @@ teardown() {
   EMULATOR_PID="$output"
 
   # Read voltage data point
-  run node ../../packages/cli/dist/esm/bin/ya-modbus.js read \
+  run node "$CLI_BIN" read \
     --port /tmp/ttyV1 \
     --slave-id 1 \
     --driver @ya-modbus/driver-ex9em \
@@ -97,7 +98,7 @@ teardown() {
   EMULATOR_PID="$output"
 
   # Read multiple data points
-  run node ../../packages/cli/dist/esm/bin/ya-modbus.js read \
+  run node "$CLI_BIN" read \
     --port /tmp/ttyV1 \
     --slave-id 1 \
     --driver @ya-modbus/driver-ex9em \
@@ -117,7 +118,7 @@ teardown() {
   EMULATOR_PID="$output"
 
   # Read with JSON output
-  run node ../../packages/cli/dist/esm/bin/ya-modbus.js read \
+  run node "$CLI_BIN" read \
     --port /tmp/ttyV1 \
     --slave-id 1 \
     --driver @ya-modbus/driver-ex9em \
@@ -136,7 +137,7 @@ teardown() {
   EMULATOR_PID="$output"
 
   # Write device_address (writable configuration parameter)
-  run node ../../packages/cli/dist/esm/bin/ya-modbus.js write \
+  run node "$CLI_BIN" write \
     --port /tmp/ttyV1 \
     --slave-id 1 \
     --driver @ya-modbus/driver-ex9em \
@@ -154,7 +155,7 @@ teardown() {
   EMULATOR_PID="$output"
 
   # Write with verification
-  run node ../../packages/cli/dist/esm/bin/ya-modbus.js write \
+  run node "$CLI_BIN" write \
     --port /tmp/ttyV1 \
     --slave-id 1 \
     --driver @ya-modbus/driver-ex9em \
@@ -173,7 +174,7 @@ teardown() {
   EMULATOR_PID="$output"
 
   # Try to write to a read-only data point
-  run node ../../packages/cli/dist/esm/bin/ya-modbus.js write \
+  run node "$CLI_BIN" write \
     --port /tmp/ttyV1 \
     --slave-id 1 \
     --driver @ya-modbus/driver-ex9em \
@@ -185,14 +186,14 @@ teardown() {
 }
 
 @test "list-devices command shows ex9em driver" {
-  run node ../../packages/cli/dist/esm/bin/ya-modbus.js list-devices \
+  run node "$CLI_BIN" list-devices \
     --driver @ya-modbus/driver-ex9em
 
   assert_success
 }
 
 @test "list-devices shows message for single-device driver" {
-  run node ../../packages/cli/dist/esm/bin/ya-modbus.js list-devices \
+  run node "$CLI_BIN" list-devices \
     --driver @ya-modbus/driver-or-we-516
 
   assert_success
@@ -200,7 +201,7 @@ teardown() {
 }
 
 @test "list-devices with JSON format for single-device driver" {
-  run node ../../packages/cli/dist/esm/bin/ya-modbus.js list-devices \
+  run node "$CLI_BIN" list-devices \
     --driver @ya-modbus/driver-or-we-516 \
     --format json
 
