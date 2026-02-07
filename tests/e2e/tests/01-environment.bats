@@ -78,7 +78,7 @@ load helpers
   local timeout=300
   local elapsed=0
   while [ $elapsed -lt $timeout ]; do
-    if docker compose -f tests/e2e/docker-compose.yml logs mqtt 2>/dev/null | grep -q "New client connected.*as $client_id"; then
+    if docker compose -f docker-compose.yml logs mqtt 2>/dev/null | grep "New client connected" | grep -q "$client_id"; then
       break
     fi
     sleep 0.1
