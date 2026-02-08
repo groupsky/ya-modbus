@@ -380,4 +380,104 @@ describe('validateDeviceConfig', () => {
 
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
   })
+
+  describe('RTU connection defaults', () => {
+    it('should apply defaults for omitted RTU serial parameters', () => {
+      const config = {
+        deviceId: 'device1',
+        driver: 'ya-modbus-driver-test',
+        connection: {
+          type: 'rtu',
+          port: '/dev/ttyUSB0',
+          baudRate: 9600,
+          slaveId: 1,
+          // parity, dataBits, stopBits omitted - should get defaults
+        },
+      }
+
+      expect(() => validateDeviceConfig(config)).not.toThrow()
+    })
+
+    it('should accept explicit RTU serial parameters', () => {
+      const config = {
+        deviceId: 'device1',
+        driver: 'ya-modbus-driver-test',
+        connection: {
+          type: 'rtu',
+          port: '/dev/ttyUSB0',
+          baudRate: 9600,
+          slaveId: 1,
+          parity: 'even',
+          dataBits: 7,
+          stopBits: 2,
+        },
+      }
+
+      expect(() => validateDeviceConfig(config)).not.toThrow()
+    })
+
+    it('should accept timeout for RTU connection', () => {
+      const config = {
+        deviceId: 'device1',
+        driver: 'ya-modbus-driver-test',
+        connection: {
+          type: 'rtu',
+          port: '/dev/ttyUSB0',
+          baudRate: 9600,
+          slaveId: 1,
+          timeout: 5000,
+        },
+      }
+
+      expect(() => validateDeviceConfig(config)).not.toThrow()
+    })
+  })
+
+  describe('TCP connection optional port', () => {
+    it('should accept TCP connection without port (defaults to 502)', () => {
+      const config = {
+        deviceId: 'device1',
+        driver: 'ya-modbus-driver-test',
+        connection: {
+          type: 'tcp',
+          host: 'localhost',
+          slaveId: 1,
+          // port omitted - should default to 502
+        },
+      }
+
+      expect(() => validateDeviceConfig(config)).not.toThrow()
+    })
+
+    it('should accept TCP connection with explicit port', () => {
+      const config = {
+        deviceId: 'device1',
+        driver: 'ya-modbus-driver-test',
+        connection: {
+          type: 'tcp',
+          host: 'localhost',
+          port: 8502,
+          slaveId: 1,
+        },
+      }
+
+      expect(() => validateDeviceConfig(config)).not.toThrow()
+    })
+
+    it('should accept timeout for TCP connection', () => {
+      const config = {
+        deviceId: 'device1',
+        driver: 'ya-modbus-driver-test',
+        connection: {
+          type: 'tcp',
+          host: 'localhost',
+          port: 502,
+          slaveId: 1,
+          timeout: 3000,
+        },
+      }
+
+      expect(() => validateDeviceConfig(config)).not.toThrow()
+    })
+  })
 })
