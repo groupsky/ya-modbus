@@ -8,6 +8,7 @@ export interface MqttBridgeConfig {
   }
   stateDir?: string
   topicPrefix?: string
+  devices?: DeviceConfig[]
 }
 
 export interface BridgeStatus {
