@@ -113,6 +113,45 @@ describe('countParameterCombinations', () => {
       const count = countParameterCombinations(options)
       expect(count).toBe(1)
     })
+
+    test('respects slaveIds filter', () => {
+      const options: GeneratorOptions = {
+        strategy: 'quick',
+        slaveIds: [1, 2, 3],
+      }
+
+      // 2 baud × 3 parity × 1 data × 1 stop × 3 filtered IDs
+      // = 2 × 3 × 1 × 1 × 3 = 18
+      const count = countParameterCombinations(options)
+      expect(count).toBe(18)
+    })
+
+    test('slaveIds filter overrides addressRange', () => {
+      const options: GeneratorOptions = {
+        strategy: 'quick',
+        slaveIds: [1, 5, 10],
+        supportedConfig: {
+          validAddressRange: [1, 247], // This should be ignored
+        },
+      }
+
+      // 2 baud × 3 parity × 2 data × 2 stop × 3 filtered IDs
+      // Falls back to STANDARD_DATA_BITS and STANDARD_STOP_BITS when supportedConfig exists
+      // = 2 × 3 × 2 × 2 × 3 = 72
+      const count = countParameterCombinations(options)
+      expect(count).toBe(72)
+    })
+
+    test('handles empty slaveIds array', () => {
+      const options: GeneratorOptions = {
+        strategy: 'quick',
+        slaveIds: [],
+      }
+
+      // 2 baud × 3 parity × 1 data × 1 stop × 0 IDs = 0
+      const count = countParameterCombinations(options)
+      expect(count).toBe(0)
+    })
   })
 
   describe('default config prioritization', () => {

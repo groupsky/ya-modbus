@@ -889,6 +889,8 @@ describe('CLI Entry Point - Integration Tests', () => {
           --delay <ms>            Delay between attempts in milliseconds (default: 100)
           --max-devices <count>   Maximum number of devices to find (default: 1, use 0
                                   for unlimited)
+          --id <spec>             Limit search to specific slave IDs (e.g., "1,2,3-5").
+                                  Can be specified multiple times
 
         Output Options:
           --verbose               Show detailed progress with current parameters being

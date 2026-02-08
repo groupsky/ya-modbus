@@ -150,6 +150,10 @@ program
     'Maximum number of devices to find (default: 1, use 0 for unlimited)',
     parseInt
   )
+  .option(
+    '--id <spec>',
+    'Limit search to specific slave IDs (e.g., "1,2,3-5"). Can be specified multiple times'
+  )
   .optionsGroup('Output Options:')
   .option('--verbose', 'Show detailed progress with current parameters being tested')
   .option('--silent', 'Suppress all output except final result (useful for scripts)')
