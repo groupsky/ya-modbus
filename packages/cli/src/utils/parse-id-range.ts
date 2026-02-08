@@ -30,12 +30,8 @@ export function parseIdRange(spec: string): number[] {
         throw new Error(`Invalid range format: "${part}". Expected format: "start-end"`)
       }
 
-      const start = parseInt(rangeParts[0], 10)
-      const end = parseInt(rangeParts[1], 10)
-
-      if (isNaN(start) || isNaN(end)) {
-        throw new Error(`Invalid range format: "${part}". Start and end must be numbers`)
-      }
+      const start = parseInteger(rangeParts[0], part)
+      const end = parseInteger(rangeParts[1], part)
 
       if (start > end) {
         throw new Error(`Invalid range: "${part}". Start must be less than or equal to end`)
@@ -49,11 +45,7 @@ export function parseIdRange(spec: string): number[] {
       }
     } else {
       // Single ID
-      const id = parseInt(normalized, 10)
-
-      if (isNaN(id)) {
-        throw new Error(`Invalid ID format: "${part}". Expected a number`)
-      }
+      const id = parseInteger(normalized, part)
 
       validateModbusAddress(id, part)
       ids.add(id)
@@ -72,4 +64,23 @@ function validateModbusAddress(id: number, context: string): void {
       `Invalid Modbus slave address: ${id} in "${context}". ` + `Valid addresses are 1-247`
     )
   }
+}
+
+/**
+ * Parses a string to an integer with validation.
+ * Rejects decimal numbers explicitly.
+ */
+function parseInteger(str: string, context: string): number {
+  if (str.includes('.')) {
+    throw new Error(
+      `Invalid ID format: "${context}". Decimal numbers not allowed, expected whole numbers only`
+    )
+  }
+
+  const num = parseInt(str, 10)
+  if (isNaN(num)) {
+    throw new Error(`Invalid ID format: "${context}". Expected a number`)
+  }
+
+  return num
 }

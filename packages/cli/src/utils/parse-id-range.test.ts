@@ -53,6 +53,11 @@ describe('parseIdRange', () => {
     ['non-numeric in list', '1,abc,3'],
     ['invalid range format', '1-2-3'],
     ['range with non-numeric', 'a-b'],
+    ['decimal ID', '1.5'],
+    ['decimal in list', '1,2.5,3'],
+    ['decimal range start', '1.5-5'],
+    ['decimal range end', '1-5.5'],
+    ['decimal in both range parts', '1.5-2.5'],
   ])('should throw error for invalid format: %s', (_, input) => {
     expect(() => parseIdRange(input)).toThrow(/invalid/i)
   })
