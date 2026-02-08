@@ -154,6 +154,14 @@ program
     '--id <spec>',
     'Limit search to specific slave IDs (e.g., "1,2,3-5"). Can be specified multiple times'
   )
+  .option(
+    '--parity <spec>',
+    'Limit search to specific parities (e.g., "none,even"). Can be specified multiple times'
+  )
+  .option(
+    '--baud-rate <spec>',
+    'Limit search to specific baud rates (e.g., "9600,19200" or "9600-38400"). Can be specified multiple times'
+  )
   .optionsGroup('Output Options:')
   .option('--verbose', 'Show detailed progress with current parameters being tested')
   .option('--silent', 'Suppress all output except final result (useful for scripts)')

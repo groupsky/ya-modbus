@@ -20,11 +20,15 @@ import {
 import type { DiscoveryStrategy, GeneratorOptions } from './parameter-generator.js'
 
 /**
- * Get parameter arrays based on strategy and configuration
+ * Get parameter arrays based on strategy, configuration, and filters
  */
 export function getParameterArrays(
   strategy: DiscoveryStrategy,
-  supportedConfig?: SupportedSerialConfig
+  supportedConfig?: SupportedSerialConfig,
+  filters?: {
+    baudRates?: BaudRate[]
+    parities?: Parity[]
+  }
 ): {
   baudRates: readonly BaudRate[]
   parities: readonly Parity[]
@@ -32,35 +36,49 @@ export function getParameterArrays(
   stopBits: readonly StopBits[]
   addressRange: readonly [number, number]
 } {
+  let baudRates: readonly BaudRate[]
+  let parities: readonly Parity[]
+  let dataBits: readonly DataBits[]
+  let stopBits: readonly StopBits[]
+  let addressRange: readonly [number, number]
+
   if (strategy === 'quick' && supportedConfig) {
     // Quick mode with driver config: use supported values or fall back to common
-    return {
-      baudRates: supportedConfig.validBaudRates ?? COMMON_BAUD_RATES,
-      parities: supportedConfig.validParity ?? STANDARD_PARITY,
-      dataBits: supportedConfig.validDataBits ?? STANDARD_DATA_BITS,
-      stopBits: supportedConfig.validStopBits ?? STANDARD_STOP_BITS,
-      addressRange: supportedConfig.validAddressRange ?? [MIN_SLAVE_ID, MAX_SLAVE_ID],
-    }
-  }
-
-  if (strategy === 'thorough') {
+    baudRates = supportedConfig.validBaudRates ?? COMMON_BAUD_RATES
+    parities = supportedConfig.validParity ?? STANDARD_PARITY
+    dataBits = supportedConfig.validDataBits ?? STANDARD_DATA_BITS
+    stopBits = supportedConfig.validStopBits ?? STANDARD_STOP_BITS
+    addressRange = supportedConfig.validAddressRange ?? [MIN_SLAVE_ID, MAX_SLAVE_ID]
+  } else if (strategy === 'thorough') {
     // Thorough mode: use supported config if provided, otherwise standard Modbus
-    return {
-      baudRates: supportedConfig?.validBaudRates ?? STANDARD_BAUD_RATES,
-      parities: supportedConfig?.validParity ?? STANDARD_PARITY,
-      dataBits: supportedConfig?.validDataBits ?? STANDARD_DATA_BITS,
-      stopBits: supportedConfig?.validStopBits ?? STANDARD_STOP_BITS,
-      addressRange: supportedConfig?.validAddressRange ?? [MIN_SLAVE_ID, MAX_SLAVE_ID],
-    }
+    baudRates = supportedConfig?.validBaudRates ?? STANDARD_BAUD_RATES
+    parities = supportedConfig?.validParity ?? STANDARD_PARITY
+    dataBits = supportedConfig?.validDataBits ?? STANDARD_DATA_BITS
+    stopBits = supportedConfig?.validStopBits ?? STANDARD_STOP_BITS
+    addressRange = supportedConfig?.validAddressRange ?? [MIN_SLAVE_ID, MAX_SLAVE_ID]
+  } else {
+    // Quick mode without driver config: use common parameters
+    baudRates = COMMON_BAUD_RATES
+    parities = STANDARD_PARITY
+    dataBits = COMMON_DATA_BITS
+    stopBits = COMMON_STOP_BITS
+    addressRange = [MIN_SLAVE_ID, MAX_SLAVE_ID]
   }
 
-  // Quick mode without driver config: use common parameters
+  // Apply filters if provided (overrides strategy and driver config)
+  if (filters?.baudRates !== undefined) {
+    baudRates = filters.baudRates
+  }
+  if (filters?.parities !== undefined) {
+    parities = filters.parities
+  }
+
   return {
-    baudRates: COMMON_BAUD_RATES,
-    parities: STANDARD_PARITY,
-    dataBits: COMMON_DATA_BITS,
-    stopBits: COMMON_STOP_BITS,
-    addressRange: [MIN_SLAVE_ID, MAX_SLAVE_ID],
+    baudRates,
+    parities,
+    dataBits,
+    stopBits,
+    addressRange,
   }
 }
 
@@ -80,11 +98,26 @@ export function getParameterArrays(
  * ```
  */
 export function countParameterCombinations(options: GeneratorOptions): number {
-  const { strategy, supportedConfig, slaveIds } = options
+  const {
+    strategy,
+    supportedConfig,
+    slaveIds,
+    baudRates: baudRateFilter,
+    parities: parityFilter,
+  } = options
+
+  const filters =
+    baudRateFilter !== undefined || parityFilter !== undefined
+      ? {
+          ...(baudRateFilter !== undefined && { baudRates: baudRateFilter }),
+          ...(parityFilter !== undefined && { parities: parityFilter }),
+        }
+      : undefined
 
   const { baudRates, parities, dataBits, stopBits, addressRange } = getParameterArrays(
     strategy,
-    supportedConfig
+    supportedConfig,
+    filters
   )
 
   // Calculate address count

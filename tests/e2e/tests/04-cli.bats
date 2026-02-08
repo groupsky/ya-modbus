@@ -512,3 +512,279 @@ teardown() {
   # Verify READ operation also logged (--verify flag triggers read-back)
   assert_emulator_log_contains "$EMULATOR_PID" "\[VERBOSE\] READ"
 }
+
+# ==========================================
+# Discover command filter tests
+# ==========================================
+
+@test "discover with --id filter accepts single value" {
+  run start_test_emulator "fixtures/emulators/port2-multi-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV3 \
+    --id 2 \
+    --strategy quick \
+    --max-devices 5 \
+    --silent \
+    --format json
+
+  assert_success
+  # Should find slave ID 2 (possibly with multiple parity combinations)
+  echo "$output" | jq -e '[.[] | .slaveId] | unique | length == 1'
+  echo "$output" | jq -e '.[0].slaveId == 2'
+}
+
+@test "discover with --id range filter" {
+  run start_test_emulator "fixtures/emulators/port2-multi-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV3 \
+    --id 1-2 \
+    --strategy quick \
+    --max-devices 10 \
+    --silent \
+    --format json
+
+  assert_success
+  # Should find both slave IDs
+  echo "$output" | jq -e '[.[] | .slaveId] | unique | sort == [1, 2]'
+}
+
+@test "discover with comma-separated --id values" {
+  run start_test_emulator "fixtures/emulators/port2-multi-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV3 \
+    --id 1,2 \
+    --strategy quick \
+    --max-devices 10 \
+    --silent \
+    --format json
+
+  assert_success
+  # Should find both slave IDs
+  echo "$output" | jq -e '[.[] | .slaveId] | unique | sort == [1, 2]'
+}
+
+@test "discover with --parity filter accepts single value" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --parity even \
+    --strategy quick \
+    --max-devices 5 \
+    --silent \
+    --format json
+
+  assert_success
+  # Should only find devices with even parity
+  echo "$output" | jq -e '[.[] | .parity] | unique == ["even"]'
+}
+
+@test "discover with multiple --parity flags" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --parity even \
+    --parity none \
+    --strategy quick \
+    --max-devices 5 \
+    --silent \
+    --format json
+
+  assert_success
+  # Should find devices with either even or none parity
+  echo "$output" | jq -e '[.[] | .parity] | unique | sort | . == ["even", "none"] or . == ["even"] or . == ["none"]'
+}
+
+@test "discover with comma-separated --parity values" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --parity "none,even" \
+    --strategy quick \
+    --max-devices 5 \
+    --silent \
+    --format json
+
+  assert_success
+  # Should find devices with either none or even parity
+  echo "$output" | jq -e '[.[] | .parity] | unique | sort | . == ["even", "none"] or . == ["even"] or . == ["none"]'
+}
+
+@test "discover with --baud-rate filter accepts single value" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --baud-rate 9600 \
+    --strategy quick \
+    --max-devices 5 \
+    --silent \
+    --format json
+
+  assert_success
+  # Should only find devices with 9600 baud rate
+  echo "$output" | jq -e '[.[] | .baudRate] | unique == [9600]'
+}
+
+@test "discover with multiple --baud-rate flags" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --baud-rate 9600 \
+    --baud-rate 19200 \
+    --strategy quick \
+    --max-devices 5 \
+    --silent \
+    --format json
+
+  assert_success
+  # Should find devices with either 9600 or 19200 baud rate
+  echo "$output" | jq -e '[.[] | .baudRate] | unique | sort | . == [9600] or . == [9600, 19200] or . == [19200]'
+}
+
+@test "discover with comma-separated --baud-rate values" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --baud-rate "9600,19200" \
+    --strategy quick \
+    --max-devices 5 \
+    --silent \
+    --format json
+
+  assert_success
+  # Should find devices with either 9600 or 19200 baud rate
+  echo "$output" | jq -e '[.[] | .baudRate] | unique | sort | . == [9600] or . == [9600, 19200] or . == [19200]'
+}
+
+@test "discover with --baud-rate range syntax" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --baud-rate "4800-19200" \
+    --strategy quick \
+    --max-devices 5 \
+    --silent \
+    --format json
+
+  assert_success
+  # Should find devices within the baud rate range
+  echo "$output" | jq -e '[.[] | .baudRate] | all(. >= 4800 and . <= 19200)'
+}
+
+@test "discover with combined --id, --parity, and --baud-rate filters" {
+  run start_test_emulator "fixtures/emulators/port2-multi-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV3 \
+    --id 1 \
+    --parity even \
+    --baud-rate 9600 \
+    --strategy quick \
+    --max-devices 5 \
+    --silent \
+    --format json
+
+  assert_success
+  # All results should match the filters
+  echo "$output" | jq -e '[.[] | .slaveId] | unique == [1]'
+  echo "$output" | jq -e '[.[] | .parity] | unique == ["even"]'
+  echo "$output" | jq -e '[.[] | .baudRate] | unique == [9600]'
+}
+
+@test "discover with invalid --parity value shows error" {
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --parity invalid
+
+  assert_failure
+  assert_output_contains "Invalid parity"
+}
+
+@test "discover with unsupported --baud-rate shows error" {
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --baud-rate 999999
+
+  assert_failure
+  assert_output_contains "Unsupported baud rate"
+}
+
+@test "discover with invalid --baud-rate range shows error" {
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --baud-rate "19200-9600"
+
+  assert_failure
+  assert_output_contains "Invalid range"
+}
+
+@test "discover filters are shown in output" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --driver @ya-modbus/driver-ex9em \
+    --id 1 \
+    --parity even \
+    --baud-rate 9600 \
+    --strategy quick \
+    --max-devices 1
+
+  assert_success
+  # Output should mention the filters
+  assert_output_contains "Slave IDs: 1"
+  assert_output_contains "Parities: even"
+  assert_output_contains "Baud rates: 9600"
+}
+
+@test "discover help mentions new filter options" {
+  run node "$CLI_BIN" discover --help
+
+  assert_success
+  assert_output_contains "--id"
+  assert_output_contains "--parity"
+  assert_output_contains "--baud-rate"
+}

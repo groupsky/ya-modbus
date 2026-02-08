@@ -4,7 +4,10 @@ import type { DiscoveryStrategy } from '../discovery/parameter-generator.js'
 import { ProgressTracker } from '../discovery/progress.js'
 import { scanForDevices } from '../discovery/scanner.js'
 import { formatDiscoveryJSON, formatDiscoveryTable } from '../formatters/discovery-results.js'
+import { mergeSpecs } from '../utils/merge-specs.js'
+import { parseBaudRate } from '../utils/parse-baud-rate.js'
 import { parseIdRange } from '../utils/parse-id-range.js'
+import { parseParity, sortParitiesInStandardOrder } from '../utils/parse-parity.js'
 
 /**
  * Discover command options
@@ -20,6 +23,8 @@ export interface DiscoverOptions {
   delay?: number
   maxDevices?: number
   id?: string | string[]
+  parity?: string | string[]
+  baudRate?: string | string[]
   verbose?: boolean
   silent?: boolean
 
@@ -44,19 +49,12 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
   const verbose = options.verbose ?? false
   const silent = options.silent ?? false
 
-  // Parse and merge ID specifications
-  let slaveIds: number[] | undefined
-  if (options.id) {
-    const idSpecs = Array.isArray(options.id) ? options.id : [options.id]
-    const allIds = new Set<number>()
-
-    for (const spec of idSpecs) {
-      const ids = parseIdRange(spec)
-      ids.forEach((id) => allIds.add(id))
-    }
-
-    slaveIds = Array.from(allIds).sort((a, b) => a - b)
-  }
+  // Parse and merge specifications from multiple CLI flags
+  const slaveIds = mergeSpecs(options.id, parseIdRange, (items) => items.sort((a, b) => a - b))
+  const parities = mergeSpecs(options.parity, parseParity, sortParitiesInStandardOrder)
+  const baudRates = mergeSpecs(options.baudRate, parseBaudRate, (items) =>
+    items.sort((a, b) => a - b)
+  )
 
   if (!silent) {
     console.log(`Starting Modbus device discovery on ${options.port}...`)
@@ -66,6 +64,12 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
       console.log(`Slave IDs: ${slaveIds.join(', ')} (${slaveIds.length} IDs)`)
     } else {
       console.log('Slave IDs: 1-247 (all)')
+    }
+    if (baudRates) {
+      console.log(`Baud rates: ${baudRates.join(', ')} (${baudRates.length} rates)`)
+    }
+    if (parities) {
+      console.log(`Parities: ${parities.join(', ')} (${parities.length} values)`)
     }
     if (maxDevices === 0) {
       console.log('Mode: Find all devices')
@@ -126,6 +130,14 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
 
   if (slaveIds) {
     generatorOptions.slaveIds = slaveIds
+  }
+
+  if (baudRates) {
+    generatorOptions.baudRates = baudRates
+  }
+
+  if (parities) {
+    generatorOptions.parities = parities
   }
 
   const totalCombinations = countParameterCombinations(generatorOptions)

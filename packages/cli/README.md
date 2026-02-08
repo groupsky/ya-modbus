@@ -196,6 +196,88 @@ ya-modbus discover \
   --delay 50
 ```
 
+**Filter specific slave IDs:**
+
+```bash
+# Test only specific slave IDs (reduces scan time significantly)
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --id 1,2,3
+
+# Test a range of IDs
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --id 1-10
+
+# Combine ranges and individual IDs
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --id "1-5,10,15-20"
+
+# Multiple --id specifications are merged
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --id 1,2 \
+  --id 5-10
+```
+
+**Filter specific parities:**
+
+```bash
+# Test only specific parity modes
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --parity none
+
+# Test multiple parities
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --parity "none,even"
+
+# Multiple --parity specifications are merged
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --parity none \
+  --parity even
+```
+
+**Filter specific baud rates:**
+
+```bash
+# Test only specific baud rates
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --baud-rate 9600
+
+# Test multiple baud rates
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --baud-rate "9600,19200"
+
+# Test a range of baud rates (includes intermediate standard rates)
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --baud-rate "9600-38400"  # Tests 9600, 14400, 19200, 38400
+
+# Multiple --baud-rate specifications are merged
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --baud-rate 9600 \
+  --baud-rate "19200,38400"
+```
+
+**Combine filters for fastest discovery:**
+
+```bash
+# When you know the device configuration, combine filters dramatically
+# reduces scan time. Example: ~30 seconds vs 25 minutes
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --id 1-5 \
+  --parity none \
+  --baud-rate 9600
+```
+
 **Discovery Options:**
 
 - `--strategy <type>` - Discovery strategy: `quick` (default) or `thorough`
@@ -205,6 +287,9 @@ ya-modbus discover \
 - `--timeout <ms>` - Response timeout in milliseconds (default: 1000)
 - `--delay <ms>` - Delay between attempts in milliseconds (default: 100)
 - `--max-devices <count>` - Maximum number of devices to find (default: 1, use 0 for unlimited)
+- `--id <spec>` - Limit search to specific slave IDs (e.g., "1,2,3-5"). Can be specified multiple times
+- `--parity <spec>` - Limit search to specific parities (e.g., "none,even"). Can be specified multiple times
+- `--baud-rate <spec>` - Limit search to specific baud rates (e.g., "9600,19200" or "9600-38400"). Can be specified multiple times
 - `--verbose` - Show detailed progress with current parameters being tested
 - `--silent` - Suppress all output except final result (useful for scripts)
 - `--format <type>` - Output format: `table` (default) or `json`

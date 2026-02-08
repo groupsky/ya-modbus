@@ -891,6 +891,11 @@ describe('CLI Entry Point - Integration Tests', () => {
                                   for unlimited)
           --id <spec>             Limit search to specific slave IDs (e.g., "1,2,3-5").
                                   Can be specified multiple times
+          --parity <spec>         Limit search to specific parities (e.g., "none,even").
+                                  Can be specified multiple times
+          --baud-rate <spec>      Limit search to specific baud rates (e.g.,
+                                  "9600,19200" or "9600-38400"). Can be specified
+                                  multiple times
 
         Output Options:
           --verbose               Show detailed progress with current parameters being
