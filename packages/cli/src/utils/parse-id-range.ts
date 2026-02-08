@@ -12,7 +12,7 @@
 export function parseIdRange(spec: string): number[] {
   const trimmed = spec.trim()
   if (!trimmed) {
-    return []
+    throw new Error('Invalid ID specification: empty string. Expected format: "1,2,3" or "1-5"')
   }
 
   const ids = new Set<number>()

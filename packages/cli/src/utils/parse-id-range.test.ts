@@ -61,11 +61,11 @@ describe('parseIdRange', () => {
     expect(() => parseIdRange('5-3')).toThrow(/start.*end/i)
   })
 
-  test('should return empty array for empty string', () => {
-    expect(parseIdRange('')).toEqual([])
+  test('should throw error for empty string', () => {
+    expect(() => parseIdRange('')).toThrow(/empty string/i)
   })
 
-  test('should handle whitespace-only string', () => {
-    expect(parseIdRange('  ')).toEqual([])
+  test('should throw error for whitespace-only string', () => {
+    expect(() => parseIdRange('  ')).toThrow(/empty string/i)
   })
 })
