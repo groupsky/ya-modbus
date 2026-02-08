@@ -4,6 +4,7 @@ import type { DiscoveryStrategy } from '../discovery/parameter-generator.js'
 import { ProgressTracker } from '../discovery/progress.js'
 import { scanForDevices } from '../discovery/scanner.js'
 import { formatDiscoveryJSON, formatDiscoveryTable } from '../formatters/discovery-results.js'
+import { mergeSpecs } from '../utils/merge-specs.js'
 import { parseBaudRate } from '../utils/parse-baud-rate.js'
 import { parseIdRange } from '../utils/parse-id-range.js'
 import { parseParity, sortParitiesInStandardOrder } from '../utils/parse-parity.js'
@@ -48,48 +49,12 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
   const verbose = options.verbose ?? false
   const silent = options.silent ?? false
 
-  // Parse and merge ID specifications
-  let slaveIds: number[] | undefined
-  if (options.id) {
-    const idSpecs = Array.isArray(options.id) ? options.id : [options.id]
-    const allIds = new Set<number>()
-
-    for (const spec of idSpecs) {
-      const ids = parseIdRange(spec)
-      ids.forEach((id) => allIds.add(id))
-    }
-
-    slaveIds = Array.from(allIds).sort((a, b) => a - b)
-  }
-
-  // Parse and merge parity specifications
-  let parities: import('@ya-modbus/driver-types').Parity[] | undefined
-  if (options.parity) {
-    const paritySpecs = Array.isArray(options.parity) ? options.parity : [options.parity]
-    const allParities = new Set<import('@ya-modbus/driver-types').Parity>()
-
-    for (const spec of paritySpecs) {
-      const p = parseParity(spec)
-      p.forEach((parity) => allParities.add(parity))
-    }
-
-    // Sort in standard order
-    parities = sortParitiesInStandardOrder(Array.from(allParities))
-  }
-
-  // Parse and merge baud rate specifications
-  let baudRates: import('@ya-modbus/driver-types').BaudRate[] | undefined
-  if (options.baudRate) {
-    const baudRateSpecs = Array.isArray(options.baudRate) ? options.baudRate : [options.baudRate]
-    const allBaudRates = new Set<import('@ya-modbus/driver-types').BaudRate>()
-
-    for (const spec of baudRateSpecs) {
-      const rates = parseBaudRate(spec)
-      rates.forEach((rate) => allBaudRates.add(rate))
-    }
-
-    baudRates = Array.from(allBaudRates).sort((a, b) => a - b)
-  }
+  // Parse and merge specifications from multiple CLI flags
+  const slaveIds = mergeSpecs(options.id, parseIdRange, (items) => items.sort((a, b) => a - b))
+  const parities = mergeSpecs(options.parity, parseParity, sortParitiesInStandardOrder)
+  const baudRates = mergeSpecs(options.baudRate, parseBaudRate, (items) =>
+    items.sort((a, b) => a - b)
+  )
 
   if (!silent) {
     console.log(`Starting Modbus device discovery on ${options.port}...`)
