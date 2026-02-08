@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.9.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.8.0...@ya-modbus/cli@0.9.0) (2026-02-08)
+
+### Features
+
+- **cli:** add --parity and --baud-rate filters to discover command ([#332](https://github.com/groupsky/ya-modbus/issues/332)) ([85beba8](https://github.com/groupsky/ya-modbus/commit/85beba8de2db2eb65e10905c2d8e8e3efe44150d))
+
 # [0.8.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.7.1...@ya-modbus/cli@0.8.0) (2026-02-08)
 
 ### Features
