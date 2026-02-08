@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.8.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.7.1...@ya-modbus/mqtt-bridge@0.8.0) (2026-02-08)
+
+### Features
+
+- **mqtt-bridge:** add device loading from config ([#341](https://github.com/groupsky/ya-modbus/issues/341)) ([28e800e](https://github.com/groupsky/ya-modbus/commit/28e800e414232d0dc2a01970ec1e72213fed14e1)), closes [#337](https://github.com/groupsky/ya-modbus/issues/337)
+
 ## [0.7.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.7.0...@ya-modbus/mqtt-bridge@0.7.1) (2026-02-06)
 
 **Note:** Version bump only for package @ya-modbus/mqtt-bridge
