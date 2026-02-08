@@ -80,7 +80,7 @@ export function getParameterArrays(
  * ```
  */
 export function countParameterCombinations(options: GeneratorOptions): number {
-  const { strategy, supportedConfig } = options
+  const { strategy, supportedConfig, slaveIds } = options
 
   const { baudRates, parities, dataBits, stopBits, addressRange } = getParameterArrays(
     strategy,
@@ -88,8 +88,13 @@ export function countParameterCombinations(options: GeneratorOptions): number {
   )
 
   // Calculate address count
-  const [minId, maxId] = addressRange
-  const addressCount = maxId - minId + 1
+  let addressCount: number
+  if (slaveIds !== undefined) {
+    addressCount = slaveIds.length
+  } else {
+    const [minId, maxId] = addressRange
+    addressCount = maxId - minId + 1
+  }
 
   // Total combinations = addresses × baud rates × parities × data bits × stop bits
   return addressCount * baudRates.length * parities.length * dataBits.length * stopBits.length
