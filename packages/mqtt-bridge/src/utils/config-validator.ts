@@ -2,6 +2,8 @@ import { z } from 'zod'
 
 import type { MqttBridgeConfig } from '../types.js'
 
+import { deviceConfigSchema } from './device-validation.js'
+
 const mqttConfigSchema = z.object({
   url: z
     .string()
@@ -26,6 +28,7 @@ const mqttBridgeConfigSchema = z.object({
         'Topic prefix must not contain MQTT special characters (+, #, /, $) or null character',
     })
     .optional(),
+  devices: z.array(deviceConfigSchema).optional(),
 })
 
 export function validateConfig(config: unknown): asserts config is MqttBridgeConfig {
