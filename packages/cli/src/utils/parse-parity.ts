@@ -2,6 +2,8 @@ import type { Parity } from '@ya-modbus/driver-types'
 
 import { STANDARD_PARITY } from '../discovery/constants.js'
 
+import { parseSpec } from './parse-spec.js'
+
 /**
  * Parses a comma-separated list of parity values into a sorted array of unique parities.
  *
@@ -14,34 +16,31 @@ import { STANDARD_PARITY } from '../discovery/constants.js'
  * parseParity("even,even") // ["even"]
  */
 export function parseParity(spec: string): Parity[] {
-  const trimmed = spec.trim()
-  if (!trimmed) {
-    throw new Error('Invalid parity specification: empty string. Expected format: "none,even,odd"')
-  }
+  return parseSpec({
+    spec,
+    label: 'parity',
+    formatExamples: ['"none,even,odd"'],
+    skipEmptyParts: false, // Throw error on empty parts for explicit validation
+    parseSingle: (value, context) => {
+      const normalized = value.toLowerCase()
 
-  const parities = new Set<Parity>()
-  const parts = trimmed.split(',')
+      if (!isValidParity(normalized)) {
+        throw new Error(
+          `Invalid parity value: "${value}" in "${context}". Valid values are: ${STANDARD_PARITY.join(', ')}`
+        )
+      }
 
-  for (const part of parts) {
-    const normalized = part.trim().toLowerCase()
-    if (!normalized) {
-      throw new Error(
-        `Invalid parity specification: empty value in "${spec}". Expected format: "none,even,odd"`
-      )
-    }
+      return normalized
+    },
+    sortItems: (items) => sortParitiesInStandardOrder(items),
+  })
+}
 
-    // Validate parity value
-    if (!isValidParity(normalized)) {
-      throw new Error(
-        `Invalid parity value: "${part}" in "${spec}". Valid values are: none, even, odd`
-      )
-    }
-
-    parities.add(normalized)
-  }
-
-  // Return in standard order (none, even, odd)
-  return STANDARD_PARITY.filter((p) => parities.has(p))
+/**
+ * Sorts parities in standard order (none, even, odd)
+ */
+export function sortParitiesInStandardOrder(parities: Parity[]): Parity[] {
+  return STANDARD_PARITY.filter((p) => parities.includes(p))
 }
 
 /**

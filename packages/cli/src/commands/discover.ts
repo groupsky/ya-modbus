@@ -6,7 +6,7 @@ import { scanForDevices } from '../discovery/scanner.js'
 import { formatDiscoveryJSON, formatDiscoveryTable } from '../formatters/discovery-results.js'
 import { parseBaudRate } from '../utils/parse-baud-rate.js'
 import { parseIdRange } from '../utils/parse-id-range.js'
-import { parseParity } from '../utils/parse-parity.js'
+import { parseParity, sortParitiesInStandardOrder } from '../utils/parse-parity.js'
 
 /**
  * Discover command options
@@ -73,8 +73,8 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
       p.forEach((parity) => allParities.add(parity))
     }
 
-    // Sort in standard order using parseParity on combined set
-    parities = parseParity(Array.from(allParities).join(','))
+    // Sort in standard order
+    parities = sortParitiesInStandardOrder(Array.from(allParities))
   }
 
   // Parse and merge baud rate specifications
