@@ -4,6 +4,8 @@ import { z } from 'zod'
 
 import type { MqttBridgeConfig } from '../types.js'
 
+import { deviceConfigSchema } from './device-validation.js'
+
 const mqttConfigSchema = z.object({
   url: z
     .string()
@@ -29,6 +31,7 @@ const mqttBridgeConfigSchema = z.object({
         'Topic prefix must not contain MQTT special characters (+, #, /, $) or null character',
     })
     .optional(),
+  devices: z.array(deviceConfigSchema).optional(),
 })
 
 export async function loadConfig(configPath: string): Promise<MqttBridgeConfig> {
@@ -56,6 +59,7 @@ export async function loadConfig(configPath: string): Promise<MqttBridgeConfig> 
     },
     ...(result.data.stateDir !== undefined && { stateDir: result.data.stateDir }),
     ...(result.data.topicPrefix !== undefined && { topicPrefix: result.data.topicPrefix }),
+    ...(result.data.devices !== undefined && { devices: result.data.devices }),
   }
 
   return config

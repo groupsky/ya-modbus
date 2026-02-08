@@ -117,4 +117,26 @@ describe('loadConfig', () => {
       topicPrefix: 'test',
     })
   })
+
+  it('should load devices from config file', async () => {
+    const configJson = JSON.stringify({
+      mqtt: { url: 'mqtt://localhost:1883' },
+      devices: [
+        {
+          deviceId: 'test-device',
+          driver: '@ya-modbus/driver-ex9em',
+          connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+          polling: { interval: 2000 },
+        },
+      ],
+    })
+
+    mockedReadFile.mockResolvedValue(configJson)
+    const config = await loadConfig('/path/to/config.json')
+
+    expect(config.devices).toBeDefined()
+    expect(config.devices).toHaveLength(1)
+    expect(config.devices?.[0].deviceId).toBe('test-device')
+    expect(config.devices?.[0].driver).toBe('@ya-modbus/driver-ex9em')
+  })
 })
