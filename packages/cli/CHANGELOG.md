@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.8.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.7.1...@ya-modbus/cli@0.8.0) (2026-02-08)
+
+### Features
+
+- **cli:** add --id option to discover command for slave ID filtering ([#321](https://github.com/groupsky/ya-modbus/issues/321)) ([735a9cb](https://github.com/groupsky/ya-modbus/commit/735a9cb5e440741e2a339fe3ab3ff97faa4cc537)), closes [#326](https://github.com/groupsky/ya-modbus/issues/326) [#328](https://github.com/groupsky/ya-modbus/issues/328) [#329](https://github.com/groupsky/ya-modbus/issues/329) [#330](https://github.com/groupsky/ya-modbus/issues/330) [#331](https://github.com/groupsky/ya-modbus/issues/331)
+
 ## [0.7.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.7.0...@ya-modbus/cli@0.7.1) (2026-02-06)
 
 **Note:** Version bump only for package @ya-modbus/cli
