@@ -66,4 +66,107 @@ describe('validateConfig', () => {
 
     expect(() => validateConfig(config)).toThrow('Invalid configuration')
   })
+
+  it('should validate config with devices array', () => {
+    const config = {
+      mqtt: {
+        url: 'mqtt://localhost:1883',
+      },
+      devices: [
+        {
+          deviceId: 'device1',
+          driver: '@ya-modbus/driver-ex9em',
+          connection: {
+            type: 'rtu',
+            port: '/dev/ttyUSB0',
+            baudRate: 9600,
+            slaveId: 1,
+          },
+          polling: {
+            interval: 2000,
+          },
+        },
+      ],
+    }
+
+    expect(() => validateConfig(config)).not.toThrow()
+  })
+
+  it('should validate config with multiple devices', () => {
+    const config = {
+      mqtt: {
+        url: 'mqtt://localhost:1883',
+      },
+      devices: [
+        {
+          deviceId: 'rtu-device',
+          driver: '@ya-modbus/driver-ex9em',
+          connection: {
+            type: 'rtu',
+            port: '/dev/ttyUSB0',
+            baudRate: 9600,
+            slaveId: 1,
+          },
+        },
+        {
+          deviceId: 'tcp-device',
+          driver: '@ya-modbus/driver-xymd1',
+          connection: {
+            type: 'tcp',
+            host: 'localhost',
+            port: 502,
+            slaveId: 2,
+          },
+        },
+      ],
+    }
+
+    expect(() => validateConfig(config)).not.toThrow()
+  })
+
+  it('should throw error for invalid device config in devices array', () => {
+    const config = {
+      mqtt: {
+        url: 'mqtt://localhost:1883',
+      },
+      devices: [
+        {
+          deviceId: '',
+          driver: '@ya-modbus/driver-ex9em',
+          connection: {
+            type: 'rtu',
+            port: '/dev/ttyUSB0',
+            baudRate: 9600,
+            slaveId: 1,
+          },
+        },
+      ],
+    }
+
+    expect(() => validateConfig(config)).toThrow('Invalid configuration')
+    expect(() => validateConfig(config)).toThrow('deviceId')
+  })
+
+  it('should throw error for invalid driver name in devices array', () => {
+    const config = {
+      mqtt: {
+        url: 'mqtt://localhost:1883',
+      },
+      devices: [
+        {
+          deviceId: 'device1',
+          driver: 'invalid-driver',
+          connection: {
+            type: 'rtu',
+            port: '/dev/ttyUSB0',
+            baudRate: 9600,
+            slaveId: 1,
+          },
+        },
+      ],
+    }
+
+    expect(() => validateConfig(config)).toThrow('Invalid configuration')
+    expect(() => validateConfig(config)).toThrow('driver')
+  })
 })
