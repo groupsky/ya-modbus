@@ -640,4 +640,283 @@ describe('Discover Command', () => {
       expect(consoleLogSpy).not.toHaveBeenCalledWith(expect.stringContaining('Slave IDs'))
     })
   })
+
+  describe('--parity option (parity filtering)', () => {
+    beforeEach(() => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+    })
+
+    test('should show filtered parities when --parity is specified', async () => {
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        parity: 'none,even',
+        format: 'table',
+      })
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('Parities: none, even (2 values)')
+    })
+
+    test('should not show parities when --parity is not specified', async () => {
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        format: 'table',
+      })
+
+      expect(consoleLogSpy).not.toHaveBeenCalledWith(expect.stringContaining('Parities'))
+    })
+
+    test('should parse parity values correctly', async () => {
+      const scanSpy = jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        parity: 'odd,none',
+        format: 'table',
+      })
+
+      expect(scanSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          parities: ['none', 'odd'], // Should be sorted in standard order
+        }),
+        expect.anything()
+      )
+    })
+
+    test('should merge multiple --parity specifications', async () => {
+      const scanSpy = jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        parity: ['none', 'even,odd'],
+        format: 'table',
+      })
+
+      expect(scanSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          parities: ['none', 'even', 'odd'],
+        }),
+        expect.anything()
+      )
+    })
+
+    test('should deduplicate merged parity specifications', async () => {
+      const scanSpy = jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        parity: ['none,even', 'even,odd'],
+        format: 'table',
+      })
+
+      expect(scanSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          parities: ['none', 'even', 'odd'],
+        }),
+        expect.anything()
+      )
+    })
+
+    test('should pass filtered parities to scanner', async () => {
+      const scanSpy = jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        parity: 'even',
+        format: 'table',
+      })
+
+      expect(scanSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          parities: ['even'],
+        }),
+        expect.anything()
+      )
+    })
+
+    test('should not pass parities to scanner when --parity not specified', async () => {
+      const scanSpy = jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        format: 'table',
+      })
+
+      const generatorOptions = scanSpy.mock.calls[0][0]
+      expect(generatorOptions).not.toHaveProperty('parities')
+    })
+
+    test('should handle invalid parity specification with error', async () => {
+      await expect(
+        discoverCommand({
+          port: '/dev/ttyUSB0',
+          parity: 'invalid',
+          format: 'table',
+        })
+      ).rejects.toThrow(/invalid parity/i)
+    })
+
+    test('should not show filtered parities in silent mode', async () => {
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        parity: 'none,even',
+        format: 'table',
+        silent: true,
+      })
+
+      expect(consoleLogSpy).not.toHaveBeenCalledWith(expect.stringContaining('Parities'))
+    })
+  })
+
+  describe('--baud-rate option (baud rate filtering)', () => {
+    beforeEach(() => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+    })
+
+    test('should show filtered baud rates when --baud-rate is specified', async () => {
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        baudRate: '9600,19200',
+        format: 'table',
+      })
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('Baud rates: 9600, 19200 (2 rates)')
+    })
+
+    test('should not show baud rates when --baud-rate is not specified', async () => {
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        format: 'table',
+      })
+
+      expect(consoleLogSpy).not.toHaveBeenCalledWith(expect.stringContaining('Baud rates'))
+    })
+
+    test('should parse baud rate values correctly', async () => {
+      const scanSpy = jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        baudRate: '19200,9600',
+        format: 'table',
+      })
+
+      expect(scanSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          baudRates: [9600, 19200], // Should be sorted
+        }),
+        expect.anything()
+      )
+    })
+
+    test('should parse baud rate ranges correctly', async () => {
+      const scanSpy = jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        baudRate: '9600-19200',
+        format: 'table',
+      })
+
+      expect(scanSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          baudRates: [9600, 14400, 19200],
+        }),
+        expect.anything()
+      )
+    })
+
+    test('should merge multiple --baud-rate specifications', async () => {
+      const scanSpy = jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        baudRate: ['9600', '19200,38400'],
+        format: 'table',
+      })
+
+      expect(scanSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          baudRates: [9600, 19200, 38400],
+        }),
+        expect.anything()
+      )
+    })
+
+    test('should deduplicate merged baud rate specifications', async () => {
+      const scanSpy = jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        baudRate: ['9600,19200', '19200,38400'],
+        format: 'table',
+      })
+
+      expect(scanSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          baudRates: [9600, 19200, 38400],
+        }),
+        expect.anything()
+      )
+    })
+
+    test('should pass filtered baud rates to scanner', async () => {
+      const scanSpy = jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        baudRate: '9600',
+        format: 'table',
+      })
+
+      expect(scanSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          baudRates: [9600],
+        }),
+        expect.anything()
+      )
+    })
+
+    test('should not pass baudRates to scanner when --baud-rate not specified', async () => {
+      const scanSpy = jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        format: 'table',
+      })
+
+      const generatorOptions = scanSpy.mock.calls[0][0]
+      expect(generatorOptions).not.toHaveProperty('baudRates')
+    })
+
+    test('should handle invalid baud rate specification with error', async () => {
+      await expect(
+        discoverCommand({
+          port: '/dev/ttyUSB0',
+          baudRate: 'invalid',
+          format: 'table',
+        })
+      ).rejects.toThrow(/invalid/i)
+    })
+
+    test('should handle unsupported baud rate with error', async () => {
+      await expect(
+        discoverCommand({
+          port: '/dev/ttyUSB0',
+          baudRate: '1200',
+          format: 'table',
+        })
+      ).rejects.toThrow(/unsupported baud rate/i)
+    })
+
+    test('should not show filtered baud rates in silent mode', async () => {
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        baudRate: '9600,19200',
+        format: 'table',
+        silent: true,
+      })
+
+      expect(consoleLogSpy).not.toHaveBeenCalledWith(expect.stringContaining('Baud rates'))
+    })
+  })
 })

@@ -4,7 +4,9 @@ import type { DiscoveryStrategy } from '../discovery/parameter-generator.js'
 import { ProgressTracker } from '../discovery/progress.js'
 import { scanForDevices } from '../discovery/scanner.js'
 import { formatDiscoveryJSON, formatDiscoveryTable } from '../formatters/discovery-results.js'
+import { parseBaudRate } from '../utils/parse-baud-rate.js'
 import { parseIdRange } from '../utils/parse-id-range.js'
+import { parseParity } from '../utils/parse-parity.js'
 
 /**
  * Discover command options
@@ -20,6 +22,8 @@ export interface DiscoverOptions {
   delay?: number
   maxDevices?: number
   id?: string | string[]
+  parity?: string | string[]
+  baudRate?: string | string[]
   verbose?: boolean
   silent?: boolean
 
@@ -58,6 +62,35 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
     slaveIds = Array.from(allIds).sort((a, b) => a - b)
   }
 
+  // Parse and merge parity specifications
+  let parities: import('@ya-modbus/driver-types').Parity[] | undefined
+  if (options.parity) {
+    const paritySpecs = Array.isArray(options.parity) ? options.parity : [options.parity]
+    const allParities = new Set<import('@ya-modbus/driver-types').Parity>()
+
+    for (const spec of paritySpecs) {
+      const p = parseParity(spec)
+      p.forEach((parity) => allParities.add(parity))
+    }
+
+    // Sort in standard order using parseParity on combined set
+    parities = parseParity(Array.from(allParities).join(','))
+  }
+
+  // Parse and merge baud rate specifications
+  let baudRates: import('@ya-modbus/driver-types').BaudRate[] | undefined
+  if (options.baudRate) {
+    const baudRateSpecs = Array.isArray(options.baudRate) ? options.baudRate : [options.baudRate]
+    const allBaudRates = new Set<import('@ya-modbus/driver-types').BaudRate>()
+
+    for (const spec of baudRateSpecs) {
+      const rates = parseBaudRate(spec)
+      rates.forEach((rate) => allBaudRates.add(rate))
+    }
+
+    baudRates = Array.from(allBaudRates).sort((a, b) => a - b)
+  }
+
   if (!silent) {
     console.log(`Starting Modbus device discovery on ${options.port}...`)
     console.log(`Strategy: ${strategy}`)
@@ -66,6 +99,12 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
       console.log(`Slave IDs: ${slaveIds.join(', ')} (${slaveIds.length} IDs)`)
     } else {
       console.log('Slave IDs: 1-247 (all)')
+    }
+    if (baudRates) {
+      console.log(`Baud rates: ${baudRates.join(', ')} (${baudRates.length} rates)`)
+    }
+    if (parities) {
+      console.log(`Parities: ${parities.join(', ')} (${parities.length} values)`)
     }
     if (maxDevices === 0) {
       console.log('Mode: Find all devices')
@@ -126,6 +165,14 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
 
   if (slaveIds) {
     generatorOptions.slaveIds = slaveIds
+  }
+
+  if (baudRates) {
+    generatorOptions.baudRates = baudRates
+  }
+
+  if (parities) {
+    generatorOptions.parities = parities
   }
 
   const totalCombinations = countParameterCombinations(generatorOptions)

@@ -45,6 +45,12 @@ export interface GeneratorOptions {
 
   /** Optional list of specific slave IDs to test (overrides addressRange) */
   slaveIds?: number[]
+
+  /** Optional list of specific baud rates to test (overrides strategy defaults) */
+  baudRates?: BaudRate[]
+
+  /** Optional list of specific parities to test (overrides strategy defaults) */
+  parities?: Parity[]
 }
 
 /**
@@ -167,11 +173,30 @@ export interface ParameterGroup {
  * ```
  */
 export function* generateParameterGroups(options: GeneratorOptions): Generator<ParameterGroup> {
-  const { strategy, defaultConfig, supportedConfig, slaveIds: slaveIdFilter } = options
+  const {
+    strategy,
+    defaultConfig,
+    supportedConfig,
+    slaveIds: slaveIdFilter,
+    baudRates: baudRateFilter,
+    parities: parityFilter,
+  } = options
 
-  // Get parameter arrays
-  let { baudRates, parities, dataBits, stopBits } = getParameterArrays(strategy, supportedConfig)
-  const { addressRange } = getParameterArrays(strategy, supportedConfig)
+  // Get parameter arrays (applying filters if provided)
+  const filters =
+    baudRateFilter !== undefined || parityFilter !== undefined
+      ? {
+          ...(baudRateFilter !== undefined && { baudRates: baudRateFilter }),
+          ...(parityFilter !== undefined && { parities: parityFilter }),
+        }
+      : undefined
+
+  let { baudRates, parities, dataBits, stopBits } = getParameterArrays(
+    strategy,
+    supportedConfig,
+    filters
+  )
+  const { addressRange } = getParameterArrays(strategy, supportedConfig, filters)
 
   // Prioritize default values to test them first
   if (defaultConfig) {
@@ -246,11 +271,30 @@ export function* generateParameterGroups(options: GeneratorOptions): Generator<P
 export function* generateParameterCombinations(
   options: GeneratorOptions
 ): Generator<ParameterCombination> {
-  const { strategy, defaultConfig, supportedConfig, slaveIds: slaveIdFilter } = options
+  const {
+    strategy,
+    defaultConfig,
+    supportedConfig,
+    slaveIds: slaveIdFilter,
+    baudRates: baudRateFilter,
+    parities: parityFilter,
+  } = options
 
-  // Get parameter arrays
-  let { baudRates, parities, dataBits, stopBits } = getParameterArrays(strategy, supportedConfig)
-  const { addressRange } = getParameterArrays(strategy, supportedConfig)
+  // Get parameter arrays (applying filters if provided)
+  const filters =
+    baudRateFilter !== undefined || parityFilter !== undefined
+      ? {
+          ...(baudRateFilter !== undefined && { baudRates: baudRateFilter }),
+          ...(parityFilter !== undefined && { parities: parityFilter }),
+        }
+      : undefined
+
+  let { baudRates, parities, dataBits, stopBits } = getParameterArrays(
+    strategy,
+    supportedConfig,
+    filters
+  )
+  const { addressRange } = getParameterArrays(strategy, supportedConfig, filters)
 
   // Prioritize default values to test them first
   if (defaultConfig) {
