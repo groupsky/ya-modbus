@@ -103,7 +103,32 @@ Create a `config.json` file:
     "username": "user",
     "password": "pass"
   },
-  "topicPrefix": "modbus"
+  "topicPrefix": "modbus",
+  "devices": [
+    {
+      "deviceId": "sensor1",
+      "driver": "@ya-modbus/driver-ex9em",
+      "connection": {
+        "type": "rtu",
+        "port": "/dev/ttyUSB0",
+        "baudRate": 9600,
+        "slaveId": 1
+      },
+      "polling": {
+        "interval": 2000
+      }
+    },
+    {
+      "deviceId": "meter1",
+      "driver": "@ya-modbus/driver-xymd1",
+      "connection": {
+        "type": "tcp",
+        "host": "192.168.1.100",
+        "port": 502,
+        "slaveId": 2
+      }
+    }
+  ]
 }
 ```
 
@@ -116,6 +141,38 @@ Create a `config.json` file:
 - `mqtt.reconnectPeriod` (optional) - Reconnection interval in milliseconds (default: 5000)
 - `topicPrefix` (optional) - Topic prefix for all MQTT topics (default: 'modbus')
 - `stateDir` (optional) - Directory path for state persistence (future)
+- `devices` (optional) - Array of device configurations to load on startup
+
+**Device configuration:**
+
+- `deviceId` (required) - Unique device identifier
+- `driver` (required) - Driver package name (@ya-modbus/driver-_ or ya-modbus-driver-_)
+- `connection` (required) - Connection configuration (RTU or TCP)
+- `enabled` (optional) - Enable/disable device (default: true)
+- `polling` (optional) - Polling configuration
+
+**RTU connection:**
+
+- `type: "rtu"` (required)
+- `port` (required) - Serial port path
+- `baudRate` (required) - Baud rate (e.g., 9600, 19200)
+- `slaveId` (required) - Modbus slave ID (0-247)
+- `parity` (optional) - Parity: "none", "even", "odd"
+- `dataBits` (optional) - Data bits: 7 or 8
+- `stopBits` (optional) - Stop bits: 1 or 2
+
+**TCP connection:**
+
+- `type: "tcp"` (required)
+- `host` (required) - TCP host address
+- `port` (required) - TCP port (1-65535)
+- `slaveId` (required) - Modbus slave ID (0-247)
+
+**Polling configuration:**
+
+- `interval` (required) - Polling interval in milliseconds (100-86400000)
+- `maxRetries` (optional) - Maximum retry attempts (0-100)
+- `retryBackoff` (optional) - Retry backoff in milliseconds
 
 ## Programmatic Usage
 
