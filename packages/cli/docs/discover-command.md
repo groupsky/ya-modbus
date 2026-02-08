@@ -65,6 +65,30 @@ This will:
     - `--id 1,3-5,10` - Search IDs 1, 3, 4, 5, and 10
     - `--id 1-3 --id 5-7` - Search IDs 1, 2, 3, 5, 6, and 7
 
+- `--parity <spec>` - Limit search to specific parity modes (can be specified multiple times)
+  - Format: Comma-separated parity values (e.g., `none,even,odd`)
+  - Valid values: `none`, `even`, `odd`
+  - Multiple `--parity` flags are merged and deduplicated
+  - Reduces scan time when you know the device's parity setting
+  - Examples:
+    - `--parity none` - Test only no parity
+    - `--parity none,even` - Test no parity and even parity
+    - `--parity none --parity even` - Same as above (flags are merged)
+    - `--parity "none,even,odd"` - Test all parity modes (quotes optional)
+
+- `--baud-rate <spec>` - Limit search to specific baud rates (can be specified multiple times)
+  - Format: Single rates, comma-separated rates, or ranges (e.g., `9600`, `9600,19200`, or `9600-38400`)
+  - Supported rates: `2400`, `4800`, `9600`, `14400`, `19200`, `38400`, `57600`, `115200`
+  - Multiple `--baud-rate` flags are merged and deduplicated
+  - Range syntax expands to standard baud rates between min and max
+  - Significantly reduces scan time when you know the device's baud rate
+  - Examples:
+    - `--baud-rate 9600` - Test only 9600 baud
+    - `--baud-rate 9600,19200` - Test 9600 and 19200 baud
+    - `--baud-rate 9600-19200` - Test 9600, 14400, and 19200 baud (expands to standard rates)
+    - `--baud-rate 9600 --baud-rate 19200` - Same as `--baud-rate 9600,19200`
+    - `--baud-rate "2400-9600,57600"` - Test low and high baud rates
+
 - `--max-devices <count>` - Maximum devices to find (default: `1`, use `0` for unlimited)
   - Stops scanning after finding specified number of devices
   - Use `0` to find all devices on the bus
@@ -429,6 +453,37 @@ ya-modbus discover --port /dev/ttyUSB0 --id 1,2 --id 3-5
 ```
 
 **Performance benefit:** Searching only 5 IDs instead of all 247 reduces combinations by ~98%, completing in seconds instead of minutes.
+
+### Example 9: Filter by Parity and Baud Rate
+
+When you know the device configuration, combine filters for maximum speed:
+
+```bash
+# Search only even parity devices at 9600 baud
+ya-modbus discover --port /dev/ttyUSB0 --parity even --baud-rate 9600
+
+# Test multiple parities at a specific baud rate
+ya-modbus discover --port /dev/ttyUSB0 --parity none,even --baud-rate 9600
+
+# Test a range of baud rates with specific parity
+ya-modbus discover --port /dev/ttyUSB0 --baud-rate 9600-38400 --parity none
+
+# Combine all three filters for fastest possible scan
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --id 1-5 \
+  --parity none \
+  --baud-rate 9600
+
+# Search multiple configurations
+ya-modbus discover \
+  --port /dev/ttyUSB0 \
+  --id 1,2,3 \
+  --parity none --parity even \
+  --baud-rate 9600,19200
+```
+
+**Performance benefit:** With all three filters, scan time can be reduced from ~25 minutes (testing all combinations) to ~30 seconds (testing only specified combinations). Example: `--id 1-5 --parity none --baud-rate 9600` tests only 5 combinations instead of 1,482.
 
 ## Advanced Usage
 
