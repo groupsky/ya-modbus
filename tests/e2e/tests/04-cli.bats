@@ -411,3 +411,104 @@ teardown() {
   assert_failure
   assert_output_contains "port"
 }
+
+@test "read command logs verbose READ operation to emulator" {
+  # Start emulator with verbose logging enabled
+  run start_test_emulator "fixtures/emulators/port1-single-device.json" "--verbose"
+  assert_success
+  EMULATOR_PID="$output"
+
+  # Read voltage data point from EX9EM device
+  run node "$CLI_BIN" read \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --driver @ya-modbus/driver-ex9em \
+    --data-point voltage
+
+  assert_success
+
+  # Verify emulator logged the READ operation
+  # EX9EM driver reads all 11 data registers in one operation starting at addr 0x0000
+  assert_emulator_log_contains "$EMULATOR_PID" "\[VERBOSE\] READ"
+  assert_emulator_log_contains "$EMULATOR_PID" "slave=1"
+  assert_emulator_log_contains "$EMULATOR_PID" "func=0x03"
+  assert_emulator_log_contains "$EMULATOR_PID" "addr=0x0000"
+  assert_emulator_log_contains "$EMULATOR_PID" "count=11"
+  # Verify voltage value is present (2300 decimal = 0x08FC hex = 230.0V when scaled /10)
+  assert_emulator_log_contains "$EMULATOR_PID" "0x08FC"
+}
+
+@test "read multiple data points logs READ with multiple values" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json" "--verbose"
+  assert_success
+  EMULATOR_PID="$output"
+
+  # Read voltage and current from EX9EM device
+  run node "$CLI_BIN" read \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --driver @ya-modbus/driver-ex9em \
+    --data-point voltage current
+
+  assert_success
+
+  # Verify READ operation logged with both values
+  assert_emulator_log_contains "$EMULATOR_PID" "\[VERBOSE\] READ"
+  assert_emulator_log_contains "$EMULATOR_PID" "addr=0x0000"
+  # Verify voltage (register 0: 2300 = 0x08FC = 230.0V) and current (register 1: 520 = 0x0208 = 52.0A)
+  assert_emulator_log_contains "$EMULATOR_PID" "0x08FC"
+  assert_emulator_log_contains "$EMULATOR_PID" "0x0208"
+}
+
+@test "write command logs verbose WRITE operation to emulator" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json" "--verbose"
+  assert_success
+  EMULATOR_PID="$output"
+
+  # Write device_address configuration parameter (register 43 = 0x002B)
+  run node "$CLI_BIN" write \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --driver @ya-modbus/driver-ex9em \
+    --data-point device_address \
+    --value 5 \
+    --yes
+
+  assert_success
+
+  # Verify emulator logged the WRITE operation
+  # Transport layer uses func 0x10 (Write Multiple Registers) even for single register writes
+  assert_emulator_log_contains "$EMULATOR_PID" "\[VERBOSE\] WRITE"
+  assert_emulator_log_contains "$EMULATOR_PID" "slave=1"
+  assert_emulator_log_contains "$EMULATOR_PID" "func=0x10"
+  assert_emulator_log_contains "$EMULATOR_PID" "addr=0x002B"
+  assert_emulator_log_contains "$EMULATOR_PID" "count=1"
+  # Verify value written (5 decimal = 0x0005 hex)
+  assert_emulator_log_contains "$EMULATOR_PID" "0x0005"
+}
+
+@test "write with verify logs both WRITE and READ operations" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json" "--verbose"
+  assert_success
+  EMULATOR_PID="$output"
+
+  # Write with verification enabled
+  run node "$CLI_BIN" write \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --driver @ya-modbus/driver-ex9em \
+    --data-point device_address \
+    --value 10 \
+    --yes \
+    --verify
+
+  assert_success
+
+  # Verify WRITE operation logged (10 decimal = 0x000A hex)
+  assert_emulator_log_contains "$EMULATOR_PID" "\[VERBOSE\] WRITE"
+  assert_emulator_log_contains "$EMULATOR_PID" "addr=0x002B"
+  assert_emulator_log_contains "$EMULATOR_PID" "values=\[0x000A\]"
+
+  # Verify READ operation also logged (--verify flag triggers read-back)
+  assert_emulator_log_contains "$EMULATOR_PID" "\[VERBOSE\] READ"
+}
