@@ -26,7 +26,7 @@ export function parseIdRange(spec: string): number[] {
     if (normalized.includes('-')) {
       const rangeParts = normalized.split('-').map((s) => s.trim())
 
-      if (rangeParts.length !== 2) {
+      if (rangeParts.length !== 2 || !rangeParts[0] || !rangeParts[1]) {
         throw new Error(`Invalid range format: "${part}". Expected format: "start-end"`)
       }
 
