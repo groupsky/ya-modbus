@@ -919,4 +919,205 @@ describe('Discover Command', () => {
       expect(consoleLogSpy).not.toHaveBeenCalledWith(expect.stringContaining('Baud rates'))
     })
   })
+
+  describe('parity character display', () => {
+    beforeEach(() => {
+      jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue({
+        createDriver: jest.fn(),
+        defaultConfig: undefined,
+        supportedConfig: undefined,
+      })
+    })
+
+    test('should display odd parity as "O" in device found message', async () => {
+      const oddParityDevice: DiscoveredDevice = {
+        slaveId: 1,
+        baudRate: 9600,
+        parity: 'odd',
+        dataBits: 8,
+        stopBits: 1,
+        identification: { present: true, responseTimeMs: 50 },
+      }
+
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue([oddParityDevice])
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        format: 'table',
+      })
+
+      const scanCall = (scanner.scanForDevices as jest.Mock).mock.calls[0]
+      const scanOptions = scanCall[1]
+
+      // Trigger onDeviceFound callback
+      scanOptions.onDeviceFound(oddParityDevice)
+
+      // Verify odd parity is displayed as 'O'
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('9600,O,8,1'))
+    })
+
+    test('should display even parity as "E" in device found message', async () => {
+      const evenParityDevice: DiscoveredDevice = {
+        slaveId: 2,
+        baudRate: 19200,
+        parity: 'even',
+        dataBits: 8,
+        stopBits: 1,
+        identification: { present: true, responseTimeMs: 50 },
+      }
+
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue([evenParityDevice])
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        format: 'table',
+      })
+
+      const scanCall = (scanner.scanForDevices as jest.Mock).mock.calls[0]
+      const scanOptions = scanCall[1]
+
+      // Trigger onDeviceFound callback
+      scanOptions.onDeviceFound(evenParityDevice)
+
+      // Verify even parity is displayed as 'E'
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('19200,E,8,1'))
+    })
+
+    test('should display odd parity as "O" in verbose mode', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue([])
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        verbose: true,
+        format: 'table',
+      })
+
+      const scanCall = (scanner.scanForDevices as jest.Mock).mock.calls[0]
+      const scanOptions = scanCall[1]
+
+      // Simulate testing with odd parity
+      scanOptions.onTestAttempt(
+        {
+          slaveId: 1,
+          baudRate: 9600,
+          parity: 'odd',
+          dataBits: 8,
+          stopBits: 1,
+        },
+        'testing'
+      )
+
+      // Verify odd parity is displayed as 'O' in verbose output
+      expect(stdoutWriteSpy).toHaveBeenCalledWith(expect.stringContaining('1@9600,O,8,1'))
+    })
+
+    test('should display even parity as "E" in verbose mode', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue([])
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        verbose: true,
+        format: 'table',
+      })
+
+      const scanCall = (scanner.scanForDevices as jest.Mock).mock.calls[0]
+      const scanOptions = scanCall[1]
+
+      // Simulate testing with even parity
+      scanOptions.onTestAttempt(
+        {
+          slaveId: 2,
+          baudRate: 19200,
+          parity: 'even',
+          dataBits: 8,
+          stopBits: 1,
+        },
+        'found'
+      )
+
+      // Verify even parity is displayed as 'E' in verbose output
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('2@19200,E,8,1'))
+    })
+  })
+
+  describe('no devices found', () => {
+    beforeEach(() => {
+      jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue({
+        createDriver: jest.fn(),
+        defaultConfig: undefined,
+        supportedConfig: undefined,
+      })
+    })
+
+    test('should not display results table when no devices found', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue([])
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        format: 'table',
+      })
+
+      // Should show completion message
+      expect(consoleLogSpy).toHaveBeenCalledWith('Discovery complete! Found 0 device(s).')
+
+      // Should NOT show table (check for table formatting characters)
+      const tableCalls = consoleLogSpy.mock.calls.filter((call) => {
+        const str = call[0]
+        return str?.includes('─') === true || str?.includes('│') === true
+      })
+      expect(tableCalls).toHaveLength(0)
+    })
+
+    test('should not output JSON array when no devices found in JSON format', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue([])
+
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        silent: true,
+        format: 'json',
+      })
+
+      // Should NOT output JSON array when no devices found
+      const jsonCalls = consoleLogSpy.mock.calls.filter((call) => call[0]?.includes('['))
+      expect(jsonCalls).toHaveLength(0)
+    })
+  })
+
+  describe('onDeviceFound in verbose mode', () => {
+    beforeEach(() => {
+      jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue({
+        createDriver: jest.fn(),
+        defaultConfig: undefined,
+        supportedConfig: undefined,
+      })
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue(mockDevices)
+    })
+
+    test('should not clear progress line in verbose mode when device found', async () => {
+      await discoverCommand({
+        port: '/dev/ttyUSB0',
+        verbose: true,
+        format: 'table',
+      })
+
+      const scanCall = (scanner.scanForDevices as jest.Mock).mock.calls[0]
+      const scanOptions = scanCall[1]
+
+      // Clear mock calls from setup
+      jest.clearAllMocks()
+
+      const clearLineSpy = jest.spyOn(process.stdout, 'clearLine').mockImplementation()
+      const cursorToSpy = jest.spyOn(process.stdout, 'cursorTo').mockImplementation()
+
+      // Trigger onDeviceFound callback
+      scanOptions.onDeviceFound(mockDevices[0])
+
+      // In verbose mode, should NOT clear/move cursor (already on new line from verbose output)
+      expect(clearLineSpy).not.toHaveBeenCalled()
+      expect(cursorToSpy).not.toHaveBeenCalled()
+
+      clearLineSpy.mockRestore()
+      cursorToSpy.mockRestore()
+    })
+  })
 })
