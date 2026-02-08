@@ -360,6 +360,175 @@ get_project_root() {
   cd "$script_dir/../.." && pwd
 }
 
+# Start mqtt-bridge in background
+#
+# Starts the ya-modbus mqtt-bridge in the background with output redirected to a log file.
+# Uses the same approach as start_test_emulator for log file management.
+#
+# Arguments:
+#   $1 - config_file: Path to bridge configuration file
+#
+# Returns:
+#   Prints PID of started bridge to stdout
+#   Returns 0 on success, 1 on failure
+#
+start_mqtt_bridge() {
+  local config_file=$1
+  local project_root
+  project_root=$(get_project_root)
+
+  # Create guaranteed-unique temp log file
+  local temp_log
+  temp_log=$(mktemp /tmp/bridge-temp-XXXXXX.log) || {
+    echo "Failed to create temp log file" >&2
+    return 1
+  }
+
+  # Start bridge using official CLI (now supports device loading from config)
+  node "$project_root/packages/mqtt-bridge/dist/esm/bin/ya-modbus-bridge.js" \
+    run \
+    --config "$config_file" \
+    > "$temp_log" 2>&1 &
+  local pid=$!
+
+  # Create symlink for PID-based access
+  local log_file="/tmp/bridge-$pid.log"
+  if ! ln -sf "$temp_log" "$log_file"; then
+    echo "Warning: Failed to create log symlink" >&2
+  fi
+
+  # Store metadata for cleanup
+  echo "$pid" > "/tmp/bridge-$pid.pid"
+  echo "$temp_log" > "/tmp/bridge-$pid-logfile.txt"
+
+  # Wait for bridge to be ready by checking log file
+  local timeout=50
+  local elapsed=0
+  local bridge_ready=0
+
+  while [ $elapsed -lt $timeout ]; do
+    # Check if process is still alive
+    if ! kill -0 "$pid" 2>/dev/null; then
+      echo "Bridge process died during startup" >&2
+      cat "$temp_log" >&2
+      return 1
+    fi
+
+    # Check log file for bridge startup and device loading success
+    # Look for "✓ Loaded device:" to ensure devices are actually loaded
+    if [ -f "$temp_log" ] && grep -qE "(✓ Loaded device:|Bridge started successfully)" "$temp_log" 2>/dev/null; then
+      bridge_ready=1
+      break
+    fi
+
+    sleep 0.1
+    elapsed=$((elapsed + 1))
+  done
+
+  # If readiness not detected but process alive, it may have started without logging
+  if [ $bridge_ready -eq 0 ] && kill -0 "$pid" 2>/dev/null; then
+    echo "Warning: Bridge running but startup message not found in logs" >&2
+  fi
+
+  # Final check if still running
+  if ! kill -0 "$pid" 2>/dev/null; then
+    echo "Failed to start bridge" >&2
+    cat "$temp_log" >&2
+    return 1
+  fi
+
+  echo "$pid"
+  return 0
+}
+
+# Stop mqtt-bridge
+#
+# Stops the bridge process and cleans up all associated files (PID file,
+# log symlink, and temporary log file).
+#
+# Arguments:
+#   $1 - pid: Process ID of the bridge to stop
+#
+stop_mqtt_bridge() {
+  local pid=$1
+  local pid_file="/tmp/bridge-$pid.pid"
+  local log_file_ref="/tmp/bridge-$pid-logfile.txt"
+
+  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+    kill "$pid" 2>/dev/null || true
+
+    # Wait for process to be fully reaped
+    local timeout=30
+    local elapsed=0
+    while [ $elapsed -lt $timeout ]; do
+      if ! kill -0 "$pid" 2>/dev/null; then
+        break
+      fi
+      # Check if it's a zombie process
+      if [ -f "/proc/$pid/stat" ]; then
+        local state=$(awk '{print $3}' "/proc/$pid/stat" 2>/dev/null)
+        if [ "$state" = "Z" ]; then
+          break
+        fi
+      fi
+      sleep 0.1
+      elapsed=$((elapsed + 1))
+    done
+
+    # Force kill if still running
+    if kill -0 "$pid" 2>/dev/null; then
+      if [ -f "/proc/$pid/stat" ]; then
+        local state=$(awk '{print $3}' "/proc/$pid/stat" 2>/dev/null)
+        if [ "$state" != "Z" ]; then
+          kill -9 "$pid" 2>/dev/null || true
+        fi
+      else
+        kill -9 "$pid" 2>/dev/null || true
+      fi
+    fi
+
+    wait "$pid" 2>/dev/null || true
+  fi
+
+  # Clean up temp log file
+  if [ -f "$log_file_ref" ]; then
+    local temp_log
+    temp_log=$(cat "$log_file_ref" 2>/dev/null)
+    if [ -n "$temp_log" ]; then
+      rm -f "$temp_log" 2>/dev/null || true
+    fi
+    rm -f "$log_file_ref"
+  fi
+
+  # Clean up PID file and symlink
+  rm -f "$pid_file"
+  rm -f "/tmp/bridge-$pid.log"
+}
+
+# Assert bridge log contains expected pattern
+#
+# Arguments:
+#   $1 - pid: Process ID of the bridge
+#   $2 - expected: Pattern to search for (supports grep extended regex)
+#
+assert_bridge_log_contains() {
+  local pid=$1
+  local expected=$2
+  local log_file="/tmp/bridge-$pid.log"
+
+  if [ ! -f "$log_file" ]; then
+    echo "Bridge log file not found: $log_file" >&2
+    return 1
+  fi
+
+  if ! grep -qE "$expected" "$log_file"; then
+    echo "Expected bridge log to contain: $expected" >&2
+    echo "Bridge log contents:" >&2
+    cat "$log_file" >&2
+    return 1
+  fi
+}
+
 # Clean test artifacts
 clean_test_artifacts() {
   rm -f /tmp/mqtt-messages-*.txt 2>/dev/null || true
@@ -368,4 +537,7 @@ clean_test_artifacts() {
   rm -f /tmp/emulator-*-logfile.txt 2>/dev/null || true
   rm -f /tmp/emulator-temp-*.log 2>/dev/null || true
   rm -f /tmp/bridge-*.log 2>/dev/null || true
+  rm -f /tmp/bridge-*.pid 2>/dev/null || true
+  rm -f /tmp/bridge-*-logfile.txt 2>/dev/null || true
+  rm -f /tmp/bridge-temp-*.log 2>/dev/null || true
 }

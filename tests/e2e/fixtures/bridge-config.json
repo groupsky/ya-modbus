@@ -5,7 +5,7 @@
   },
   "devices": [
     {
-      "id": "ex9em-1",
+      "deviceId": "ex9em-1",
       "driver": "@ya-modbus/driver-ex9em",
       "connection": {
         "type": "rtu",
@@ -13,9 +13,9 @@
         "baudRate": 9600,
         "parity": "even",
         "dataBits": 8,
-        "stopBits": 1
+        "stopBits": 1,
+        "slaveId": 1
       },
-      "slaveId": 1,
       "polling": {
         "interval": 2000
       }
