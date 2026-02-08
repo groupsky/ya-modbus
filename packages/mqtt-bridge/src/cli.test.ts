@@ -368,6 +368,150 @@ describe('CLI - ya-modbus-bridge', () => {
     })
   })
 
+  describe('Device Loading from Config', () => {
+    it('should load devices from config after bridge starts', async () => {
+      const mockConfig = {
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+        devices: [
+          {
+            deviceId: 'device1',
+            driver: '@ya-modbus/driver-ex9em',
+            connection: {
+              type: 'rtu',
+              port: '/dev/ttyUSB0',
+              baudRate: 9600,
+              slaveId: 1,
+            },
+            polling: {
+              interval: 2000,
+            },
+          },
+        ],
+      }
+
+      mockBridge.addDevice = jest.fn().mockResolvedValue(undefined)
+
+      jest.mocked(configModule.loadConfig).mockResolvedValue(mockConfig)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(mockBridge.start).toHaveBeenCalled()
+      expect(mockBridge.addDevice).toHaveBeenCalledWith(mockConfig.devices[0])
+    })
+
+    it('should load multiple devices from config', async () => {
+      const mockConfig = {
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+        devices: [
+          {
+            deviceId: 'rtu-device',
+            driver: '@ya-modbus/driver-ex9em',
+            connection: {
+              type: 'rtu',
+              port: '/dev/ttyUSB0',
+              baudRate: 9600,
+              slaveId: 1,
+            },
+          },
+          {
+            deviceId: 'tcp-device',
+            driver: '@ya-modbus/driver-xymd1',
+            connection: {
+              type: 'tcp',
+              host: 'localhost',
+              port: 502,
+              slaveId: 2,
+            },
+          },
+        ],
+      }
+
+      mockBridge.addDevice = jest.fn().mockResolvedValue(undefined)
+
+      jest.mocked(configModule.loadConfig).mockResolvedValue(mockConfig)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(mockBridge.start).toHaveBeenCalled()
+      expect(mockBridge.addDevice).toHaveBeenCalledTimes(2)
+      expect(mockBridge.addDevice).toHaveBeenCalledWith(mockConfig.devices[0])
+      expect(mockBridge.addDevice).toHaveBeenCalledWith(mockConfig.devices[1])
+    })
+
+    it('should not call addDevice when config has no devices array', async () => {
+      const mockConfig = {
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+      }
+
+      mockBridge.addDevice = jest.fn().mockResolvedValue(undefined)
+
+      jest.mocked(configModule.loadConfig).mockResolvedValue(mockConfig)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(mockBridge.start).toHaveBeenCalled()
+      expect(mockBridge.addDevice).not.toHaveBeenCalled()
+    })
+
+    it('should not call addDevice when devices array is empty', async () => {
+      const mockConfig = {
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+        devices: [],
+      }
+
+      mockBridge.addDevice = jest.fn().mockResolvedValue(undefined)
+
+      jest.mocked(configModule.loadConfig).mockResolvedValue(mockConfig)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(mockBridge.start).toHaveBeenCalled()
+      expect(mockBridge.addDevice).not.toHaveBeenCalled()
+    })
+
+    it('should handle device loading errors gracefully', async () => {
+      const mockConfig = {
+        mqtt: {
+          url: 'mqtt://localhost:1883',
+        },
+        devices: [
+          {
+            deviceId: 'device1',
+            driver: '@ya-modbus/driver-ex9em',
+            connection: {
+              type: 'rtu',
+              port: '/dev/ttyUSB0',
+              baudRate: 9600,
+              slaveId: 1,
+            },
+          },
+        ],
+      }
+
+      mockBridge.addDevice = jest.fn().mockRejectedValue(new Error('Failed to load driver'))
+
+      jest.mocked(configModule.loadConfig).mockResolvedValue(mockConfig)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(mockBridge.start).toHaveBeenCalled()
+      expect(mockBridge.addDevice).toHaveBeenCalled()
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error:'),
+        'Failed to load driver'
+      )
+      expect(processUtils.exit).toHaveBeenCalledWith(1)
+    })
+  })
+
   describe('Signal Handlers', () => {
     it('should register SIGINT handler', async () => {
       const mockConfig = {

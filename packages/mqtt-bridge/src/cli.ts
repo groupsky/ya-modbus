@@ -99,6 +99,15 @@ async function runCommand(options: RunCommandOptions): Promise<void> {
 
   console.log(chalk.green('Bridge started successfully'))
 
+  // Load devices from config if provided
+  if (config.devices && config.devices.length > 0) {
+    console.log(chalk.blue(`Loading ${config.devices.length} device(s) from configuration...`))
+    for (const deviceConfig of config.devices) {
+      await bridge.addDevice(deviceConfig)
+      console.log(chalk.green(`✓ Loaded device: ${deviceConfig.deviceId}`))
+    }
+  }
+
   let isShuttingDown = false
   const handleShutdown = async (signal: string): Promise<void> => {
     if (isShuttingDown) {
