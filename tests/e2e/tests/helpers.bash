@@ -311,6 +311,34 @@ assert_file_contains() {
   fi
 }
 
+# Assert file contains string on specific topic
+#
+# Verifies that a specific MQTT topic has messages containing the expected string
+#
+# Arguments:
+#   $1 - file: Path to MQTT messages file (topic + space + payload format)
+#   $2 - topic: MQTT topic to check
+#   $3 - expected: Pattern to search for in messages on that topic
+#
+assert_topic_contains() {
+  local file=$1
+  local topic=$2
+  local expected=$3
+
+  if [ ! -f "$file" ]; then
+    echo "File not found: $file" >&2
+    return 1
+  fi
+
+  # Extract messages for specific topic and check content
+  if ! grep "^$topic " "$file" | grep -q "$expected"; then
+    echo "Expected topic '$topic' to contain: $expected" >&2
+    echo "Messages on topic '$topic':" >&2
+    grep "^$topic " "$file" >&2 || echo "(no messages on this topic)" >&2
+    return 1
+  fi
+}
+
 # Assert emulator log contains expected pattern
 #
 # Reads the emulator log file for the given PID and verifies it contains
@@ -353,6 +381,41 @@ assert_emulator_log_contains() {
   fi
 }
 
+# Wait for a condition to become true
+#
+# Polls a command/assertion until it succeeds or timeout is reached.
+# Sleeps 0.1s between attempts to avoid busy waiting.
+#
+# Arguments:
+#   $1 - timeout: Maximum time to wait in deciseconds (1 = 0.1s, 10 = 1s, 300 = 30s)
+#   $2 - check_command: Command/assertion to execute (will be eval'd)
+#
+# Returns:
+#   0 if condition became true within timeout
+#   1 if timeout reached
+#
+# Examples:
+#   wait_for 100 'assert_file_contains "$FILE" "expected"'
+#   wait_for 50 '[ -f "/tmp/ready.txt" ]'
+#
+wait_for() {
+  local timeout=$1
+  local check_command=$2
+  local elapsed=0
+
+  while [ $elapsed -lt $timeout ]; do
+    if eval "$check_command" 2>/dev/null; then
+      return 0
+    fi
+    sleep 0.1
+    elapsed=$((elapsed + 1))
+  done
+
+  # Timeout reached - run command one more time to show error
+  eval "$check_command"
+  return 1
+}
+
 # Get project root directory
 get_project_root() {
   local script_dir
@@ -385,7 +448,7 @@ start_mqtt_bridge() {
   }
 
   # Start bridge using official CLI (now supports device loading from config)
-  node "$project_root/packages/mqtt-bridge/dist/esm/bin/ya-modbus-bridge.js" \
+  "$project_root/packages/mqtt-bridge/dist/esm/bin/ya-modbus-bridge.js" \
     run \
     --config "$config_file" \
     > "$temp_log" 2>&1 &
@@ -503,6 +566,36 @@ stop_mqtt_bridge() {
   # Clean up PID file and symlink
   rm -f "$pid_file"
   rm -f "/tmp/bridge-$pid.log"
+}
+
+# Assert bridge is running and healthy
+#
+# Checks that bridge process is alive and logs show successful startup
+#
+# Arguments:
+#   $1 - pid: Process ID of the bridge
+#
+assert_bridge_running() {
+  local pid=$1
+  local log_file="/tmp/bridge-$pid.log"
+
+  # Check process is alive
+  if ! kill -0 "$pid" 2>/dev/null; then
+    echo "Bridge process is not running (PID: $pid)" >&2
+    if [ -f "$log_file" ]; then
+      echo "Bridge log:" >&2
+      cat "$log_file" >&2
+    fi
+    return 1
+  fi
+
+  # Check logs show successful startup
+  if [ -f "$log_file" ] && grep -qE "(✓ Loaded device:|Bridge started successfully)" "$log_file"; then
+    return 0
+  fi
+
+  echo "Bridge is running but startup not confirmed in logs" >&2
+  return 1
 }
 
 # Assert bridge log contains expected pattern

@@ -17,7 +17,7 @@
         "slaveId": 1
       },
       "polling": {
-        "interval": 2000
+        "interval": 500
       }
     }
   ]

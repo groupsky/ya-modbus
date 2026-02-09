@@ -12,7 +12,7 @@ setup() {
   EMULATOR_PID=""
   BRIDGE_PID=""
   MQTT_SUB_PID=""
-  MQTT_MESSAGES_FILE="/tmp/mqtt-messages-$$.txt"
+  MQTT_MESSAGES_FILE=$(mktemp /tmp/mqtt-messages-XXXXXX.txt)
   clean_test_artifacts
 }
 
@@ -61,8 +61,8 @@ teardown() {
   assert_success
   BRIDGE_PID="$output"
 
-  # Verify bridge process is running
-  run kill -0 "$BRIDGE_PID"
+  # Verify bridge is running and healthy
+  run assert_bridge_running "$BRIDGE_PID"
   assert_success
 }
 
@@ -83,15 +83,16 @@ teardown() {
   BRIDGE_PID="$output"
 
   # Wait for bridge to poll and publish data
-  sleep 5
+  run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data"'
+  assert_success
 
-  # Verify data published to correct topic
-  assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data"
-
-  # Verify message contains expected structure (deviceId, timestamp, data)
-  assert_file_contains "$MQTT_MESSAGES_FILE" '"deviceId":"ex9em-1"'
-  assert_file_contains "$MQTT_MESSAGES_FILE" '"timestamp":'
-  assert_file_contains "$MQTT_MESSAGES_FILE" '"data":'
+  # Verify message is published to correct topic with expected structure
+  run assert_topic_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" '"deviceId":"ex9em-1"'
+  assert_success
+  run assert_topic_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" '"timestamp":'
+  assert_success
+  run assert_topic_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" '"data":'
+  assert_success
 }
 
 @test "mqtt-bridge publishes data matching emulator configuration" {
@@ -110,12 +111,10 @@ teardown() {
   assert_success
   BRIDGE_PID="$output"
 
-  # Wait for bridge to poll and publish data
-  sleep 5
-
-  # Verify data values match emulator configuration
+  # Wait for bridge to poll and publish data with expected voltage value
   # The ex9em driver should decode register 0 (value 2300) as voltage=230.0V
-  assert_file_contains "$MQTT_MESSAGES_FILE" '"voltage":230'
+  run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "\"voltage\":230"'
+  assert_success
 }
 
 @test "mqtt-bridge handles multiple devices on same bus" {
@@ -135,15 +134,16 @@ teardown() {
   BRIDGE_PID="$output"
 
   # Wait for bridge to poll both devices
-  sleep 5
+  run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/xymd1-1/data"'
+  assert_success
+  run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/or-we-516-2/data"'
+  assert_success
 
-  # Verify data published to separate topics
-  assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/xymd1-1/data"
-  assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/or-we-516-2/data"
-
-  # Verify both devices have distinct data
-  assert_file_contains "$MQTT_MESSAGES_FILE" '"deviceId":"xymd1-1"'
-  assert_file_contains "$MQTT_MESSAGES_FILE" '"deviceId":"or-we-516-2"'
+  # Verify each device publishes to its own correct topic
+  run assert_topic_contains "$MQTT_MESSAGES_FILE" "modbus/xymd1-1/data" '"deviceId":"xymd1-1"'
+  assert_success
+  run assert_topic_contains "$MQTT_MESSAGES_FILE" "modbus/or-we-516-2/data" '"deviceId":"or-we-516-2"'
+  assert_success
 }
 
 @test "mqtt-bridge continues running when device disconnects" {
@@ -162,26 +162,26 @@ teardown() {
   assert_success
   BRIDGE_PID="$output"
 
-  # Wait for initial data
-  sleep 3
+  # Wait for initial data to be published
+  run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data"'
+  assert_success
 
   # Stop emulator to simulate disconnection
   stop_test_emulator "$EMULATOR_PID"
   EMULATOR_PID=""
 
-  # Wait for bridge to detect disconnection
-  sleep 3
-
-  # Verify bridge is still running (does not crash)
-  run kill -0 "$BRIDGE_PID"
+  # Wait for bridge to attempt polling and detect disconnection
+  # Bridge should log polling errors without crashing
+  run wait_for 50 'assert_bridge_log_contains "$BRIDGE_PID" "Polling error for device"'
   assert_success
 
-  # Bridge should log polling errors (errors are logged, not published to MQTT)
-  # We can verify the bridge continues by checking it's still alive
+  # Verify bridge is still running (does not crash on disconnection)
+  run assert_bridge_running "$BRIDGE_PID"
+  assert_success
 }
 
 @test "mqtt-bridge reconnects after device comes back online" {
-  # Start emulator with ex9em device
+  # Start emulator with ex9em device (voltage register 0 = 2300)
   run start_test_emulator "fixtures/emulators/port1-single-device.json"
   assert_success
   EMULATOR_PID="$output"
@@ -196,27 +196,33 @@ teardown() {
   assert_success
   BRIDGE_PID="$output"
 
-  # Wait for initial data
-  sleep 3
+  # Wait for initial data with voltage=230V
+  run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "\"voltage\":230"'
+  assert_success
 
-  # Clear MQTT messages to track reconnection
+  # Clear MQTT messages to track reconnection with new data
   > "$MQTT_MESSAGES_FILE"
 
   # Stop emulator
   stop_test_emulator "$EMULATOR_PID"
   EMULATOR_PID=""
 
-  # Wait for disconnection
-  sleep 3
+  # Wait for bridge to detect disconnection
+  run wait_for 50 'assert_bridge_log_contains "$BRIDGE_PID" "Polling error for device"'
+  assert_success
 
-  # Restart emulator
-  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  # Restart emulator with different register values (voltage register 0 = 2400)
+  run start_test_emulator "fixtures/emulators/port1-single-device-alt.json"
   assert_success
   EMULATOR_PID="$output"
 
-  # Wait for bridge to reconnect and publish data
-  sleep 5
+  # Wait for bridge to reconnect and publish new data with voltage=240V
+  run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "\"voltage\":240"'
+  assert_success
 
-  # Verify bridge resumed publishing data
-  assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data"
+  # Verify bridge resumed publishing data (topic and deviceId are in the same message as voltage)
+  run assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data"
+  assert_success
+  run assert_file_contains "$MQTT_MESSAGES_FILE" '"deviceId":"ex9em-1"'
+  assert_success
 }
