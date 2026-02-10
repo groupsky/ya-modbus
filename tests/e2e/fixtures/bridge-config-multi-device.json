@@ -21,8 +21,8 @@
       }
     },
     {
-      "deviceId": "or-we-516-2",
-      "driver": "@ya-modbus/driver-or-we-516",
+      "deviceId": "ex9em-2",
+      "driver": "@ya-modbus/driver-ex9em",
       "connection": {
         "type": "rtu",
         "port": "/tmp/ttyV3",

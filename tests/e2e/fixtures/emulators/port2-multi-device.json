@@ -1,5 +1,5 @@
 {
-  "description": "Two devices on port 2: XYMD1 and OR-WE-516 (both use even parity)",
+  "description": "Two devices on port 2: XYMD1 and EX9EM (both use even parity)",
   "transport": {
     "type": "rtu",
     "port": "/tmp/ttyV2",
@@ -27,12 +27,22 @@
     },
     {
       "slaveId": 2,
-      "deviceType": "OR-WE-516",
+      "deviceType": "EX9EM",
       "registers": {
         "holding": {
           "0": 2200,
           "1": 480,
-          "2": 500
+          "2": 500,
+          "3": 1050,
+          "4": 95,
+          "5": 1150,
+          "6": 950,
+          "7": 1111,
+          "8": 2222,
+          "9": 3333,
+          "10": 4444,
+          "42": 4,
+          "43": 2
         }
       },
       "timing": {

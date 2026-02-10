@@ -339,6 +339,112 @@ assert_topic_contains() {
   fi
 }
 
+# Assert JSON field value in topic message
+#
+# Extracts the most recent message from a specific MQTT topic, parses it as JSON,
+# and validates a field matches the expected value. Uses jq for JSON parsing.
+#
+# Arguments:
+#   $1 - file: Path to MQTT messages file (topic + space + payload format)
+#   $2 - topic: MQTT topic to extract message from
+#   $3 - field_path: jq field path (e.g., ".data.voltage", ".deviceId", ".timestamp")
+#   $4 - expected: Expected value (or type like "number", "string", "object")
+#
+# Returns:
+#   0 if field matches expected value
+#   1 if file not found, topic has no messages, JSON invalid, or value mismatch
+#
+# Examples:
+#   assert_json_field "$FILE" "modbus/ex9em-1/data" ".deviceId" "ex9em-1"
+#   assert_json_field "$FILE" "modbus/ex9em-1/data" ".data.voltage" 230
+#   assert_json_field "$FILE" "modbus/ex9em-1/data" ".timestamp" "number"
+#
+assert_json_field() {
+  local file=$1
+  local topic=$2
+  local field_path=$3
+  local expected=$4
+
+  if [ ! -f "$file" ]; then
+    echo "File not found: $file" >&2
+    return 1
+  fi
+
+  # Extract most recent message from topic (last occurrence)
+  local message
+  message=$(grep "^$topic " "$file" | tail -1 | cut -d' ' -f2-)
+
+  if [ -z "$message" ]; then
+    echo "No messages found on topic: $topic" >&2
+    return 1
+  fi
+
+  # Handle type checking (number, string, object, array, boolean, null)
+  if [[ "$expected" =~ ^(number|string|object|array|boolean|null)$ ]]; then
+    if ! echo "$message" | jq -e "$field_path | type == \"$expected\"" >/dev/null 2>&1; then
+      echo "Expected $field_path to be type '$expected' in topic '$topic'" >&2
+      echo "Message: $message" >&2
+      echo "Field value: $(echo "$message" | jq "$field_path" 2>&1)" >&2
+      return 1
+    fi
+  else
+    # Value comparison
+    if ! echo "$message" | jq -e "$field_path == $expected" >/dev/null 2>&1; then
+      echo "Expected $field_path to equal '$expected' in topic '$topic'" >&2
+      echo "Message: $message" >&2
+      echo "Field value: $(echo "$message" | jq "$field_path" 2>&1)" >&2
+      return 1
+    fi
+  fi
+
+  return 0
+}
+
+# Assert JSON field exists in topic message
+#
+# Validates that a specific JSON field path exists in the most recent message
+# from an MQTT topic, regardless of its value.
+#
+# Arguments:
+#   $1 - file: Path to MQTT messages file
+#   $2 - topic: MQTT topic to check
+#   $3 - field_path: jq field path (e.g., ".data.voltage")
+#
+# Returns:
+#   0 if field exists
+#   1 if file not found, topic has no messages, or field is missing/null
+#
+# Examples:
+#   assert_json_field_exists "$FILE" "modbus/ex9em-1/data" ".data"
+#   assert_json_field_exists "$FILE" "modbus/ex9em-1/data" ".timestamp"
+#
+assert_json_field_exists() {
+  local file=$1
+  local topic=$2
+  local field_path=$3
+
+  if [ ! -f "$file" ]; then
+    echo "File not found: $file" >&2
+    return 1
+  fi
+
+  local message
+  message=$(grep "^$topic " "$file" | tail -1 | cut -d' ' -f2-)
+
+  if [ -z "$message" ]; then
+    echo "No messages found on topic: $topic" >&2
+    return 1
+  fi
+
+  if ! echo "$message" | jq -e "$field_path != null" >/dev/null 2>&1; then
+    echo "Expected field $field_path to exist in topic '$topic'" >&2
+    echo "Message: $message" >&2
+    return 1
+  fi
+
+  return 0
+}
+
 # Assert emulator log contains expected pattern
 #
 # Reads the emulator log file for the given PID and verifies it contains

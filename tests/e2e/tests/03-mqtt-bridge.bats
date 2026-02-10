@@ -86,12 +86,12 @@ teardown() {
   run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data"'
   assert_success
 
-  # Verify message is published to correct topic with expected structure
-  run assert_topic_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" '"deviceId":"ex9em-1"'
+  # Verify message structure using JSON validation
+  run assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" ".deviceId" '"ex9em-1"'
   assert_success
-  run assert_topic_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" '"timestamp":'
+  run assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" ".timestamp" "number"
   assert_success
-  run assert_topic_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" '"data":'
+  run assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" ".data" "object"
   assert_success
 }
 
@@ -113,12 +113,12 @@ teardown() {
 
   # Wait for bridge to poll and publish data with expected voltage value
   # The ex9em driver should decode register 0 (value 2300) as voltage=230.0V
-  run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "\"voltage\":230"'
+  run wait_for 50 'assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" ".data.voltage" 230'
   assert_success
 }
 
 @test "mqtt-bridge handles multiple devices on same bus" {
-  # Start emulator with xymd1 (slave 1) and or-we-516 (slave 2)
+  # Start emulator with xymd1 (slave 1) and ex9em (slave 2)
   run start_test_emulator "fixtures/emulators/port2-multi-device.json"
   assert_success
   EMULATOR_PID="$output"
@@ -136,13 +136,17 @@ teardown() {
   # Wait for bridge to poll both devices
   run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/xymd1-1/data"'
   assert_success
-  run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/or-we-516-2/data"'
+  run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-2/data"'
   assert_success
 
-  # Verify each device publishes to its own correct topic
-  run assert_topic_contains "$MQTT_MESSAGES_FILE" "modbus/xymd1-1/data" '"deviceId":"xymd1-1"'
+  # Verify each device publishes to its own correct topic with valid JSON structure
+  run assert_json_field "$MQTT_MESSAGES_FILE" "modbus/xymd1-1/data" ".deviceId" '"xymd1-1"'
   assert_success
-  run assert_topic_contains "$MQTT_MESSAGES_FILE" "modbus/or-we-516-2/data" '"deviceId":"or-we-516-2"'
+  run assert_json_field "$MQTT_MESSAGES_FILE" "modbus/xymd1-1/data" ".data" "object"
+  assert_success
+  run assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-2/data" ".deviceId" '"ex9em-2"'
+  assert_success
+  run assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-2/data" ".data" "object"
   assert_success
 }
 
@@ -196,8 +200,8 @@ teardown() {
   assert_success
   BRIDGE_PID="$output"
 
-  # Wait for initial data with voltage=230V
-  run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "\"voltage\":230"'
+  # Wait for initial data with voltage=230V using JSON validation
+  run wait_for 50 'assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" ".data.voltage" 230'
   assert_success
 
   # Clear MQTT messages to track reconnection with new data
@@ -217,12 +221,12 @@ teardown() {
   EMULATOR_PID="$output"
 
   # Wait for bridge to reconnect and publish new data with voltage=240V
-  run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "\"voltage\":240"'
+  run wait_for 50 'assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" ".data.voltage" 240'
   assert_success
 
-  # Verify bridge resumed publishing data (topic and deviceId are in the same message as voltage)
-  run assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data"
+  # Verify bridge resumed publishing with valid JSON structure
+  run assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" ".deviceId" '"ex9em-1"'
   assert_success
-  run assert_file_contains "$MQTT_MESSAGES_FILE" '"deviceId":"ex9em-1"'
+  run assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" ".timestamp" "number"
   assert_success
 }
