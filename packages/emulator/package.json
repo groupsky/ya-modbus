@@ -34,7 +34,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "npm run build:esm && npm run build:cjs && npm run build:package-json",
+    "build": "npm run build:esm && npm run build:cjs && npm run build:package-json && chmod +x dist/esm/bin/ya-modbus-emulator.js dist/cjs/bin/ya-modbus-emulator.js",
     "clean": "rm -rf dist",
     "test": "jest",
     "build:esm": "../../node_modules/.bin/tsc -p tsconfig.esm.json",
