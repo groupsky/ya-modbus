@@ -48,6 +48,7 @@ ALL packages MUST use consistent tsconfig structure:
 - `types`: `"./dist/esm/src/index.d.ts"`
 - `exports["."]` points to `dist/{esm,cjs}/src/index.js`
 - `bin` (if present): `"./dist/esm/bin/<name>.js"`
+- Bin files MUST include shebang (`#!/usr/bin/env node` as first line)
 - Build script MUST set executable permissions on bin files (ESM and CJS)
 
 CRITICAL: Using `rootDir: "."` for all packages ensures consistent output structure and prevents configuration errors when adding bin executables.
