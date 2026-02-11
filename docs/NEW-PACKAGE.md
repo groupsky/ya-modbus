@@ -318,11 +318,52 @@ This pattern ensures the factory defaults are always valid according to the devi
 
 See `packages/driver-xymd1` for reference implementation.
 
+### CLI Package
+
+CLI packages expose executable commands via the npm `bin` field.
+
+**Required configuration**:
+
+```json
+{
+  "bin": {
+    "command-name": "./dist/esm/bin/command.js"
+  }
+}
+```
+
+**Required structure**:
+
+- `bin/` directory with executable TypeScript source files
+- Each bin file MUST start with shebang: `#!/usr/bin/env node`
+- TypeScript config MUST use `"rootDir": "."` to include both `src` and `bin`
+- Build script MUST set executable permissions after compilation
+
+**Example build script**:
+
+```json
+{
+  "scripts": {
+    "build": "npm run build:esm && npm run build:cjs && npm run build:package-json && chmod +x dist/esm/bin/*.js dist/cjs/bin/*.js"
+  }
+}
+```
+
+**Why chmod is required**: TypeScript's `tsc` compiler does not preserve executable permissions on output files. The build script must explicitly set permissions after compilation.
+
+**Reference implementations**:
+
+- `packages/cli` - Main CLI tool
+- `packages/device-profiler` - Profiling CLI
+- `packages/mqtt-bridge` - Bridge CLI
+
+See `docs/agents/package-creation.md` for technical details on CLI package structure.
+
 ### Utility Package
 
 Utility packages should use scoped naming: `@ya-modbus/<name>`
 
-Examples: `@ya-modbus/driver-types`, `@ya-modbus/cli`
+Examples: `@ya-modbus/driver-types`, `@ya-modbus/core`
 
 ## Getting Help
 
