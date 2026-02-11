@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.12.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.11.1...@ya-modbus/emulator@0.12.0) (2026-02-11)
+
+### Features
+
+- **emulator:** standardize bin build process for consistency ([#365](https://github.com/groupsky/ya-modbus/issues/365)) ([45c0f6b](https://github.com/groupsky/ya-modbus/commit/45c0f6b4a626424d0f6af63e92556f321b91a203)), closes [#361](https://github.com/groupsky/ya-modbus/issues/361)
+
 ## [0.11.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.11.0...@ya-modbus/emulator@0.11.1) (2026-02-08)
 
 **Note:** Version bump only for package @ya-modbus/emulator
