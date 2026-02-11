@@ -118,8 +118,6 @@ teardown() {
 }
 
 @test "mqtt-bridge handles multiple devices on same bus" {
-  skip "Multi-device support needs transport layer fix - tracked in separate PR"
-
   # Start emulator with xymd1 (slave 1) and ex9em (slave 2)
   run start_test_emulator "fixtures/emulators/port2-multi-device.json"
   assert_success
