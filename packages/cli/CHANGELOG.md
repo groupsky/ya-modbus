@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.9.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.9.0...@ya-modbus/cli@0.9.1) (2026-02-11)
+
+### Bug Fixes
+
+- **build:** set executable permissions on CLI bin files ([#359](https://github.com/groupsky/ya-modbus/issues/359)) ([f8111af](https://github.com/groupsky/ya-modbus/commit/f8111af3a00a4ae5bd1fd01df2b89a9ac7c8c6a9)), closes [#37583](https://github.com/groupsky/ya-modbus/issues/37583) [#16257](https://github.com/groupsky/ya-modbus/issues/16257) [#26060](https://github.com/groupsky/ya-modbus/issues/26060) [#360](https://github.com/groupsky/ya-modbus/issues/360) [#361](https://github.com/groupsky/ya-modbus/issues/361)
+
 # [0.9.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.8.0...@ya-modbus/cli@0.9.0) (2026-02-08)
 
 ### Features

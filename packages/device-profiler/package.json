@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/device-profiler",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Device profiler for discovering Modbus register maps",
   "license": "GPL-3.0-or-later",
   "type": "module",
