@@ -1,0 +1,40 @@
+{
+  "mqtt": {
+    "url": "mqtt://localhost:1883",
+    "clientId": "ya-modbus-test-bridge-multi"
+  },
+  "devices": [
+    {
+      "deviceId": "xymd1-1",
+      "driver": "@ya-modbus/driver-xymd1",
+      "connection": {
+        "type": "rtu",
+        "port": "/tmp/ttyV3",
+        "baudRate": 9600,
+        "parity": "even",
+        "dataBits": 8,
+        "stopBits": 1,
+        "slaveId": 1
+      },
+      "polling": {
+        "interval": 100
+      }
+    },
+    {
+      "deviceId": "ex9em-2",
+      "driver": "@ya-modbus/driver-ex9em",
+      "connection": {
+        "type": "rtu",
+        "port": "/tmp/ttyV3",
+        "baudRate": 9600,
+        "parity": "even",
+        "dataBits": 8,
+        "stopBits": 1,
+        "slaveId": 2
+      },
+      "polling": {
+        "interval": 100
+      }
+    }
+  ]
+}
