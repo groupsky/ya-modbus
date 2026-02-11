@@ -78,16 +78,6 @@ export interface Transport {
   writeMultipleCoils(address: number, values: Buffer): Promise<void>
 
   /**
-   * Set the Modbus slave ID for subsequent requests
-   *
-   * Allows reusing a single transport for multiple devices on the same bus.
-   * Must be called before each request when communicating with different slave IDs.
-   *
-   * @param slaveId - Modbus slave/unit ID (1-247)
-   */
-  setSlaveId(slaveId: number): void
-
-  /**
    * Close the transport connection
    *
    * Releases resources and allows the process to exit.

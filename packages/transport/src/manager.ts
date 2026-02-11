@@ -4,7 +4,6 @@ import { Mutex } from 'async-mutex'
 import { createTransport, type TransportConfig } from './factory.js'
 import type { RTUConfig } from './factory.js'
 import { MutexTransport } from './mutex-transport.js'
-import { SlaveIdTransport } from './slaveid-transport.js'
 
 /**
  * Transport pool entry with mutex serialization
@@ -48,18 +47,10 @@ export class TransportManager {
 
   /**
    * Get or create a transport for the given configuration.
-   * Returns a device-specific transport that automatically sets the correct slave ID.
-   *
-   * For RTU buses, multiple devices share the same physical connection but with different
-   * slave IDs. The SlaveIdTransport wrapper ensures each device uses its correct ID.
-   *
-   * The layering is: MutexTransport(SlaveIdTransport(RawTransport))
-   * - MutexTransport: Serializes all operations to prevent bus collisions
-   * - SlaveIdTransport: Sets correct slave ID before each operation
-   * - RawTransport: Actual Modbus protocol implementation
+   * Returns mutex-wrapped shared transport if one exists for the same connection.
    *
    * @param config - RTU or TCP transport configuration
-   * @returns Transport instance wrapped for thread-safe, multi-device operation
+   * @returns Transport instance wrapped with mutex for thread-safe operations
    */
   async getTransport(config: TransportConfig): Promise<Transport> {
     const key = this.getConnectionKey(config)
@@ -68,58 +59,50 @@ export class TransportManager {
     // For RTU, reuse existing transport if available
     if (isRTU) {
       const entry = this.transports.get(key)
-      if (entry?.mutex) {
-        // Wrap the shared transport with SlaveIdTransport for this device's specific slave ID
-        // Then wrap with mutex to ensure setSlaveId + operation is atomic
-        const slaveIdTransport = new SlaveIdTransport(entry.rawTransport, config.slaveId)
-        return new MutexTransport(slaveIdTransport, entry.mutex)
+      if (entry) {
+        return entry.wrappedTransport
       }
 
-      // Create new RTU transport
+      // Create new RTU transport with mutex wrapper
       const rawTransport = await createTransport(config)
       const mutex = new Mutex()
+      const wrappedTransport = new MutexTransport(rawTransport, mutex)
 
-      // Store the raw transport for sharing
       const newEntry: TransportEntry = {
         rawTransport,
-        wrappedTransport: rawTransport, // Not used for RTU anymore, but kept for stats
+        wrappedTransport,
         mutex,
         config,
         isRTU: true,
       }
       this.transports.set(key, newEntry)
-
-      // Return device-specific wrapped transport
-      const slaveIdTransport = new SlaveIdTransport(rawTransport, config.slaveId)
-      return new MutexTransport(slaveIdTransport, mutex)
+      return wrappedTransport
     }
 
     // For TCP, reuse existing transport if available
     // TCP is pooled like RTU because many devices support only one connection
     // or process requests sequentially even with multiple connections
     const entry = this.transports.get(key)
-    if (entry?.mutex) {
-      // Wrap with SlaveIdTransport for this device's specific slave ID
-      const slaveIdTransport = new SlaveIdTransport(entry.rawTransport, config.slaveId)
-      return new MutexTransport(slaveIdTransport, entry.mutex)
+    if (entry) {
+      return entry.wrappedTransport
     }
 
-    // Create new TCP transport
+    // Create new TCP transport with mutex wrapper
+    // Mutex prevents concurrent requests that could cause timeouts or errors
     const rawTransport = await createTransport(config)
     const mutex = new Mutex()
+    const wrappedTransport = new MutexTransport(rawTransport, mutex)
 
     const newEntry: TransportEntry = {
       rawTransport,
-      wrappedTransport: rawTransport, // Not used anymore, but kept for stats
+      wrappedTransport,
       mutex,
       config,
       isRTU: false,
     }
     this.transports.set(key, newEntry)
 
-    // Return device-specific wrapped transport
-    const slaveIdTransport = new SlaveIdTransport(rawTransport, config.slaveId)
-    return new MutexTransport(slaveIdTransport, mutex)
+    return wrappedTransport
   }
 
   /**
