@@ -41,7 +41,7 @@ teardown() {
 # ==========================================
 
 @test "can scan holding registers on ex9em device" {
-  # Start emulator with ex9em device (has holding registers 0-43)
+  # Start emulator with ex9em device (has holding registers at addresses 0-10, 42-43)
   run start_test_emulator "fixtures/emulators/port1-single-device.json"
   assert_success
   EMULATOR_PID="$output"
@@ -83,8 +83,8 @@ teardown() {
   assert_success
   # Verify successful reads show OK status
   assert_output_contains "OK"
-  # Verify hex values are displayed
-  assert_output_contains "08FC"  # Voltage register value (2300 decimal = 0x08FC)
+  # Verify hex values are displayed (register 0 contains voltage: 2300 decimal = 0x08FC)
+  assert_output_contains "08FC"
 }
 
 @test "can scan with small batch size" {
@@ -218,7 +218,7 @@ teardown() {
   assert_success
   EMULATOR_PID="$output"
 
-  # Scan input registers (may not exist in fixture, but command should work)
+  # Scan input registers (fixture has no input registers - tests error handling)
   run timeout 30 node "$PROFILER_BIN" \
     --port /tmp/ttyV1 \
     --slave-id 1 \
