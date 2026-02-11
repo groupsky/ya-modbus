@@ -83,7 +83,7 @@ teardown() {
   BRIDGE_PID="$output"
 
   # Wait for bridge to poll and publish data
-  run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data"'
+  run wait_for 5 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data"'
   assert_success
 
   # Verify message structure using JSON validation
@@ -113,7 +113,7 @@ teardown() {
 
   # Wait for bridge to poll and publish data with expected voltage value
   # The ex9em driver should decode register 0 (value 2300) as voltage=230.0V
-  run wait_for 50 'assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" ".data.voltage" 230'
+  run wait_for 5 'assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" ".data.voltage" 230'
   assert_success
 }
 
@@ -133,10 +133,10 @@ teardown() {
   assert_success
   BRIDGE_PID="$output"
 
-  # Wait for bridge to poll both devices
-  run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/xymd1-1/data"'
+  # Wait for bridge to poll both devices (longer timeout for multi-device)
+  run wait_for 10 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/xymd1-1/data"'
   assert_success
-  run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-2/data"'
+  run wait_for 10 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-2/data"'
   assert_success
 
   # Verify each device publishes to its own correct topic with valid JSON structure
@@ -167,7 +167,7 @@ teardown() {
   BRIDGE_PID="$output"
 
   # Wait for initial data to be published
-  run wait_for 50 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data"'
+  run wait_for 5 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data"'
   assert_success
 
   # Stop emulator to simulate disconnection
@@ -176,7 +176,7 @@ teardown() {
 
   # Wait for bridge to attempt polling and detect disconnection
   # Bridge should log polling errors without crashing
-  run wait_for 50 'assert_bridge_log_contains "$BRIDGE_PID" "Polling error for device"'
+  run wait_for 5 'assert_bridge_log_contains "$BRIDGE_PID" "Polling error for device"'
   assert_success
 
   # Verify bridge is still running (does not crash on disconnection)
@@ -201,18 +201,27 @@ teardown() {
   BRIDGE_PID="$output"
 
   # Wait for initial data with voltage=230V using JSON validation
-  run wait_for 50 'assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" ".data.voltage" 230'
+  run wait_for 5 'assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" ".data.voltage" 230'
   assert_success
+
+  # Stop MQTT subscriber before clearing file to avoid concurrent write issues
+  stop_mqtt_subscriber "$MQTT_SUB_PID"
+  MQTT_SUB_PID=""
 
   # Clear MQTT messages to track reconnection with new data
   > "$MQTT_MESSAGES_FILE"
+
+  # Restart MQTT subscriber with clean file
+  run start_mqtt_subscriber "modbus/#" "$MQTT_MESSAGES_FILE"
+  assert_success
+  MQTT_SUB_PID="$output"
 
   # Stop emulator
   stop_test_emulator "$EMULATOR_PID"
   EMULATOR_PID=""
 
   # Wait for bridge to detect disconnection
-  run wait_for 50 'assert_bridge_log_contains "$BRIDGE_PID" "Polling error for device"'
+  run wait_for 5 'assert_bridge_log_contains "$BRIDGE_PID" "Polling error for device"'
   assert_success
 
   # Restart emulator with different register values (voltage register 0 = 2400)
@@ -220,8 +229,8 @@ teardown() {
   assert_success
   EMULATOR_PID="$output"
 
-  # Wait for bridge to reconnect and publish new data with voltage=240V
-  run wait_for 50 'assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" ".data.voltage" 240'
+  # Wait for bridge to reconnect and publish new data with voltage=240V (longer timeout for reconnection)
+  run wait_for 15 'assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" ".data.voltage" 240'
   assert_success
 
   # Verify bridge resumed publishing with valid JSON structure

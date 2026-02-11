@@ -112,6 +112,10 @@ export function createModbusTransport(
       )
     },
 
+    setSlaveId(slaveId: number): void {
+      client.setID(slaveId)
+    },
+
     async close(): Promise<void> {
       return new Promise<void>((resolve) => {
         client.close(resolve)

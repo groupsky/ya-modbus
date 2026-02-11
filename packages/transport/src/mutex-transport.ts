@@ -64,6 +64,13 @@ export class MutexTransport implements Transport {
     })
   }
 
+  setSlaveId(slaveId: number): void {
+    // Forward to underlying transport without mutex protection
+    // This is safe because setSlaveId is always called by SlaveIdTransport
+    // just before an operation, and that entire sequence is mutex-protected
+    this.transport.setSlaveId(slaveId)
+  }
+
   async close(): Promise<void> {
     // No mutex needed for close - just delegate
     return this.transport.close()

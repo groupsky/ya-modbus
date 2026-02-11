@@ -6,14 +6,14 @@
 # Wait for a file/link to exist
 wait_for_file() {
   local file=$1
-  local timeout=${2:-30}
+  local timeout=${2:-300}  # Default 3 seconds with 10ms sleep
   local elapsed=0
 
   while [ $elapsed -lt $timeout ]; do
     if [ -e "$file" ]; then
       return 0
     fi
-    sleep 0.1
+    sleep 0.01
     elapsed=$((elapsed + 1))
   done
 
@@ -25,14 +25,14 @@ wait_for_file() {
 wait_for_port() {
   local host=${1:-localhost}
   local port=$2
-  local timeout=${3:-30}
+  local timeout=${3:-300}  # Default 3 seconds with 10ms sleep
   local elapsed=0
 
   while [ $elapsed -lt $timeout ]; do
     if nc -z "$host" "$port" 2>/dev/null; then
       return 0
     fi
-    sleep 0.1
+    sleep 0.01
     elapsed=$((elapsed + 1))
   done
 
@@ -53,19 +53,11 @@ start_mqtt_subscriber() {
 
   # Wait for subscriber to connect by polling broker logs
   # Polling is more reliable than logs --follow which can cause broken pipe with grep -q
-  local timeout=300
-  local elapsed=0
-  while [ $elapsed -lt $timeout ]; do
-    if docker compose -f "$compose_file" logs mqtt 2>/dev/null | grep -q "New client connected.*as $client_id"; then
-      break
+  if ! wait_for 5 'docker compose -f "'"$compose_file"'" logs mqtt 2>/dev/null | grep -q "New client connected.*as '"$client_id"'"'; then
+    echo "MQTT subscriber did not connect within timeout" >&2
+    if ! kill -0 "$pid" 2>/dev/null; then
+      echo "Subscriber process died" >&2
     fi
-    sleep 0.1
-    elapsed=$((elapsed + 1))
-  done
-
-  # Check if still running
-  if ! kill -0 "$pid" 2>/dev/null; then
-    echo "Failed to start MQTT subscriber" >&2
     return 1
   fi
 
@@ -153,36 +145,12 @@ start_test_emulator() {
   echo "$temp_log" > "/tmp/emulator-$pid-logfile.txt"
 
   # Wait for emulator to be ready by checking log file
-  local timeout=50
-  local elapsed=0
-  local emulator_ready=0
-
-  while [ $elapsed -lt $timeout ]; do
-    # Check if process is still alive
+  if ! wait_for 5 '[ -f "'"$temp_log"'" ] && grep -q "Emulator started successfully" "'"$temp_log"'" 2>/dev/null'; then
     if ! kill -0 "$pid" 2>/dev/null; then
       echo "Emulator process died during startup" >&2
-      cat "$temp_log" >&2
-      return 1
+    else
+      echo "Emulator startup message not found within timeout" >&2
     fi
-
-    # Check log file for "Emulator started successfully" message
-    if [ -f "$temp_log" ] && grep -q "Emulator started successfully" "$temp_log" 2>/dev/null; then
-      emulator_ready=1
-      break
-    fi
-
-    sleep 0.1
-    elapsed=$((elapsed + 1))
-  done
-
-  # If readiness not detected but process alive, it may have started without logging
-  if [ $emulator_ready -eq 0 ] && kill -0 "$pid" 2>/dev/null; then
-    echo "Warning: Emulator running but startup message not found in logs" >&2
-  fi
-
-  # Final check if still running
-  if ! kill -0 "$pid" 2>/dev/null; then
-    echo "Failed to start emulator" >&2
     cat "$temp_log" >&2
     return 1
   fi
@@ -208,7 +176,7 @@ stop_test_emulator() {
     kill "$pid" 2>/dev/null || true
 
     # Wait for process to be fully reaped (not even a zombie)
-    local timeout=30
+    local timeout=300  # 3 seconds with 10ms sleep
     local elapsed=0
     while [ $elapsed -lt $timeout ]; do
       if ! kill -0 "$pid" 2>/dev/null; then
@@ -222,7 +190,7 @@ stop_test_emulator() {
           break
         fi
       fi
-      sleep 0.1
+      sleep 0.01
       elapsed=$((elapsed + 1))
     done
 
@@ -379,6 +347,13 @@ assert_json_field() {
     return 1
   fi
 
+  # Validate JSON before processing to avoid parse errors from concurrent writes
+  if ! echo "$message" | jq empty 2>/dev/null; then
+    echo "Invalid or incomplete JSON in topic '$topic' (likely concurrent write)" >&2
+    echo "Message: $message" >&2
+    return 1
+  fi
+
   # Handle type checking (number, string, object, array, boolean, null)
   if [[ "$expected" =~ ^(number|string|object|array|boolean|null)$ ]]; then
     if ! echo "$message" | jq -e "$field_path | type == \"$expected\"" >/dev/null 2>&1; then
@@ -436,6 +411,13 @@ assert_json_field_exists() {
     return 1
   fi
 
+  # Validate JSON before processing to avoid parse errors from concurrent writes
+  if ! echo "$message" | jq empty 2>/dev/null; then
+    echo "Invalid or incomplete JSON in topic '$topic' (likely concurrent write)" >&2
+    echo "Message: $message" >&2
+    return 1
+  fi
+
   if ! echo "$message" | jq -e "$field_path != null" >/dev/null 2>&1; then
     echo "Expected field $field_path to exist in topic '$topic'" >&2
     echo "Message: $message" >&2
@@ -490,10 +472,10 @@ assert_emulator_log_contains() {
 # Wait for a condition to become true
 #
 # Polls a command/assertion until it succeeds or timeout is reached.
-# Sleeps 0.1s between attempts to avoid busy waiting.
+# Sleeps 10ms between attempts for fast test execution.
 #
 # Arguments:
-#   $1 - timeout: Maximum time to wait in deciseconds (1 = 0.1s, 10 = 1s, 300 = 30s)
+#   $1 - timeout_seconds: Maximum time to wait in seconds (e.g., 5 for 5 seconds)
 #   $2 - check_command: Command/assertion to execute (will be eval'd)
 #
 # Returns:
@@ -501,19 +483,21 @@ assert_emulator_log_contains() {
 #   1 if timeout reached
 #
 # Examples:
-#   wait_for 100 'assert_file_contains "$FILE" "expected"'
-#   wait_for 50 '[ -f "/tmp/ready.txt" ]'
+#   wait_for 5 'assert_file_contains "$FILE" "expected"'
+#   wait_for 10 '[ -f "/tmp/ready.txt" ]'
 #
 wait_for() {
-  local timeout=$1
+  local timeout_seconds=$1
   local check_command=$2
+  local sleep_interval=0.01
+  local iterations=$((timeout_seconds * 100))  # 100 iterations per second (10ms each)
   local elapsed=0
 
-  while [ $elapsed -lt $timeout ]; do
+  while [ $elapsed -lt $iterations ]; do
     if eval "$check_command" 2>/dev/null; then
       return 0
     fi
-    sleep 0.1
+    sleep $sleep_interval
     elapsed=$((elapsed + 1))
   done
 
@@ -571,37 +555,13 @@ start_mqtt_bridge() {
   echo "$temp_log" > "/tmp/bridge-$pid-logfile.txt"
 
   # Wait for bridge to be ready by checking log file
-  local timeout=50
-  local elapsed=0
-  local bridge_ready=0
-
-  while [ $elapsed -lt $timeout ]; do
-    # Check if process is still alive
+  # Look for "✓ Loaded device:" to ensure devices are actually loaded
+  if ! wait_for 5 '[ -f "'"$temp_log"'" ] && grep -qE "(✓ Loaded device:|Bridge started successfully)" "'"$temp_log"'" 2>/dev/null'; then
     if ! kill -0 "$pid" 2>/dev/null; then
       echo "Bridge process died during startup" >&2
-      cat "$temp_log" >&2
-      return 1
+    else
+      echo "Bridge startup message not found within timeout" >&2
     fi
-
-    # Check log file for bridge startup and device loading success
-    # Look for "✓ Loaded device:" to ensure devices are actually loaded
-    if [ -f "$temp_log" ] && grep -qE "(✓ Loaded device:|Bridge started successfully)" "$temp_log" 2>/dev/null; then
-      bridge_ready=1
-      break
-    fi
-
-    sleep 0.1
-    elapsed=$((elapsed + 1))
-  done
-
-  # If readiness not detected but process alive, it may have started without logging
-  if [ $bridge_ready -eq 0 ] && kill -0 "$pid" 2>/dev/null; then
-    echo "Warning: Bridge running but startup message not found in logs" >&2
-  fi
-
-  # Final check if still running
-  if ! kill -0 "$pid" 2>/dev/null; then
-    echo "Failed to start bridge" >&2
     cat "$temp_log" >&2
     return 1
   fi
@@ -627,7 +587,7 @@ stop_mqtt_bridge() {
     kill "$pid" 2>/dev/null || true
 
     # Wait for process to be fully reaped
-    local timeout=30
+    local timeout=300  # 3 seconds with 10ms sleep
     local elapsed=0
     while [ $elapsed -lt $timeout ]; do
       if ! kill -0 "$pid" 2>/dev/null; then
@@ -640,7 +600,7 @@ stop_mqtt_bridge() {
           break
         fi
       fi
-      sleep 0.1
+      sleep 0.01
       elapsed=$((elapsed + 1))
     done
 
