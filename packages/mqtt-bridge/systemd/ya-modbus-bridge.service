@@ -1,0 +1,95 @@
+# Ya-Modbus MQTT Bridge Service
+# Requires: systemd >= 235 (minimum), >= 247 (recommended for full security features)
+# See INSTALL.md for installation instructions
+
+[Unit]
+Description=Ya-Modbus MQTT Bridge Service
+Documentation=https://github.com/groupsky/ya-modbus/tree/main/packages/mqtt-bridge#readme
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Process Configuration
+Type=simple
+Restart=on-failure
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=300
+TimeoutStopSec=30
+
+# User/Group
+User=ya-modbus-bridge
+Group=ya-modbus-bridge
+UMask=0027
+
+# Working Directory
+WorkingDirectory=/var/lib/ya-modbus-bridge
+
+# Environment
+Environment="NODE_ENV=production"
+EnvironmentFile=/etc/ya-modbus-bridge/environment
+EnvironmentFile=-/etc/ya-modbus-bridge/environment.local
+
+# Execution
+ExecStart=/usr/bin/ya-modbus-bridge run --config /etc/ya-modbus-bridge/config.json
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ya-modbus-bridge
+
+# State Directory (auto-created with correct ownership)
+StateDirectory=ya-modbus-bridge
+StateDirectoryMode=0750
+
+# Security: Filesystem Protection
+ProtectSystem=strict
+PrivateTmp=yes
+ProtectHome=yes
+PrivateDevices=yes
+NoExecPaths=/
+ExecPaths=/usr/bin /usr/local/bin /usr/lib /usr/local/lib /lib /lib64
+
+# Security: Kernel Protection
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+ProtectHostname=yes
+
+# Security: Process Isolation
+NoNewPrivileges=yes
+PrivateUsers=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RemoveIPC=yes
+
+# Security: Network Access
+# MQTT requires IPv4/IPv6 network access, Unix sockets for Node.js IPC
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+# Security: System Call Filtering
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+
+# Security: Capabilities
+# Remove all capabilities - Node.js MQTT bridge doesn't need special privileges
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# Resource Limits (cgroup v2)
+MemoryMax=512M
+MemoryHigh=384M
+# Resource Limits (cgroup v1 fallback, ignored on cgroup v2)
+MemoryLimit=512M
+# Common resource limits
+CPUQuota=100%
+TasksMax=128
+LimitNOFILE=1024
+
+[Install]
+WantedBy=multi-user.target
