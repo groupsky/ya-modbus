@@ -1,10 +1,12 @@
 import type { Transport } from '@ya-modbus/driver-types'
 
 import { runProfileScan } from './cli.js'
+import * as jsonFormatterModule from './json-formatter.js'
 import { RegisterType } from './read-tester.js'
 
 jest.mock('chalk')
 jest.mock('cli-table3')
+jest.mock('./json-formatter.js')
 
 describe('runProfileScan', () => {
   let mockConsoleLog: jest.SpyInstance
@@ -120,5 +122,107 @@ describe('runProfileScan', () => {
     })
 
     expect(mockTransport.close).toHaveBeenCalled()
+  })
+
+  describe('JSON output format', () => {
+    it('should output JSON when format is json', async () => {
+      const mockFormatJSON = jest.fn().mockReturnValue('{"test": "json"}')
+      ;(jsonFormatterModule.formatJSON as jest.Mock) = mockFormatJSON
+
+      const mockTransport: Transport = {
+        readHoldingRegisters: jest.fn().mockResolvedValue(Buffer.from([0x12, 0x34])),
+        close: jest.fn().mockResolvedValue(undefined),
+      } as unknown as Transport
+
+      await runProfileScan({
+        transport: mockTransport,
+        type: RegisterType.Holding,
+        startAddress: 0,
+        endAddress: 0,
+        format: 'json',
+        port: '/dev/ttyUSB0',
+      })
+
+      expect(mockFormatJSON).toHaveBeenCalled()
+      expect(mockConsoleLog).toHaveBeenCalledWith('{"test": "json"}')
+      expect(mockTransport.close).toHaveBeenCalled()
+    })
+
+    it('should suppress progress output when format is json', async () => {
+      const mockFormatJSON = jest.fn().mockReturnValue('{}')
+      ;(jsonFormatterModule.formatJSON as jest.Mock) = mockFormatJSON
+
+      const mockStdoutWrite = jest.spyOn(process.stdout, 'write').mockImplementation()
+
+      const mockTransport: Transport = {
+        readHoldingRegisters: jest.fn().mockResolvedValue(Buffer.from([0x00, 0x00])),
+        close: jest.fn().mockResolvedValue(undefined),
+      } as unknown as Transport
+
+      await runProfileScan({
+        transport: mockTransport,
+        type: RegisterType.Holding,
+        startAddress: 0,
+        endAddress: 5,
+        format: 'json',
+        port: 'localhost:502',
+      })
+
+      // Progress should not be written to stdout in JSON mode
+      expect(mockStdoutWrite).not.toHaveBeenCalled()
+
+      mockStdoutWrite.mockRestore()
+    })
+
+    it('should output table when format is table (default)', async () => {
+      const mockTransport: Transport = {
+        readHoldingRegisters: jest.fn().mockResolvedValue(Buffer.from([0x00, 0x00])),
+        close: jest.fn().mockResolvedValue(undefined),
+      } as unknown as Transport
+
+      await runProfileScan({
+        transport: mockTransport,
+        type: RegisterType.Holding,
+        startAddress: 0,
+        endAddress: 0,
+        format: 'table',
+        port: '/dev/ttyUSB0',
+      })
+
+      const logOutput = mockConsoleLog.mock.calls.map((call) => call[0]).join('\n')
+      expect(logOutput).toContain('Address')
+      expect(mockTransport.close).toHaveBeenCalled()
+    })
+
+    it('should pass correct metadata to JSON formatter', async () => {
+      const mockFormatJSON = jest.fn().mockReturnValue('{}')
+      ;(jsonFormatterModule.formatJSON as jest.Mock) = mockFormatJSON
+
+      const mockTransport: Transport = {
+        readInputRegisters: jest.fn().mockResolvedValue(Buffer.from([0xab, 0xcd])),
+        close: jest.fn().mockResolvedValue(undefined),
+      } as unknown as Transport
+
+      await runProfileScan({
+        transport: mockTransport,
+        type: RegisterType.Input,
+        startAddress: 100,
+        endAddress: 200,
+        batchSize: 25,
+        format: 'json',
+        port: 'localhost:502',
+      })
+
+      expect(mockFormatJSON).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({
+          type: RegisterType.Input,
+          startAddress: 100,
+          endAddress: 200,
+          batchSize: 25,
+          port: 'localhost:502',
+        })
+      )
+    })
   })
 })

@@ -82,20 +82,22 @@ describe('CLI Program - Integration Tests', () => {
         Profile Modbus devices by scanning register ranges
 
         Options:
-          -V, --version       output the version number
-          --port <port>       Serial port (e.g., /dev/ttyUSB0) or TCP host:port
-          --slave-id <id>     Modbus slave ID (1-247)
-          --type <type>       Register type: holding or input (default: "holding")
-          --start <address>   Start register address (default: 0)
-          --end <address>     End register address (default: 100)
-          --batch <size>      Batch size for reads (default: 10)
-          --baud <rate>       Baud rate for RTU (default: 9600)
-          --parity <parity>   Parity for RTU (choices: "none", "even", "odd", default:
-                              "none")
-          --data-bits <bits>  Data bits for RTU (default: 8)
-          --stop-bits <bits>  Stop bits for RTU (default: 1)
-          --timeout <ms>      Response timeout in milliseconds (default: 1000)
-          -h, --help          display help for command
+          -V, --version          output the version number
+          --port <port>          Serial port (e.g., /dev/ttyUSB0) or TCP host:port
+          --slave-id <id>        Modbus slave ID (1-247)
+          --type <type>          Register type: holding or input (default: "holding")
+          --start <address>      Start register address (default: 0)
+          --end <address>        End register address (default: 100)
+          --batch <size>         Batch size for reads (default: 10)
+          --baud <rate>          Baud rate for RTU (default: 9600)
+          --parity <parity>      Parity for RTU (choices: "none", "even", "odd",
+                                 default: "none")
+          --data-bits <bits>     Data bits for RTU (default: 8)
+          --stop-bits <bits>     Stop bits for RTU (default: 1)
+          --timeout <ms>         Response timeout in milliseconds (default: 1000)
+          -f, --format <format>  Output format: table or json (choices: "table", "json",
+                                 default: "table")
+          -h, --help             display help for command
         "
       `)
     })
@@ -204,6 +206,87 @@ describe('CLI Program - Integration Tests', () => {
           '--slave-id',
           '1',
           '--parity',
+          'invalid',
+        ])
+      ).rejects.toThrow()
+
+      expect(processExitSpy).toHaveBeenCalledWith(1)
+    })
+
+    it('should parse format option as table', async () => {
+      const mockRunProfileScan = jest.fn().mockResolvedValue(undefined)
+      ;(cliModule.runProfileScan as jest.Mock) = mockRunProfileScan
+
+      await program.parseAsync([
+        'node',
+        'ya-modbus-profile',
+        '--port',
+        '/dev/ttyUSB0',
+        '--slave-id',
+        '1',
+        '--format',
+        'table',
+      ])
+
+      expect(mockRunProfileScan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          format: 'table',
+        })
+      )
+    })
+
+    it('should parse format option as json', async () => {
+      const mockRunProfileScan = jest.fn().mockResolvedValue(undefined)
+      ;(cliModule.runProfileScan as jest.Mock) = mockRunProfileScan
+
+      await program.parseAsync([
+        'node',
+        'ya-modbus-profile',
+        '--port',
+        '/dev/ttyUSB0',
+        '--slave-id',
+        '1',
+        '--format',
+        'json',
+      ])
+
+      expect(mockRunProfileScan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          format: 'json',
+        })
+      )
+    })
+
+    it('should default format to table when not specified', async () => {
+      const mockRunProfileScan = jest.fn().mockResolvedValue(undefined)
+      ;(cliModule.runProfileScan as jest.Mock) = mockRunProfileScan
+
+      await program.parseAsync([
+        'node',
+        'ya-modbus-profile',
+        '--port',
+        '/dev/ttyUSB0',
+        '--slave-id',
+        '1',
+      ])
+
+      expect(mockRunProfileScan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          format: 'table',
+        })
+      )
+    })
+
+    it('should validate format choices', async () => {
+      await expect(
+        program.parseAsync([
+          'node',
+          'ya-modbus-profile',
+          '--port',
+          '/dev/ttyUSB0',
+          '--slave-id',
+          '1',
+          '--format',
           'invalid',
         ])
       ).rejects.toThrow()
