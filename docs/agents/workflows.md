@@ -39,19 +39,7 @@ See: `.github/workflows/claude-code-review.yml` for automated PR reviews
 
 ## GitHub Actions Security
 
-### Action Pinning
+- Pin ALL actions to full 40-character commit SHAs with version comments
+- Explicitly declare minimal required permissions at workflow or job level
 
-Pin ALL actions to full 40-character commit SHAs with version comments.
-
-**Why**: Commit SHAs are immutable and prevent supply chain attacks. Version comments enable Dependabot auto-updates.
-
-See: `.github/workflows/ci.yml` for action pinning examples
-See: `.github/workflows/codeql.yml` for GitHub-managed action pinning
-
-### Permissions
-
-Explicitly declare minimal required permissions at workflow or job level.
-
-See: `.github/workflows/ci.yml` for read-only permissions (`contents: read`)
-See: `.github/workflows/release.yml` for write permissions pattern
-See: `.github/workflows/claude-code-review.yml` for job-level permissions
+See: All workflows in `.github/workflows/` for implementation examples
