@@ -99,6 +99,7 @@ program
         endAddress: options.end,
         batchSize: options.batch,
         format: options.format,
+        port: options.port,
       })
     } catch (error) {
       console.error('Error:', error instanceof Error ? error.message : String(error))
