@@ -36,3 +36,10 @@ Two workflows for Claude Code integration with security hardening.
 
 See: `.github/workflows/claude.yml` for issue/comment responses
 See: `.github/workflows/claude-code-review.yml` for automated PR reviews
+
+## GitHub Actions Security
+
+- Pin ALL actions to full 40-character commit SHAs with version comments
+- Explicitly declare minimal required permissions at workflow or job level
+
+See: All workflows in `.github/workflows/` for implementation examples
