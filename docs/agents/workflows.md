@@ -41,20 +41,12 @@ See: `.github/workflows/claude-code-review.yml` for automated PR reviews
 
 ### Action Pinning
 
-Pin all non-immutable actions to full 40-character commit SHAs with version comments.
-
-**Pin these** (non-immutable third-party):
-
-- `actions/*`, `anthropics/*`, `codecov/*`, `dependabot/*` - All third-party actions
-
-**DO NOT pin** (immutable GitHub-managed):
-
-- `github/codeql-action/*` - Managed by GitHub
+Pin ALL actions to full 40-character commit SHAs with version comments.
 
 **Why**: Commit SHAs are immutable and prevent supply chain attacks. Version comments enable Dependabot auto-updates.
 
 See: `.github/workflows/ci.yml` for action pinning examples
-See: `.github/workflows/codeql.yml` for immutable actions (NOT pinned)
+See: `.github/workflows/codeql.yml` for GitHub-managed action pinning
 
 ### Permissions
 
