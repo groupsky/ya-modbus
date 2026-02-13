@@ -120,7 +120,7 @@ The JSON output includes:
   - `address` (number): Register address
   - `type` (string): Register type (`"holding"` or `"input"`)
   - `success` (boolean): Whether the read succeeded
-  - `value` (string | null): Hex-encoded register value (4 hex digits) or `null` if failed
+  - `value` (number | null): 16-bit register value (0-65535) or `null` if failed
   - `timing` (number): Read operation duration in milliseconds
   - `error` (string, optional): Error message (only present when `success=false`)
   - `errorType` (string, optional): Error classification (only present when `success=false`)
@@ -154,7 +154,7 @@ The JSON output includes:
       "address": 0,
       "type": "holding",
       "success": true,
-      "value": "1234",
+      "value": 4660,
       "timing": 15
     },
     {
@@ -170,7 +170,7 @@ The JSON output includes:
       "address": 2,
       "type": "holding",
       "success": true,
-      "value": "5678",
+      "value": 22136,
       "timing": 12
     }
   ],
@@ -187,7 +187,10 @@ The JSON output includes:
 #### JSON Output Notes
 
 - **Progress messages** are suppressed in JSON mode for clean output
-- **Register values** are hex-encoded (e.g., bytes `0x12 0x34` become `"1234"`)
+- **Register values** are 16-bit unsigned integers (0-65535) in big-endian format
+  - Direct numeric access, no parsing needed
+  - Example: bytes `[0x12, 0x34]` = 4660 decimal (0x1234 hex)
+  - Format as hex if needed: `value.toString(16).padStart(4, '0')`
 - **Error fields** (`error`, `errorType`) are only included when `success=false`
 - **Timing precision** is milliseconds with up to 2 decimal places
 - **Output is formatted** with 2-space indentation for readability

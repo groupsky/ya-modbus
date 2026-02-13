@@ -74,14 +74,14 @@ describe('formatJSON', () => {
       address: 0,
       type: 'holding',
       success: true,
-      value: '1234',
+      value: 4660, // 0x1234
       timing: 15,
     })
     expect(parsed.results[1]).toEqual({
       address: 1,
       type: 'holding',
       success: true,
-      value: 'abcd',
+      value: 43981, // 0xabcd
       timing: 20,
     })
     expect(parsed.summary).toEqual({
@@ -189,6 +189,8 @@ describe('formatJSON', () => {
     const parsed = JSON.parse(output)
 
     expect(parsed.results).toHaveLength(3)
+    expect(parsed.results[0].value).toBe(65535) // 0xffff
+    expect(parsed.results[2].value).toBe(0) // 0x0000
     expect(parsed.summary).toEqual({
       total: 3,
       successful: 2,

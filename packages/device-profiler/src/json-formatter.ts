@@ -55,7 +55,7 @@ export function formatJSON(
       address: result.address,
       type: result.type,
       success: result.success,
-      value: result.value ? result.value.toString('hex') : null,
+      value: result.value ? result.value.readUInt16BE(0) : null,
       timing: result.timing,
       ...(result.error && { error: result.error }),
       ...(result.errorType && { errorType: result.errorType }),
