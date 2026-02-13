@@ -24,6 +24,7 @@ interface CliOptions {
   dataBits: DataBits
   stopBits: StopBits
   timeout: number
+  format: 'table' | 'json'
 }
 
 const parseNumber = (value: string): number => parseInt(value, 10)
@@ -49,6 +50,11 @@ program
   .option('--data-bits <bits>', 'Data bits for RTU', parseNumber, 8)
   .option('--stop-bits <bits>', 'Stop bits for RTU', parseNumber, 1)
   .option('--timeout <ms>', 'Response timeout in milliseconds', parseNumber, 1000)
+  .addOption(
+    new Option('-f, --format <format>', 'Output format: table or json')
+      .choices(['table', 'json'])
+      .default('table')
+  )
   .action(async (options: CliOptions) => {
     try {
       const registerType = options.type === 'input' ? RegisterType.Input : RegisterType.Holding
@@ -92,6 +98,7 @@ program
         startAddress: options.start,
         endAddress: options.end,
         batchSize: options.batch,
+        format: options.format,
       })
     } catch (error) {
       console.error('Error:', error instanceof Error ? error.message : String(error))
