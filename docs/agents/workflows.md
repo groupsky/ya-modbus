@@ -36,3 +36,43 @@ Two workflows for Claude Code integration with security hardening.
 
 See: `.github/workflows/claude.yml` for issue/comment responses
 See: `.github/workflows/claude-code-review.yml` for automated PR reviews
+
+## GitHub Actions Security
+
+### Action Pinning
+
+**Rule**: Pin all non-immutable actions to full 40-character commit SHAs with version comments.
+
+**Format**:
+
+```yaml
+uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+```
+
+**Pin these** (non-immutable third-party actions):
+
+- `actions/*` - Actions from actions organization
+- `anthropics/*` - Third-party actions
+- `codecov/*`, `dependabot/*`, etc. - All other third-party actions
+
+**DO NOT pin** (immutable GitHub-managed actions):
+
+- `github/codeql-action/*` - Managed by GitHub, immutable
+
+**Why**: Commit SHAs are immutable and prevent supply chain attacks via tag manipulation. Version comments enable Dependabot to auto-update pinned SHAs.
+
+**Maintenance**: Dependabot automatically creates PRs to update pinned SHAs when new versions are released.
+
+### Permissions
+
+**Rule**: Explicitly declare minimal required permissions at workflow or job level.
+
+**Default**: `permissions: contents: read` for read-only workflows.
+
+**Common patterns**:
+
+- Read-only workflows: `contents: read`
+- Release workflows: `contents: write`, `id-token: write`
+- PR automation: `pull-requests: write`, `contents: write`
+
+See: All workflows in `.github/workflows/` for implementation examples
