@@ -39,6 +39,7 @@ export type MessageHandler = (message: MqttMessage) => void
 
 export interface PollingConfig {
   interval: number
+  mode?: 'interval' | 'continuous'
   maxRetries?: number
   retryBackoff?: number
 }

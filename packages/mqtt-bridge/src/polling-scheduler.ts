@@ -108,9 +108,20 @@ export class PollingScheduler {
 
     const maxRetries = device.config.polling?.maxRetries ?? 3
     const retryBackoff = device.config.polling?.retryBackoff ?? device.interval * 2
+    const mode = device.config.polling?.mode ?? 'interval'
 
-    // Use backoff if we've exceeded max retries
-    const delay = device.lastFailureCount >= maxRetries ? retryBackoff : device.interval
+    // Determine delay based on mode and failure count
+    let delay: number
+    if (device.lastFailureCount >= maxRetries) {
+      // Use backoff if we've exceeded max retries
+      delay = retryBackoff
+    } else if (mode === 'continuous') {
+      // Continuous mode: poll on next event loop tick (effectively immediate)
+      delay = 1
+    } else {
+      // Interval mode: wait for specified interval
+      delay = device.interval
+    }
 
     device.timer = setTimeout(() => {
       const currentDevice = this.devices.get(deviceId)
