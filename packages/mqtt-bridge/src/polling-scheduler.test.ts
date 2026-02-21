@@ -312,19 +312,17 @@ describe('PollingScheduler', () => {
       scheduler.scheduleDevice('device1', config, driver)
       scheduler.start()
 
-      // In continuous mode, polls should happen immediately (0ms delay)
-      // First poll - waits for initial interval
-      await jest.advanceTimersByTimeAsync(1000)
+      // In continuous mode, polls happen with minimal delay (1ms)
+      await jest.advanceTimersByTimeAsync(1)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
 
-      // Subsequent polls should happen immediately (0ms delay)
-      await jest.advanceTimersByTimeAsync(0)
+      await jest.advanceTimersByTimeAsync(1)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(2)
 
-      await jest.advanceTimersByTimeAsync(0)
+      await jest.advanceTimersByTimeAsync(1)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(3)
 
-      await jest.advanceTimersByTimeAsync(0)
+      await jest.advanceTimersByTimeAsync(1)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(4)
     })
 
@@ -355,7 +353,7 @@ describe('PollingScheduler', () => {
       expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
 
       // Should NOT poll immediately - needs full interval
-      await jest.advanceTimersByTimeAsync(0)
+      await jest.advanceTimersByTimeAsync(1)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
 
       // Second poll after interval
@@ -386,19 +384,19 @@ describe('PollingScheduler', () => {
       scheduler.scheduleDevice('device1', config, driver)
       scheduler.start()
 
-      // First failure - initial interval
-      await jest.advanceTimersByTimeAsync(1000)
+      // First failure - continuous mode (1ms)
+      await jest.advanceTimersByTimeAsync(1)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
 
-      // Second failure - continuous mode (0ms)
-      await jest.advanceTimersByTimeAsync(0)
+      // Second failure - continuous mode (1ms)
+      await jest.advanceTimersByTimeAsync(1)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(2)
 
       // Third attempt - should use backoff (3000ms) after exceeding maxRetries
-      await jest.advanceTimersByTimeAsync(0)
+      await jest.advanceTimersByTimeAsync(1)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(2) // No new attempt
 
-      await jest.advanceTimersByTimeAsync(3000)
+      await jest.advanceTimersByTimeAsync(2999)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(3)
     })
 
@@ -430,12 +428,12 @@ describe('PollingScheduler', () => {
       scheduler.scheduleDevice('device1', config, driver)
       scheduler.start()
 
-      // First failure - initial interval
-      await jest.advanceTimersByTimeAsync(1000)
+      // First failure - continuous mode (1ms)
+      await jest.advanceTimersByTimeAsync(1)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
 
-      // Second failure - continuous (0ms)
-      await jest.advanceTimersByTimeAsync(0)
+      // Second failure - continuous mode (1ms)
+      await jest.advanceTimersByTimeAsync(1)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(2)
 
       // Third failure - backoff (3000ms)
@@ -447,11 +445,11 @@ describe('PollingScheduler', () => {
       expect(mockReadDataPoints).toHaveBeenCalledTimes(4)
       expect(onDataCallback).toHaveBeenCalledTimes(1)
 
-      // After success, should return to continuous mode (0ms)
-      await jest.advanceTimersByTimeAsync(0)
+      // After success, should return to continuous mode (1ms)
+      await jest.advanceTimersByTimeAsync(1)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(5)
 
-      await jest.advanceTimersByTimeAsync(0)
+      await jest.advanceTimersByTimeAsync(1)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(6)
     })
   })
