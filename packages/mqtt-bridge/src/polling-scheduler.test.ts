@@ -289,6 +289,171 @@ describe('PollingScheduler', () => {
     })
   })
 
+  describe('continuous polling mode', () => {
+    it('should poll immediately after response in continuous mode', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 1000, mode: 'continuous' },
+      }
+
+      const mockReadDataPoints = jest.fn().mockResolvedValue({ temp: 25.5 })
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: mockReadDataPoints,
+      }
+
+      scheduler.scheduleDevice('device1', config, driver)
+      scheduler.start()
+
+      // In continuous mode, polls happen with minimal delay (1ms)
+      await jest.advanceTimersByTimeAsync(1)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+
+      await jest.advanceTimersByTimeAsync(1)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(2)
+
+      await jest.advanceTimersByTimeAsync(1)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(3)
+
+      await jest.advanceTimersByTimeAsync(1)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(4)
+    })
+
+    it('should use interval mode by default when mode not specified', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 1000 },
+      }
+
+      const mockReadDataPoints = jest.fn().mockResolvedValue({ temp: 25.5 })
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: mockReadDataPoints,
+      }
+
+      scheduler.scheduleDevice('device1', config, driver)
+      scheduler.start()
+
+      // First poll
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+
+      // Should NOT poll immediately - needs full interval
+      await jest.advanceTimersByTimeAsync(1)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+
+      // Second poll after interval
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(2)
+    })
+
+    it('should respect backoff in continuous mode after max retries', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 1000, mode: 'continuous', maxRetries: 2, retryBackoff: 3000 },
+      }
+
+      const mockReadDataPoints = jest.fn().mockRejectedValue(new Error('Read timeout'))
+
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: mockReadDataPoints,
+      }
+
+      scheduler.scheduleDevice('device1', config, driver)
+      scheduler.start()
+
+      // First failure - continuous mode (1ms)
+      await jest.advanceTimersByTimeAsync(1)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+
+      // Second failure - continuous mode (1ms)
+      await jest.advanceTimersByTimeAsync(1)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(2)
+
+      // Third attempt - should use backoff (3000ms) after exceeding maxRetries
+      await jest.advanceTimersByTimeAsync(1)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(2) // No new attempt
+
+      await jest.advanceTimersByTimeAsync(2999)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(3)
+    })
+
+    it('should return to continuous polling after recovery from backoff', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 1000, mode: 'continuous', maxRetries: 2, retryBackoff: 3000 },
+      }
+
+      const mockReadDataPoints = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('Read timeout'))
+        .mockRejectedValueOnce(new Error('Read timeout'))
+        .mockRejectedValueOnce(new Error('Read timeout'))
+        .mockResolvedValue({ temp: 25 })
+
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: mockReadDataPoints,
+      }
+
+      scheduler.scheduleDevice('device1', config, driver)
+      scheduler.start()
+
+      // First failure - continuous mode (1ms)
+      await jest.advanceTimersByTimeAsync(1)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+
+      // Second failure - continuous mode (1ms)
+      await jest.advanceTimersByTimeAsync(1)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(2)
+
+      // Third failure - backoff (3000ms)
+      await jest.advanceTimersByTimeAsync(3000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(3)
+
+      // Fourth attempt succeeds - still in backoff
+      await jest.advanceTimersByTimeAsync(3000)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(4)
+      expect(onDataCallback).toHaveBeenCalledTimes(1)
+
+      // After success, should return to continuous mode (1ms)
+      await jest.advanceTimersByTimeAsync(1)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(5)
+
+      await jest.advanceTimersByTimeAsync(1)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(6)
+    })
+  })
+
   describe('unscheduleDevice', () => {
     it('should stop polling for a device', async () => {
       const config: DeviceConfig = {
