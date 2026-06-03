@@ -1,0 +1,12 @@
+# Ya-Modbus Bridge Environment Configuration
+# Copy this file to /etc/ya-modbus-bridge/environment and customize
+
+# Node.js Configuration
+NODE_ENV=production
+
+# Optional: Node.js Memory Settings
+# Uncomment and adjust if you need to limit Node.js heap size
+#NODE_OPTIONS=--max-old-space-size=384
+
+# Optional: Additional Environment Variables
+# Add any other environment variables your bridge configuration needs
