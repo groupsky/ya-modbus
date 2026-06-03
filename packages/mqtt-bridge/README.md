@@ -115,7 +115,8 @@ Create a `config.json` file:
         "slaveId": 1
       },
       "polling": {
-        "interval": 2000
+        "interval": 2000,
+        "mode": "continuous"
       }
     },
     {
@@ -171,6 +172,9 @@ Create a `config.json` file:
 **Polling configuration:**
 
 - `interval` (required) - Polling interval in milliseconds (100-86400000)
+- `mode` (optional) - Polling mode: "interval" (default) or "continuous"
+  - `"interval"` - Poll at fixed intervals (normal behavior)
+  - `"continuous"` - Poll immediately after receiving response (minimal 1ms delay)
 - `maxRetries` (optional) - Maximum retry attempts (0-100)
 - `retryBackoff` (optional) - Retry backoff in milliseconds
 
