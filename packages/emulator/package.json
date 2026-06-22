@@ -44,7 +44,7 @@
   },
   "dependencies": {
     "commander": "^14.0.2",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.2.0",
     "modbus-serial": "^8.0.23"
   },
   "devDependencies": {
