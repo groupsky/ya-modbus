@@ -1,0 +1,11 @@
+{
+  "mqtt": {
+    "url": "mqtt://localhost:1883",
+    "clientId": "ya-modbus-bridge",
+    "username": "your-mqtt-username",
+    "password": "your-mqtt-password",
+    "reconnectPeriod": 5000
+  },
+  "topicPrefix": "modbus",
+  "stateDir": "/var/lib/ya-modbus-bridge/state"
+}
