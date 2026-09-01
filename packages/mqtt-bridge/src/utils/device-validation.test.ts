@@ -229,6 +229,63 @@ describe('validateDeviceConfig', () => {
     expect(() => validateDeviceConfig(config)).not.toThrow()
   })
 
+  it('should accept polling config with interval mode', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      },
+      polling: {
+        interval: 5000,
+        mode: 'interval' as const,
+      },
+    }
+
+    expect(() => validateDeviceConfig(config)).not.toThrow()
+  })
+
+  it('should accept polling config with continuous mode', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      },
+      polling: {
+        interval: 5000,
+        mode: 'continuous' as const,
+      },
+    }
+
+    expect(() => validateDeviceConfig(config)).not.toThrow()
+  })
+
+  it('should throw error for invalid polling mode', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      },
+      polling: {
+        interval: 5000,
+        mode: 'invalid',
+      },
+    }
+
+    expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
+  })
+
   it('should throw error for polling interval = 0', () => {
     const config = {
       deviceId: 'device1',
