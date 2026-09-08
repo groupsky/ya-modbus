@@ -67,6 +67,7 @@ const pollingConfigSchema = z
       .positive()
       .min(100, 'Polling interval must be at least 100ms')
       .max(86400000, 'Polling interval must not exceed 24 hours'),
+    mode: z.enum(['interval', 'continuous']).optional(),
     maxRetries: z
       .number()
       .int()
@@ -76,9 +77,10 @@ const pollingConfigSchema = z
     retryBackoff: z.number().int().positive().optional(),
   })
   .transform((data) => {
-    const { maxRetries, retryBackoff, ...rest } = data
+    const { mode, maxRetries, retryBackoff, ...rest } = data
     return {
       ...rest,
+      ...(mode !== undefined ? { mode } : {}),
       ...(maxRetries !== undefined ? { maxRetries } : {}),
       ...(retryBackoff !== undefined ? { retryBackoff } : {}),
     }
