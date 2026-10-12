@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.13.10](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.13.9...@ya-modbus/emulator@0.13.10) (2026-10-12)
+
+### Bug Fixes
+
+- **emulator:** keep the TCP error listener on a running server ([#584](https://github.com/groupsky/ya-modbus/issues/584)) ([87a74a1](https://github.com/groupsky/ya-modbus/commit/87a74a1a8bad9471ac39bc1183d5a922da126b15)), closes [#544](https://github.com/groupsky/ya-modbus/issues/544)
+
 ## [0.13.9](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.13.8...@ya-modbus/emulator@0.13.9) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/emulator
