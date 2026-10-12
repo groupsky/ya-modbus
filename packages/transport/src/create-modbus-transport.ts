@@ -1,7 +1,7 @@
 import type { Transport } from '@ya-modbus/driver-types'
 import type ModbusRTU from 'modbus-serial'
 
-import { ModbusConnection } from './connection.js'
+import { toConnection, type ModbusConnection } from './connection.js'
 import { withRetry, type RetryLogger } from './retry.js'
 
 /**
@@ -21,7 +21,7 @@ export function createModbusTransport(
   maxRetries: number = 3,
   logger?: RetryLogger
 ): Transport {
-  const connection = client instanceof ModbusConnection ? client : new ModbusConnection(client)
+  const connection = toConnection(client)
 
   return {
     async readHoldingRegisters(address: number, count: number): Promise<Buffer> {

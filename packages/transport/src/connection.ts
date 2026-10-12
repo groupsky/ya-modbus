@@ -17,6 +17,9 @@ export const MAX_REOPEN_DELAY_MS = 60_000
  */
 export type OpenClient = () => Promise<ModbusRTU>
 
+/** Marks ModbusConnection objects, the same for all copies of this package */
+const CONNECTION = Symbol.for('@ya-modbus/transport/ModbusConnection')
+
 /**
  * Error for a lost connection, with errno and code of the cause
  */
@@ -48,6 +51,7 @@ function connectionLostError(target: string | undefined, cause: unknown): Modbus
  *   opens it again
  */
 export class ModbusConnection {
+  readonly [CONNECTION] = true
   private client: ModbusRTU
   private lostError: ModbusError | undefined
   private reopenDelay = REOPEN_DELAY_MS
@@ -187,4 +191,17 @@ export class ModbusConnection {
     this.watch(client)
     return client
   }
+}
+
+/**
+ * Use a ModbusConnection as it is, or wrap a plain client in a new one
+ *
+ * Checks the mark instead of `instanceof`, because the CommonJS and ES module
+ * builds of this package each have their own ModbusConnection class.
+ *
+ * @param client - A ModbusConnection or a connected modbus-serial client
+ * @returns The connection
+ */
+export function toConnection(client: ModbusRTU | ModbusConnection): ModbusConnection {
+  return CONNECTION in client ? client : new ModbusConnection(client)
 }

@@ -1,8 +1,12 @@
 import { EventEmitter } from 'node:events'
 
+import type { Transport } from '@ya-modbus/driver-types'
+import { Mutex } from 'async-mutex'
 import type ModbusRTU from 'modbus-serial'
 
 import { ModbusConnection } from './connection.js'
+import { createModbusTransport } from './create-modbus-transport.js'
+import { SlaveTransport } from './slave-transport.js'
 
 /** Connected modbus-serial client that answers every read with one register */
 function createClient(): ModbusRTU & EventEmitter {
@@ -51,6 +55,32 @@ test('works again with a client that its owner opens again', async () => {
 
   client.isOpen = true
   await expect(connection.run(read)).resolves.toEqual(Buffer.from([0, 1]))
+})
+
+// The CommonJS and ES module builds of the package each have their own class
+test.each([
+  {
+    transport: 'createModbusTransport',
+    create: (connection: ModbusConnection): Transport => createModbusTransport(connection, 1),
+  },
+  {
+    transport: 'SlaveTransport',
+    create: (connection: ModbusConnection): Transport =>
+      new SlaveTransport(1, connection, new Mutex(), 1),
+  },
+])('$transport uses a ModbusConnection from another copy of the package', async ({ create }) => {
+  let OtherConnection: typeof ModbusConnection = ModbusConnection
+  jest.isolateModules(() => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    ;({ ModbusConnection: OtherConnection } = require('./connection.js') as {
+      ModbusConnection: typeof ModbusConnection
+    })
+  })
+  const client = Object.assign(createClient(), { setID: jest.fn() })
+  const connection = new OtherConnection(client)
+  expect(connection).not.toBeInstanceOf(ModbusConnection)
+
+  await expect(create(connection).readHoldingRegisters(0, 1)).resolves.toEqual(Buffer.from([0, 1]))
 })
 
 // An open client would keep the lock on the serial port, so the reopen would fail

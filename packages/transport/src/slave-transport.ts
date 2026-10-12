@@ -2,7 +2,7 @@ import type { Transport } from '@ya-modbus/driver-types'
 import type { Mutex } from 'async-mutex'
 import type ModbusRTU from 'modbus-serial'
 
-import { ModbusConnection } from './connection.js'
+import { toConnection, type ModbusConnection } from './connection.js'
 import { withRetry, type RetryLogger } from './retry.js'
 
 /**
@@ -48,7 +48,7 @@ export class SlaveTransport implements Transport {
     private readonly maxRetries: number = 3,
     private readonly logger?: RetryLogger
   ) {
-    this.connection = client instanceof ModbusConnection ? client : new ModbusConnection(client)
+    this.connection = toConnection(client)
   }
 
   async readHoldingRegisters(address: number, count: number): Promise<Buffer> {
