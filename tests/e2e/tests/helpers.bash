@@ -290,6 +290,47 @@ stop_test_emulator() {
   _stop_background_process emulator "$1"
 }
 
+# TCP port of the emulator started by start_tcp_emulator
+#
+# A high port below the Linux ephemeral port range (32768-60999): it needs no
+# privileges, it is not the MQTT broker port (1883), and outgoing connections of
+# the tools under test never pick it. Test files run one after another and the
+# emulator is stopped before the next test, so they can share the port.
+TCP_EMULATOR_PORT=15502
+
+# Start emulator with a Modbus TCP transport in background
+#
+# Works like start_test_emulator, but listens on a TCP port. The port comes from
+# the optional argument, so the config file does not need to match it. The
+# emulator is stopped with stop_test_emulator.
+#
+# Arguments:
+#   $1 - config_file: Path to emulator configuration file with a TCP transport
+#   $2 - port: Optional TCP port (default: TCP_EMULATOR_PORT)
+#
+# Returns:
+#   Prints PID of started emulator to stdout
+#   Returns 0 on success, 1 on failure
+#
+# Example:
+#   run start_tcp_emulator "fixtures/emulators/tcp-single-device.json"
+#   run start_tcp_emulator "fixtures/emulators/tcp-single-device.json" 15503
+#
+start_tcp_emulator() {
+  local config_file=$1
+  local port=${2:-$TCP_EMULATOR_PORT}
+
+  # The emulator reads its port from the config file only, so write a copy with
+  # the requested port. BATS removes the per-test directory after the test.
+  local tcp_config="$BATS_TEST_TMPDIR/emulator-tcp-$port.json"
+  if ! jq --argjson port "$port" '.transport.port = $port' "$config_file" > "$tcp_config"; then
+    echo "Failed to create emulator config for TCP port $port from $config_file" >&2
+    return 1
+  fi
+
+  start_test_emulator "$tcp_config"
+}
+
 # Check if Docker service is healthy
 is_docker_service_healthy() {
   local service_name=$1
