@@ -3,7 +3,7 @@
  *
  * Killing socat removes both pseudo-terminals, like unplugging a USB adapter removes
  * its device node. Starting socat again with the same link names brings the port back.
- * The tests are skipped when socat is not installed.
+ * The tests are skipped when socat is not installed, except in CI, which installs it.
  */
 
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
@@ -18,6 +18,11 @@ import { ServerSerial } from 'modbus-serial'
 import { TransportManager } from './manager.js'
 
 const hasSocat = spawnSync('socat', ['-V']).status === 0
+
+// A skipped suite in CI would hide that these tests never run there
+if (!hasSocat && process.env['CI']) {
+  throw new Error('socat is required for the serial port tests in CI')
+}
 
 /** Repeat an action until it returns true or the time runs out */
 async function waitUntil(

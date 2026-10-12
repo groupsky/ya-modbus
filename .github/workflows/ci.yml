@@ -110,6 +110,12 @@ jobs:
       - name: Smoke-test bin files
         run: npm run validate:bins
 
+      # The serial port tests use socat pseudo-terminal pairs
+      - name: Install socat
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y socat
+
       - name: Run tests
         run: npm run test:ci
 
