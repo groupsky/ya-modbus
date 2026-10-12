@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.5](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.10.4...@ya-modbus/mqtt-bridge@0.10.5) (2026-10-12)
+
+### Bug Fixes
+
+- **mqtt-bridge:** harden the polling scheduler ([#514](https://github.com/groupsky/ya-modbus/issues/514)) ([58a009c](https://github.com/groupsky/ya-modbus/commit/58a009c607b1d65f971ea209d00317bfd0b13bf9)), closes [#99](https://github.com/groupsky/ya-modbus/issues/99)
+
 ## [0.10.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.10.3...@ya-modbus/mqtt-bridge@0.10.4) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/mqtt-bridge
