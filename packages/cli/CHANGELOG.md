@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.11.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.11.1...@ya-modbus/cli@0.11.2) (2026-10-12)
+
+### Bug Fixes
+
+- **cli:** declare modbus-serial as a dependency ([#576](https://github.com/groupsky/ya-modbus/issues/576)) ([cebd262](https://github.com/groupsky/ya-modbus/commit/cebd262fd219fab0ef91885e6fbf425e2fdf8e45)), closes [#564](https://github.com/groupsky/ya-modbus/issues/564)
+
 ## [0.11.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.11.0...@ya-modbus/cli@0.11.1) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/cli
