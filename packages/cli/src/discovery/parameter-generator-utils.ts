@@ -94,7 +94,7 @@ export function getParameterArrays(
  * @example
  * ```typescript
  * const count = countParameterCombinations({ strategy: 'quick' })
- * console.log(`Will test ${count} combinations`) // Will test 3952 combinations
+ * console.log(`Will test ${count} combinations`) // Will test 1482 combinations
  * ```
  */
 export function countParameterCombinations(options: GeneratorOptions): number {

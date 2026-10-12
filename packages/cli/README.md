@@ -270,7 +270,7 @@ ya-modbus discover \
 
 ```bash
 # When you know the device configuration, combine filters dramatically
-# reduces scan time. Example: ~30 seconds vs 25 minutes
+# reduces scan time. Example: ~5 seconds vs 25 minutes
 ya-modbus discover \
   --port /dev/ttyUSB0 \
   --id 1-5 \
@@ -282,7 +282,7 @@ ya-modbus discover \
 
 - `--strategy <type>` - Discovery strategy: `quick` (default) or `thorough`
   - **Quick**: Tests SUPPORTED_CONFIG params or common Modbus parameters
-  - **Thorough**: Tests all standard Modbus parameters (8 baud rates, 3 parity modes, 247 addresses)
+  - **Thorough**: Tests all standard Modbus parameters (8 baud rates, 3 parity modes, 2 data bit and 2 stop bit options, 247 addresses)
 - `--driver <package>` - Driver package to use for parameter prioritization (auto-detects from cwd if not specified)
 - `--timeout <ms>` - Response timeout in milliseconds (default: 1000)
 - `--delay <ms>` - Delay between attempts in milliseconds (default: 100)
@@ -322,14 +322,14 @@ Discovery complete! Found 1 device(s).
 
 Based on real-world testing with default settings (timeout=1000ms, delay=100ms):
 
-- **Quick with driver**: ~25 minutes (1,482 combinations typical, ~1.0s per combination)
-- **Quick without driver**: ~50 minutes (2,964 combinations, ~1.0s per combination)
-- **Thorough**: ~6.5 hours (23,712 combinations, ~1.0s per combination)
+- **Quick with driver**: ~25 minutes (1,482 combinations for XYMD1, varies with the driver's SUPPORTED_CONFIG, ~1.0s per combination)
+- **Quick without driver**: ~25 minutes (1,482 combinations, ~1.0s per combination)
+- **Thorough**: ~6.6 hours (23,712 combinations, ~1.0s per combination)
 
 **Performance Tips:**
 
 - **Reduce timeout** for faster scans: `--timeout 500` achieves ~0.5s per combination (2x faster)
-- Use `--driver` to prioritize likely parameters and reduce search space
+- Use `--driver` to test the device's default settings first and limit the search to its supported parameters
 - Use `--max-devices 1` (default) to stop after finding first device
 - Further reduce `--timeout` if your devices respond quickly (e.g., `--timeout 100` for local devices)
 - Increase `--delay` if you experience bus contention

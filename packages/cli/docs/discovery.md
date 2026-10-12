@@ -54,16 +54,16 @@ src/
 
 ## Discovery Strategies
 
-- **Quick** (default): Tests SUPPORTED_CONFIG params or common Modbus params (9600, 19200 baud, N/E parity)
+- **Quick** (default): Tests SUPPORTED_CONFIG params or common Modbus params (9600, 19200 baud, N/E/O parity, 8 data bits, 1 stop bit)
 - **Thorough**: Tests all standard Modbus parameters (8 baud rates, 3 parity, 2 data/stop bits, 247 addresses)
 
 ## Time Estimates
 
 With default timeout=1000ms, delay=100ms:
 
-- Quick with driver: ~25 minutes (1,482 combinations typical, ~1.0s per combination)
-- Quick without driver: ~50 minutes (2,964 combinations, ~1.0s per combination)
-- Thorough: ~6.5 hours (23,712 combinations, ~1.0s per combination)
+- Quick with driver: ~25 minutes (1,482 combinations for XYMD1, varies with the driver's SUPPORTED_CONFIG, ~1.0s per combination)
+- Quick without driver: ~25 minutes (1,482 combinations, ~1.0s per combination)
+- Thorough: ~6.6 hours (23,712 combinations, ~1.0s per combination)
 
 **Note**: Reduce timeout (e.g., `--timeout 500`) for faster scans at ~0.5s per combination (2x speedup)
 
