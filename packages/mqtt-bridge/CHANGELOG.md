@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.14.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.13.1...@ya-modbus/mqtt-bridge@0.14.0) (2026-10-12)
+
+### Features
+
+- **driver-loader:** allow scoped third-party driver packages ([#573](https://github.com/groupsky/ya-modbus/issues/573)) ([63b2b83](https://github.com/groupsky/ya-modbus/commit/63b2b833dbb0b5198e8df7135f419793e32d95c3)), closes [#565](https://github.com/groupsky/ya-modbus/issues/565)
+
 ## [0.13.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.13.0...@ya-modbus/mqtt-bridge@0.13.1) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/mqtt-bridge
