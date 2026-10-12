@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.11.6](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.11.5...@ya-modbus/device-profiler@0.11.6) (2026-10-12)
+
+### Bug Fixes
+
+- declare tslib for packages whose builds import it ([#595](https://github.com/groupsky/ya-modbus/issues/595)) ([3de61d4](https://github.com/groupsky/ya-modbus/commit/3de61d4059f3263f20cf443cfa418f7d6998012d)), closes [#564](https://github.com/groupsky/ya-modbus/issues/564)
+
 ## [0.11.5](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.11.4...@ya-modbus/device-profiler@0.11.5) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/device-profiler

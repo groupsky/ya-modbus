@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/driver-or-we-516",
-  "version": "0.2.13",
+  "version": "0.2.14",
   "description": "ORNO OR-WE-516 3-phase energy meter driver for ya-modbus",
   "keywords": [
     "modbus",
@@ -45,11 +45,11 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@ya-modbus/driver-sdk": "^0.8.0",
-    "@ya-modbus/driver-types": "^0.8.0"
+    "@ya-modbus/driver-sdk": "^0.8.1",
+    "@ya-modbus/driver-types": "^0.8.1"
   },
   "devDependencies": {
-    "@ya-modbus/cli": "^0.13.5"
+    "@ya-modbus/cli": "^0.13.6"
   },
   "engines": {
     "node": ">=22.0.0"

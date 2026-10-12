@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.8.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-sdk@0.8.0...@ya-modbus/driver-sdk@0.8.1) (2026-10-12)
+
+### Bug Fixes
+
+- declare tslib for packages whose builds import it ([#595](https://github.com/groupsky/ya-modbus/issues/595)) ([3de61d4](https://github.com/groupsky/ya-modbus/commit/3de61d4059f3263f20cf443cfa418f7d6998012d)), closes [#564](https://github.com/groupsky/ya-modbus/issues/564)
+
 # [0.8.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-sdk@0.7.2...@ya-modbus/driver-sdk@0.8.0) (2026-10-12)
 
 - feat!: drop Node.js 20 support (#516) ([70002ab](https://github.com/groupsky/ya-modbus/commit/70002ab28155432e0984c67a70d1469fc5be7cb3)), closes [#516](https://github.com/groupsky/ya-modbus/issues/516)
