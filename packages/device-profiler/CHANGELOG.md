@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.11.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.11.3...@ya-modbus/device-profiler@0.11.4) (2026-10-12)
+
+### Bug Fixes
+
+- **device-profiler:** keep the scan result when --output cannot be written ([#590](https://github.com/groupsky/ya-modbus/issues/590)) ([4978a85](https://github.com/groupsky/ya-modbus/commit/4978a85ce63461939767cb8ba2b2ff279852ac97)), closes [#575](https://github.com/groupsky/ya-modbus/issues/575)
+
 ## [0.11.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.11.2...@ya-modbus/device-profiler@0.11.3) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/device-profiler
