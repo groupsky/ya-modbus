@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.12.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.11.0...@ya-modbus/mqtt-bridge@0.12.0) (2026-10-12)
+
+### Features
+
+- **mqtt-bridge:** set device state to error after repeated failed reads ([#537](https://github.com/groupsky/ya-modbus/issues/537)) ([8a9302d](https://github.com/groupsky/ya-modbus/commit/8a9302df76a1c201da277aee6c99e93946d0aa88)), closes [#95](https://github.com/groupsky/ya-modbus/issues/95) [#94](https://github.com/groupsky/ya-modbus/issues/94) [#95](https://github.com/groupsky/ya-modbus/issues/95) [#101](https://github.com/groupsky/ya-modbus/issues/101)
+
 # [0.11.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.10.6...@ya-modbus/mqtt-bridge@0.11.0) (2026-10-12)
 
 - feat!: drop Node.js 20 support (#516) ([70002ab](https://github.com/groupsky/ya-modbus/commit/70002ab28155432e0984c67a70d1469fc5be7cb3)), closes [#516](https://github.com/groupsky/ya-modbus/issues/516)
