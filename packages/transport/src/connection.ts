@@ -46,14 +46,20 @@ function closeClient(client: ModbusRTU, callback: () => void): void {
 const CONNECTION = Symbol.for('@ya-modbus/transport/ModbusConnection')
 
 /**
- * Error for a lost connection, with code and errno of a Node.js system error cause
+ * Error for a lost connection, or for a port that was never open, with code and errno of a
+ * Node.js system error cause
  */
-function connectionLostError(target: string | undefined, cause: unknown): ModbusError {
+function connectionLostError(
+  target: string | undefined,
+  cause: unknown,
+  wasOpen = true
+): ModbusError {
   const reason = normalizeModbusError(cause)
-  const error: ModbusError = new Error(
-    `Connection ${target === undefined ? '' : `to ${target} `}lost: ${reason.message}`,
-    { cause: reason }
-  )
+  // A port that was never open was not lost
+  const message = wasOpen
+    ? `Connection ${target === undefined ? '' : `to ${target} `}lost: ${reason.message}`
+    : `Could not open ${target ?? 'the connection'}: ${reason.message}`
+  const error: ModbusError = new Error(message, { cause: reason })
   error.name = 'ConnectionLostError'
   // modbus-serial gives all its port errors errno 'ECONNREFUSED', also an unplugged
   // serial adapter. Only Node.js system errors (they have a code) give a real errno.
@@ -119,7 +125,7 @@ export class ModbusConnection {
     private readonly open?: OpenClient
   ) {
     if (client instanceof Error) {
-      this.state = { client: undefined, lostError: connectionLostError(target, client) }
+      this.state = { client: undefined, lostError: connectionLostError(target, client, false) }
       this.delayReopen()
     } else {
       this.state = { client }
@@ -240,7 +246,8 @@ export class ModbusConnection {
     try {
       client = await open()
     } catch (error) {
-      const openError = connectionLostError(this.target, error)
+      // Without a client, the port has never been open
+      const openError = connectionLostError(this.target, error, this.state.client !== undefined)
       this.state = { client: this.state.client, lostError: openError }
       this.delayReopen()
       throw openError

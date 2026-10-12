@@ -194,7 +194,7 @@ describe('serial adapter that is gone', () => {
     await bridge.start()
     unplugged.add('/dev/ttyUSB1')
     const missing =
-      'Connection to /dev/ttyUSB1 lost: Error: No such file or directory, cannot open /dev/ttyUSB1'
+      'Could not open /dev/ttyUSB1: Error: No such file or directory, cannot open /dev/ttyUSB1'
     // Two devices on the missing adapter, and one on another adapter
     const missing1 = meter('missing1', '/dev/ttyUSB1')
     const missing2 = {

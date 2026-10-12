@@ -356,7 +356,7 @@ The bridge keeps running when a USB serial adapter is unplugged:
   restart is needed.
 
 The bridge also starts when an adapter is not plugged in. It prints a warning like
-`Device meter1 is not connected, the bridge keeps trying to open its port: Connection to /dev/ttyUSB0 lost: Error: No such file or directory, cannot open /dev/ttyUSB0`.
+`Device meter1 is not connected, the bridge keeps trying to open its port: Could not open /dev/ttyUSB0: Error: No such file or directory, cannot open /dev/ttyUSB0`.
 The devices on that port start in the `error` state, and the other devices start normally. The
 port is opened with the same delays as above, so the devices are read soon after the adapter is
 plugged in.

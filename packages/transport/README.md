@@ -104,7 +104,9 @@ opens but is lost again before a request succeeds. A successful request sets the
 for example when a USB adapter is not plugged in. A long-running program can start anyway with
 `new TransportManager({ startLost: true })`. Then `getTransport()` returns the transport, and
 its connection starts lost with the error of the failed open. Requests reject with a
-`ConnectionLostError`, and the port is opened again after the same delays as above.
+`ConnectionLostError` with a message like
+`Could not open /dev/ttyUSB0: Error: No such file or directory, cannot open /dev/ttyUSB0`, until
+the port opens for the first time. The port is opened again after the same delays as above.
 `getConnectionError(config)` returns the error while the connection is lost, and `undefined`
 while it works. The MQTT bridge uses this, so one missing adapter does not stop the other
 devices.

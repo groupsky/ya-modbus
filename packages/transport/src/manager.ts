@@ -166,7 +166,16 @@ export class TransportManager {
    * Errors during close are logged but do not stop the process.
    */
   async closeAll(): Promise<void> {
-    const closePromises = Array.from(this.connections.values()).map(async (entry) => {
+    // A connection that is still opening is added to the pool when it opens. More opens can
+    // start while this waits.
+    while (this.opening.size > 0) await Promise.allSettled(this.opening.values())
+
+    // Clear the pool first: a connection that opens while these close stays in the pool,
+    // so the next closeAll() closes it
+    const entries = Array.from(this.connections.values())
+    this.connections.clear()
+
+    const closePromises = entries.map(async (entry) => {
       try {
         await entry.connection.close()
       } catch (error) {
@@ -176,7 +185,6 @@ export class TransportManager {
     })
 
     await Promise.all(closePromises)
-    this.connections.clear()
   }
 
   /**

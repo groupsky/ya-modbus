@@ -54,14 +54,17 @@ test('a connection created with the error of a failed open starts lost and reope
     .fn<Promise<ModbusRTU>, []>()
     .mockRejectedValueOnce(notPluggedIn)
     .mockResolvedValue(createClient())
+  // The port was never open, so the message does not say that the connection was lost
   const lost = {
     name: 'ConnectionLostError',
     message:
-      'Connection to /dev/ttyUSB0 lost: Error: No such file or directory, cannot open /dev/ttyUSB0',
+      'Could not open /dev/ttyUSB0: Error: No such file or directory, cannot open /dev/ttyUSB0',
   }
 
   const connection = new ModbusConnection(notPluggedIn, '/dev/ttyUSB0', open)
   expect(connection.error).toMatchObject(lost)
+  // Callers handle it the same as a lost connection
+  expect(isConnectionLostError(connection.error)).toBe(true)
   now += 999
   await expect(connection.run(read)).rejects.toMatchObject(lost)
   expect(open).not.toHaveBeenCalled()
@@ -76,6 +79,12 @@ test('a connection created with the error of a failed open starts lost and reope
   now += 1
   await expect(connection.run(read)).resolves.toEqual(Buffer.from([0, 1]))
   expect(connection.error).toBeUndefined()
+})
+
+test('uses "the connection" in the error of a port that was never open when there is no target', () => {
+  const connection = new ModbusConnection(new Error('Port Not Open'), undefined, jest.fn())
+
+  expect(connection.error?.message).toBe('Could not open the connection: Port Not Open')
 })
 
 test('works again with a client that its owner opens again', async () => {
