@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.10.1...@ya-modbus/cli@0.10.2) (2026-10-12)
+
+### Bug Fixes
+
+- **transport:** make Modbus TCP work from the CLI and profiler ([#542](https://github.com/groupsky/ya-modbus/issues/542)) ([2aa24ac](https://github.com/groupsky/ya-modbus/commit/2aa24ac1753416c261d05bb8b8b12fccbc10e3e4))
+
 ## [0.10.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.10.0...@ya-modbus/cli@0.10.1) (2026-10-12)
 
 ### Bug Fixes
