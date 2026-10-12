@@ -329,10 +329,11 @@ describe('Write Command', () => {
     expect(mockDriver.writeDataPoint).toHaveBeenCalledWith('count', 42)
   })
 
-  test('should handle TCP connection', async () => {
+  test('should handle TCP connection with the --tcp-port number', async () => {
+    // The TCP port comes from tcpPort (--tcp-port), not from the serial port option
     const options = {
       host: '192.168.1.100',
-      port: 502,
+      tcpPort: 5020,
       slaveId: 1,
       dataPoint: 'setpoint',
       value: '25.0',
@@ -345,7 +346,7 @@ describe('Write Command', () => {
 
     expect(transportFactory.createTransport).toHaveBeenCalledWith({
       host: '192.168.1.100',
-      port: 502,
+      port: 5020,
       slaveId: 1,
     })
 
