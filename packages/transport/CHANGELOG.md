@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.12.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/transport@0.11.2...@ya-modbus/transport@0.12.0) (2026-10-12)
+
+### Features
+
+- **transport:** list serial ports with their USB ids and locations ([#596](https://github.com/groupsky/ya-modbus/issues/596)) ([0ad4a5a](https://github.com/groupsky/ya-modbus/commit/0ad4a5ae8577154f2b198eec3c019e24ca4b5ca3)), closes [#534](https://github.com/groupsky/ya-modbus/issues/534)
+
 ## [0.11.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/transport@0.11.1...@ya-modbus/transport@0.11.2) (2026-10-12)
 
 ### Bug Fixes

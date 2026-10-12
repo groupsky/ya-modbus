@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/mqtt-bridge",
-  "version": "0.15.2",
+  "version": "0.15.3",
   "description": "MQTT bridge for ya-modbus - orchestrates device management, polling, and MQTT publishing",
   "keywords": [
     "modbus",
@@ -51,7 +51,7 @@
   "dependencies": {
     "@ya-modbus/driver-loader": "^0.11.2",
     "@ya-modbus/driver-types": "^0.8.1",
-    "@ya-modbus/transport": "^0.11.2",
+    "@ya-modbus/transport": "^0.12.0",
     "chalk": "^5.6.2",
     "commander": "^14.0.2",
     "mqtt": "^5.16.0",
