@@ -5,7 +5,7 @@ import type { DeviceConfig } from './types.js'
 interface ScheduledDevice {
   config: DeviceConfig
   driver: DeviceDriver
-  timer?: NodeJS.Timeout
+  timer?: NodeJS.Timeout | undefined
   interval: number
   lastFailureCount: number
 }
@@ -14,6 +14,9 @@ type DataCallback = (deviceId: string, data: Record<string, unknown>) => void
 type ErrorCallback = (deviceId: string, error: Error, failureCount: number) => void
 
 const DEFAULT_POLLING_INTERVAL = 5000 // 5 seconds
+
+// Longest delay setTimeout supports; it runs longer delays after 1ms
+const MAX_TIMER_DELAY = 2 ** 31 - 1
 
 /**
  * Coordinates polling across multiple devices
@@ -32,6 +35,11 @@ export class PollingScheduler {
    */
   scheduleDevice(deviceId: string, config: DeviceConfig, driver: DeviceDriver): void {
     const interval = config.polling?.interval ?? DEFAULT_POLLING_INTERVAL
+
+    // Written as a negation so that NaN is rejected too
+    if (!(interval > 0 && interval <= MAX_TIMER_DELAY)) {
+      throw new Error(`Invalid polling interval for device ${deviceId}: ${interval}`)
+    }
 
     this.devices.set(deviceId, {
       config,
@@ -76,7 +84,7 @@ export class PollingScheduler {
     for (const device of this.devices.values()) {
       if (device.timer) {
         clearTimeout(device.timer)
-        delete device.timer
+        device.timer = undefined
       }
     }
   }
@@ -112,8 +120,9 @@ export class PollingScheduler {
 
     // Determine delay based on mode and failure count
     let delay: number
-    if (device.lastFailureCount >= maxRetries) {
-      // Use backoff if we've exceeded max retries
+    if (device.lastFailureCount > 0 && device.lastFailureCount >= maxRetries) {
+      // Use backoff once maxRetries failures happened in a row. It takes at least one failure,
+      // so maxRetries 0 backs off after the first failure and not after a successful read.
       delay = retryBackoff
     } else if (mode === 'continuous' && device.lastFailureCount === 0) {
       // Continuous mode: poll on next event loop tick (effectively immediate)
