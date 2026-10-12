@@ -41,6 +41,8 @@ On Arch Linux, serial ports belong to the `uucp` group instead of `dialout`.
 
 The service can only open serial devices from the drivers listed in `DeviceAllow=` in the unit file (`ttyS`, `ttyUSB`, `ttyACM`, `ttyAMA`, `ttySC`). For another driver, add a `DeviceAllow=char-<name> rw` line with the name from `/proc/devices`.
 
+A USB adapter can get a new `ttyUSB` number when it is plugged in again. In the device configuration, use a stable path from `/dev/serial/by-id/` or `/dev/serial/by-path/` instead. See [Unplugging a Serial Adapter](../README.md#unplugging-a-serial-adapter).
+
 **Note:** Skip this step if you're only using Modbus TCP.
 
 ### 4. Create configuration directory
