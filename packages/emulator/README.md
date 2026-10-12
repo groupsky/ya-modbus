@@ -4,11 +4,11 @@ Software Modbus device emulator for testing device drivers without physical hard
 
 ## Features
 
-- **Realistic device simulation**: Mimic actual device constraints and timing characteristics
+- **Realistic device simulation**: Mimic the timing characteristics of actual devices
 - **Test acceleration**: Enable fast, deterministic testing without hardware
-- **Edge case coverage**: Simulate error conditions and edge cases
+- **Edge case coverage**: Exception responses for unsupported function codes and unknown slave IDs
 - **Multiple transports**: TCP, RTU (virtual/real serial ports), and in-memory
-- **Custom function codes**: Support vendor-specific Modbus extensions
+- **Register function codes**: Read holding and input registers, write holding registers (see [Supported Function Codes](#supported-function-codes))
 
 ## Installation
 
@@ -324,6 +324,39 @@ exclusive locks. For production use with real serial hardware, keep locking enab
 
 See `examples/virtual-serial-test.md` for detailed virtual serial port testing guide.
 
+## Supported Function Codes
+
+The emulator answers these function codes on every transport (memory, TCP and RTU):
+
+| Code | Function                 |
+| ---- | ------------------------ |
+| 0x03 | Read Holding Registers   |
+| 0x04 | Read Input Registers     |
+| 0x06 | Write Single Register    |
+| 0x10 | Write Multiple Registers |
+
+All other function codes are not supported. This includes the coil functions (0x01, 0x02, 0x05, 0x0F) and Read Device Identification (0x2B). The `coils` and `discreteInputs` values of a device configuration are stored, but no supported function code reads them.
+
+The emulator cannot serve some requests. The response depends on the transport:
+
+| Request                                               | Memory transport | TCP and RTU transports      |
+| ----------------------------------------------------- | ---------------- | --------------------------- |
+| Read Coils (0x01), Read Discrete Inputs (0x02)        | Exception 0x01   | Exception 0x04              |
+| Write Single Coil (0x05), Write Multiple Coils (0x0F) | Exception 0x01   | Accepted, nothing is stored |
+| Any other function code, for example 0x2B             | Exception 0x01   | Exception 0x01              |
+| Read from a slave ID that has no device               | Exception 0x0B   | Exception 0x04              |
+| Write to a slave ID that has no device                | Exception 0x0B   | Accepted, nothing is stored |
+
+### Exception Codes
+
+| Code | Name                                    | Returned when                                                                                                                                          |
+| ---- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0x01 | Illegal Function                        | The function code is not supported                                                                                                                     |
+| 0x02 | Illegal Data Address                    | TCP and RTU: modbus-serial rejects a read request with a quantity of 0                                                                                 |
+| 0x03 | Illegal Data Value                      | Memory transport: the request is too short for its function code, a write goes past address 65535, or the write data is shorter than its quantity says |
+| 0x04 | Slave Device Failure                    | TCP and RTU: a read request that the emulator cannot serve (see the table above), or a read of more than 127 registers                                 |
+| 0x0B | Gateway Target Device Failed to Respond | Memory transport: the request is for a slave ID that has no device                                                                                     |
+
 ## Configuration
 
 ### Timing Behaviors
@@ -344,34 +377,25 @@ emulator.addDevice({
 
 ### Register Constraints
 
-> **🚧 Planned for v0.2.0**: Define forbidden ranges and batch size limits
-
-```typescript
-// Coming in v0.2.0
-emulator.addDevice({
-  slaveId: 1,
-  constraints: {
-    maxReadRegisters: 80,
-    maxWriteRegisters: 50,
-    forbiddenReadRanges: [{ type: 'holding', start: 100, end: 199, reason: 'Protected' }],
-  },
-})
-```
+- Register addresses and register values are 16-bit unsigned numbers (0-65535). A device configuration with a holding or input register outside this range throws an error when the device is added.
+- A register that is not configured reads as 0.
+- A write to an address in range sets the register, also when it was not configured.
 
 ### Error Simulation
 
-> **🚧 Planned for v0.2.0**: Inject errors for testing error handling
+The emulator has no option to inject timeouts, CRC errors or exceptions. Exceptions are the responses to requests that it cannot serve (see [Supported Function Codes](#supported-function-codes)).
 
-```typescript
-// Coming in v0.2.0
-emulator.addDevice({
-  slaveId: 1,
-  errors: {
-    timeoutProbability: 0.05, // 5% timeout rate
-    crcErrorProbability: 0.01, // 1% CRC error rate
-  },
-})
-```
+## Known Limitations
+
+### modbus-serial read callbacks
+
+The TCP and RTU transports use `ServerTCP` and `ServerSerial` from `modbus-serial` (`^8.0.25`). Its types allow the multi-register read functions of the service vector (`getMultipleHoldingRegisters`, `getMultipleInputRegisters`) to return a Promise. At run time `modbus-serial` uses the return value of such a function as an array. It does not await a Promise, so the client receives exception 0x04 (Slave Device Failure).
+
+For this reason all read functions of the service vector in `src/transports/service-vector.ts`, which the TCP and RTU transports share, use the callback style (a `cb` parameter), not Promises. `src/transports/tcp.async-compat.test.ts` and `src/transports/rtu.async-compat.test.ts` check this.
+
+**Impact:** This is an internal detail. It does not change the public API. Keep the callback style when you change these read functions.
+
+See also: [#303](https://github.com/groupsky/ya-modbus/issues/303) and the related upstream report [yaacov/node-modbus-serial#548](https://github.com/yaacov/node-modbus-serial/issues/548).
 
 ## License
 
