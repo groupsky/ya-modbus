@@ -1,3 +1,5 @@
+import { EventEmitter } from 'node:events'
+
 import type ModbusRTU from 'modbus-serial'
 
 import { createRTUTransport } from './rtu-transport.js'
@@ -26,7 +28,8 @@ describe('RTU Transport', () => {
       writeCoil: jest.fn(),
       writeCoils: jest.fn(),
       close: jest.fn(),
-      isOpen: false,
+      on: jest.fn(),
+      isOpen: true,
     } as unknown as jest.Mocked<ModbusRTU>
 
     // Mock the ModbusRTU constructor
@@ -418,5 +421,40 @@ describe('RTU Transport', () => {
     expect(logger).toHaveBeenCalledTimes(2)
     expect(logger).toHaveBeenNthCalledWith(1, 1, expect.objectContaining({ message: 'Error 1' }))
     expect(logger).toHaveBeenNthCalledWith(2, 2, expect.objectContaining({ message: 'Error 2' }))
+  })
+
+  test('should reopen the serial port on a later request after the port was lost', async () => {
+    const config = {
+      port: '/dev/ttyUSB0',
+      baudRate: 9600 as const,
+      dataBits: 8 as const,
+      parity: 'even' as const,
+      stopBits: 1 as const,
+      slaveId: 1,
+      maxRetries: 1,
+    }
+    const events = new EventEmitter()
+    mockModbus.on.mockImplementation((event: string, listener: () => void) => {
+      events.on(event, listener)
+      return mockModbus
+    })
+    mockModbus.connectRTUBuffered.mockResolvedValue(undefined)
+    mockModbus.readHoldingRegisters.mockResolvedValue({ data: [1], buffer: Buffer.from([0, 1]) })
+    const start = performance.now()
+    const clock = jest.spyOn(performance, 'now').mockReturnValue(start)
+
+    try {
+      const transport = await createRTUTransport(config)
+      events.emit('close')
+
+      await expect(transport.readHoldingRegisters(0, 1)).rejects.toThrow(
+        'Connection to /dev/ttyUSB0 lost: port closed'
+      )
+      clock.mockReturnValue(start + 1000)
+      await expect(transport.readHoldingRegisters(0, 1)).resolves.toEqual(Buffer.from([0, 1]))
+      expect(mockModbus.connectRTUBuffered).toHaveBeenCalledTimes(2)
+    } finally {
+      clock.mockRestore()
+    }
   })
 })

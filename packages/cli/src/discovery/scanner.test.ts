@@ -1,3 +1,5 @@
+import { EventEmitter } from 'node:events'
+
 import type ModbusRTU from 'modbus-serial'
 
 import { identifyDevice } from './device-identifier.js'
@@ -23,6 +25,8 @@ describe('scanForDevices', () => {
       setID: jest.fn(),
       setTimeout: jest.fn(),
       close: jest.fn((callback: () => void) => callback()),
+      on: jest.fn(),
+      isOpen: true,
     }
 
     // Default ModbusRTU constructor to return our mock
@@ -623,6 +627,55 @@ describe('scanForDevices', () => {
 
       consoleWarnSpy.mockRestore()
     })
+
+    // modbus-serial emits 'error' (and 'close') when the USB adapter is unplugged.
+    // Without an 'error' listener Node.js throws it and the process crashes.
+    test.each([
+      {
+        event: 'error',
+        args: [
+          { name: 'SerialPortError', message: 'EIO: i/o error, write', errno: 'ECONNREFUSED' },
+        ],
+        message: 'Connection to /dev/ttyUSB0 lost: EIO: i/o error, write',
+      },
+      { event: 'close', args: [], message: 'Connection to /dev/ttyUSB0 lost: port closed' },
+    ])(
+      'stops with a clear error when the serial port emits $event during a test',
+      async ({ event, args, message }) => {
+        const client = Object.assign(new EventEmitter(), mockClient)
+        delete (client as Partial<typeof mockClient>).on
+        const ModbusRTUConstructor = jest.requireMock<jest.Mock>('modbus-serial')
+        ModbusRTUConstructor.mockImplementation(() => client)
+
+        const mockIdentify = identifyDevice as jest.MockedFunction<typeof identifyDevice>
+        mockIdentify.mockImplementation((identifyClient) => {
+          const slaveId = (identifyClient.setID as jest.Mock).mock.lastCall?.[0]
+          if (slaveId === 2) {
+            // The port fails while the device does not answer yet
+            setImmediate(() => client.emit(event, ...args))
+            return new Promise(() => {})
+          }
+          return Promise.resolve({ present: false, responseTimeMs: 10, timeout: true })
+        })
+
+        const generatorOptions: GeneratorOptions = {
+          strategy: 'quick',
+          supportedConfig: {
+            validBaudRates: [9600, 19200],
+            validParity: ['none'],
+            validDataBits: [8],
+            validStopBits: [1],
+            validAddressRange: [1, 3],
+          },
+        }
+
+        await expect(
+          scanForDevices(generatorOptions, { port: '/dev/ttyUSB0', timeout: 1000, delayMs: 0 })
+        ).rejects.toThrow(message)
+        expect(mockIdentify).toHaveBeenCalledTimes(2)
+        expect(ModbusRTUConstructor).toHaveBeenCalledTimes(1)
+      }
+    )
   })
 
   describe('delay logic', () => {

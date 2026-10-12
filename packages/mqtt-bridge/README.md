@@ -159,7 +159,8 @@ Create a `config.json` file:
 **RTU connection:**
 
 - `type: "rtu"` (required)
-- `port` (required) - Serial port path
+- `port` (required) - Serial port path. Prefer a stable path, see
+  [Unplugging a Serial Adapter](#unplugging-a-serial-adapter)
 - `baudRate` (required) - Baud rate (e.g., 9600, 19200)
 - `slaveId` (required) - Modbus slave ID (0-247)
 - `parity` (optional) - Parity: "none", "even", "odd"
@@ -210,6 +211,39 @@ When the state changes between `connected` and `error`, the bridge publishes a m
 The `errors` field is only there when the state is `error`. It has the message of the last failed read. Status messages use QoS 0 and are not retained, the same as the messages on `{topicPrefix}/{deviceId}/data`. If the bridge is not connected to the broker when the state changes, the message is lost. Use `bridge.getDevice()` to read the current state at any time.
 
 The `connected` field of the device status is deprecated. Use `state` instead. `connected` is `true` only when `state` is `connected`.
+
+## Unplugging a Serial Adapter
+
+The bridge keeps running when a USB serial adapter is unplugged:
+
+- Polls of the devices on that port fail with an error like
+  `Connection to /dev/ttyUSB0 lost: port closed` (or `... lost: EIO: i/o error, write` when a
+  write failed). The device status shows the error (`errors`, `consecutiveFailures`). The device
+  is polled again on its normal schedule: after `interval`, and after `retryBackoff` once
+  `maxRetries` polls failed in a row.
+- A later poll opens the port again: the first poll 1 second after the loss, then with a delay
+  that doubles after each failed attempt, up to 60 seconds. All devices on the port share the
+  new connection.
+- When the adapter is back, the next attempt opens the port and the devices are read again. No
+  restart is needed.
+
+The port must exist when the bridge starts. If it does not, the bridge exits with an error.
+systemd starts it again after 5 seconds, but at most 5 times in 5 minutes. After that, the
+service stays failed until you run `sudo systemctl restart ya-modbus-bridge`.
+
+Linux can give the adapter a new name when it is plugged in again (`/dev/ttyUSB0` becomes
+`/dev/ttyUSB1`). The bridge opens the same path again, so use a stable path in `port`:
+
+- `/dev/serial/by-id/...` for adapters with a unique serial number. The name stays the same in
+  every USB port. Example: `/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A10K1234-if00-port0`
+- `/dev/serial/by-path/...` for adapters without a serial number (many CH340 adapters). Several
+  identical adapters without a serial number can get the same by-id name, or none. The by-path
+  name is the physical USB port, so keep the adapter in the same USB port. Example:
+  `/dev/serial/by-path/pci-0000:00:14.0-usb-0:1.3:1.0-port0`
+
+`ls -l /dev/serial/by-id/ /dev/serial/by-path/` lists the names and the devices they point to.
+These names are links to the same `/dev/ttyUSB*` and `/dev/ttyACM*` devices, so the systemd unit
+file allows them.
 
 ## Programmatic Usage
 

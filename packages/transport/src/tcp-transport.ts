@@ -2,6 +2,7 @@ import type { Transport } from '@ya-modbus/driver-types'
 import ModbusRTU from 'modbus-serial'
 
 import { configureClient } from './client-config.js'
+import { ModbusConnection } from './connection.js'
 import { createModbusTransport } from './create-modbus-transport.js'
 import type { RetryLogger } from './retry.js'
 
@@ -26,16 +27,24 @@ export interface TCPConfig {
 /**
  * Create a TCP transport
  *
+ * When the connection is lost, requests reject with a ConnectionLostError and the
+ * connection is reopened on a later request (see ModbusConnection).
+ *
  * @param config - TCP configuration
  * @returns Transport implementation for TCP
  */
 export async function createTCPTransport(config: TCPConfig): Promise<Transport> {
-  const client = new ModbusRTU()
+  const port = config.port ?? 502
+  const open = async (): Promise<ModbusRTU> => {
+    const client = new ModbusRTU()
 
-  // Connect to TCP server
-  await client.connectTCP(config.host, { port: config.port ?? 502 })
+    // Connect to TCP server
+    await client.connectTCP(config.host, { port })
 
-  configureClient(client, config.slaveId, config.timeout)
+    configureClient(client, config.slaveId, config.timeout)
+    return client
+  }
 
-  return createModbusTransport(client, config.maxRetries, config.logger)
+  const connection = new ModbusConnection(await open(), `${config.host}:${port}`, open)
+  return createModbusTransport(connection, config.maxRetries, config.logger)
 }

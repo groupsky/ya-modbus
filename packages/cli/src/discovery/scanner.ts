@@ -1,3 +1,4 @@
+import { isConnectionLostError, ModbusConnection } from '@ya-modbus/transport'
 import ModbusRTU from 'modbus-serial'
 
 import { identifyDevice, type DeviceIdentificationResult } from './device-identifier.js'
@@ -137,6 +138,9 @@ export async function scanForDevices(
         dataBits,
         stopBits,
       })
+      // Listens for the 'error' event, so a lost port (USB adapter unplugged) does not
+      // crash the process, and rejects tests with a ConnectionLostError instead
+      const connection = new ModbusConnection(client, port)
 
       // Set timeout once for this connection
       client.setTimeout(timeout)
@@ -159,7 +163,7 @@ export async function scanForDevices(
             client.setID(slaveId)
 
             // Try to identify device
-            const identification = await identifyDevice(client)
+            const identification = await connection.run(identifyDevice)
 
             // If device found, add to results
             if (identification.present) {
@@ -180,7 +184,10 @@ export async function scanForDevices(
               // Apply delay before next test (timeout already consumed time)
               await applyInterTestDelay(delayMs, timeout, false, true)
             }
-          } catch {
+          } catch (error) {
+            // The port is gone, so all other tests would fail too
+            if (isConnectionLostError(error)) throw error
+
             // Device identification error - skip this slave ID
             onTestAttempt?.(combination, 'not-found')
             // Apply delay before next test (error/timeout already consumed time)
@@ -193,11 +200,11 @@ export async function scanForDevices(
         }
       } finally {
         // Close connection after testing all slave IDs
-        // Client is always defined here since we only reach this point after successful connection
-        const clientToClose = client
-        await new Promise<void>((resolve) => clientToClose.close(resolve))
+        await connection.close()
       }
     } catch (error) {
+      if (isConnectionLostError(error)) throw error
+
       // Connection error for this serial parameter set - skip entire group
       // This can happen if port is busy, doesn't exist, or serial params are invalid
 

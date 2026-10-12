@@ -34,6 +34,12 @@ jobs:
       - name: Lint code
         run: npm run lint
 
+      # The serial port tests use socat pseudo-terminal pairs
+      - name: Install socat
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y socat
+
       - name: Run tests
         run: npm run test:ci
 

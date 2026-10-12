@@ -24,7 +24,8 @@ describe('TCP Transport', () => {
       writeCoil: jest.fn(),
       writeCoils: jest.fn(),
       close: jest.fn(),
-      isOpen: false,
+      on: jest.fn(),
+      isOpen: true,
     } as unknown as jest.Mocked<ModbusRTU>
 
     const ModbusRTUConstructor = await import('modbus-serial')
