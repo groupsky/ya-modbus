@@ -52,36 +52,23 @@ export class TcpTransport extends BaseTransport {
       let isInitializing = true
       this.initReject = reject
 
-      const cleanupOnError = (): void => {
+      this.initTimeout = setTimeout(() => {
         isInitializing = false
         delete this.initReject
-        if (this.initTimeout) {
-          clearTimeout(this.initTimeout)
-          delete this.initTimeout
-        }
+        delete this.initTimeout
         EventEmitter.prototype.removeAllListeners.call(server, 'initialized')
         EventEmitter.prototype.removeAllListeners.call(server, 'error')
         delete this.server
-      }
-
-      const cleanupOnSuccess = (): void => {
-        isInitializing = false
-        delete this.initReject
-        if (this.initTimeout) {
-          clearTimeout(this.initTimeout)
-          delete this.initTimeout
-        }
-        EventEmitter.prototype.removeAllListeners.call(server, 'initialized')
-        EventEmitter.prototype.removeAllListeners.call(server, 'error')
-      }
-
-      this.initTimeout = setTimeout(() => {
-        cleanupOnError()
         reject(new Error('TCP server initialization timeout after 10s'))
       }, 10000)
 
       server.on('initialized', () => {
-        cleanupOnSuccess()
+        isInitializing = false
+        delete this.initReject
+        clearTimeout(this.initTimeout)
+        delete this.initTimeout
+        EventEmitter.prototype.removeAllListeners.call(server, 'initialized')
+        EventEmitter.prototype.removeAllListeners.call(server, 'error')
         this.started = true
         resolve()
       })
@@ -89,7 +76,13 @@ export class TcpTransport extends BaseTransport {
       // Handle errors - cast to EventEmitter as modbus-serial types don't include 'error' event
       ;(server as unknown as EventEmitter).on('error', (err: Error) => {
         if (isInitializing) {
-          cleanupOnError()
+          isInitializing = false
+          delete this.initReject
+          clearTimeout(this.initTimeout)
+          delete this.initTimeout
+          EventEmitter.prototype.removeAllListeners.call(server, 'initialized')
+          EventEmitter.prototype.removeAllListeners.call(server, 'error')
+          delete this.server
           reject(err)
         } else {
           // Log errors that occur after initialization

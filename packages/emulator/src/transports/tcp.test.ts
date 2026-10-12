@@ -119,6 +119,19 @@ describe('TcpTransport', () => {
       await expect(transport.start()).rejects.toThrow('Transport already started')
     })
 
+    it('should not leave the initialization timeout pending after start() succeeds', async () => {
+      // A timeout that outlives start() would later delete the running server
+      jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] })
+      try {
+        transport = new TcpTransport({ host: 'localhost', port: 502 })
+        await transport.start()
+
+        expect(jest.getTimerCount()).toBe(0)
+      } finally {
+        jest.useRealTimers()
+      }
+    })
+
     it('should not accumulate event listeners after repeated start/stop cycles', async () => {
       // This test verifies the fix for issue #253: Event listener memory leak
       // Before the fix, listeners are never removed during stop()
@@ -483,6 +496,29 @@ describe('TcpTransport', () => {
       await expect(testTransport.start()).rejects.toThrow(
         'listen EADDRINUSE: address already in use'
       )
+    })
+
+    it('should not leave the initialization timeout pending after start() fails', async () => {
+      jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] })
+      try {
+        const { ServerTCP } = await import('modbus-serial')
+        ;(ServerTCP as any).mockImplementationOnce(() => ({
+          close: jest.fn(),
+          on: jest.fn((event: string, listener: (err: Error) => void) => {
+            if (event === 'error') {
+              setImmediate(() => listener(new Error('listen EADDRINUSE')))
+            }
+          }),
+          socks: new Map(),
+        }))
+
+        const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
+        await expect(testTransport.start()).rejects.toThrow('listen EADDRINUSE')
+
+        expect(jest.getTimerCount()).toBe(0)
+      } finally {
+        jest.useRealTimers()
+      }
     })
 
     it('should reject start() on initialization timeout', async () => {
