@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.13.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.13.3...@ya-modbus/emulator@0.13.4) (2026-10-12)
+
+### Bug Fixes
+
+- **emulator:** keep RTU transport stopped when stop() is called during start() ([#548](https://github.com/groupsky/ya-modbus/issues/548)) ([57f078f](https://github.com/groupsky/ya-modbus/commit/57f078f9c1cb269d47b17e2f9337f8e057683f1c)), closes [#297](https://github.com/groupsky/ya-modbus/issues/297)
+
 ## [0.13.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.13.2...@ya-modbus/emulator@0.13.3) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/emulator
