@@ -349,6 +349,8 @@ Based on real-world testing with default settings (timeout=1000ms, delay=100ms):
 - `--host <host>` - TCP host (IP or hostname)
 - `--tcp-port <port>` - TCP port (default: 502)
 
+Use either `--port` (RTU) or `--host` (TCP), not both. The command fails with an error if both are given.
+
 **Common:**
 
 - `--slave-id <id>` - Modbus slave ID (1-247) **(required)**

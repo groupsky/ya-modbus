@@ -846,4 +846,23 @@ describe('Write Command', () => {
     expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('expected 10'))
     expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('got 15'))
   })
+
+  test('should reject both --port and --host before loading the driver or connecting', async () => {
+    const options = {
+      port: '/dev/ttyUSB0',
+      host: '192.168.1.100',
+      slaveId: 1,
+      dataPoint: 'setpoint',
+      value: '25.0',
+      yes: true,
+    }
+
+    await expect(writeCommand(options)).rejects.toThrow(
+      'Use either --port (RTU) or --host (TCP), not both'
+    )
+
+    expect(driverLoader.loadDriver).not.toHaveBeenCalled()
+    expect(transportFactory.createTransport).not.toHaveBeenCalled()
+    expect(mockDriver.writeDataPoint).not.toHaveBeenCalled()
+  })
 })

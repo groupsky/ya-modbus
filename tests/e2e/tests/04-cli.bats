@@ -74,6 +74,38 @@ teardown() {
   assert_output_contains "cannot open"
 }
 
+@test "read command fails when both --port and --host are specified" {
+  run node "$CLI_BIN" read \
+    --port /tmp/ttyV1 \
+    --host localhost \
+    --slave-id 1 \
+    --driver @ya-modbus/driver-ex9em \
+    --data-point voltage
+  assert_failure
+  assert_output_contains "Use either --port \(RTU\) or --host \(TCP\), not both"
+}
+
+@test "write command fails when both --port and --host are specified" {
+  run node "$CLI_BIN" write \
+    --port /tmp/ttyV1 \
+    --host localhost \
+    --slave-id 1 \
+    --driver @ya-modbus/driver-ex9em \
+    --data-point device_address \
+    --value 5 \
+    --yes
+  assert_failure
+  assert_output_contains "Use either --port \(RTU\) or --host \(TCP\), not both"
+}
+
+@test "discover rejects --host because it works on a serial port only" {
+  run node "$CLI_BIN" discover \
+    --port /tmp/ttyV1 \
+    --host localhost
+  assert_failure
+  assert_output_contains "error: unknown option '--host'"
+}
+
 @test "read command fails without data point" {
   run node "$CLI_BIN" read \
     --port /tmp/ttyV1 \

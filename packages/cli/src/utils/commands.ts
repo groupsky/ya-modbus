@@ -14,7 +14,7 @@ import type {
 import { createTransport, type TransportConfig } from '@ya-modbus/transport'
 
 import { omitUndefined } from './object-utils.js'
-import { validateSerialOptions } from './validation.js'
+import { validateConnectionOptions, validateSerialOptions } from './validation.js'
 
 /**
  * Default RTU transport configuration values
@@ -470,24 +470,29 @@ export async function withDriverInstance<T>(
  * Execute a function with a driver instance, handling the complete workflow
  *
  * This is a convenience function that:
- * 1. Loads driver metadata (DEFAULT_CONFIG, SUPPORTED_CONFIG)
- * 2. Validates user options against driver constraints (SUPPORTED_CONFIG)
- * 3. Applies driver defaults to user options
- * 4. Validates merged options (catches invalid third-party driver defaults)
- * 5. Creates transport with merged configuration
- * 6. Creates driver instance
- * 7. Executes callback with driver and merged options
- * 8. Ensures cleanup (closes transport)
+ * 1. Rejects a serial port combined with a TCP host
+ * 2. Loads driver metadata (DEFAULT_CONFIG, SUPPORTED_CONFIG)
+ * 3. Validates user options against driver constraints (SUPPORTED_CONFIG)
+ * 4. Applies driver defaults to user options
+ * 5. Validates merged options (catches invalid third-party driver defaults)
+ * 6. Creates transport with merged configuration
+ * 7. Creates driver instance
+ * 8. Executes callback with driver and merged options
+ * 9. Ensures cleanup (closes transport)
  *
  * @param options - Combined transport and driver options
  * @param fn - Function to execute with the driver (and optionally merged config)
  * @returns Result of the function
- * @throws ValidationError if user options or driver defaults violate constraints
+ * @throws ValidationError if both a serial port and a TCP host are given, or if user options
+ *   or driver defaults violate constraints
  */
 export async function withDriver<T>(
   options: TransportOptions & { driver?: string; device?: string },
   fn: (driver: DeviceDriver, mergedOptions: TransportOptions) => Promise<T>
 ): Promise<T> {
+  // Reject conflicting RTU/TCP options before any I/O
+  validateConnectionOptions(options)
+
   // Load driver metadata first
   const driverMetadata = await loadDriverMetadata(options.driver)
 
