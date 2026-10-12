@@ -1243,8 +1243,7 @@ describe('createBridge', () => {
 
     it('should call handlePollingError and update device state', async () => {
       let errorCallback:
-        | ((deviceId: string, error: Error, failureCount: number) => void)
-        | undefined
+        ((deviceId: string, error: Error, failureCount: number) => void) | undefined
 
       const mockDeviceManager = new MockedDeviceManager()
       MockedDeviceManager.mockReturnValue(mockDeviceManager as any)

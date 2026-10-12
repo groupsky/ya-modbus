@@ -56,7 +56,7 @@ See: `packages/driver-ex9em/src/device.ts` for usage examples
 If exporting configs, add cross-validation tests:
 
 - DEFAULT_CONFIG values within SUPPORTED_CONFIG ranges
-- DEVICES[*].defaultConfig within DEVICES[*].supportedConfig (or driver-level SUPPORTED_CONFIG)
+- `DEVICES[*].defaultConfig` within `DEVICES[*].supportedConfig` (or driver-level SUPPORTED_CONFIG)
 
 ## Testing
 
