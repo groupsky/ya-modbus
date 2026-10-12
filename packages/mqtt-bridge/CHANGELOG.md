@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.15.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.14.4...@ya-modbus/mqtt-bridge@0.15.0) (2026-10-12)
+
+### Features
+
+- **transport:** let the mqtt-bridge start when a serial adapter is missing ([#587](https://github.com/groupsky/ya-modbus/issues/587)) ([38a2c9b](https://github.com/groupsky/ya-modbus/commit/38a2c9b4dc07b987c474afec995f6bc0a67ed20f)), closes [#549](https://github.com/groupsky/ya-modbus/issues/549) [#568](https://github.com/groupsky/ya-modbus/issues/568)
+
 ## [0.14.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.14.3...@ya-modbus/mqtt-bridge@0.14.4) (2026-10-12)
 
 ### Bug Fixes
