@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.10.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.9.0...@ya-modbus/mqtt-bridge@0.10.0) (2026-10-12)
+
+### Features
+
+- **mqtt-bridge:** add systemd service configuration for production deployments ([#157](https://github.com/groupsky/ya-modbus/issues/157)) ([a223425](https://github.com/groupsky/ya-modbus/commit/a223425290df22e195891d742b2bd32dc6264cbb))
+
 # [0.9.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.8.3...@ya-modbus/mqtt-bridge@0.9.0) (2026-10-12)
 
 ### Features
