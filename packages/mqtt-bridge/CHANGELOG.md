@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.12.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.12.1...@ya-modbus/mqtt-bridge@0.12.2) (2026-10-12)
+
+### Bug Fixes
+
+- **mqtt-bridge:** keep one poll chain per device ([#540](https://github.com/groupsky/ya-modbus/issues/540)) ([b016779](https://github.com/groupsky/ya-modbus/commit/b016779553c277b36eaf3063429a50640f7a607e)), closes [#519](https://github.com/groupsky/ya-modbus/issues/519) [#519](https://github.com/groupsky/ya-modbus/issues/519)
+
 ## [0.12.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.12.0...@ya-modbus/mqtt-bridge@0.12.1) (2026-10-12)
 
 ### Bug Fixes
