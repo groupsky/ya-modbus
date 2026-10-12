@@ -567,22 +567,93 @@ describe('runProfileScan', () => {
       expect(mockConsoleError).toHaveBeenCalledWith(`Wrote 2 registers (1 ok, 1 failed) to ${file}`)
     })
 
-    it('should close the transport and report the error when the file cannot be written', async () => {
-      const transport = createTransport(readsWithByte(0x00))
+    describe('when the file cannot be written after the scan', () => {
+      let stdout: string[]
+      let missingDirectoryFile: string
 
-      await expect(
-        runProfileScan({
+      beforeEach(() => {
+        stdout = []
+        missingDirectoryFile = join(directory, 'missing', 'scan.json')
+        // The write callback is how a caller learns that the output reached the stream
+        mockStdoutWrite.mockImplementation((chunk: string | Uint8Array, ...rest: unknown[]) => {
+          stdout.push(String(chunk))
+          const callback = rest.find((argument) => typeof argument === 'function')
+          ;(callback as (() => void) | undefined)?.()
+          return true
+        })
+      })
+
+      function scan(transport: Transport, format: 'json' | 'yaml'): Promise<void> {
+        return runProfileScan({
           transport,
           type: RegisterType.Holding,
           startAddress: 0,
-          endAddress: 0,
-          format: 'json',
-          outputFile: join(directory, 'missing', 'scan.json'),
+          endAddress: 1,
+          format,
+          outputFile: missingDirectoryFile,
+          port: '/dev/ttyUSB0',
         })
-      ).rejects.toThrow('ENOENT')
+      }
 
-      expect(transport.close).toHaveBeenCalled()
-      expect(mockConsoleError).not.toHaveBeenCalled()
+      // The scan can take minutes, so its result must not be lost with the file
+      it.each([
+        { format: 'json' as const, parse: JSON.parse },
+        { format: 'yaml' as const, parse: yaml.load },
+      ])('should print the $format report to stdout', async ({ format, parse }) => {
+        await expect(scan(createTransport(readsWithByte(0x12)), format)).rejects.toThrow()
+
+        const printed = stdout.join('')
+        expect(printed).toMatch(/[^\n]\n$/)
+        expect(parse(printed)).toMatchObject({
+          scan: { type: 'holding', startAddress: 0, endAddress: 1 },
+          connection: { port: '/dev/ttyUSB0' },
+          results: [
+            { address: 0, success: true, value: 0x1212 },
+            { address: 1, success: true, value: 0x1212 },
+          ],
+          summary: { total: 2, successful: 2, failed: 0 },
+        })
+        expect(mockConsoleLog).not.toHaveBeenCalled()
+      })
+
+      it('should fail with an error that names the file, the reason and where the report went', async () => {
+        await expect(scan(createTransport(readsWithByte(0x12)), 'json')).rejects.toThrow(
+          new RegExp(
+            `^Cannot write to ${missingDirectoryFile}: ENOENT.*\\. The report is printed to stdout instead\\.$`
+          )
+        )
+
+        expect(mockConsoleError).not.toHaveBeenCalledWith(expect.stringContaining('Wrote'))
+      })
+
+      it('should close the transport', async () => {
+        const transport = createTransport(readsWithByte(0x00))
+
+        await expect(scan(transport, 'json')).rejects.toThrow()
+
+        expect(transport.close).toHaveBeenCalled()
+      })
+
+      it('should wait until the report is written to stdout before it fails', async () => {
+        let finishWrite: (() => void) | undefined
+        mockStdoutWrite.mockImplementation((_chunk: string | Uint8Array, ...rest: unknown[]) => {
+          finishWrite = rest.find((argument) => typeof argument === 'function') as () => void
+          return true
+        })
+        const settled = jest.fn()
+
+        const result = scan(createTransport(readsWithByte(0x00)), 'json').catch(settled)
+        while (finishWrite === undefined) {
+          await new Promise((resolve) => setTimeout(resolve, 1))
+        }
+
+        // The process exits as soon as the error is reported, which would cut the report short
+        expect(settled).not.toHaveBeenCalled()
+
+        finishWrite()
+        await result
+        expect(settled).toHaveBeenCalledTimes(1)
+      })
     })
   })
 })
