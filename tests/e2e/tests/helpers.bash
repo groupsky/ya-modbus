@@ -75,25 +75,181 @@ stop_mqtt_subscriber() {
   fi
 }
 
-# Start emulator in background using CLI
+# Background process helpers
 #
-# Starts the ya-modbus emulator in the background with output redirected to a log file.
-# The log file is created with a unique temporary name first, then symlinked to a
-# PID-based name for easy access by tests.
+# The emulator and the mqtt-bridge run as background processes whose output is
+# captured in a log file. Both are managed by the generic helpers below. Files
+# are named after a prefix ("emulator" or "bridge"); all except the temp log
+# also contain the process ID:
+#
+#   /tmp/<prefix>-temp-XXXXXX.log    captured output (unique name from mktemp)
+#   /tmp/<prefix>-<pid>.log          symlink to the captured output
+#   /tmp/<prefix>-<pid>.pid          PID file
+#   /tmp/<prefix>-<pid>-logfile.txt  path of the captured output, used for cleanup
 #
 # LOG FILE APPROACH:
-# Tests need to read logs via PID-based filename (/tmp/emulator-$pid.log), but we
+# Tests need to read logs via PID-based filename (/tmp/<prefix>-$pid.log), but we
 # don't know the PID until AFTER starting the background process. Shell redirection
 # must be specified BEFORE the command runs, creating a chicken-and-egg problem.
 #
 # SOLUTION:
 # 1. Create temp log with guaranteed unique name using mktemp
-# 2. Start emulator with output redirected to temp log
+# 2. Start the process with output redirected to temp log
 # 3. Capture PID from background process
-# 4. Create symlink from /tmp/emulator-$pid.log -> temp log
+# 4. Create symlink from /tmp/<prefix>-$pid.log -> temp log
 # 5. Store temp log path for cleanup
 #
 # This ensures the log file is immediately writable and later accessible via PID.
+
+# Check if a process is a zombie (terminated but not yet reaped)
+_is_zombie() {
+  local pid=$1
+
+  [ -f "/proc/$pid/stat" ] || return 1
+  [ "$(awk '{print $3}' "/proc/$pid/stat" 2>/dev/null)" = "Z" ]
+}
+
+# Start a background process and wait until its log shows it is ready
+#
+# Arguments:
+#   $1 - prefix: Name used for the process files and in messages ("emulator", "bridge")
+#   $2 - ready_pattern: Pattern (grep -E) in the process log that marks a successful start
+#   $3... - Command and arguments to run
+#
+# Returns:
+#   Prints PID of the started process to stdout
+#   Returns 0 on success, 1 on failure (dumps the process log to stderr when the
+#   process did not become ready)
+#
+_start_background_process() {
+  local prefix=$1
+  local ready_pattern=$2
+  shift 2
+
+  # Create guaranteed-unique temp log file
+  local temp_log
+  temp_log=$(mktemp "/tmp/$prefix-temp-XXXXXX.log") || {
+    echo "Failed to create temp log file" >&2
+    return 1
+  }
+
+  "$@" > "$temp_log" 2>&1 &
+  local pid=$!
+
+  # Create symlink for PID-based access
+  local log_file="/tmp/$prefix-$pid.log"
+  if ! ln -sf "$temp_log" "$log_file"; then
+    echo "Warning: Failed to create log symlink" >&2
+  fi
+
+  # Store metadata for cleanup
+  echo "$pid" > "/tmp/$prefix-$pid.pid"
+  echo "$temp_log" > "/tmp/$prefix-$pid-logfile.txt"
+
+  # Wait for the process to be ready by checking log file
+  if ! wait_for 5 '[ -f "$temp_log" ] && grep -qE "$ready_pattern" "$temp_log" 2>/dev/null'; then
+    if ! kill -0 "$pid" 2>/dev/null; then
+      echo "$prefix process died during startup" >&2
+    else
+      echo "$prefix startup message not found within timeout" >&2
+    fi
+    cat "$temp_log" >&2
+    return 1
+  fi
+
+  echo "$pid"
+  return 0
+}
+
+# Stop a background process started by _start_background_process
+#
+# Stops the process and cleans up all associated files (PID file, log symlink,
+# and temporary log file).
+#
+# Arguments:
+#   $1 - prefix: Name used for the process files ("emulator", "bridge")
+#   $2 - pid: Process ID of the process to stop
+#
+_stop_background_process() {
+  local prefix=$1
+  local pid=$2
+  local pid_file="/tmp/$prefix-$pid.pid"
+  local log_file_ref="/tmp/$prefix-$pid-logfile.txt"
+
+  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+    kill "$pid" 2>/dev/null || true
+
+    # Wait for process to terminate (a zombie has terminated and is acceptable)
+    local timeout=300  # 3 seconds with 10ms sleep
+    local elapsed=0
+    while [ $elapsed -lt $timeout ]; do
+      if ! kill -0 "$pid" 2>/dev/null || _is_zombie "$pid"; then
+        break
+      fi
+      sleep 0.01
+      elapsed=$((elapsed + 1))
+    done
+
+    # Force kill if still running (not a zombie)
+    if kill -0 "$pid" 2>/dev/null && ! _is_zombie "$pid"; then
+      kill -9 "$pid" 2>/dev/null || true
+    fi
+
+    wait "$pid" 2>/dev/null || true
+  fi
+
+  # Clean up temp log file (read path from reference file)
+  if [ -f "$log_file_ref" ]; then
+    local temp_log
+    temp_log=$(cat "$log_file_ref" 2>/dev/null)
+    if [ -n "$temp_log" ]; then
+      rm -f "$temp_log" 2>/dev/null || true
+    fi
+    rm -f "$log_file_ref"
+  fi
+
+  # Clean up PID file and symlink
+  rm -f "$pid_file"
+  rm -f "/tmp/$prefix-$pid.log"
+}
+
+# Assert that the log of a background process contains a pattern
+#
+# Reads /tmp/<prefix>-$pid.log and verifies it contains the pattern using
+# extended regex matching (grep -E).
+#
+# Arguments:
+#   $1 - prefix: Name used for the process files ("emulator", "bridge")
+#   $2 - pid: Process ID of the process
+#   $3 - expected: Pattern to search for (supports grep extended regex)
+#
+# Returns:
+#   0 if pattern found
+#   1 if log file not found or pattern not found (dumps full log to stderr)
+#
+_assert_process_log_contains() {
+  local prefix=$1
+  local pid=$2
+  local expected=$3
+  local log_file="/tmp/$prefix-$pid.log"
+
+  if [ ! -f "$log_file" ]; then
+    echo "$prefix log file not found: $log_file" >&2
+    return 1
+  fi
+
+  if ! grep -qE "$expected" "$log_file"; then
+    echo "Expected $prefix log to contain: $expected" >&2
+    echo "$prefix log contents:" >&2
+    cat "$log_file" >&2
+    return 1
+  fi
+}
+
+# Start emulator in background using CLI
+#
+# Starts the ya-modbus emulator in the background with output redirected to a log file
+# (see "Background process helpers" for the log file approach).
 #
 # Arguments:
 #   $1 - config_file: Path to emulator configuration file
@@ -113,50 +269,13 @@ start_test_emulator() {
   local project_root
   project_root=$(get_project_root)
 
-  # Create guaranteed-unique temp log file
-  local temp_log
-  temp_log=$(mktemp /tmp/emulator-temp-XXXXXX.log) || {
-    echo "Failed to create temp log file" >&2
-    return 1
-  }
-
-  # Start emulator with output redirected to temp log
-  # Use proper quoting for optional verbose flag
+  local args=(--config "$config_file")
   if [ -n "$verbose_flag" ]; then
-    node "$project_root/packages/emulator/dist/esm/bin/ya-modbus-emulator.js" \
-      --config "$config_file" \
-      "$verbose_flag" \
-      > "$temp_log" 2>&1 &
-  else
-    node "$project_root/packages/emulator/dist/esm/bin/ya-modbus-emulator.js" \
-      --config "$config_file" \
-      > "$temp_log" 2>&1 &
-  fi
-  local pid=$!
-
-  # Create symlink for PID-based access
-  local log_file="/tmp/emulator-$pid.log"
-  if ! ln -sf "$temp_log" "$log_file"; then
-    echo "Warning: Failed to create log symlink" >&2
+    args+=("$verbose_flag")
   fi
 
-  # Store metadata for cleanup
-  echo "$pid" > "/tmp/emulator-$pid.pid"
-  echo "$temp_log" > "/tmp/emulator-$pid-logfile.txt"
-
-  # Wait for emulator to be ready by checking log file
-  if ! wait_for 5 '[ -f "'"$temp_log"'" ] && grep -q "Emulator started successfully" "'"$temp_log"'" 2>/dev/null'; then
-    if ! kill -0 "$pid" 2>/dev/null; then
-      echo "Emulator process died during startup" >&2
-    else
-      echo "Emulator startup message not found within timeout" >&2
-    fi
-    cat "$temp_log" >&2
-    return 1
-  fi
-
-  echo "$pid"
-  return 0
+  _start_background_process emulator "Emulator started successfully" \
+    node "$project_root/packages/emulator/dist/esm/bin/ya-modbus-emulator.js" "${args[@]}"
 }
 
 # Stop emulator
@@ -168,61 +287,7 @@ start_test_emulator() {
 #   $1 - pid: Process ID of the emulator to stop
 #
 stop_test_emulator() {
-  local pid=$1
-  local pid_file="/tmp/emulator-$pid.pid"
-  local log_file_ref="/tmp/emulator-$pid-logfile.txt"
-
-  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-    kill "$pid" 2>/dev/null || true
-
-    # Wait for process to be fully reaped (not even a zombie)
-    local timeout=300  # 3 seconds with 10ms sleep
-    local elapsed=0
-    while [ $elapsed -lt $timeout ]; do
-      if ! kill -0 "$pid" 2>/dev/null; then
-        break
-      fi
-      # Check if it's a zombie process
-      if [ -f "/proc/$pid/stat" ]; then
-        local state=$(awk '{print $3}' "/proc/$pid/stat" 2>/dev/null)
-        if [ "$state" = "Z" ]; then
-          # It's a zombie, which is acceptable - process has terminated
-          break
-        fi
-      fi
-      sleep 0.01
-      elapsed=$((elapsed + 1))
-    done
-
-    # Force kill if still running (not a zombie)
-    if kill -0 "$pid" 2>/dev/null; then
-      # Check if it's a zombie before force killing
-      if [ -f "/proc/$pid/stat" ]; then
-        local state=$(awk '{print $3}' "/proc/$pid/stat" 2>/dev/null)
-        if [ "$state" != "Z" ]; then
-          kill -9 "$pid" 2>/dev/null || true
-        fi
-      else
-        kill -9 "$pid" 2>/dev/null || true
-      fi
-    fi
-
-    wait "$pid" 2>/dev/null || true
-  fi
-
-  # Clean up temp log file (read path from reference file)
-  if [ -f "$log_file_ref" ]; then
-    local temp_log
-    temp_log=$(cat "$log_file_ref" 2>/dev/null)
-    if [ -n "$temp_log" ]; then
-      rm -f "$temp_log" 2>/dev/null || true
-    fi
-    rm -f "$log_file_ref"
-  fi
-
-  # Clean up PID file and symlink
-  rm -f "$pid_file"
-  rm -f "/tmp/emulator-$pid.log"
+  _stop_background_process emulator "$1"
 }
 
 # Check if Docker service is healthy
@@ -452,21 +517,7 @@ assert_json_field_exists() {
 #       when using grep -E. For example, to match literal "[VERBOSE]" use "\[VERBOSE\]"
 #
 assert_emulator_log_contains() {
-  local pid=$1
-  local expected=$2
-  local log_file="/tmp/emulator-$pid.log"
-
-  if [ ! -f "$log_file" ]; then
-    echo "Emulator log file not found: $log_file" >&2
-    return 1
-  fi
-
-  if ! grep -qE "$expected" "$log_file"; then
-    echo "Expected emulator log to contain: $expected" >&2
-    echo "Emulator log contents:" >&2
-    cat "$log_file" >&2
-    return 1
-  fi
+  _assert_process_log_contains emulator "$1" "$2"
 }
 
 # Wait for a condition to become true
@@ -513,10 +564,13 @@ get_project_root() {
   cd "$script_dir/../.." && pwd
 }
 
+# Log pattern that shows the mqtt-bridge started and loaded its devices
+BRIDGE_READY_PATTERN='(✓ Loaded device:|Bridge started successfully)'
+
 # Start mqtt-bridge in background
 #
-# Starts the ya-modbus mqtt-bridge in the background with output redirected to a log file.
-# Uses the same approach as start_test_emulator for log file management.
+# Starts the ya-modbus mqtt-bridge in the background with output redirected to a log file
+# (see "Background process helpers" for the log file approach).
 #
 # Arguments:
 #   $1 - config_file: Path to bridge configuration file
@@ -530,44 +584,12 @@ start_mqtt_bridge() {
   local project_root
   project_root=$(get_project_root)
 
-  # Create guaranteed-unique temp log file
-  local temp_log
-  temp_log=$(mktemp /tmp/bridge-temp-XXXXXX.log) || {
-    echo "Failed to create temp log file" >&2
-    return 1
-  }
-
   # Start bridge using official CLI (now supports device loading from config)
-  "$project_root/packages/mqtt-bridge/dist/esm/bin/ya-modbus-bridge.js" \
-    run \
-    --config "$config_file" \
-    > "$temp_log" 2>&1 &
-  local pid=$!
-
-  # Create symlink for PID-based access
-  local log_file="/tmp/bridge-$pid.log"
-  if ! ln -sf "$temp_log" "$log_file"; then
-    echo "Warning: Failed to create log symlink" >&2
-  fi
-
-  # Store metadata for cleanup
-  echo "$pid" > "/tmp/bridge-$pid.pid"
-  echo "$temp_log" > "/tmp/bridge-$pid-logfile.txt"
-
-  # Wait for bridge to be ready by checking log file
   # Look for "✓ Loaded device:" to ensure devices are actually loaded
-  if ! wait_for 5 '[ -f "'"$temp_log"'" ] && grep -qE "(✓ Loaded device:|Bridge started successfully)" "'"$temp_log"'" 2>/dev/null'; then
-    if ! kill -0 "$pid" 2>/dev/null; then
-      echo "Bridge process died during startup" >&2
-    else
-      echo "Bridge startup message not found within timeout" >&2
-    fi
-    cat "$temp_log" >&2
-    return 1
-  fi
-
-  echo "$pid"
-  return 0
+  _start_background_process bridge "$BRIDGE_READY_PATTERN" \
+    "$project_root/packages/mqtt-bridge/dist/esm/bin/ya-modbus-bridge.js" \
+    run \
+    --config "$config_file"
 }
 
 # Stop mqtt-bridge
@@ -579,59 +601,7 @@ start_mqtt_bridge() {
 #   $1 - pid: Process ID of the bridge to stop
 #
 stop_mqtt_bridge() {
-  local pid=$1
-  local pid_file="/tmp/bridge-$pid.pid"
-  local log_file_ref="/tmp/bridge-$pid-logfile.txt"
-
-  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-    kill "$pid" 2>/dev/null || true
-
-    # Wait for process to be fully reaped
-    local timeout=300  # 3 seconds with 10ms sleep
-    local elapsed=0
-    while [ $elapsed -lt $timeout ]; do
-      if ! kill -0 "$pid" 2>/dev/null; then
-        break
-      fi
-      # Check if it's a zombie process
-      if [ -f "/proc/$pid/stat" ]; then
-        local state=$(awk '{print $3}' "/proc/$pid/stat" 2>/dev/null)
-        if [ "$state" = "Z" ]; then
-          break
-        fi
-      fi
-      sleep 0.01
-      elapsed=$((elapsed + 1))
-    done
-
-    # Force kill if still running
-    if kill -0 "$pid" 2>/dev/null; then
-      if [ -f "/proc/$pid/stat" ]; then
-        local state=$(awk '{print $3}' "/proc/$pid/stat" 2>/dev/null)
-        if [ "$state" != "Z" ]; then
-          kill -9 "$pid" 2>/dev/null || true
-        fi
-      else
-        kill -9 "$pid" 2>/dev/null || true
-      fi
-    fi
-
-    wait "$pid" 2>/dev/null || true
-  fi
-
-  # Clean up temp log file
-  if [ -f "$log_file_ref" ]; then
-    local temp_log
-    temp_log=$(cat "$log_file_ref" 2>/dev/null)
-    if [ -n "$temp_log" ]; then
-      rm -f "$temp_log" 2>/dev/null || true
-    fi
-    rm -f "$log_file_ref"
-  fi
-
-  # Clean up PID file and symlink
-  rm -f "$pid_file"
-  rm -f "/tmp/bridge-$pid.log"
+  _stop_background_process bridge "$1"
 }
 
 # Assert bridge is running and healthy
@@ -656,7 +626,7 @@ assert_bridge_running() {
   fi
 
   # Check logs show successful startup
-  if [ -f "$log_file" ] && grep -qE "(✓ Loaded device:|Bridge started successfully)" "$log_file"; then
+  if [ -f "$log_file" ] && grep -qE "$BRIDGE_READY_PATTERN" "$log_file"; then
     return 0
   fi
 
@@ -671,32 +641,18 @@ assert_bridge_running() {
 #   $2 - expected: Pattern to search for (supports grep extended regex)
 #
 assert_bridge_log_contains() {
-  local pid=$1
-  local expected=$2
-  local log_file="/tmp/bridge-$pid.log"
-
-  if [ ! -f "$log_file" ]; then
-    echo "Bridge log file not found: $log_file" >&2
-    return 1
-  fi
-
-  if ! grep -qE "$expected" "$log_file"; then
-    echo "Expected bridge log to contain: $expected" >&2
-    echo "Bridge log contents:" >&2
-    cat "$log_file" >&2
-    return 1
-  fi
+  _assert_process_log_contains bridge "$1" "$2"
 }
 
 # Clean test artifacts
 clean_test_artifacts() {
   rm -f /tmp/mqtt-messages-*.txt 2>/dev/null || true
-  rm -f /tmp/emulator-*.log 2>/dev/null || true
-  rm -f /tmp/emulator-*.pid 2>/dev/null || true
-  rm -f /tmp/emulator-*-logfile.txt 2>/dev/null || true
-  rm -f /tmp/emulator-temp-*.log 2>/dev/null || true
-  rm -f /tmp/bridge-*.log 2>/dev/null || true
-  rm -f /tmp/bridge-*.pid 2>/dev/null || true
-  rm -f /tmp/bridge-*-logfile.txt 2>/dev/null || true
-  rm -f /tmp/bridge-temp-*.log 2>/dev/null || true
+
+  local prefix
+  for prefix in emulator bridge; do
+    rm -f /tmp/"$prefix"-*.log 2>/dev/null || true
+    rm -f /tmp/"$prefix"-*.pid 2>/dev/null || true
+    rm -f /tmp/"$prefix"-*-logfile.txt 2>/dev/null || true
+    rm -f /tmp/"$prefix"-temp-*.log 2>/dev/null || true
+  done
 }
