@@ -38,9 +38,32 @@ export interface MqttMessage {
 export type MessageHandler = (message: MqttMessage) => void
 
 export interface PollingConfig {
+  /**
+   * Time between the end of a read and the start of the next one, in milliseconds
+   * (100-86400000). In `continuous` mode it is the delay before the next read after a failed
+   * read, until `maxRetries` is reached. Default when `polling` is not set: 5000.
+   */
   interval: number
+  /**
+   * `interval` (default) waits `interval` ms after each read. `continuous` starts the next read
+   * as soon as the previous read worked.
+   */
   mode?: 'interval' | 'continuous'
+  /**
+   * Number of consecutive failed reads after which the device goes to the `error` state. From
+   * then on the bridge waits `retryBackoff` ms between reads instead of `interval` ms (0-100,
+   * default: 3).
+   *
+   * It is not a limit on retries: polling goes on with `retryBackoff` until a read works. With
+   * `3`, the bridge waits `interval` ms after the 1st and the 2nd failed read, and the 3rd
+   * failed read starts the backoff. `0` and `1` behave the same: the backoff starts after the
+   * first failed read.
+   */
   maxRetries?: number
+  /**
+   * Time to wait between reads in milliseconds while the device is in the `error` state
+   * (1-86400000, default: 2 × `interval`).
+   */
   retryBackoff?: number
 }
 
@@ -80,15 +103,15 @@ export interface DeviceStatus {
    *
    * - `disconnected` - device is disabled (`enabled: false`) and is not polled
    * - `connecting` - driver is loading
-   * - `connected` - driver is loaded; fewer than `polling.maxRetries` reads in a row failed
-   * - `error` - the last `polling.maxRetries` reads failed; polling goes on every
-   *   `polling.retryBackoff` ms
+   * - `connected` - driver is loaded and the device is not in the `error` state
+   * - `error` - `polling.maxRetries` consecutive reads failed (at least 1, so `0` works like
+   *   `1`); the bridge waits `polling.retryBackoff` ms between reads
    *
    * State changes:
    *
    * - `disconnected` → `connecting` (device added and enabled)
    * - `connecting` → `connected` (driver loaded)
-   * - `connected` → `error` (`polling.maxRetries` failed reads in a row)
+   * - `connected` → `error` (`polling.maxRetries` consecutive failed reads)
    * - `error` → `connected` (next successful read)
    */
   state: 'connecting' | 'connected' | 'disconnected' | 'error'

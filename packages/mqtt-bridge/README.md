@@ -181,8 +181,26 @@ Create a `config.json` file:
   - `"interval"` - Poll at fixed intervals (normal behavior)
   - `"continuous"` - Poll immediately after receiving response (minimal 1ms delay)
     In this mode `interval` is not the poll period. It is the retry delay after a failed read, until `maxRetries` is reached (and the base for the default backoff).
-- `maxRetries` (optional) - Failed reads in a row before the device goes to the `error` state and polling slows down to `retryBackoff` (0-100, default: 3)
-- `retryBackoff` (optional) - Time between polls in milliseconds after `maxRetries` failed reads in a row (default: 2 × `interval`)
+- `maxRetries` (optional) - Number of failed reads in a row after which the device goes to the `error` state and is polled every `retryBackoff` ms instead of every `interval` ms (0-100, default: 3). It is not a limit: the bridge never stops polling. See [Failed Reads and Backoff](#failed-reads-and-backoff).
+- `retryBackoff` (optional) - Time between polls in milliseconds while the device is in the `error` state (1-86400000, default: 2 × `interval`)
+
+### Failed Reads and Backoff
+
+The bridge counts the failed reads of a device in a row:
+
+- While the count is below `maxRetries`, the next read happens after `interval`.
+- When the count reaches `maxRetries`, the device goes to the `error` state. The next reads happen every `retryBackoff` ms.
+- The bridge keeps polling at `retryBackoff` until a read works. Then the count goes back to 0, the device goes back to the `connected` state, and polling uses `interval` again.
+
+`maxRetries` is the number of the failed read that starts the backoff. It is not the number of retries before the backoff:
+
+| `maxRetries`  | What happens                                                                                                                     |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `3` (default) | After the 1st and the 2nd failed read, the next read happens after `interval`. After the 3rd failed read, the backoff starts.    |
+| `1`           | There is no retry after `interval`. The backoff starts after the first failed read.                                              |
+| `0`           | The same as `1`. The backoff starts after the first failed read. A device that is working never uses the backoff, also with `0`. |
+
+The transport also retries every Modbus request by itself before a read counts as failed. This is separate from `maxRetries`.
 
 ## Device States
 
