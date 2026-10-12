@@ -3,6 +3,8 @@ name: Release
 on:
   push:
     branches: [main]
+  # Manual run on main: publishes versions that a failed run left unpublished
+  workflow_dispatch:
 
 concurrency:
   group: release-${{ github.ref }}
@@ -23,6 +25,7 @@ jobs:
     # Don't run on version bump commits to avoid infinite loop
     # Branch protection should require CI to pass before merge
     if: |
+      github.ref == 'refs/heads/main' &&
       !startsWith(github.event.head_commit.message, 'chore(release):') &&
       github.event.head_commit.author.username != 'github-actions[bot]'
 
@@ -68,8 +71,10 @@ jobs:
           # Capture current tags before versioning
           TAGS_BEFORE=$(git tag | wc -l)
 
-          # Run lerna version (exits 0 even if no changes)
-          npx lerna version --yes --no-private --sync-workspace-lock || EXIT_CODE=$?
+          # Exits 0 when nothing changed or when main moved on (EBEHIND).
+          # Any other error, such as a rejected push, stops the job, so a
+          # version that is not on main is never published.
+          npx lerna version --yes --no-private --sync-workspace-lock
 
           # Check if any new tags were created
           TAGS_AFTER=$(git tag | wc -l)
@@ -86,8 +91,27 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to npm
-        if: steps.version.outputs.has_changes == 'true'
-        run: npx lerna publish from-git --yes --no-private
+        # Runs also when nothing was versioned: from-package publishes every
+        # non-private package whose package.json version is not on npm yet,
+        # so it also publishes what an earlier failed run left unpublished.
+        run: |
+          # Publish only what lerna versioned on the latest main. When main
+          # moved on (EBEHIND), the run for the newer commit publishes.
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+            echo "ℹ️ main moved on, skipping publish in this run"
+            exit 0
+          fi
+
+          # lerna-lite publish does not check for uncommitted changes
+          git diff --exit-code --stat HEAD
+
+          npx lerna publish from-package --yes --no-private || {
+            echo "::warning::npm publish failed, retrying once in 30 seconds"
+            # Undo the package.json edits that lerna leaves after a failure
+            git checkout -- .
+            sleep 30
+            npx lerna publish from-package --yes --no-private
+          }
 
       - name: No changes detected
         if: steps.version.outputs.has_changes == 'false'
