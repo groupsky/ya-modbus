@@ -8,6 +8,8 @@ import { EventEmitter } from 'events'
 
 import { ServerTCP } from 'modbus-serial'
 
+import type { VerboseLogger } from '../verbose-logger.js'
+
 import { BaseTransport } from './base.js'
 import { createServiceVector, type RequestHandler } from './service-vector.js'
 
@@ -17,6 +19,17 @@ export interface TcpTransportConfig {
 }
 
 const INIT_TIMEOUT_MS = 10000
+
+// modbus-serial reports the errors of its net.Server (for example EADDRINUSE) as 'serverError'
+// and the errors of a client socket as 'socketError'. In practice it does not emit 'error'.
+const ERROR_EVENTS = ['serverError', 'socketError']
+
+// Calls EventEmitter's method, so it also works on a server object that has no removeAllListeners()
+function removeListeners(server: ServerTCP, ...events: string[]): void {
+  for (const event of events) {
+    EventEmitter.prototype.removeAllListeners.call(server, event)
+  }
+}
 
 /**
  * Close a server whose start() was cancelled by stop().
@@ -28,9 +41,7 @@ const INIT_TIMEOUT_MS = 10000
  * which never answers cannot block stop() for longer. A server that binds after the timeout
  * is still closed.
  *
- * The failure listeners stay on the abandoned server, so a late error is not thrown. They are
- * released together with the server. modbus-serial reports the errors of its net.Server as
- * 'serverError'.
+ * The failure listener stays on the abandoned server. It is released together with the server.
  */
 function closeWhenInitialized(server: ServerTCP): Promise<void> {
   const emitter = server as unknown as EventEmitter
@@ -49,7 +60,6 @@ function closeWhenInitialized(server: ServerTCP): Promise<void> {
     }
 
     emitter.once('initialized', onInitialized)
-    emitter.on('error', onFailed)
     emitter.on('serverError', onFailed)
   })
 }
@@ -60,12 +70,13 @@ function closeWhenInitialized(server: ServerTCP): Promise<void> {
  * The server of a start() that stop() cancelled is forgotten at once, and stop() waits until
  * it is closed (see closeWhenInitialized).
  *
- * start() and stop() remove the 'initialized' and 'error' listeners they added. The 'error'
- * listener stays on a running server until it is closed, so a later 'error' event is logged.
- * The listeners that modbus-serial registers on its own net.Server and sockets are not
- * reachable from here, and its close() removes only the 'data' listener. They are released
- * together with the server once nothing references it. Reusing a server instance would also
- * require removing them (see #253).
+ * start() and stop() remove the 'initialized' listener they added. The 'serverError' and
+ * 'socketError' listeners stay on a running server until it is closed, and the server keeps
+ * serving after an error. A later 'serverError' is always printed. A 'socketError' is a client
+ * connection that failed, and is logged only with the verbose logger. The listeners that
+ * modbus-serial registers on its own net.Server and sockets are not reachable from here, and
+ * its close() removes only the 'data' listener. They are released together with the server once
+ * nothing references it. Reusing a server instance would also require removing them (see #253).
  */
 export class TcpTransport extends BaseTransport {
   private config: TcpTransportConfig
@@ -75,7 +86,10 @@ export class TcpTransport extends BaseTransport {
   private initReject?: (reason: Error) => void
   private initTimeout?: NodeJS.Timeout
 
-  constructor(config: TcpTransportConfig) {
+  constructor(
+    config: TcpTransportConfig,
+    private logger?: VerboseLogger
+  ) {
     super()
     this.config = config
   }
@@ -101,6 +115,7 @@ export class TcpTransport extends BaseTransport {
 
     // Create server
     const server = new ServerTCP(serviceVector, options)
+    const emitter = server as unknown as EventEmitter
     this.server = server
 
     // Wait for initialized event with timeout
@@ -112,8 +127,7 @@ export class TcpTransport extends BaseTransport {
         isInitializing = false
         delete this.initReject
         delete this.initTimeout
-        EventEmitter.prototype.removeAllListeners.call(server, 'initialized')
-        EventEmitter.prototype.removeAllListeners.call(server, 'error')
+        removeListeners(server, 'initialized', ...ERROR_EVENTS)
         delete this.server
         reject(new Error('TCP server initialization timeout after 10s'))
       }, INIT_TIMEOUT_MS)
@@ -123,29 +137,29 @@ export class TcpTransport extends BaseTransport {
         delete this.initReject
         clearTimeout(this.initTimeout)
         delete this.initTimeout
-        // Keep the 'error' listener: without it an error of the running server is thrown
-        // as an uncaught exception (issue #544). stop() removes it.
-        EventEmitter.prototype.removeAllListeners.call(server, 'initialized')
+        // Keep the error listeners: they log the errors of the running server. stop() removes
+        // them.
+        removeListeners(server, 'initialized')
         this.started = true
         resolve()
       })
 
-      // Handle errors - cast to EventEmitter as modbus-serial types don't include 'error' event
-      ;(server as unknown as EventEmitter).on('error', (err: Error) => {
+      // A failed listen() is reported as 'serverError'. After start, the error is printed and
+      // the server keeps serving.
+      emitter.on('serverError', (err: Error) => {
         if (isInitializing) {
           isInitializing = false
           delete this.initReject
           clearTimeout(this.initTimeout)
           delete this.initTimeout
-          EventEmitter.prototype.removeAllListeners.call(server, 'initialized')
-          EventEmitter.prototype.removeAllListeners.call(server, 'error')
+          removeListeners(server, 'initialized', ...ERROR_EVENTS)
           delete this.server
           reject(err)
         } else {
-          // Log errors that occur after initialization
           console.error('TCP transport error:', err)
         }
       })
+      emitter.on('socketError', (err: Error) => this.logger?.logError('TCP socket', err))
     })
   }
 
@@ -159,10 +173,10 @@ export class TcpTransport extends BaseTransport {
     // Clean up event listeners FIRST to prevent race condition (issue #294)
     // This ensures 'initialized' can't fire after we reject the Promise
     if (this.server) {
-      EventEmitter.prototype.removeAllListeners.call(this.server, 'initialized')
-      // A running server keeps its 'error' listener until it is closed
+      removeListeners(this.server, 'initialized')
+      // A running server keeps its error listeners until it is closed
       if (!this.started) {
-        EventEmitter.prototype.removeAllListeners.call(this.server, 'error')
+        removeListeners(this.server, ...ERROR_EVENTS)
       }
     }
 
@@ -194,7 +208,7 @@ export class TcpTransport extends BaseTransport {
         if (err) {
           reject(err)
         } else {
-          EventEmitter.prototype.removeAllListeners.call(server, 'error')
+          removeListeners(server, ...ERROR_EVENTS)
           this.started = false
           delete this.server
           resolve()

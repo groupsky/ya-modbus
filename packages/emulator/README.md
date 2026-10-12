@@ -190,6 +190,8 @@ const emulator = new ModbusEmulator({
 [VERBOSE] WRITE slave=2 func=0x10 addr=0x0010 count=3 values=[0xAABB, 0xCCDD, 0xEEFF]
 ```
 
+On the TCP transport, a client connection that fails, for example because the client resets it, is logged as `[VERBOSE] ERROR TCP socket: read ECONNRESET`. The emulator keeps serving.
+
 Each log entry includes:
 
 - **Operation type**: READ or WRITE

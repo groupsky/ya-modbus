@@ -54,10 +54,13 @@ export class ModbusEmulator {
       if (!config.port || typeof config.port !== 'number') {
         throw new Error('TCP transport requires port')
       }
-      this.transport = new TcpTransport({
-        host: config.host,
-        port: config.port,
-      })
+      this.transport = new TcpTransport(
+        {
+          host: config.host,
+          port: config.port,
+        },
+        this.verboseLogger
+      )
     } else {
       throw new Error(`Unsupported transport: ${String(config.transport)}`)
     }

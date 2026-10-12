@@ -238,4 +238,29 @@ describe('VerboseLogger', () => {
       expect(output).toContain('values=[0x1234, 0x5678]')
     })
   })
+
+  describe('logError', () => {
+    let consoleErrorSpy: jest.SpyInstance
+
+    beforeEach(() => {
+      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+    })
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore()
+    })
+
+    test('logs the source and the message of the error when enabled', () => {
+      new VerboseLogger(true).logError('TCP socket', new Error('read ECONNRESET'))
+
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1)
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[VERBOSE] ERROR TCP socket: read ECONNRESET')
+    })
+
+    test('does not log when disabled', () => {
+      new VerboseLogger(false).logError('TCP socket', new Error('read ECONNRESET'))
+
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
+    })
+  })
 })
