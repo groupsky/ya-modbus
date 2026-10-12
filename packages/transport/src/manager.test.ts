@@ -1,3 +1,5 @@
+import { EventEmitter } from 'node:events'
+
 import type ModbusRTU from 'modbus-serial'
 
 import type { RTUConfig, TCPConfig } from './factory.js'
@@ -10,8 +12,10 @@ describe('TransportManager', () => {
   let mockClient1: jest.Mocked<ModbusRTU>
   let mockClient2: jest.Mocked<ModbusRTU>
 
+  // modbus-serial clients are event emitters ('error' and 'close' when the port fails)
   const createMockClient = (): jest.Mocked<ModbusRTU> => {
-    return {
+    return Object.assign(new EventEmitter(), {
+      isOpen: true,
       connectRTUBuffered: jest.fn().mockResolvedValue(undefined),
       connectTCP: jest.fn().mockResolvedValue(undefined),
       setID: jest.fn(),
@@ -27,7 +31,7 @@ describe('TransportManager', () => {
       writeRegisters: jest.fn(),
       writeCoil: jest.fn(),
       writeCoils: jest.fn(),
-    } as unknown as jest.Mocked<ModbusRTU>
+    }) as unknown as jest.Mocked<ModbusRTU>
   }
 
   beforeEach(() => {
@@ -628,6 +632,294 @@ describe('TransportManager', () => {
 
       // Should close the shared client only once
       expect(mockClient1.close).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('Lost Connections', () => {
+    // What modbus-serial emits when a write fails because the USB adapter is gone
+    const serialPortError = {
+      name: 'SerialPortError',
+      message: 'EIO: i/o error, write',
+      errno: 'ECONNREFUSED',
+    }
+    const rtuConfig: RTUConfig = {
+      port: '/dev/ttyUSB0',
+      baudRate: 9600,
+      dataBits: 8,
+      parity: 'even',
+      stopBits: 1,
+      slaveId: 1,
+      maxRetries: 1,
+    }
+    const reading = { data: [1], buffer: Buffer.from([0x00, 0x01]) }
+
+    let now: number
+    let ModbusRTUMock: jest.Mock
+
+    beforeEach(() => {
+      now = 1_000_000
+      jest.spyOn(performance, 'now').mockImplementation(() => now)
+      mockClient1.readHoldingRegisters.mockResolvedValue(reading)
+      mockClient2.readHoldingRegisters.mockResolvedValue(reading)
+      ModbusRTUMock = jest.requireMock('modbus-serial')
+    })
+
+    afterEach(() => {
+      jest.restoreAllMocks()
+    })
+
+    test('rejects requests with a clear error and does not reopen the port before the backoff', async () => {
+      const transport = await manager.getTransport(rtuConfig)
+
+      mockClient1.emit('error', serialPortError)
+      now += 999
+
+      await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject({
+        name: 'ConnectionLostError',
+        message: 'Connection to /dev/ttyUSB0 lost: EIO: i/o error, write',
+        errno: 'ECONNREFUSED',
+      })
+      expect(ModbusRTUMock).toHaveBeenCalledTimes(1)
+      expect(mockClient1.readHoldingRegisters).not.toHaveBeenCalled()
+    })
+
+    test('rejects a request in flight at once and releases the bus', async () => {
+      mockClient1.readHoldingRegisters.mockReturnValue(new Promise(() => {}))
+      const transport1 = await manager.getTransport(rtuConfig)
+      const transport2 = await manager.getTransport({ ...rtuConfig, slaveId: 2 })
+
+      const inFlight = transport1.readHoldingRegisters(0, 1)
+      const queued = transport2.readHoldingRegisters(0, 1)
+      await new Promise((resolve) => setImmediate(resolve))
+      expect(mockClient1.readHoldingRegisters).toHaveBeenCalledTimes(1)
+      mockClient1.emit('close')
+
+      await expect(inFlight).rejects.toMatchObject({
+        name: 'ConnectionLostError',
+        message: 'Connection to /dev/ttyUSB0 lost: port closed',
+      })
+      await expect(queued).rejects.toMatchObject({ name: 'ConnectionLostError' })
+    })
+
+    test('reopens the port on the next request after the backoff', async () => {
+      const transport = await manager.getTransport(rtuConfig)
+
+      mockClient1.emit('close')
+      now += 1000
+
+      await expect(transport.readHoldingRegisters(0, 1)).resolves.toEqual(reading.buffer)
+      expect(mockClient2.connectRTUBuffered).toHaveBeenCalledWith('/dev/ttyUSB0', {
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'even',
+        stopBits: 1,
+      })
+      expect(mockClient2.setTimeout).toHaveBeenCalledWith(1000)
+      expect(mockClient2.setID).toHaveBeenCalledWith(1)
+    })
+
+    test('shares the reopened port with the other devices on the bus', async () => {
+      const transport1 = await manager.getTransport(rtuConfig)
+      const transport2 = await manager.getTransport({ ...rtuConfig, slaveId: 2 })
+
+      mockClient1.emit('close')
+      now += 1000
+      await transport1.readHoldingRegisters(0, 1)
+      await transport2.readHoldingRegisters(0, 1)
+
+      expect(ModbusRTUMock).toHaveBeenCalledTimes(2)
+      expect(mockClient2.setID).toHaveBeenLastCalledWith(2)
+      expect(manager.getStats().totalTransports).toBe(1)
+    })
+
+    test('waits twice as long after each failed reopen, up to one minute', async () => {
+      const transport = await manager.getTransport(rtuConfig)
+      ModbusRTUMock.mockImplementation(() => {
+        const client = createMockClient()
+        client.connectRTUBuffered.mockRejectedValue(
+          new Error('Error: No such file or directory, cannot open /dev/ttyUSB0')
+        )
+        return client
+      })
+      mockClient1.emit('close')
+
+      let attempts = 0
+      for (const delay of [1000, 2000, 4000, 8000, 16000, 32000, 60000, 60000]) {
+        now += delay - 1
+        await expect(transport.readHoldingRegisters(0, 1)).rejects.toThrow()
+        expect(ModbusRTUMock).toHaveBeenCalledTimes(1 + attempts)
+
+        now += 1
+        await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject({
+          name: 'ConnectionLostError',
+          message:
+            'Connection to /dev/ttyUSB0 lost: Error: No such file or directory, cannot open /dev/ttyUSB0',
+        })
+        attempts++
+        expect(ModbusRTUMock).toHaveBeenCalledTimes(1 + attempts)
+      }
+    })
+
+    test('starts again with a short backoff after a request succeeds on the reopened port', async () => {
+      const transport = await manager.getTransport(rtuConfig)
+      const failingClient = createMockClient()
+      failingClient.connectRTUBuffered.mockRejectedValue(new Error('cannot open'))
+      const mockClient3 = createMockClient()
+      mockClient3.readHoldingRegisters.mockResolvedValue(reading)
+      ModbusRTUMock.mockReset()
+      ModbusRTUMock.mockReturnValueOnce(failingClient)
+        .mockReturnValueOnce(mockClient2)
+        .mockReturnValueOnce(mockClient3)
+
+      mockClient1.emit('close')
+      now += 1000
+      await expect(transport.readHoldingRegisters(0, 1)).rejects.toThrow('cannot open')
+      now += 2000
+      await transport.readHoldingRegisters(0, 1)
+      mockClient2.emit('close')
+      now += 1000
+
+      await expect(transport.readHoldingRegisters(0, 1)).resolves.toEqual(reading.buffer)
+      expect(mockClient3.readHoldingRegisters).toHaveBeenCalled()
+    })
+
+    // An adapter that opens but fails at once must not be reopened every second
+    test('waits twice as long when the reopened port is lost before a request succeeds', async () => {
+      const transport = await manager.getTransport(rtuConfig)
+      const mockClient3 = createMockClient()
+      mockClient3.readHoldingRegisters.mockResolvedValue(reading)
+      ModbusRTUMock.mockReset()
+      ModbusRTUMock.mockReturnValueOnce(mockClient2).mockReturnValueOnce(mockClient3)
+      mockClient2.readHoldingRegisters.mockImplementation(() => {
+        mockClient2.emit('close')
+        return new Promise(() => {})
+      })
+
+      mockClient1.emit('close')
+      now += 1000
+      await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject({
+        name: 'ConnectionLostError',
+      })
+      now += 1999
+      await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject({
+        name: 'ConnectionLostError',
+      })
+      expect(ModbusRTUMock).toHaveBeenCalledTimes(1)
+
+      now += 1
+      await expect(transport.readHoldingRegisters(0, 1)).resolves.toEqual(reading.buffer)
+      expect(ModbusRTUMock).toHaveBeenCalledTimes(2)
+    })
+
+    test('ignores events from the lost client after the port is reopened', async () => {
+      const transport = await manager.getTransport(rtuConfig)
+      mockClient1.emit('close')
+      now += 1000
+      await transport.readHoldingRegisters(0, 1)
+
+      mockClient1.emit('error', serialPortError)
+
+      await expect(transport.readHoldingRegisters(0, 1)).resolves.toEqual(reading.buffer)
+      expect(ModbusRTUMock).toHaveBeenCalledTimes(2)
+    })
+
+    // A TCP socket error only clears isOpen in modbus-serial, without an event
+    test('reopens the connection when a request finds it closed without an event', async () => {
+      const transport = await manager.getTransport({
+        host: '192.168.1.100',
+        slaveId: 1,
+        maxRetries: 1,
+      })
+      const portNotOpen = {
+        name: 'PortNotOpenError',
+        message: 'Port Not Open',
+        errno: 'ECONNREFUSED',
+      }
+      Object.assign(mockClient1, { isOpen: false })
+      mockClient1.readHoldingRegisters.mockRejectedValue(portNotOpen)
+
+      await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject(portNotOpen)
+      await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject({
+        name: 'ConnectionLostError',
+        message: 'Connection to 192.168.1.100:502 lost: Port Not Open',
+      })
+      now += 1000
+
+      await expect(transport.readHoldingRegisters(0, 1)).resolves.toEqual(reading.buffer)
+      expect(mockClient2.connectTCP).toHaveBeenCalledWith('192.168.1.100', { port: 502 })
+    })
+
+    test('keeps the code of the error when a TCP connection cannot be reopened', async () => {
+      const transport = await manager.getTransport({
+        host: '192.168.1.100',
+        slaveId: 1,
+        maxRetries: 1,
+      })
+      mockClient2.connectTCP.mockRejectedValue(
+        Object.assign(new Error('connect ECONNREFUSED 192.168.1.100:502'), {
+          code: 'ECONNREFUSED',
+          errno: -111,
+        })
+      )
+      mockClient1.emit('close')
+      now += 1000
+
+      await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject({
+        name: 'ConnectionLostError',
+        message: 'Connection to 192.168.1.100:502 lost: connect ECONNREFUSED 192.168.1.100:502',
+        code: 'ECONNREFUSED',
+        errno: -111,
+      })
+    })
+
+    // modbus-serial never calls back when it closes a TCP client whose socket is closed
+    test.each([
+      { situation: "emitted 'close'", lose: (client: EventEmitter) => client.emit('close') },
+      {
+        situation: 'closed without an event',
+        lose: (client: EventEmitter) => Object.assign(client, { isOpen: false }),
+      },
+    ])('closeAll does not wait for a TCP client that $situation', async ({ lose }) => {
+      await manager.getTransport({ host: '192.168.1.100', slaveId: 1 })
+      mockClient1.close.mockImplementation(() => undefined)
+      lose(mockClient1)
+
+      await expect(manager.closeAll()).resolves.toBeUndefined()
+    })
+
+    test('stops reopening the port after closeAll', async () => {
+      const transport = await manager.getTransport(rtuConfig)
+      mockClient1.emit('close')
+
+      await manager.closeAll()
+      now += 1000
+
+      await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject({
+        name: 'ConnectionLostError',
+      })
+      expect(ModbusRTUMock).toHaveBeenCalledTimes(1)
+    })
+
+    test('closes a client that finishes opening after closeAll', async () => {
+      const transport = await manager.getTransport(rtuConfig)
+      let finishOpening: () => void = () => undefined
+      mockClient2.connectRTUBuffered.mockReturnValue(
+        new Promise<void>((resolve) => {
+          finishOpening = resolve
+        })
+      )
+      mockClient1.emit('close')
+      now += 1000
+
+      const request = transport.readHoldingRegisters(0, 1)
+      await new Promise((resolve) => setImmediate(resolve))
+      expect(mockClient2.connectRTUBuffered).toHaveBeenCalled()
+      await manager.closeAll()
+      finishOpening()
+
+      await expect(request).rejects.toMatchObject({ name: 'ConnectionLostError' })
+      expect(mockClient2.close).toHaveBeenCalled()
+      expect(mockClient2.readHoldingRegisters).not.toHaveBeenCalled()
     })
   })
 })

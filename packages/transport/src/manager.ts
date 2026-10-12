@@ -3,14 +3,15 @@ import { Mutex } from 'async-mutex'
 import ModbusRTU from 'modbus-serial'
 
 import { DEFAULT_TIMEOUT_MS } from './client-config.js'
+import { ModbusConnection } from './connection.js'
 import type { RTUConfig, TCPConfig, TransportConfig } from './factory.js'
 import { SlaveTransport } from './slave-transport.js'
 
 /**
- * Connection pool entry with shared client and mutex
+ * Connection pool entry with shared connection and mutex
  */
 interface ConnectionEntry {
-  client: ModbusRTU // Shared modbus-serial client
+  connection: ModbusConnection // Shared modbus-serial client, reopened when lost
   mutex: Mutex // Shared mutex for serializing operations
   config: TransportConfig
   isRTU: boolean
@@ -35,6 +36,9 @@ export interface TransportStats {
  * - Returns SlaveTransport instances that set the slave ID before each operation
  * - Multiple devices on the same connection share a single client and mutex
  * - All operations are serialized using async-mutex to prevent race conditions
+ * - A lost connection (USB adapter unplugged, TCP connection closed) drops the client.
+ *   The first request after a backoff opens a new client for all devices on the
+ *   connection (see ModbusConnection)
  *
  * This architecture solves the multi-device problem:
  * - Each device gets its own SlaveTransport with its own slave ID
@@ -68,10 +72,11 @@ export class TransportManager {
     let entry = this.connections.get(key)
     if (!entry) {
       // Create new client for this physical connection
-      const client = isRTU ? await this.createRTUClient(config) : await this.createTCPClient(config)
+      const open = isRTU ? () => this.createRTUClient(config) : () => this.createTCPClient(config)
+      const client = await open()
 
       entry = {
-        client,
+        connection: new ModbusConnection(client, this.getTarget(config), open),
         mutex: new Mutex(),
         config,
         isRTU,
@@ -82,7 +87,7 @@ export class TransportManager {
     // Return a new SlaveTransport for this specific slave
     return new SlaveTransport(
       config.slaveId,
-      entry.client,
+      entry.connection,
       entry.mutex,
       config.maxRetries ?? 3,
       config.logger
@@ -110,9 +115,7 @@ export class TransportManager {
   async closeAll(): Promise<void> {
     const closePromises = Array.from(this.connections.values()).map(async (entry) => {
       try {
-        await new Promise<void>((resolve) => {
-          entry.client.close(resolve)
-        })
+        await entry.connection.close()
       } catch (error) {
         // Log but don't throw - we want to close all connections
         console.error('Error closing connection:', error)
@@ -139,6 +142,16 @@ export class TransportManager {
 
     // TCP config - safe to access host/port because isRTUConfig returned false
     return `tcp:${config.host}:${config.port ?? 502}`
+  }
+
+  /**
+   * Describe a physical connection for error messages
+   *
+   * @param config - Transport configuration
+   * @returns Serial port path for RTU, host:port for TCP
+   */
+  private getTarget(config: TransportConfig): string {
+    return this.isRTUConfig(config) ? config.port : `${config.host}:${config.port ?? 502}`
   }
 
   /**

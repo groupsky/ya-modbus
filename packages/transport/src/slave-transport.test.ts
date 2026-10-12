@@ -19,6 +19,8 @@ describe('SlaveTransport', () => {
       writeCoil: jest.fn(),
       writeCoils: jest.fn(),
       close: jest.fn(),
+      on: jest.fn(),
+      isOpen: true,
     } as unknown as jest.Mocked<ModbusRTU>
     mutex = new Mutex()
   })

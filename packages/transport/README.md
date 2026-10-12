@@ -7,6 +7,7 @@ Modbus transport implementations for RTU (serial) and TCP connections.
 - RTU (RS-485/serial) transport
 - TCP/IP transport
 - Automatic retry on transient failures
+- Survives a lost port (unplugged USB adapter) and opens it again
 - Factory for auto-detecting transport type
 - TypeScript support
 
@@ -68,6 +69,70 @@ try {
 ```
 
 `normalizeModbusError(error)` applies the same conversion to any caught value.
+
+### Lost connections
+
+When a USB serial adapter is unplugged or a TCP connection closes, `modbus-serial` emits a
+`close` event, and an `error` event when a write fails. The transports listen for these events,
+so the process does not crash. The connection is then lost:
+
+- A request in flight rejects at once. It does not wait for the response timeout.
+- Later requests reject at once, without using the port.
+- The error has the name `ConnectionLostError` and a message like
+  `Connection to /dev/ttyUSB0 lost: port closed`, or
+  `Connection to /dev/ttyUSB0 lost: EIO: i/o error, write` when a write failed. It keeps `errno`
+  and `code` of the underlying error, which is in `cause`.
+
+After a TCP socket error, `modbus-serial` emits no event. The next request fails with the error of
+`modbus-serial` (for example `Port Not Open`), and the connection is lost from then on.
+
+`createTransport` and `TransportManager` open the port again on a later request. There are no
+attempts in the background. The first request 1 second after the loss opens the port again. If
+this fails, the next attempt waits 2 seconds, then 4 seconds, and so on, up to 60 seconds.
+Requests between the attempts reject with the last error. The delay also doubles when the port
+opens but is lost again before a request succeeds. A successful request sets the delay back to
+1 second. `TransportManager` opens one new client for all devices on the bus.
+
+A short-lived program, like a CLI command, can stop at the first `ConnectionLostError`.
+
+```typescript
+try {
+  await transport.readHoldingRegisters(0, 10)
+} catch (error) {
+  if ((error as Error).name === 'ConnectionLostError') {
+    // port is gone, the transport opens it again on a later request
+  }
+}
+```
+
+A USB adapter can get a new name when it is plugged in again (`/dev/ttyUSB0` becomes
+`/dev/ttyUSB1`), but the port is opened again with the same path. Use a stable path:
+
+- `/dev/serial/by-id/...` for adapters with a unique serial number.
+- `/dev/serial/by-path/...` for adapters without a serial number (many CH340 adapters). This name
+  is the physical USB port, so it changes when the adapter moves to another USB port.
+
+To use your own `modbus-serial` client with the same handling, wrap it in a `ModbusConnection`:
+
+```typescript
+import { createModbusTransport, ModbusConnection, type OpenClient } from '@ya-modbus/transport'
+import ModbusRTU from 'modbus-serial'
+
+// Returns a new connected client
+const open: OpenClient = async () => {
+  const client = new ModbusRTU()
+  await client.connectRTUBuffered('/dev/ttyUSB0', { baudRate: 9600 })
+  client.setID(1)
+  client.setTimeout(1000)
+  return client
+}
+
+const connection = new ModbusConnection(await open(), '/dev/ttyUSB0', open)
+const transport = createModbusTransport(connection)
+```
+
+Without the `open` function, a lost connection works again only when you open the same client
+again.
 
 ## License
 

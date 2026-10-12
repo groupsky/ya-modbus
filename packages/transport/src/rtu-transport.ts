@@ -2,6 +2,7 @@ import type { BaudRate, DataBits, Parity, StopBits, Transport } from '@ya-modbus
 import ModbusRTU from 'modbus-serial'
 
 import { configureClient } from './client-config.js'
+import { ModbusConnection } from './connection.js'
 import { createModbusTransport } from './create-modbus-transport.js'
 import type { RetryLogger } from './retry.js'
 
@@ -32,21 +33,29 @@ export interface RTUConfig {
 /**
  * Create an RTU transport
  *
+ * When the serial port is lost (for example the USB adapter is unplugged), requests
+ * reject with a ConnectionLostError and the port is reopened on a later request
+ * (see ModbusConnection).
+ *
  * @param config - RTU configuration
  * @returns Transport implementation for RTU
  */
 export async function createRTUTransport(config: RTUConfig): Promise<Transport> {
-  const client = new ModbusRTU()
+  const open = async (): Promise<ModbusRTU> => {
+    const client = new ModbusRTU()
 
-  // Connect to serial port
-  await client.connectRTUBuffered(config.port, {
-    baudRate: config.baudRate,
-    dataBits: config.dataBits,
-    parity: config.parity,
-    stopBits: config.stopBits,
-  })
+    // Connect to serial port
+    await client.connectRTUBuffered(config.port, {
+      baudRate: config.baudRate,
+      dataBits: config.dataBits,
+      parity: config.parity,
+      stopBits: config.stopBits,
+    })
 
-  configureClient(client, config.slaveId, config.timeout)
+    configureClient(client, config.slaveId, config.timeout)
+    return client
+  }
 
-  return createModbusTransport(client, config.maxRetries, config.logger)
+  const connection = new ModbusConnection(await open(), config.port, open)
+  return createModbusTransport(connection, config.maxRetries, config.logger)
 }
