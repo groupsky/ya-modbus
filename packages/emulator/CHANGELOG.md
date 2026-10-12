@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.13.11](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.13.10...@ya-modbus/emulator@0.13.11) (2026-10-12)
+
+### Bug Fixes
+
+- **emulator:** close the TCP server when stop() interrupts start() ([#585](https://github.com/groupsky/ya-modbus/issues/585)) ([f5944dd](https://github.com/groupsky/ya-modbus/commit/f5944dd9bf1298e1148bb13e8ea3a32a8415d933)), closes [#545](https://github.com/groupsky/ya-modbus/issues/545) [#278](https://github.com/groupsky/ya-modbus/issues/278)
+
 ## [0.13.10](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.13.9...@ya-modbus/emulator@0.13.10) (2026-10-12)
 
 ### Bug Fixes
