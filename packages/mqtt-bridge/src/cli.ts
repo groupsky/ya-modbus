@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 
+import { getCallerPackageInfo } from '@ya-modbus/driver-loader'
 import chalk from 'chalk'
 import { Command, CommanderError } from 'commander'
 
 import type { MqttBridgeConfig } from './types.js'
 import { validateConfig } from './utils/config-validator.js'
 import { loadConfig } from './utils/config.js'
-import { getPackageInfo } from './utils/package-info.js'
 import { processUtils } from './utils/process.js'
 
 import { createBridge } from './index.js'
 
 export const program = new Command()
 
-const packageInfo = getPackageInfo()
+const packageInfo = getCallerPackageInfo()
 program.name('ya-modbus-bridge').description(packageInfo.description).version(packageInfo.version)
 
 // Error handler for command execution

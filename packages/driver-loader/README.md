@@ -167,6 +167,31 @@ await loadDriver({ driverPackage: 'my-driver' })
 console.log(getDriverCacheStats()) // { hits: 1, misses: 1, size: 1 }
 ```
 
+### `getCallerPackageInfo(): PackageInfo`
+
+Returns the `version` and `description` from the package.json of the package that contains the calling module. CLIs use it to report their own version without hardcoding it.
+
+It finds the caller from the call stack, so it works the same in the ESM and CommonJS builds of a package.
+
+It does not work when the caller and driver-loader are bundled into one file, because both then appear as the same file on the call stack.
+
+**Returns:**
+
+- `PackageInfo` object containing:
+  - `version`: Version from the closest package.json that has one
+  - `description`: Description from that package.json (empty string if missing)
+
+**Throws:**
+
+- Error if the calling module cannot be determined
+- Error if no package.json with a version is found above the calling module
+
+```typescript
+import { getCallerPackageInfo } from '@ya-modbus/driver-loader'
+
+program.version(getCallerPackageInfo().version)
+```
+
 ## Testing Utilities
 
 The package provides testing utilities for applications using driver-loader.

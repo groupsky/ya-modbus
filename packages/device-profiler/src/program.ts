@@ -4,6 +4,7 @@
  * CLI program for device profiler
  */
 
+import { getCallerPackageInfo } from '@ya-modbus/driver-loader'
 import type { DataBits, Parity, StopBits } from '@ya-modbus/driver-types'
 import { createTransport } from '@ya-modbus/transport'
 import { Command, Option } from 'commander'
@@ -34,7 +35,7 @@ export const program = new Command()
 program
   .name('ya-modbus-profile')
   .description('Profile Modbus devices by scanning register ranges')
-  .version('0.1.0')
+  .version(getCallerPackageInfo().version)
   .requiredOption('--port <port>', 'Serial port (e.g., /dev/ttyUSB0) or TCP host:port')
   .requiredOption('--slave-id <id>', 'Modbus slave ID (1-247)', parseNumber)
   .option('--type <type>', 'Register type: holding or input', 'holding')

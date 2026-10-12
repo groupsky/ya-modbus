@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { getCallerPackageInfo } from '@ya-modbus/driver-loader'
 import { Command } from 'commander'
 
 import { discoverCommand, type DiscoverOptions } from './commands/discover.js'
@@ -72,7 +73,7 @@ const program = new Command()
 program
   .name('ya-modbus')
   .description('CLI tool for testing and developing Modbus device drivers')
-  .version('0.0.0')
+  .version(getCallerPackageInfo().version)
   .addHelpText(
     'after',
     `

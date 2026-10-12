@@ -33,6 +33,7 @@ This package provides runtime driver loading and validation functionality for ya
 - **loader.ts**: Core driver loading functionality with caching
 - **config-validator.ts**: Validation of driver configuration exports
 - **testing.ts**: Test utilities for applications using driver-loader
+- **package-info.ts**: Reads the calling package's version and description (used by CLIs for `--version`)
 
 ## Usage
 

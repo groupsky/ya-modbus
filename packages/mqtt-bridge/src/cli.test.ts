@@ -1,5 +1,7 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals'
 
+import packageJson from '../package.json'
+
 import { main, program } from './cli.js'
 import * as configModule from './utils/config.js'
 import { processUtils, signalHandlers } from './utils/process.js'
@@ -9,7 +11,6 @@ import * as indexModule from './index.js'
 jest.mock('./utils/config.js')
 jest.mock('./utils/process.js')
 jest.mock('./index.js')
-jest.mock('./utils/package-info.js')
 
 /**
  * CLI integration tests for ya-modbus-bridge
@@ -156,8 +157,8 @@ describe('CLI - ya-modbus-bridge', () => {
       )
     })
 
-    it('should have correct version', () => {
-      expect(program.version()).toBe('0.0.0')
+    it('should have the version from package.json', () => {
+      expect(program.version()).toBe(packageJson.version)
     })
   })
 

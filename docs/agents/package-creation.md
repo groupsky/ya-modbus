@@ -50,6 +50,7 @@ ALL packages MUST use consistent tsconfig structure:
 - `bin` (if present): `"./dist/esm/bin/<name>.js"`
 - Bin files MUST include shebang (`#!/usr/bin/env node` as first line)
 - Build script MUST set executable permissions on bin files (ESM and CJS)
+- CLI `--version` MUST come from `getCallerPackageInfo()` of `@ya-modbus/driver-loader` (works in ESM and CJS builds), NEVER a hardcoded string. See: packages/cli/src/index.ts
 
 CRITICAL: Using `rootDir: "."` for all packages ensures consistent output structure and prevents configuration errors when adding bin executables.
 

@@ -522,7 +522,8 @@ Device drivers can be distributed as independent npm packages, enabling:
 - `driver-types`: No dependencies (pure types)
 - `driver-sdk`: Depends on `driver-types`
 - `driver-loader`: Depends on `driver-types`
-- `device-profiler`: Depends on `driver-types`, `transport`
+- `device-profiler`: Depends on `driver-loader`, `driver-types`, `transport`
+- `emulator`: Depends on `driver-loader`
 - `cli`: Depends on `driver-loader`, `driver-types`, `transport`
 - `mqtt-bridge`: Depends on `driver-loader`, `driver-types`, `transport`
 - Third-party drivers: Depend on `driver-sdk`, `driver-types`

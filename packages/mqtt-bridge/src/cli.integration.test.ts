@@ -14,7 +14,6 @@ import {
 } from './utils/test-utils.js'
 
 jest.mock('./utils/process.js')
-jest.mock('./utils/package-info.js')
 
 /**
  * CLI Integration Tests
