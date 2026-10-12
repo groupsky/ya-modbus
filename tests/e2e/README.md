@@ -159,7 +159,9 @@ See `tests/helpers.bash` for all available helpers:
 - `is_docker_service_healthy <service>` - Check Docker service health
 - `assert_success` - Assert command succeeded
 - `assert_failure` - Assert command failed
-- `assert_output_contains <string>` - Assert output contains string
+- `assert_output_contains <pattern>` - Assert output contains pattern (extended regex, escape special characters such as `(`, `)`, `[`, `]` and `.`)
+- `assert_output_not_contains <pattern>` - Assert output does not contain pattern
+- `assert_output_json <jq_filter>` - Assert output is JSON and the jq expression evaluates to true
 - `assert_file_contains <file> <string>` - Assert file contains string
 - `get_project_root` - Get project root directory
 - `clean_test_artifacts` - Clean temporary files

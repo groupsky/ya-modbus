@@ -276,11 +276,9 @@ teardown() {
 
   assert_success
 
-  # Validate JSON structure
-  echo "$output" | jq -e 'has("defaultConfig")'
-  echo "$output" | jq -e 'has("supportedConfig")'
-  echo "$output" | jq -e '.defaultConfig.baudRate == 9600'
-  echo "$output" | jq -e '.defaultConfig.parity == "even"'
+  # Validate JSON structure and default values
+  assert_output_json 'has("defaultConfig") and has("supportedConfig")
+    and .defaultConfig.baudRate == 9600 and .defaultConfig.parity == "even"'
 }
 
 @test "show-defaults works with single-device driver" {
@@ -299,7 +297,7 @@ teardown() {
   run node "$CLI_BIN" show-defaults
 
   assert_failure
-  assert_output_contains "driver"
+  assert_output_contains "package.json not found in current directory. Run this command from a driver package directory or specify --driver"
 }
 
 @test "show-defaults fails with non-existent driver" {
@@ -331,9 +329,8 @@ teardown() {
     --max-devices 1
 
   assert_success
-  assert_output_contains "Found 1 device"
-  assert_output_contains "Slave ID 1"
-  assert_output_contains "9600"
+  assert_output_contains "Discovery complete! Found 1 device\(s\)\."
+  assert_output_contains "Slave ID 1 @ 9600,E,8,1"
 }
 
 @test "discover finds multiple devices" {
@@ -347,9 +344,9 @@ teardown() {
     --max-devices 2
 
   assert_success
-  assert_output_contains "Found 2 device"
-  assert_output_contains "Slave ID 1"
-  assert_output_contains "Slave ID 2"
+  assert_output_contains "Discovery complete! Found 2 device\(s\)\."
+  assert_output_contains "Slave ID 1 @ 9600,"
+  assert_output_contains "Slave ID 2 @ 9600,"
 }
 
 @test "discover outputs JSON format" {
@@ -366,8 +363,7 @@ teardown() {
     --format json
 
   assert_success
-  echo "$output" | jq -e '.[0].slaveId == 1'
-  echo "$output" | jq -e '.[0].baudRate == 9600'
+  assert_output_json 'length == 1 and .[0].slaveId == 1 and .[0].baudRate == 9600'
 }
 
 @test "discover with verbose shows progress" {
@@ -400,8 +396,13 @@ teardown() {
     --format json
 
   assert_success
-  # Output should only be JSON, no progress messages
-  echo "$output" | jq -e 'type == "array"'
+  # Output should only be JSON, no banner, progress or summary messages
+  local progress_message
+  for progress_message in \
+    "Starting Modbus device discovery" "Testing" "Progress:" "Found device" "Discovery complete"; do
+    assert_output_not_contains "$progress_message"
+  done
+  assert_output_json 'type == "array" and length == 1'
 }
 
 @test "discover fails without --port" {
@@ -409,7 +410,7 @@ teardown() {
     --driver @ya-modbus/driver-ex9em
 
   assert_failure
-  assert_output_contains "port"
+  assert_output_contains "error: required option '-p, --port <path>' not specified"
 }
 
 @test "read command logs verbose READ operation to emulator" {
@@ -532,8 +533,7 @@ teardown() {
 
   assert_success
   # Should find slave ID 2 (possibly with multiple parity combinations)
-  echo "$output" | jq -e '[.[] | .slaveId] | unique | length == 1'
-  echo "$output" | jq -e '.[0].slaveId == 2'
+  assert_output_json '[.[] | .slaveId] | unique == [2]'
 }
 
 @test "discover with --id range filter" {
@@ -551,7 +551,7 @@ teardown() {
 
   assert_success
   # Should find both slave IDs
-  echo "$output" | jq -e '[.[] | .slaveId] | unique | sort == [1, 2]'
+  assert_output_json '[.[] | .slaveId] | unique | sort == [1, 2]'
 }
 
 @test "discover with comma-separated --id values" {
@@ -569,7 +569,7 @@ teardown() {
 
   assert_success
   # Should find both slave IDs
-  echo "$output" | jq -e '[.[] | .slaveId] | unique | sort == [1, 2]'
+  assert_output_json '[.[] | .slaveId] | unique | sort == [1, 2]'
 }
 
 @test "discover with --parity filter accepts single value" {
@@ -588,7 +588,7 @@ teardown() {
 
   assert_success
   # Should only find devices with even parity
-  echo "$output" | jq -e '[.[] | .parity] | unique == ["even"]'
+  assert_output_json '[.[] | .parity] | unique == ["even"]'
 }
 
 @test "discover with multiple --parity flags" {
@@ -608,7 +608,7 @@ teardown() {
 
   assert_success
   # Should find devices with either even or none parity
-  echo "$output" | jq -e '[.[] | .parity] | unique | sort | . == ["even", "none"] or . == ["even"] or . == ["none"]'
+  assert_output_json '[.[] | .parity] | unique | sort | . == ["even", "none"] or . == ["even"] or . == ["none"]'
 }
 
 @test "discover with comma-separated --parity values" {
@@ -627,7 +627,7 @@ teardown() {
 
   assert_success
   # Should find devices with either none or even parity
-  echo "$output" | jq -e '[.[] | .parity] | unique | sort | . == ["even", "none"] or . == ["even"] or . == ["none"]'
+  assert_output_json '[.[] | .parity] | unique | sort | . == ["even", "none"] or . == ["even"] or . == ["none"]'
 }
 
 @test "discover with --baud-rate filter accepts single value" {
@@ -646,7 +646,7 @@ teardown() {
 
   assert_success
   # Should only find devices with 9600 baud rate
-  echo "$output" | jq -e '[.[] | .baudRate] | unique == [9600]'
+  assert_output_json '[.[] | .baudRate] | unique == [9600]'
 }
 
 @test "discover with multiple --baud-rate flags" {
@@ -666,7 +666,7 @@ teardown() {
 
   assert_success
   # Should find devices with either 9600 or 19200 baud rate
-  echo "$output" | jq -e '[.[] | .baudRate] | unique | sort | . == [9600] or . == [9600, 19200] or . == [19200]'
+  assert_output_json '[.[] | .baudRate] | unique | sort | . == [9600] or . == [9600, 19200] or . == [19200]'
 }
 
 @test "discover with comma-separated --baud-rate values" {
@@ -685,7 +685,7 @@ teardown() {
 
   assert_success
   # Should find devices with either 9600 or 19200 baud rate
-  echo "$output" | jq -e '[.[] | .baudRate] | unique | sort | . == [9600] or . == [9600, 19200] or . == [19200]'
+  assert_output_json '[.[] | .baudRate] | unique | sort | . == [9600] or . == [9600, 19200] or . == [19200]'
 }
 
 @test "discover with --baud-rate range syntax" {
@@ -704,7 +704,7 @@ teardown() {
 
   assert_success
   # Should find devices within the baud rate range
-  echo "$output" | jq -e '[.[] | .baudRate] | all(. >= 4800 and . <= 19200)'
+  assert_output_json 'length > 0 and ([.[] | .baudRate] | all(. >= 4800 and . <= 19200))'
 }
 
 @test "discover with combined --id, --parity, and --baud-rate filters" {
@@ -724,9 +724,7 @@ teardown() {
 
   assert_success
   # All results should match the filters
-  echo "$output" | jq -e '[.[] | .slaveId] | unique == [1]'
-  echo "$output" | jq -e '[.[] | .parity] | unique == ["even"]'
-  echo "$output" | jq -e '[.[] | .baudRate] | unique == [9600]'
+  assert_output_json 'length > 0 and all(.slaveId == 1 and .parity == "even" and .baudRate == 9600)'
 }
 
 @test "discover with invalid --parity value shows error" {

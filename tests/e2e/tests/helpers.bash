@@ -315,12 +315,63 @@ assert_failure() {
   fi
 }
 
-# Assert output contains string
+# Assert output contains pattern
+#
+# Arguments:
+#   $1 - expected: Pattern to find in output (bash extended regex, so escape
+#        special characters such as ( ) [ ] . with a backslash to match them literally)
+#
 assert_output_contains() {
   local expected=$1
 
   if [[ ! "$output" =~ $expected ]]; then
     echo "Expected output to contain: $expected" >&2
+    echo "Actual output: $output" >&2
+    return 1
+  fi
+}
+
+# Assert output does not contain pattern
+#
+# Arguments:
+#   $1 - unexpected: Pattern that must not appear in output (bash extended regex)
+#
+assert_output_not_contains() {
+  local unexpected=$1
+
+  # [[ =~ ]] returns 0 for a match, 1 for no match and 2 for an invalid pattern
+  local match_status=0
+  [[ "$output" =~ $unexpected ]] || match_status=$?
+
+  if [ "$match_status" -eq 2 ]; then
+    echo "Invalid pattern: $unexpected" >&2
+    return 1
+  fi
+
+  if [ "$match_status" -eq 0 ]; then
+    echo "Expected output not to contain: $unexpected" >&2
+    echo "Actual output: $output" >&2
+    return 1
+  fi
+}
+
+# Assert output is JSON that satisfies a jq expression
+#
+# Validates the whole output with a single jq call. Combine several checks
+# with "and" in one expression instead of calling this helper repeatedly.
+#
+# Arguments:
+#   $1 - filter: jq expression that must evaluate to the boolean true
+#
+# Examples:
+#   assert_output_json 'type == "array" and length == 1'
+#   assert_output_json 'has("defaultConfig") and .defaultConfig.baudRate == 9600'
+#
+assert_output_json() {
+  local filter=$1
+
+  if ! echo "$output" | jq -e "($filter) == true" >/dev/null; then
+    echo "Expected output to be JSON matching: $filter" >&2
     echo "Actual output: $output" >&2
     return 1
   fi
