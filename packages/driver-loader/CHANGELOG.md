@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.11.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-loader@0.10.0...@ya-modbus/driver-loader@0.11.0) (2026-10-12)
+
+### Features
+
+- **driver-loader:** load local drivers from their package.json entry point ([#581](https://github.com/groupsky/ya-modbus/issues/581)) ([177bb89](https://github.com/groupsky/ya-modbus/commit/177bb89eab449a4ed55fe7ce37695e314cfdd358)), closes [#24](https://github.com/groupsky/ya-modbus/issues/24)
+
 # [0.10.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-loader@0.9.0...@ya-modbus/driver-loader@0.10.0) (2026-10-12)
 
 ### Features
