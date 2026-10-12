@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.13.12](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.13.11...@ya-modbus/emulator@0.13.12) (2026-10-12)
+
+### Bug Fixes
+
+- **emulator:** answer write errors and requests to unknown slave IDs ([#586](https://github.com/groupsky/ya-modbus/issues/586)) ([b90c9b1](https://github.com/groupsky/ya-modbus/commit/b90c9b1d3f4c1512d7d5a9175f2defa87045b94d)), closes [#561](https://github.com/groupsky/ya-modbus/issues/561)
+
 ## [0.13.11](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.13.10...@ya-modbus/emulator@0.13.11) (2026-10-12)
 
 ### Bug Fixes

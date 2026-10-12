@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/emulator",
-  "version": "0.13.11",
+  "version": "0.13.12",
   "description": "Software Modbus device emulator for testing drivers without physical hardware",
   "keywords": [
     "modbus",
