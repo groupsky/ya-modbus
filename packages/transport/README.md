@@ -207,6 +207,61 @@ When the first `open()` fails, you can pass its error instead of the client:
 error, and opens the port later in the same way. `connection.error` is the error while the
 connection is lost, and `undefined` while it works.
 
+## Finding serial ports
+
+`listSerialPorts()` lists the serial ports with their USB identity and their location (the
+physical USB port):
+
+```typescript
+import { listSerialPorts, matchSerialPorts } from '@ya-modbus/transport'
+
+const ports = await listSerialPorts()
+// [
+//   {
+//     path: '/dev/ttyUSB0',
+//     vendorId: '1a86',
+//     productId: '7523',
+//     locations: [
+//       'pci-0000:00:1a.0-usb-0:1.3:1.0-port0',
+//       'pci-0000:00:1a.0-usbv2-0:1.3:1.0-port0',
+//     ],
+//   },
+//   { path: '/dev/ttyS0', locations: [] },
+// ]
+```
+
+- `vendorId` and `productId` are 4 lowercase hex digits. They are missing for ports that are not
+  USB adapters.
+- `serialNumber` and `manufacturer` are there only when the adapter reports them, with the value
+  as the adapter reports it. Many CH340 adapters have no serial number.
+- `locations` are the names of the links in `/dev/serial/by-path` to the port. Newer systemd
+  versions make two links for the same USB port (`...-usb-...` and `...-usbv2-...`). The list is
+  empty when the port has no link, for example on other systems than Linux.
+
+On Linux the ports are read from `/sys/class/tty`. This starts no other program, so it also works
+in a hardened service. On other systems the list comes from the `serialport` package (through
+`modbus-serial`).
+
+In a container, `/sys` shows all serial ports of the host, also the ones that are not passed into
+the container. `/dev/serial/by-path` exists only when it is mounted into the container. Without
+it, `locations` are empty.
+
+`matchSerialPorts(ports, match)` returns the ports that match all given values. It does no I/O.
+`vendorId` and `productId` are required. Leave out `serialNumber` or `location` to match any.
+`location` is a name from `locations`, or the full `/dev/serial/by-path/...` path. Several
+identical adapters without a serial number all match, unless `location` selects one of them:
+
+```typescript
+const matches = matchSerialPorts(ports, {
+  vendorId: '1a86',
+  productId: '7523',
+  location: 'pci-0000:00:1a.0-usb-0:1.3:1.0-port0',
+})
+if (matches.length === 1) {
+  // matches[0].path is the port to open
+}
+```
+
 ## License
 
 GPL-3.0-or-later
