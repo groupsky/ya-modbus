@@ -25,6 +25,7 @@ export class RtuTransport extends BaseTransport {
   private requestHandler?: RequestHandler
   private server?: ServerSerial
   private started = false
+  private initReject?: (reason: Error) => void
 
   constructor(config: RtuTransportConfig) {
     super()
@@ -34,6 +35,11 @@ export class RtuTransport extends BaseTransport {
   async start(): Promise<void> {
     if (this.started) {
       throw new Error('Transport already started')
+    }
+
+    // A second start() would replace the server the first one is still waiting for
+    if (this.initReject) {
+      throw new Error('Transport already starting')
     }
 
     const serviceVector = createServiceVector(() => this.requestHandler)
@@ -58,6 +64,20 @@ export class RtuTransport extends BaseTransport {
         {
           ...options,
           openCallback: (err: Error | null) => {
+            if (this.server !== server) {
+              // stop() cancelled this start() while the port was opening (issue #297).
+              // Close a port that opened anyway, otherwise it stays open and locked.
+              if (!err) {
+                server.close((closeErr) => {
+                  if (closeErr) {
+                    console.error('RTU transport error:', closeErr)
+                  }
+                })
+              }
+              return
+            }
+
+            delete this.initReject
             if (err) {
               // Clean up error listener to prevent memory leak (issue #280)
               EventEmitter.prototype.removeAllListeners.call(server, 'error')
@@ -75,6 +95,7 @@ export class RtuTransport extends BaseTransport {
       )
 
       this.server = server
+      this.initReject = reject
 
       // Handle errors
       server.on('error', (err) => {
@@ -85,13 +106,28 @@ export class RtuTransport extends BaseTransport {
   }
 
   async stop(): Promise<void> {
-    if (!this.started || !this.server) {
+    // Clean up event listeners to prevent memory leaks (issue #253)
+    // Use EventEmitter.prototype since modbus-serial doesn't expose these methods in types
+    if (this.server) {
+      EventEmitter.prototype.removeAllListeners.call(this.server, 'error')
+    }
+
+    // If initialization is pending, reject it (issue #297)
+    if (this.initReject) {
+      this.initReject(new Error('Transport stopped during initialization'))
+      delete this.initReject
+    }
+
+    if (!this.server) {
       return
     }
 
-    // Clean up event listeners to prevent memory leaks (issue #253)
-    // Use EventEmitter.prototype since modbus-serial doesn't expose these methods in types
-    EventEmitter.prototype.removeAllListeners.call(this.server, 'error')
+    // The port of a server that has not started is not closed here. Forgetting the server
+    // makes openCallback close the port if it opens later.
+    if (!this.started) {
+      delete this.server
+      return
+    }
 
     return new Promise<void>((resolve, reject) => {
       if (!this.server) {
