@@ -1,5 +1,6 @@
 /**
- * Unplug and replug a serial adapter, simulated with a socat pseudo-terminal pair.
+ * A serial adapter, simulated with a socat pseudo-terminal pair: unplug and replug it, and open
+ * its port with other settings. Like a real serial port, an open port is locked.
  *
  * Killing socat removes both pseudo-terminals, like unplugging a USB adapter removes
  * its device node. Starting socat again with the same link names brings the port back.
@@ -46,7 +47,7 @@ async function tryRead(transport: Transport): Promise<string> {
   }
 }
 
-;(hasSocat ? describe : describe.skip)('serial adapter unplugged and plugged in again', () => {
+;(hasSocat ? describe : describe.skip)('serial adapter simulated with socat', () => {
   let dir: string
   let clientPath: string
   let devicePath: string
@@ -146,5 +147,26 @@ async function tryRead(transport: Transport): Promise<string> {
     await plugIn()
     await waitUntil(async () => (await tryRead(transport)) === 'ok')
     await expect(transport.readHoldingRegisters(0, 1)).resolves.toEqual(Buffer.from([0, 42]))
+  }, 20_000)
+
+  // The port stayed open and locked until closeAll(), so other settings could not open it
+  test('opens the port with other settings after the last transport on it is released', async () => {
+    const config = {
+      port: clientPath,
+      baudRate: 9600,
+      dataBits: 8,
+      parity: 'none',
+      stopBits: 1,
+      slaveId: 1,
+      timeout: 500,
+      maxRetries: 1,
+    } as const
+    const transport = await manager.getTransport(config)
+    await expect(transport.readHoldingRegisters(0, 1)).resolves.toEqual(Buffer.from([0, 42]))
+
+    await manager.releaseTransport(transport)
+    const other = await manager.getTransport({ ...config, baudRate: 19200 })
+
+    await expect(other.readHoldingRegisters(0, 1)).resolves.toEqual(Buffer.from([0, 42]))
   }, 20_000)
 })

@@ -8,6 +8,7 @@ Modbus transport implementations for RTU (serial) and TCP connections.
 - TCP/IP transport
 - Automatic retry on transient failures
 - Survives a lost port (unplugged USB adapter) and opens it again
+- Shares one connection between the devices on a bus, and closes it when the last one is removed
 - Factory for auto-detecting transport type
 - TypeScript support
 
@@ -42,6 +43,53 @@ const tcpTransport = await createTransport({
 // Use transport with driver
 await rtuTransport.readHoldingRegisters(0, 10)
 ```
+
+## Several devices on one connection
+
+`TransportManager` shares one connection between the devices on a serial port with the same
+serial settings, or on the same TCP host and port. The requests of these devices run one at a
+time.
+
+```typescript
+import { TransportManager } from '@ya-modbus/transport'
+
+const manager = new TransportManager()
+const bus = {
+  port: '/dev/ttyUSB0',
+  baudRate: 9600,
+  dataBits: 8,
+  parity: 'none',
+  stopBits: 1,
+} as const
+
+// Both devices use one open serial port
+const meter = await manager.getTransport({ ...bus, slaveId: 1 })
+const sensor = await manager.getTransport({ ...bus, slaveId: 2 })
+
+// The sensor still uses the port, so it stays open
+await manager.releaseTransport(meter)
+
+// The last device on the port: the port is closed
+await manager.releaseTransport(sensor)
+
+// At shutdown
+await manager.closeAll()
+```
+
+The life of a pooled connection:
+
+- `getTransport(config)` opens the connection for the first device on it, and returns a new
+  transport for each device. Devices that are added at the same time wait for the same open.
+- When you remove a device, call `releaseTransport(transport)`. The connection stays open while
+  other devices use it. When the last device releases its transport, the connection is closed
+  and removed from the pool. The promise resolves when the connection is closed, also when the
+  port was lost or was opening again at that moment. A later `getTransport()` waits until the
+  port is closed, and opens it again, also with other serial settings. An open serial port is
+  locked, so without the release other settings cannot open it.
+- Releasing a transport again does nothing. Do not use a transport after you release it: its
+  requests fail when its connection is closed.
+- `closeAll()` closes all connections and stops opening lost ports again. It waits for
+  connections that are opening or closing. Use it at shutdown.
 
 ## Error handling
 
