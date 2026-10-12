@@ -532,7 +532,7 @@ teardown() {
   assert_success
   EMULATOR_PID="$output"
 
-  # Scan device 2 (OR-WE-516)
+  # Scan device 2 (EX9EM)
   run timeout 30 node "$PROFILER_BIN" \
     --port /tmp/ttyV3 \
     --slave-id 2 \

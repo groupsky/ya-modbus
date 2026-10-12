@@ -27,7 +27,7 @@ All devices use the same timing, except the device in `tcp-slow-device.json`: `p
 - **Value**: the stored register value in decimal and in hex. The log shows the hex form with four digits (`0x08FC`).
 - **Decoded**: the value after the driver applies its scaling.
 
-The fixtures configure holding registers only. They have no input registers, coils or discrete inputs. The emulator answers a read of a register that is not configured with the value 0, not with a Modbus exception. The emulator serves only the register functions 0x03, 0x04, 0x06 and 0x10.
+The fixtures configure holding registers, except slave ID 1 in `port2-multi-device.json`, which also has input registers. No fixture has coils or discrete inputs. The emulator answers a read of a register that is not configured with the value 0, not with a Modbus exception. The emulator serves only the register functions 0x03, 0x04, 0x06 and 0x10.
 
 The `deviceType` and `description` fields in the JSON files are labels. The emulator ignores them.
 
@@ -50,6 +50,19 @@ Five fixtures emulate an EX9EM energy meter. The map comes from `packages/driver
 | 43      | `0x002B` | `device_address`        | 1-247                                                   |
 
 The layout is sparse. Registers 0-10, 42 and 43 are configured. Registers 11-41 and 44 and above are not configured and read as 0. The driver reads registers 0-10 in one request (`func=0x03 addr=0x0000 count=11`).
+
+## XYMD1 Register Map
+
+The XYMD1 sensor is emulated by slave ID 1 in `port2-multi-device.json`. The map comes from `packages/driver-xymd1/src/index.ts`. When the driver reads all data points together (`read --all`, the bridge), it reads input registers 1-2 in one request and holding registers 257-260 in one request.
+
+| Type    | Address | Hex      | Driver data point        | Encoding                                          |
+| ------- | ------- | -------- | ------------------------ | ------------------------------------------------- |
+| input   | 1       | `0x0001` | `temperature`            | value / 10, °C                                    |
+| input   | 2       | `0x0002` | `humidity`               | value / 10, %RH                                   |
+| holding | 257     | `0x0101` | `device_address`         | 1-247                                             |
+| holding | 258     | `0x0102` | `baud_rate`              | baud rate: 9600, 14400 or 19200                   |
+| holding | 259     | `0x0103` | `temperature_correction` | signed 16-bit (two's complement), value / 10, °C  |
+| holding | 260     | `0x0104` | `humidity_correction`    | signed 16-bit (two's complement), value / 10, %RH |
 
 ## Emulator Fixtures
 
@@ -96,15 +109,26 @@ All registers and the timing are the same as in `port1-single-device.json`, exce
 - **Ports**: emulator on `/tmp/ttyV2`, clients on `/tmp/ttyV3`
 - **Used by**: `02-emulator`, `03-mqtt-bridge`, `04-cli` and `05-device-profiler`
 
+Slave ID 1 (XYMD1), input registers (map in "XYMD1 Register Map"):
+
+| Address | Hex      | Value (dec) | Value (hex) | Field       | Decoded  |
+| ------- | -------- | ----------- | ----------- | ----------- | -------- |
+| 1       | `0x0001` | 250         | `0x00FA`    | Temperature | 25.0 °C  |
+| 2       | `0x0002` | 450         | `0x01C2`    | Humidity    | 45.0 %RH |
+
 Slave ID 1 (XYMD1), holding registers:
 
-| Address | Hex      | Value (dec) | Value (hex) |
-| ------- | -------- | ----------- | ----------- |
-| 0       | `0x0000` | 250         | `0x00FA`    |
-| 1       | `0x0001` | 450         | `0x01C2`    |
-| 2       | `0x0002` | 4500        | `0x1194`    |
+| Address | Hex      | Value (dec) | Value (hex) | Field                  | Decoded                                   |
+| ------- | -------- | ----------- | ----------- | ---------------------- | ----------------------------------------- |
+| 0       | `0x0000` | 250         | `0x00FA`    | Not read by the driver |                                           |
+| 1       | `0x0001` | 450         | `0x01C2`    | Not read by the driver |                                           |
+| 2       | `0x0002` | 4500        | `0x1194`    | Not read by the driver |                                           |
+| 257     | `0x0101` | 1           | `0x0001`    | Device address         | 1                                         |
+| 258     | `0x0102` | 9600        | `0x2580`    | Baud rate              | 9600 baud                                 |
+| 259     | `0x0103` | 5           | `0x0005`    | Temperature correction | +0.5 °C                                   |
+| 260     | `0x0104` | 65531       | `0xFFFB`    | Humidity correction    | -0.5 %RH (65531 - 65536 = -5, value / 10) |
 
-The XYMD1 driver does not read these registers. It reads input registers 1 and 2 (temperature and humidity, value / 10) and holding registers `0x0101` to `0x0104` (configuration). The fixture does not configure those, so they read as 0. The profiler tests scan holding registers 0-5 of this device. Registers 3-5 are not configured.
+The profiler tests scan holding registers 0-5 of this device. Registers 3-5 and all other registers that are not listed are not configured and read as 0. Coils and discrete inputs: none.
 
 Slave ID 2 (EX9EM), holding registers (map in "EX9EM Register Map"):
 

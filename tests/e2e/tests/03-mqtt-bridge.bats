@@ -144,6 +144,13 @@ teardown() {
   assert_success
   run assert_json_field "$MQTT_MESSAGES_FILE" "modbus/xymd1-1/data" ".data" "object"
   assert_success
+
+  # The xymd1 driver decodes input registers 1-2 (250 and 450) as 25.0 degC and 45.0 %RH
+  run wait_for 5 'assert_json_field "$MQTT_MESSAGES_FILE" "modbus/xymd1-1/data" ".data.temperature" 25'
+  assert_success
+  run wait_for 5 'assert_json_field "$MQTT_MESSAGES_FILE" "modbus/xymd1-1/data" ".data.humidity" 45'
+  assert_success
+
   run assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-2/data" ".deviceId" '"ex9em-2"'
   assert_success
   run assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-2/data" ".data" "object"

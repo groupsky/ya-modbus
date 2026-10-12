@@ -181,6 +181,25 @@ teardown() {
   assert_output_contains "230"
 }
 
+@test "can read all data points from xymd1 device on a multi-device bus" {
+  run start_test_emulator "fixtures/emulators/port2-multi-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run node "$CLI_BIN" read \
+    --port /tmp/ttyV3 \
+    --slave-id 1 \
+    --driver @ya-modbus/driver-xymd1 \
+    --all \
+    --format json
+
+  assert_success
+  # Temperature and humidity come from input registers 1-2, the rest from holding registers 0x0101-0x0104
+  assert_output_json '(.dataPoints | map({key: .id, value: .value}) | from_entries)
+    == {temperature: 25, humidity: 45, device_address: 1, baud_rate: 9600,
+        temperature_correction: 0.5, humidity_correction: -0.5}'
+}
+
 @test "can write device_address to ex9em device" {
   # Start emulator
   run start_test_emulator "fixtures/emulators/port1-single-device.json"
