@@ -132,6 +132,7 @@ After creating the package:
 - [ ] `npm run lint` from root includes the package
 - [ ] README.md contains essential usage information
 - [ ] `npm run validate:packages` passes (validates exports and types)
+- [ ] `npm run validate:dist-imports` passes (built files import only declared packages, including `tslib`)
 
 ## First-Time NPM Publishing
 

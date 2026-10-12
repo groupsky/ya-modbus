@@ -52,6 +52,8 @@ The Package Compatibility job in CI runs these steps in order:
 1. Build all packages (`npm run build`)
 2. Validate package exports with publint (`npm run validate:publint`)
 3. Validate TypeScript types with arethetypeswrong (`npm run validate:attw`)
-4. Run consumer examples (`examples/run-all.sh`)
+4. Check that built files import only declared packages (`npm run validate:dist-imports`)
+5. Run consumer examples (`examples/run-all.sh`)
 
 This provides layered verification: static analysis → type checking → runtime testing.
+The examples link the packages from the monorepo, so they cannot catch an undeclared dependency. Step 4 does.

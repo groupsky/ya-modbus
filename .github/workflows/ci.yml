@@ -158,5 +158,8 @@ jobs:
       - name: Check TypeScript types with arethetypeswrong
         run: npm run validate:attw
 
+      - name: Check that packages declare what their built files import
+        run: npm run validate:dist-imports
+
       - name: Run compatibility examples
         run: cd examples && ./run-all.sh

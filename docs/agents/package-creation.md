@@ -112,11 +112,12 @@ Before committing:
 5. Package added to root jest.config.js
 6. `npm run validate:packages` passes (for publishable packages)
 7. `npm run validate:bins` passes (for packages with `bin`; each bin MUST exit 0 on `--help` and print its package.json version on `--version`)
+8. `npm run validate:dist-imports` passes (built files import only declared packages; when the build imports `tslib`, it MUST be in `dependencies`)
 
 Before merging to main (for publishable packages):
 
-8. First-time npm publish completed manually (see `docs/PUBLISHING-SETUP.md`)
-9. Trusted publisher configured on npm.com
+9. First-time npm publish completed manually (see `docs/PUBLISHING-SETUP.md`)
+10. Trusted publisher configured on npm.com
 
 ## References
 
