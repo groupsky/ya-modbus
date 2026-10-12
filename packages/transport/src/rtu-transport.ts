@@ -1,7 +1,7 @@
 import type { BaudRate, DataBits, Parity, StopBits, Transport } from '@ya-modbus/driver-types'
 import ModbusRTU from 'modbus-serial'
 
-import { DEFAULT_TIMEOUT_MS } from './client-config.js'
+import { configureClient } from './client-config.js'
 import { createModbusTransport } from './create-modbus-transport.js'
 import type { RetryLogger } from './retry.js'
 
@@ -46,11 +46,7 @@ export async function createRTUTransport(config: RTUConfig): Promise<Transport> 
     stopBits: config.stopBits,
   })
 
-  // Set slave ID
-  client.setID(config.slaveId)
-
-  // Set timeout
-  client.setTimeout(config.timeout ?? DEFAULT_TIMEOUT_MS)
+  configureClient(client, config.slaveId, config.timeout)
 
   return createModbusTransport(client, config.maxRetries, config.logger)
 }
