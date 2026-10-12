@@ -67,6 +67,20 @@ describe('validateConfig', () => {
     expect(() => validateConfig(config)).toThrow('Invalid configuration')
   })
 
+  it('should accept reconnectPeriod of 24 hours', () => {
+    const config = { mqtt: { url: 'mqtt://localhost:1883', reconnectPeriod: 86400000 } }
+
+    expect(() => validateConfig(config)).not.toThrow()
+  })
+
+  // The MQTT client sets a timer with this value. setTimeout runs delays above 2^31-1 ms after
+  // 1 ms, which would make the client reconnect in a tight loop.
+  it.each([86400001, 2 ** 31 - 1, 2 ** 31])('should reject reconnectPeriod of %p ms', (ms) => {
+    const config = { mqtt: { url: 'mqtt://localhost:1883', reconnectPeriod: ms } }
+
+    expect(() => validateConfig(config)).toThrow('Reconnect period must not exceed 24 hours')
+  })
+
   it('should validate config with devices array', () => {
     const config = {
       mqtt: {

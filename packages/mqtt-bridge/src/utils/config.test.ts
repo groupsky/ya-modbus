@@ -118,6 +118,31 @@ describe('loadConfig', () => {
     })
   })
 
+  it('should accept reconnectPeriod of 24 hours', async () => {
+    mockedReadFile.mockResolvedValue(
+      JSON.stringify({ mqtt: { url: 'mqtt://localhost:1883', reconnectPeriod: 86400000 } })
+    )
+
+    const config = await loadConfig('/path/to/config.json')
+
+    expect(config.mqtt.reconnectPeriod).toBe(86400000)
+  })
+
+  // The MQTT client sets a timer with this value. setTimeout runs delays above 2^31-1 ms after
+  // 1 ms, which would make the client reconnect in a tight loop.
+  it.each([86400001, 2 ** 31 - 1, 2 ** 31])(
+    'should reject reconnectPeriod of %p ms',
+    async (ms) => {
+      mockedReadFile.mockResolvedValue(
+        JSON.stringify({ mqtt: { url: 'mqtt://localhost:1883', reconnectPeriod: ms } })
+      )
+
+      await expect(loadConfig('/path/to/config.json')).rejects.toThrow(
+        'Reconnect period must not exceed 24 hours'
+      )
+    }
+  )
+
   it('should load devices from config file', async () => {
     const configJson = JSON.stringify({
       mqtt: { url: 'mqtt://localhost:1883' },
