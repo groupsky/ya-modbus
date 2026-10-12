@@ -3,6 +3,7 @@ import {
   classifyError,
   DEFAULT_BATCH_SIZE,
   ErrorType,
+  formatJSON,
   formatProgress,
   formatSummary,
   MAX_PORT,
@@ -13,6 +14,7 @@ import {
   RegisterType,
   scanRegisters,
   testRead,
+  type JSONFormatterOptions,
 } from './index.js'
 
 describe('index exports', () => {
@@ -42,6 +44,21 @@ describe('index exports', () => {
 
   it('should export formatSummary', () => {
     expect(typeof formatSummary).toBe('function')
+  })
+
+  it('should export formatJSON', () => {
+    const options: JSONFormatterOptions = {
+      type: RegisterType.Holding,
+      startAddress: 0,
+      endAddress: 0,
+      batchSize: 10,
+      port: '/dev/ttyUSB0',
+    }
+
+    const parsed = JSON.parse(formatJSON([], options))
+
+    expect(parsed.scan).toEqual({ type: 'holding', startAddress: 0, endAddress: 0, batchSize: 10 })
+    expect(parsed.connection).toEqual({ port: '/dev/ttyUSB0' })
   })
 
   it('should export MIN_PORT', () => {
