@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.15.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.15.0...@ya-modbus/mqtt-bridge@0.15.1) (2026-10-12)
+
+### Bug Fixes
+
+- **transport:** close a pooled connection when its last device is removed ([#593](https://github.com/groupsky/ya-modbus/issues/593)) ([cd58d95](https://github.com/groupsky/ya-modbus/commit/cd58d95450cebaf2c2958d5d8585fee81190a7cf)), closes [#534](https://github.com/groupsky/ya-modbus/issues/534) [#534](https://github.com/groupsky/ya-modbus/issues/534)
+
 # [0.15.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.14.4...@ya-modbus/mqtt-bridge@0.15.0) (2026-10-12)
 
 ### Features
