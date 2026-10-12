@@ -111,7 +111,7 @@ Before committing:
 4. Coverage meets 95% thresholds
 5. Package added to root jest.config.js
 6. `npm run validate:packages` passes (for publishable packages)
-7. `npm run validate:bins` passes (for packages with `bin`; each bin MUST exit 0 on `--help`)
+7. `npm run validate:bins` passes (for packages with `bin`; each bin MUST exit 0 on `--help` and print its package.json version on `--version`)
 
 Before merging to main (for publishable packages):
 
