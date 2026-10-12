@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import chalk from 'chalk'
-import { Command } from 'commander'
+import { Command, CommanderError } from 'commander'
 
 import type { MqttBridgeConfig } from './types.js'
 import { validateConfig } from './utils/config-validator.js'
@@ -133,4 +133,20 @@ async function runCommand(options: RunCommandOptions): Promise<void> {
       processUtils.exit(1)
     })
   })
+}
+
+/**
+ * Bin entry point. exitOverride() makes commander throw on --help, --version
+ * and usage errors, so exit with commander's exit code instead of crashing.
+ */
+export async function main(argv?: readonly string[]): Promise<void> {
+  try {
+    await program.parseAsync(argv)
+  } catch (error) {
+    if (error instanceof CommanderError) {
+      processUtils.exit(error.exitCode)
+      return
+    }
+    throw error
+  }
 }

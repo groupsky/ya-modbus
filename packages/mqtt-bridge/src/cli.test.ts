@@ -1,6 +1,6 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals'
 
-import { program } from './cli.js'
+import { main, program } from './cli.js'
 import * as configModule from './utils/config.js'
 import { processUtils, signalHandlers } from './utils/process.js'
 
@@ -104,6 +104,44 @@ describe('CLI - ya-modbus-bridge', () => {
           -h, --help                    display help for command
         "
       `)
+    })
+  })
+
+  describe('main (bin entry point)', () => {
+    let stdoutWriteSpy: jest.SpyInstance
+    let stderrWriteSpy: jest.SpyInstance
+
+    beforeEach(() => {
+      stdoutWriteSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true)
+      stderrWriteSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    })
+
+    afterEach(() => {
+      stdoutWriteSpy.mockRestore()
+      stderrWriteSpy.mockRestore()
+    })
+
+    // exitOverride() makes commander throw on --help/--version; the bin used to
+    // crash with an uncaught CommanderError and exit code 1 instead of exiting 0
+    it.each([
+      [['--help'], 0],
+      [['--version'], 0],
+      [['run', '--help'], 0],
+      [['--unknown-option'], 1],
+    ])('%j exits with code %i', async (args, exitCode) => {
+      await main(['node', 'ya-modbus-bridge', ...args])
+
+      expect(processUtils.exit).toHaveBeenCalledTimes(1)
+      expect(processUtils.exit).toHaveBeenCalledWith(exitCode)
+    })
+
+    it('rethrows errors that do not come from commander', async () => {
+      const parseSpy = jest.spyOn(program, 'parseAsync').mockRejectedValueOnce(new Error('boom'))
+
+      await expect(main(['node', 'ya-modbus-bridge'])).rejects.toThrow('boom')
+      expect(processUtils.exit).not.toHaveBeenCalled()
+
+      parseSpy.mockRestore()
     })
   })
 

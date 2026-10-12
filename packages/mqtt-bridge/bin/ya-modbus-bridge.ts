@@ -7,6 +7,6 @@
  * The actual CLI implementation is in src/cli.ts
  */
 
-import { program } from '../src/cli.js'
+import { main } from '../src/cli.js'
 
-program.parse()
+void main()
