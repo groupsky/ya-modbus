@@ -20,6 +20,11 @@ class UnpluggablePort extends SilentPort {
     callback(null)
   }
 
+  close(callback: () => void): void {
+    this.isOpen = false
+    callback()
+  }
+
   /** What serialport does when a write fails because the USB adapter is gone */
   unplug(): void {
     this.isOpen = false
@@ -69,6 +74,18 @@ describe('when the serial port fails', () => {
     createModbusTransport(await openClient(port), 1)
 
     expect(() => port.unplug()).not.toThrow()
+  })
+
+  // Closing the client stops modbus-serial from forwarding the 'error' events of its port
+  test('does not throw an error that the port emits after the lost client is closed', async () => {
+    const port = new UnpluggablePort()
+    createModbusTransport(await openClient(port), 1)
+
+    // The port fails but stays open, so the lost client is closed
+    port.emit('error', new Error('EIO: i/o error, read'))
+    expect(port.isOpen).toBe(false)
+
+    expect(() => port.emit('error', new Error('EIO: i/o error, read'))).not.toThrow()
   })
 
   test('rejects a request in flight at once instead of waiting for the response timeout', async () => {

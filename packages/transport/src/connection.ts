@@ -2,6 +2,8 @@
  * Detection of lost connections and reopening of modbus-serial clients
  */
 
+import { EventEmitter } from 'node:events'
+
 import type ModbusRTU from 'modbus-serial'
 
 import { normalizeModbusError, type ModbusError } from './normalize-error.js'
@@ -25,6 +27,19 @@ export type OpenClient = () => Promise<ModbusRTU>
  */
 export function isConnectionLostError(error: unknown): error is ModbusError {
   return error instanceof Error && error.name === 'ConnectionLostError'
+}
+
+/**
+ * Close a client so that a late 'error' event cannot crash the process
+ *
+ * modbus-serial stops forwarding the 'error' events of its port when the client
+ * closes. An error that the port emits after that (for example from an unplugged
+ * adapter) would have no listener, so the port keeps one that ignores it.
+ */
+function closeClient(client: ModbusRTU, callback: () => void): void {
+  const port: unknown = Reflect.get(client, '_port')
+  if (port instanceof EventEmitter) port.on('error', () => undefined)
+  client.close(callback)
 }
 
 /** Marks ModbusConnection objects, the same for all copies of this package */
@@ -132,7 +147,7 @@ export class ModbusConnection {
 
     const client = this.client
     await new Promise<void>((resolve) => {
-      client.close(() => resolve())
+      closeClient(client, () => resolve())
     })
   }
 
@@ -152,7 +167,7 @@ export class ModbusConnection {
     for (const reject of this.inFlight) reject(this.lostError)
     // serialport closes the port on a disconnect. A port that is still open keeps
     // its lock, and the reopen would fail.
-    if (client.isOpen) client.close(() => undefined)
+    if (client.isOpen) closeClient(client, () => undefined)
   }
 
   /** Set the time of the next reopen attempt, and wait longer after that one */
@@ -196,7 +211,7 @@ export class ModbusConnection {
     }
     if (this.closed) {
       // close() was called while the client was opening
-      client.close(() => undefined)
+      closeClient(client, () => undefined)
       throw lostError
     }
 
