@@ -353,7 +353,7 @@ Use either `--port` (RTU) or `--host` (TCP), not both. The command fails with an
 **Common:**
 
 - `--slave-id <id>` - Modbus slave ID (1-247) **(required)**
-- `--timeout <ms>` - Response timeout in milliseconds (default: 1000)
+- `--timeout <ms>` - Response timeout in milliseconds (default: 1000). With `--host`, also the longest time to open the TCP connection
 - `--driver <package>` - Driver package name or short name (for example `xymd1`)
 - `--device <key>` - Device key for multi-device drivers (use `list-devices` to see available devices)
 

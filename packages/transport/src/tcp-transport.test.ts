@@ -44,7 +44,11 @@ describe('TCP Transport', () => {
 
     const transport = await createTCPTransport(config)
 
-    expect(mockModbus.connectTCP).toHaveBeenCalledWith('192.168.1.100', { port: 502 })
+    // The response timeout also ends a connect to a host that does not answer
+    expect(mockModbus.connectTCP).toHaveBeenCalledWith('192.168.1.100', {
+      port: 502,
+      timeout: 2000,
+    })
     expect(mockModbus.setID).toHaveBeenCalledWith(1)
     expect(mockModbus.setTimeout).toHaveBeenCalledWith(2000)
     expect(transport).toBeDefined()
@@ -60,7 +64,10 @@ describe('TCP Transport', () => {
 
     await createTCPTransport(config)
 
-    expect(mockModbus.connectTCP).toHaveBeenCalledWith('192.168.1.100', { port: 502 })
+    expect(mockModbus.connectTCP).toHaveBeenCalledWith('192.168.1.100', {
+      port: 502,
+      timeout: 1000,
+    })
   })
 
   test('should use default timeout if not specified', async () => {

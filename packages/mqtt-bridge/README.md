@@ -214,7 +214,7 @@ The fields depend on `type`. A field that does not belong to the type is ignored
 - `host` (required) - TCP host address
 - `port` (optional) - TCP port (1-65535, default: 502)
 - `slaveId` (required) - Modbus slave ID (0-247)
-- `timeout` (optional) - Time to wait for a response in milliseconds (1-86400000, default: 1000)
+- `timeout` (optional) - Time to wait for a response, and for the TCP connection to open, in milliseconds (1-86400000, default: 1000)
 
 **Polling configuration:**
 
