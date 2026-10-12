@@ -110,7 +110,7 @@ export class ModbusEmulator {
   }
 
   /**
-   * Parse register count from Modbus request
+   * Parse register count from Modbus request. A coil or discrete input counts like a register.
    */
   private parseRegisterCount(request: Buffer): number {
     if (request.length < 6) {
@@ -120,17 +120,22 @@ export class ModbusEmulator {
     const functionCode = request[1]
 
     // For read operations, register count is in bytes 4-5
-    if (functionCode === 0x03 || functionCode === 0x04) {
+    if (
+      functionCode === 0x01 ||
+      functionCode === 0x02 ||
+      functionCode === 0x03 ||
+      functionCode === 0x04
+    ) {
       return request.readUInt16BE(4)
     }
 
-    // For write single register, count is 1
-    if (functionCode === 0x06) {
+    // For write single register or coil, count is 1
+    if (functionCode === 0x05 || functionCode === 0x06) {
       return 1
     }
 
-    // For write multiple registers, count is in bytes 4-5
-    if (functionCode === 0x10) {
+    // For write multiple registers or coils, count is in bytes 4-5
+    if (functionCode === 0x0f || functionCode === 0x10) {
       return request.readUInt16BE(4)
     }
 

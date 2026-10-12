@@ -63,6 +63,72 @@ describe('ModbusEmulator verbose logging', () => {
       expect(output).toContain('values=[0x1234, 0x5678]')
     })
 
+    test.each([
+      {
+        name: 'read coils',
+        request: [0x01, 0x01, 0x00, 0x00, 0x00, 0x03],
+        func: '0x01',
+        values: '0x0001, 0x0000, 0x0001',
+      },
+      {
+        name: 'read discrete inputs',
+        request: [0x01, 0x02, 0x00, 0x00, 0x00, 0x03],
+        func: '0x02',
+        values: '0x0000, 0x0001, 0x0000',
+      },
+    ])('logs $name operation', async ({ request, func, values }) => {
+      emulator = new ModbusEmulator({ transport: 'memory', verbose: true })
+      const device = emulator.addDevice({ slaveId: 1 })
+      device.setCoil(0, true)
+      device.setCoil(2, true)
+      device.setDiscreteInput(1, true)
+      await emulator.start()
+
+      const transport = emulator.getTransport() as MemoryTransport
+      await transport.sendRequest(1, Buffer.from(request))
+
+      const output = String(
+        consoleLogSpy.mock.calls.find((call) => String(call[0]).includes('[VERBOSE]'))?.[0]
+      )
+      expect(output).toContain('READ')
+      expect(output).toContain(`func=${func}`)
+      expect(output).toContain('count=3')
+      expect(output).toContain(`values=[${values}]`)
+    })
+
+    test.each([
+      {
+        name: 'write single coil',
+        request: [0x01, 0x05, 0x00, 0x07, 0xff, 0x00],
+        func: '0x05',
+        count: 1,
+        values: '0x0001',
+      },
+      {
+        name: 'write multiple coils',
+        request: [0x01, 0x0f, 0x00, 0x07, 0x00, 0x03, 0x01, 0b00000101],
+        func: '0x0F',
+        count: 3,
+        values: '0x0001, 0x0000, 0x0001',
+      },
+    ])('logs $name operation', async ({ request, func, count, values }) => {
+      emulator = new ModbusEmulator({ transport: 'memory', verbose: true })
+      emulator.addDevice({ slaveId: 1 })
+      await emulator.start()
+
+      const transport = emulator.getTransport() as MemoryTransport
+      await transport.sendRequest(1, Buffer.from(request))
+
+      const output = String(
+        consoleLogSpy.mock.calls.find((call) => String(call[0]).includes('[VERBOSE]'))?.[0]
+      )
+      expect(output).toContain('WRITE')
+      expect(output).toContain(`func=${func}`)
+      expect(output).toContain('addr=0x0007')
+      expect(output).toContain(`count=${count}`)
+      expect(output).toContain(`values=[${values}]`)
+    })
+
     test('logs read input registers operation', async () => {
       emulator = new ModbusEmulator({ transport: 'memory', verbose: true })
       const device = emulator.addDevice({ slaveId: 1 })

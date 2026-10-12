@@ -16,7 +16,10 @@ export class VerboseLogger {
       return
     }
 
-    const values = this.parseReadResponse(response)
+    const values =
+      functionCode === 0x01 || functionCode === 0x02
+        ? this.parseBitResponse(response, count)
+        : this.parseReadResponse(response)
     const formattedValues = this.formatValues(values)
     console.log(this.formatMessage('READ', slaveId, functionCode, address, count, formattedValues))
   }
@@ -53,6 +56,20 @@ export class VerboseLogger {
     formattedValues: string
   ): string {
     return `[VERBOSE] ${operation} slave=${slaveId} func=${this.formatHex(functionCode, 2)} addr=${this.formatHex(address, 4)} count=${count} values=[${formattedValues}]`
+  }
+
+  // Response format: [slaveId, functionCode, byteCount, ...data], the lowest address in the
+  // least significant bit of the first data byte. Gives one value, 0 or 1, per bit.
+  private parseBitResponse(response: Buffer, count: number): number[] {
+    const values: number[] = []
+    for (let i = 0; i < count; i++) {
+      const byte = response[3 + (i >> 3)]
+      if (byte === undefined) {
+        break
+      }
+      values.push((byte >> (i & 7)) & 1)
+    }
+    return values
   }
 
   private parseReadResponse(response: Buffer): number[] {
