@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.10.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/transport@0.9.1...@ya-modbus/transport@0.10.0) (2026-10-12)
+
+### Features
+
+- **transport:** survive a lost serial port and reopen it after a backoff ([#549](https://github.com/groupsky/ya-modbus/issues/549)) ([b5b3e34](https://github.com/groupsky/ya-modbus/commit/b5b3e34e3f219b6600cd975f98680adebafe3093)), closes [#517](https://github.com/groupsky/ya-modbus/issues/517)
+
 ## [0.9.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/transport@0.9.0...@ya-modbus/transport@0.9.1) (2026-10-12)
 
 ### Bug Fixes
