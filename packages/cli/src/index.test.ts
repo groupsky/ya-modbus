@@ -890,7 +890,8 @@ describe('CLI Entry Point - Integration Tests', () => {
           --max-devices <count>   Maximum number of devices to find (default: 1, use 0
                                   for unlimited)
           --id <spec>             Limit search to specific slave IDs (e.g., "1,2,3-5").
-                                  Can be specified multiple times
+                                  Dramatically reduces scan time. Can be specified
+                                  multiple times
           --parity <spec>         Limit search to specific parities (e.g., "none,even").
                                   Can be specified multiple times
           --baud-rate <spec>      Limit search to specific baud rates (e.g.,

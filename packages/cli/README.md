@@ -270,7 +270,7 @@ ya-modbus discover \
 
 ```bash
 # When you know the device configuration, combine filters dramatically
-# reduces scan time. Example: ~30 seconds vs 25 minutes
+# reduces scan time. Example: ~5 seconds vs 25 minutes
 ya-modbus discover \
   --port /dev/ttyUSB0 \
   --id 1-5 \
@@ -282,12 +282,12 @@ ya-modbus discover \
 
 - `--strategy <type>` - Discovery strategy: `quick` (default) or `thorough`
   - **Quick**: Tests SUPPORTED_CONFIG params or common Modbus parameters
-  - **Thorough**: Tests all standard Modbus parameters (8 baud rates, 3 parity modes, 247 addresses)
+  - **Thorough**: Tests all standard Modbus parameters (8 baud rates, 3 parity modes, 2 data bit and 2 stop bit options, 247 addresses)
 - `--driver <package>` - Driver package to use for parameter prioritization (auto-detects from cwd if not specified)
 - `--timeout <ms>` - Response timeout in milliseconds (default: 1000)
 - `--delay <ms>` - Delay between attempts in milliseconds (default: 100)
 - `--max-devices <count>` - Maximum number of devices to find (default: 1, use 0 for unlimited)
-- `--id <spec>` - Limit search to specific slave IDs (e.g., "1,2,3-5"). Can be specified multiple times
+- `--id <spec>` - Limit search to specific slave IDs (e.g., "1,2,3-5"). Dramatically reduces scan time. Can be specified multiple times
 - `--parity <spec>` - Limit search to specific parities (e.g., "none,even"). Can be specified multiple times
 - `--baud-rate <spec>` - Limit search to specific baud rates (e.g., "9600,19200" or "9600-38400"). Can be specified multiple times
 - `--verbose` - Show detailed progress with current parameters being tested
@@ -322,14 +322,14 @@ Discovery complete! Found 1 device(s).
 
 Based on real-world testing with default settings (timeout=1000ms, delay=100ms):
 
-- **Quick with driver**: ~25 minutes (1,482 combinations typical, ~1.0s per combination)
-- **Quick without driver**: ~50 minutes (2,964 combinations, ~1.0s per combination)
-- **Thorough**: ~6.5 hours (23,712 combinations, ~1.0s per combination)
+- **Quick with driver**: ~25 minutes (1,482 combinations for XYMD1, varies with the driver's SUPPORTED_CONFIG, ~1.0s per combination)
+- **Quick without driver**: ~25 minutes (1,482 combinations, ~1.0s per combination)
+- **Thorough**: ~6.6 hours (23,712 combinations, ~1.0s per combination)
 
 **Performance Tips:**
 
 - **Reduce timeout** for faster scans: `--timeout 500` achieves ~0.5s per combination (2x faster)
-- Use `--driver` to prioritize likely parameters and reduce search space
+- Use `--driver` to test the device's default settings first and limit the search to its supported parameters
 - Use `--max-devices 1` (default) to stop after finding first device
 - Further reduce `--timeout` if your devices respond quickly (e.g., `--timeout 100` for local devices)
 - Increase `--delay` if you experience bus contention
@@ -683,12 +683,94 @@ npm install @ya-modbus/driver-xymd1
 
 Or use auto-detect mode from the driver package directory.
 
+If the driver is found but rejected with an `Invalid DEFAULT_CONFIG`, `Invalid SUPPORTED_CONFIG` or `Invalid baud rate` error, see [Driver Configuration Errors](#driver-configuration-errors).
+
 ### Timeout Errors
 
 - Check physical connection (RS-485 termination, wiring)
 - Verify slave ID is correct
 - Try slower baud rate (e.g., 4800)
 - Increase timeout: `--timeout 2000`
+
+### Driver Configuration Errors
+
+The CLI checks the `DEFAULT_CONFIG` and `SUPPORTED_CONFIG` exports of a driver when it loads the driver. See [Driver Defaults and Validation](#driver-defaults-and-validation) for how they are used and the [Driver Development Guide](../../docs/DRIVER-DEVELOPMENT.md#3-implement-drivers) for how to export them.
+
+**Invalid DEFAULT_CONFIG**
+
+```
+Error: Invalid DEFAULT_CONFIG: baudRate must be a number, got string.
+Fix: export const DEFAULT_CONFIG = { baudRate: 9600, ... } // number, not string
+```
+
+The driver exports a `DEFAULT_CONFIG` value with the wrong type. Fix it in the driver:
+
+```typescript
+// Wrong
+export const DEFAULT_CONFIG = { baudRate: '9600' }
+
+// Correct
+export const DEFAULT_CONFIG = { baudRate: 9600 }
+```
+
+**Invalid SUPPORTED_CONFIG**
+
+```
+Error: Invalid SUPPORTED_CONFIG: validBaudRates must be an array, got number.
+Fix: export const SUPPORTED_CONFIG = { validBaudRates: [9600, 19200], ... }
+```
+
+The driver exports a `SUPPORTED_CONFIG` with the wrong structure. Every `valid*` field must be an array. Fix it in the driver:
+
+```typescript
+// Wrong
+export const SUPPORTED_CONFIG = { validBaudRates: 9600 }
+
+// Correct
+export const SUPPORTED_CONFIG = { validBaudRates: [9600, 14400, 19200] }
+```
+
+**Value not supported by the driver**
+
+```
+Error: Invalid baud rate 115200. This driver supports: 9600, 14400, 19200 (default: 9600)
+```
+
+There are two possible causes:
+
+- You passed an option that the driver does not support (here `--baud-rate 115200`). Use one of the listed values.
+- The driver's `DEFAULT_CONFIG` has a value that is not in its `SUPPORTED_CONFIG`. The CLI then prints a warning when it loads the driver, and fails with the same kind of error when it applies the defaults:
+
+  ```
+  Warning: Driver DEFAULT_CONFIG has configuration inconsistencies:
+    - baudRate: 38400 is not in validBaudRates: [9600, 14400, 19200]
+    This may indicate a driver authoring error
+  ```
+
+  Pass a supported value on the command line (for example `--baud-rate 9600`) to continue, and ask the driver author to fix the defaults:
+
+  ```typescript
+  export const SUPPORTED_CONFIG = {
+    validBaudRates: [9600, 14400, 19200],
+  }
+
+  export const DEFAULT_CONFIG = {
+    baudRate: 9600, // Must be in validBaudRates
+  }
+  ```
+
+**Inspect the driver configuration**
+
+Use `show-defaults` to see what a driver exports:
+
+```bash
+# Installed driver
+ya-modbus show-defaults --driver @ya-modbus/driver-xymd1
+
+# Local development driver (auto-detects from the current directory)
+cd packages/my-driver
+ya-modbus show-defaults
+```
 
 ## See Also
 

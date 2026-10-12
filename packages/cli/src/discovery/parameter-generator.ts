@@ -25,8 +25,10 @@ export interface ParameterCombination {
 /**
  * Discovery strategy type
  *
- * - quick: Tests only driver-supported parameters (5-10 minutes)
- * - thorough: Tests all standard Modbus parameters (30-60 minutes)
+ * - quick: Tests common parameters, or the driver-supported parameters when a driver is given
+ *   (1,482 combinations, ~25 minutes at the default 1000ms timeout without a driver)
+ * - thorough: Tests all standard Modbus parameters
+ *   (23,712 combinations, ~6.6 hours at the default 1000ms timeout without a driver)
  */
 export type DiscoveryStrategy = 'quick' | 'thorough'
 

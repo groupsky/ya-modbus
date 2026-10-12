@@ -41,8 +41,8 @@ This will:
   - Prioritizes DEFAULT_CONFIG values
 
 - `--strategy <type>` - Discovery strategy (default: `quick`)
-  - `quick`: Tests only common parameters (5-10 minutes)
-  - `thorough`: Tests all Modbus parameters (30-60 minutes)
+  - `quick`: Tests common parameters, or the driver's supported parameters (~25 minutes without a driver, with default settings)
+  - `thorough`: Tests all standard Modbus parameters (~6.6 hours without a driver, with default settings)
 
 - `--timeout <ms>` - Response timeout in milliseconds (default: `1000`)
   - Lower values scan faster but may miss slow devices
@@ -114,13 +114,15 @@ This will:
 
 - Slave IDs: 1-247 (all addresses)
 - Baud rates: 9600, 19200 (most common)
-- Parity: None, Even
-- Data bits: 7, 8
-- Stop bits: 1, 2
+- Parity: None, Even, Odd
+- Data bits: 8
+- Stop bits: 1
 
-**Time estimate:** 5-10 minutes for full scan
+**Combinations:** 247 × 2 × 3 × 1 × 1 = 1,482
 
-**With driver:** Even faster - only tests SUPPORTED_CONFIG parameters
+**Time estimate:** ~25 minutes for a full scan (1,482 × 1 second timeout)
+
+**With driver:** Tests only the SUPPORTED_CONFIG parameters, starting with DEFAULT_CONFIG. The scan is shorter than the default quick scan only when the driver supports fewer parameter combinations.
 
 ### Thorough Strategy
 
@@ -138,11 +140,15 @@ This will:
 - Data bits: 7, 8
 - Stop bits: 1, 2
 
-**Time estimate:** 30-60 minutes for full scan
+**Combinations:** 247 × 8 × 3 × 2 × 2 = 23,712
+
+**Time estimate:** ~6.6 hours for a full scan (23,712 × 1 second timeout)
+
+**With driver:** Tests only the SUPPORTED_CONFIG parameters (see [Using with Drivers](#using-with-drivers))
 
 ## Using with Drivers
 
-Specifying a driver package significantly improves discovery speed and accuracy:
+Specifying a driver package limits the scan to the parameters the device supports and tests its factory defaults first:
 
 ```bash
 ya-modbus discover --port /dev/ttyUSB0 --driver @ya-modbus/driver-xymd1
@@ -150,22 +156,34 @@ ya-modbus discover --port /dev/ttyUSB0 --driver @ya-modbus/driver-xymd1
 
 **Benefits:**
 
-1. **Faster scans** - Only tests parameters from SUPPORTED_CONFIG
+1. **Smaller scans** - Only tests parameters from SUPPORTED_CONFIG (with `--strategy thorough`, the XYMD1 driver reduces 23,712 combinations to 1,482)
 2. **Prioritized defaults** - Tests DEFAULT_CONFIG first
 3. **Guaranteed compatibility** - Only tests parameters the device supports
 
 **Example with XYMD1 driver:**
 
-Without driver:
+XYMD1 supports baud rates 9600, 14400, 19200, parity even and none, 8 data bits and 1 stop bit.
 
-- Tests 2,964 combinations (9600, 19200 × 247 addresses × other params)
-- Time: ~8 minutes
+Without driver (quick strategy):
 
-With driver:
+- Tests 1,482 combinations (2 baud rates × 3 parities × 247 addresses)
+- Time: ~25 minutes worst case
+
+With driver (quick strategy):
+
+- Tests 1,482 combinations (3 baud rates × 2 parities × 247 addresses)
+- Tries DEFAULT_CONFIG first (finds device in <10 seconds if using defaults)
+- Time: ~25 minutes worst case
+
+Without driver (thorough strategy):
+
+- Tests 23,712 combinations (8 baud rates × 3 parities × 2 data bits × 2 stop bits × 247 addresses)
+- Time: ~6.6 hours worst case
+
+With driver (thorough strategy):
 
 - Tests 1,482 combinations (only supported params)
-- Tries DEFAULT_CONFIG first (finds device in <10 seconds if using defaults)
-- Time: ~4 minutes worst case
+- Time: ~25 minutes worst case
 
 ## Output Formats
 
@@ -226,16 +244,18 @@ Discovery time depends on several factors:
 
 **Formula:** `Time ≈ (combinations × timeout) / 1000` seconds
 
-**Examples:**
+**Combinations:** `slave IDs × baud rates × parities × data bits × stop bits`
+
+**Examples** (driver rows use the XYMD1 driver):
 
 | Strategy | Driver | ID Filter | Combinations | Timeout | Est. Time  |
 | -------- | ------ | --------- | ------------ | ------- | ---------- |
-| Quick    | No     | None      | ~2,964       | 1000ms  | ~50 min    |
-| Quick    | No     | 1-5       | ~60          | 1000ms  | ~1 min     |
-| Quick    | Yes    | None      | ~1,482       | 1000ms  | ~25 min    |
-| Quick    | Yes    | 1-5       | ~30          | 1000ms  | ~30 sec    |
-| Thorough | No     | None      | ~23,712      | 1000ms  | ~6.5 hours |
-| Thorough | Yes    | None      | ~1,482       | 1000ms  | ~25 min    |
+| Quick    | No     | None      | 1,482        | 1000ms  | ~25 min    |
+| Quick    | No     | 1-5       | 30           | 1000ms  | ~30 sec    |
+| Quick    | Yes    | None      | 1,482        | 1000ms  | ~25 min    |
+| Quick    | Yes    | 1-5       | 30           | 1000ms  | ~30 sec    |
+| Thorough | No     | None      | 23,712       | 1000ms  | ~6.6 hours |
+| Thorough | Yes    | None      | 1,482        | 1000ms  | ~25 min    |
 
 **Note:** Actual time is usually much faster because:
 
@@ -244,8 +264,8 @@ Discovery time depends on several factors:
 
 ### Optimization Tips
 
-1. **Filter slave IDs** - Use `--id` if you know which IDs to search (reduces combinations by up to 98%)
-2. **Use a driver** - Reduces combinations by 50-90%
+1. **Filter slave IDs** - Use `--id` if you know which IDs to search (5 IDs instead of 247 reduces combinations by 98%)
+2. **Use a driver** - Limits the scan to the driver's SUPPORTED_CONFIG (with `--strategy thorough`, the XYMD1 driver reduces combinations by 94%)
 3. **Lower timeout** - Use 250-500ms if devices respond quickly
 4. **Start with quick strategy** - Finds 90% of devices
 5. **Stop after first device** - Default `--max-devices 1` stops after finding one device
@@ -259,7 +279,7 @@ Testing 1482 parameter combinations...
 
 ✓ Found device: Slave ID 1 @ 9600,E,8,1
 
-Progress: 35% (520/1482) | Devices found: 1 | Elapsed: 2m 15s | ETA: 4m 10s
+Progress: 35% (520/1482) | Devices found: 1 | Elapsed: 8m 40s | ETA: 16m 2s
 ```
 
 **Progress indicators:**
@@ -483,7 +503,7 @@ ya-modbus discover \
   --baud-rate 9600,19200
 ```
 
-**Performance benefit:** With all three filters, scan time can be reduced from ~25 minutes (testing all combinations) to ~30 seconds (testing only specified combinations). Example: `--id 1-5 --parity none --baud-rate 9600` tests only 5 combinations instead of 1,482.
+**Performance benefit:** With all three filters, scan time can be reduced from ~25 minutes (testing all combinations) to ~5 seconds (testing only specified combinations). Example: `--id 1-5 --parity none --baud-rate 9600` tests only 5 combinations instead of 1,482.
 
 ## Advanced Usage
 

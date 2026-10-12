@@ -152,7 +152,7 @@ program
   )
   .option(
     '--id <spec>',
-    'Limit search to specific slave IDs (e.g., "1,2,3-5"). Can be specified multiple times'
+    'Limit search to specific slave IDs (e.g., "1,2,3-5"). Dramatically reduces scan time. Can be specified multiple times'
   )
   .option(
     '--parity <spec>',
