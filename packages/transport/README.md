@@ -42,6 +42,33 @@ const tcpTransport = await createTransport({
 await rtuTransport.readHoldingRegisters(0, 10)
 ```
 
+## Error handling
+
+Some `modbus-serial` failures (response timeouts, closed port) are plain objects instead of `Error`
+instances. Transport read and write methods reject with an `Error` that keeps the diagnostic
+properties of the original (the `ModbusError` type). The original value is available as `cause`:
+
+| Property     | Example                    | Meaning                                       |
+| ------------ | -------------------------- | --------------------------------------------- |
+| `name`       | `TransactionTimedOutError` | Error type reported by `modbus-serial`        |
+| `errno`      | `ETIMEDOUT`, `-111`        | Error name or number (timeout, refused, etc.) |
+| `code`       | `ECONNREFUSED`             | Node.js error code (TCP socket errors)        |
+| `modbusCode` | `2`                        | Exception code returned by the device         |
+
+```typescript
+import type { ModbusError } from '@ya-modbus/transport'
+
+try {
+  await transport.readHoldingRegisters(0, 10)
+} catch (error) {
+  if ((error as ModbusError).errno === 'ETIMEDOUT') {
+    // device did not answer
+  }
+}
+```
+
+`normalizeModbusError(error)` applies the same conversion to any caught value.
+
 ## License
 
 GPL-3.0-or-later

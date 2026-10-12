@@ -12,6 +12,7 @@ Modbus transport implementations (RTU/TCP) wrapping modbus-serial.
 ## Testing
 
 Mock modbus-serial library. Test retry logic by simulating transient failures.
+To check the shapes of modbus-serial errors, use the real client with a fake port (see `src/create-modbus-transport.test.ts`).
 
 ## Interfaces
 

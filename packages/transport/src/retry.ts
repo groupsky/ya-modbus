@@ -2,6 +2,8 @@
  * Retry configuration and utilities for Modbus transport operations
  */
 
+import { normalizeModbusError, type ModbusError } from './normalize-error.js'
+
 /** Maximum number of retry attempts for failed operations */
 export const MAX_RETRIES = 3
 
@@ -24,7 +26,7 @@ function sleep(ms: number): Promise<void> {
  * @param attempt - The attempt number (1-indexed)
  * @param error - The error that caused the retry
  */
-export type RetryLogger = (attempt: number, error: Error) => void
+export type RetryLogger = (attempt: number, error: ModbusError) => void
 
 /**
  * Retry a function with fixed delay between attempts
@@ -33,20 +35,21 @@ export type RetryLogger = (attempt: number, error: Error) => void
  * @param maxRetries - Maximum number of attempts (default: MAX_RETRIES)
  * @param logger - Optional callback to log retry attempts
  * @returns Promise resolving to the function's return value
- * @throws The last error encountered if all retries are exhausted
+ * @throws The last error encountered if all retries are exhausted, as an Error
+ *   with the diagnostic properties of the original (see normalizeModbusError)
  */
 export async function withRetry<T>(
   fn: () => Promise<T>,
   maxRetries: number = MAX_RETRIES,
   logger?: RetryLogger
 ): Promise<T> {
-  let lastError: Error = new Error('No retry attempts were made')
+  let lastError: ModbusError = new Error('No retry attempts were made')
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await fn()
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error))
+      lastError = normalizeModbusError(error)
 
       // Don't retry on the last attempt
       if (attempt < maxRetries) {

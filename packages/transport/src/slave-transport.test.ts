@@ -359,6 +359,22 @@ describe('SlaveTransport', () => {
       await expect(transport.readHoldingRegisters(0, 2)).rejects.toThrow('Modbus error')
     })
 
+    it('should keep errno of plain-object errors from modbus-serial', async () => {
+      const transport = new SlaveTransport(1, mockClient, mutex, 1)
+
+      // modbus-serial rejects with plain objects that do not extend Error
+      mockClient.readHoldingRegisters.mockRejectedValue({
+        name: 'TransactionTimedOutError',
+        message: 'Timed out',
+        errno: 'ETIMEDOUT',
+      })
+
+      await expect(transport.readHoldingRegisters(0, 2)).rejects.toMatchObject({
+        message: 'Timed out',
+        errno: 'ETIMEDOUT',
+      })
+    })
+
     it('should release mutex on error', async () => {
       const transport = new SlaveTransport(1, mockClient, mutex, 3)
       const testError = new Error('Transport error')

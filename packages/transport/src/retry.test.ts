@@ -172,6 +172,28 @@ describe('withRetry', () => {
     expect(logger).not.toHaveBeenCalled()
   })
 
+  test('should keep details of plain-object rejections instead of "[object Object]"', async () => {
+    // modbus-serial rejects with plain objects that do not extend Error. Converting
+    // them with String() produced "[object Object]" and dropped errno.
+    const timeout = { name: 'TransactionTimedOutError', message: 'Timed out', errno: 'ETIMEDOUT' }
+    const logger = jest.fn()
+    const operation = jest.fn().mockRejectedValue(timeout)
+
+    const promise = withRetry(operation, 2, logger)
+    const resultPromise = promise.catch((err) => err)
+    await jest.runAllTimersAsync()
+    const result = await resultPromise
+
+    expect(result).toBeInstanceOf(Error)
+    expect(result).toMatchObject({
+      name: 'TransactionTimedOutError',
+      message: 'Timed out',
+      errno: 'ETIMEDOUT',
+      cause: timeout,
+    })
+    expect(logger).toHaveBeenCalledWith(1, expect.objectContaining({ errno: 'ETIMEDOUT' }))
+  })
+
   test('should convert non-Error thrown values to Error instances', async () => {
     const operation = jest.fn().mockRejectedValue('string error')
 
