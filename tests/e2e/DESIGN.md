@@ -39,7 +39,7 @@ Infrastructure-level end-to-end testing for ya-modbus using real services, shell
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
 │  │ MQTT Broker  │  │ Emulator 1   │  │ Emulator 2   │  │
 │  │ (Mosquitto)  │  │ (ex9em)      │  │ (xymd1+      │  │
-│  │              │  │ 1 device     │  │ or-we-516)   │  │
+│  │              │  │ 1 device     │  │ ex9em)       │  │
 │  │ Port: 1883   │  │ SlaveID: 1   │  │ 2 devices    │  │
 │  └──────────────┘  └──────────────┘  └──────────────┘  │
 │                           │                 │            │
@@ -134,7 +134,7 @@ These examples illustrate how the infrastructure can be used for integration tes
 - Virtual serial port pair: `/tmp/ttyV2` ↔ `/tmp/ttyV3`
 - Emulator on `/tmp/ttyV2`:
   - xymd1 device (slave ID 1)
-  - or-we-516 device (slave ID 2)
+  - ex9em device (slave ID 2)
 - mqtt-bridge connects to `/tmp/ttyV3`
 
 **Tests:**

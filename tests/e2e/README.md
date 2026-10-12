@@ -102,17 +102,24 @@ tests/e2e/
 │   ├── create-virtual-ports.sh      # Create socat port pairs
 │   └── cleanup.sh                   # Cleanup all resources
 ├── fixtures/
+│   ├── README.md                    # Register layouts of the fixtures
 │   ├── emulators/
-│   │   ├── port1-single-device.json # Single device emulator config
-│   │   ├── port2-multi-device.json  # Multi-device emulator config
-│   │   ├── tcp-single-device.json   # Single device emulator config (Modbus TCP)
-│   │   └── tcp-slow-device.json     # Emulator on Modbus TCP that answers after 1500 ms
+│   │   ├── port1-single-device.json     # Single device emulator config
+│   │   ├── port1-single-device-alt.json # Single device with other register values
+│   │   ├── port2-multi-device.json      # Multi-device emulator config
+│   │   ├── tcp-single-device.json       # Single device emulator config (Modbus TCP)
+│   │   └── tcp-slow-device.json         # Emulator on Modbus TCP that answers after 1500 ms
 │   ├── mosquitto.conf               # MQTT broker config
-│   └── bridge-config.json           # mqtt-bridge config
+│   ├── bridge-config.json           # mqtt-bridge config (single device)
+│   └── bridge-config-multi-device.json # mqtt-bridge config (two devices)
 ├── tests/
 │   ├── helpers.bash                 # Shared helper functions
 │   ├── 01-environment.bats          # Environment setup tests
 │   ├── 02-emulator.bats             # Emulator tests
+│   ├── 03-mqtt-bridge.bats          # mqtt-bridge tests
+│   ├── 04-cli.bats                  # CLI tests
+│   ├── 05-device-profiler.bats      # Device profiler tests
+│   ├── 06-assertion-helpers.bats    # Assertion helper tests
 │   ├── 07-tcp.bats                  # Modbus TCP tests (CLI and device-profiler)
 │   └── 99-cleanup.bats              # Cleanup verification
 └── vendor/
@@ -149,6 +156,50 @@ teardown() {
 }
 ```
 
+### Comments for Hex Values
+
+The emulator verbose log shows function codes, addresses and register values in hex, for example `func=0x03 addr=0x0000 count=11 values=[0x08FC, ...]`. Put a comment above each assertion, or above a group of assertions that check the same operation, so a reader does not need a calculator to see where the expected hex value comes from.
+
+Add a comment when an assertion:
+
+- checks a hex register value (`0x08FC`)
+- refers to a register address or a function code (`addr=0x002B`, `func=0x10`)
+- checks a scaled value (show the scaled value and the unit, and name the scaling factor when it is not obvious)
+
+Format:
+
+```bash
+# {Description} ({decimal} decimal = 0x{HEX} hex [= {scaled value} {unit}])
+assert_emulator_log_contains "$EMULATOR_PID" "0x{HEX}"
+```
+
+Rules:
+
+- Write hex digits in upper case, with the width of the log: four digits for addresses and register values (`0x08FC`), two digits for function codes (`0x03`).
+- Name the register when the comment explains a register value (`register 1: 520 = 0x0208`).
+- Take the decimal values from [fixtures/README.md](fixtures/README.md), so the comment and the fixture agree.
+
+Examples from `tests/04-cli.bats`:
+
+```bash
+# Verify voltage value is present (2300 decimal = 0x08FC hex = 230.0V when scaled /10)
+assert_emulator_log_contains "$EMULATOR_PID" "0x08FC"
+
+# Verify voltage (register 0: 2300 = 0x08FC = 230.0V) and current (register 1: 520 = 0x0208 = 52.0A)
+assert_emulator_log_contains "$EMULATOR_PID" "0x08FC"
+assert_emulator_log_contains "$EMULATOR_PID" "0x0208"
+
+# Verify value written (5 decimal = 0x0005 hex)
+assert_emulator_log_contains "$EMULATOR_PID" "0x0005"
+
+# Verify WRITE operation logged (10 decimal = 0x000A hex)
+assert_emulator_log_contains "$EMULATOR_PID" "\[VERBOSE\] WRITE"
+assert_emulator_log_contains "$EMULATOR_PID" "addr=0x002B"
+assert_emulator_log_contains "$EMULATOR_PID" "values=\[0x000A\]"
+```
+
+Reviewers do not need to convert values by hand, maintainers see what the test expects, and a wrong conversion is easy to find.
+
 ### Available Helper Functions
 
 See `tests/helpers.bash` for all available helpers:
@@ -157,9 +208,10 @@ See `tests/helpers.bash` for all available helpers:
 - `wait_for_port <host> <port> [timeout]` - Wait for network port to listen
 - `start_mqtt_subscriber <topic> [output_file]` - Start MQTT subscriber (returns PID)
 - `stop_mqtt_subscriber <pid>` - Stop MQTT subscriber
-- `start_test_emulator <config_file>` - Start emulator with config (returns PID)
+- `start_test_emulator <config_file> [--verbose]` - Start emulator with config (returns PID), optionally with verbose logging
 - `stop_test_emulator <pid>` - Stop emulator
 - `start_tcp_emulator <config_file> [port]` - Start emulator with a Modbus TCP config (returns PID, stop with `stop_test_emulator`). Listens on `$TCP_EMULATOR_PORT` (15502) unless a port is given
+- `assert_emulator_log_contains <pid> <pattern>` - Assert the emulator log contains pattern (extended regex, escape special characters such as `[` and `]`)
 - `is_docker_service_healthy <service>` - Check Docker service health
 - `assert_success` - Assert command succeeded
 - `assert_failure` - Assert command failed
