@@ -175,6 +175,7 @@ Create a `config.json` file:
 - `mode` (optional) - Polling mode: "interval" (default) or "continuous"
   - `"interval"` - Poll at fixed intervals (normal behavior)
   - `"continuous"` - Poll immediately after receiving response (minimal 1ms delay)
+    In this mode `interval` is not the poll period. It is the retry delay after a failed read, until `maxRetries` is reached (and the base for the default backoff).
 - `maxRetries` (optional) - Maximum retry attempts (0-100)
 - `retryBackoff` (optional) - Retry backoff in milliseconds
 

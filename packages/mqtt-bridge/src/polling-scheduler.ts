@@ -115,11 +115,12 @@ export class PollingScheduler {
     if (device.lastFailureCount >= maxRetries) {
       // Use backoff if we've exceeded max retries
       delay = retryBackoff
-    } else if (mode === 'continuous') {
+    } else if (mode === 'continuous' && device.lastFailureCount === 0) {
       // Continuous mode: poll on next event loop tick (effectively immediate)
       delay = 1
     } else {
-      // Interval mode: wait for specified interval
+      // Interval mode, or retry after a failed read: wait for specified interval
+      // so a failing device does not flood a shared bus
       delay = device.interval
     }
 
