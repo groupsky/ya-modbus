@@ -145,7 +145,7 @@ npx ya-modbus characterize --port /dev/ttyUSB0 --slave-id 1 \
   --output device-profile.json
 ```
 
-**Note**: Development commands use local CLI from devDependencies (via `npx`). No need to specify driver - current directory is used.
+**Note**: Development commands use local CLI from devDependencies (via `npx`). No need to specify driver - current directory is used. Build the driver first (`npm run build`) and build it again after each change: the CLI loads the JavaScript file that `exports` (or `main`) in package.json names.
 
 ## Driver Interface
 

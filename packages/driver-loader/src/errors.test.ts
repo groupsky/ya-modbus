@@ -1,4 +1,9 @@
-import { DriverNotFoundError, PackageJsonError, ValidationError } from './errors.js'
+import {
+  DriverNotBuiltError,
+  DriverNotFoundError,
+  PackageJsonError,
+  ValidationError,
+} from './errors.js'
 
 describe('ValidationError', () => {
   test('should create ValidationError with message only', () => {
@@ -44,6 +49,21 @@ describe('DriverNotFoundError', () => {
       }
     )
 
+    expect(error.cause).toBe(cause)
+  })
+})
+
+describe('DriverNotBuiltError', () => {
+  test('should create DriverNotBuiltError with package name and cause', () => {
+    const cause = new Error("Cannot find module '/proj/dist/index.js'")
+    const error = new DriverNotBuiltError('Cannot load driver', 'ya-modbus-driver-test', { cause })
+
+    expect(error).toBeInstanceOf(DriverNotBuiltError)
+    expect(error).toBeInstanceOf(Error)
+    expect(error).not.toBeInstanceOf(DriverNotFoundError)
+    expect(error.message).toBe('Cannot load driver')
+    expect(error.name).toBe('DriverNotBuiltError')
+    expect(error.packageName).toBe('ya-modbus-driver-test')
     expect(error.cause).toBe(cause)
   })
 })

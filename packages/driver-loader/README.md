@@ -18,6 +18,10 @@ import { loadDriver } from '@ya-modbus/driver-loader'
 const driver = await loadDriver({})
 ```
 
+The current directory must hold a package with the `ya-modbus-driver` keyword. The loader imports the file that Node loads for `import` of that package: `exports["."]` (conditions `node`, `import`, `module-sync`, `default`), else `main`, else `index.js`. The entry must name the file with its extension, and Node's `--conditions` flag is not used.
+
+The driver must be built, and built again after each change to its source. If the entry file is missing (no `dist` directory), or it is TypeScript source that Node cannot run, `loadDriver` throws a `DriverNotBuiltError`: build the driver first (`npm run build`), or run with Node's built-in type stripping (Node 22.18+ or 24).
+
 ### Load specific driver package
 
 ```typescript
@@ -50,6 +54,7 @@ import {
   loadDriver,
   ValidationError,
   DriverNotFoundError,
+  DriverNotBuiltError,
   PackageJsonError,
 } from '@ya-modbus/driver-loader'
 
@@ -65,6 +70,8 @@ try {
       console.error(`Package not found: ${error.packageName}`)
       console.error(`Install with: npm install ${error.packageName}`)
     }
+  } else if (error instanceof DriverNotBuiltError) {
+    console.error(`${error.packageName} is not built: run npm run build`)
   } else if (error instanceof ValidationError) {
     console.error(`Validation failed for field: ${error.field}`)
     console.error(`Error: ${error.message}`)
@@ -87,8 +94,13 @@ try {
   - `cause?: unknown` - Set when the package is installed but fails to load: the original error
   - Example: Package not installed, wrong package name, syntax error in the driver
 
+- **`DriverNotBuiltError`**: Driver package is installed but not built
+  - `packageName: string` - The package that cannot be loaded
+  - `cause?: unknown` - The error Node reported
+  - Example: Missing `dist` directory, TypeScript source that Node cannot run
+
 - **`PackageJsonError`**: package.json not found or invalid
-  - Example: Missing package.json, invalid JSON, missing ya-modbus-driver keyword
+  - Example: Missing package.json, invalid JSON, missing ya-modbus-driver keyword, `exports` without an entry for `import`
 
 ### Custom Logging
 
@@ -128,7 +140,8 @@ Loads a ya-modbus driver package and validates its exports.
 
 **Throws:**
 
-- Error if driver package is not found
+- `DriverNotFoundError` if driver package is not found or fails to load
+- `DriverNotBuiltError` if the driver is not built
 - Error if driver exports are invalid
 - Error if configuration validation fails
 
@@ -303,6 +316,20 @@ If you encounter `Driver package not found` errors:
 
 If the message starts with `Failed to load driver package`, the package is installed but its code failed to load. Read the reason in the message (or `error.cause`) instead of reinstalling.
 
+### Driver Not Built
+
+If you encounter `DriverNotBuiltError` (message `Cannot load driver <name>: ...`):
+
+1. **Build the driver:**
+
+   ```bash
+   npm run build
+   ```
+
+2. **Check the entry point:** `exports["."]` (or `main`) in package.json must name the built JavaScript file with its extension, for example `./dist/esm/index.js`.
+
+3. **TypeScript source:** Node 22.18+ and 24 run `.ts` files themselves, but only outside `node_modules`, and only if the source uses erasable TypeScript syntax (no enums) and imports files with their `.ts` extension. Build the driver otherwise.
+
 ### Module Resolution Issues
 
 If TypeScript or Node.js can't find `@ya-modbus/driver-loader`:
@@ -324,7 +351,7 @@ If TypeScript or Node.js can't find `@ya-modbus/driver-loader`:
    - Check that `"types"` field isn't excluding driver-loader
 
 4. **For local driver development:**
-   - The loader tries multiple import paths: `src/index.js`, `src/index.ts`, `dist/index.js`
+   - The loader imports the entry file from `exports` or `main` in package.json
    - Build your driver before testing: `npm run build`
 
 ### Validation Failures
