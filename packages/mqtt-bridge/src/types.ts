@@ -75,8 +75,29 @@ export interface TCPConnection {
 
 export interface DeviceStatus {
   deviceId: string
+  /**
+   * Device state:
+   *
+   * - `disconnected` - device is disabled (`enabled: false`) and is not polled
+   * - `connecting` - driver is loading
+   * - `connected` - driver is loaded; fewer than `polling.maxRetries` reads in a row failed
+   * - `error` - the last `polling.maxRetries` reads failed; polling goes on every
+   *   `polling.retryBackoff` ms
+   *
+   * State changes:
+   *
+   * - `disconnected` → `connecting` (device added and enabled)
+   * - `connecting` → `connected` (driver loaded)
+   * - `connected` → `error` (`polling.maxRetries` failed reads in a row)
+   * - `error` → `connected` (next successful read)
+   */
   state: 'connecting' | 'connected' | 'disconnected' | 'error'
   enabled: boolean
+  /**
+   * `true` only when `state` is `'connected'`.
+   *
+   * @deprecated Use `state` instead.
+   */
   connected: boolean
   lastUpdate?: number
   lastPoll?: number

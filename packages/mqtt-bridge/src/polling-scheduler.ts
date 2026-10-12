@@ -14,6 +14,8 @@ interface ScheduledDevice {
 type DataCallback = (deviceId: string, data: Record<string, unknown>) => void
 type ErrorCallback = (deviceId: string, error: Error, failureCount: number) => void
 
+/** Failed reads in a row before polling slows down to `retryBackoff` */
+export const DEFAULT_MAX_RETRIES = 3
 const DEFAULT_POLLING_INTERVAL = 5000 // 5 seconds
 
 // Longest delay setTimeout supports; it runs longer delays after 1ms
@@ -116,7 +118,7 @@ export class PollingScheduler {
     const device = this.devices.get(deviceId)
     if (!device || !this.running) return
 
-    const maxRetries = device.config.polling?.maxRetries ?? 3
+    const maxRetries = device.config.polling?.maxRetries ?? DEFAULT_MAX_RETRIES
     const retryBackoff = device.config.polling?.retryBackoff ?? device.interval * 2
     const mode = device.config.polling?.mode ?? 'interval'
 

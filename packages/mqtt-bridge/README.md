@@ -180,8 +180,36 @@ Create a `config.json` file:
   - `"interval"` - Poll at fixed intervals (normal behavior)
   - `"continuous"` - Poll immediately after receiving response (minimal 1ms delay)
     In this mode `interval` is not the poll period. It is the retry delay after a failed read, until `maxRetries` is reached (and the base for the default backoff).
-- `maxRetries` (optional) - Maximum retry attempts (0-100)
-- `retryBackoff` (optional) - Retry backoff in milliseconds
+- `maxRetries` (optional) - Failed reads in a row before the device goes to the `error` state and polling slows down to `retryBackoff` (0-100, default: 3)
+- `retryBackoff` (optional) - Time between polls in milliseconds after `maxRetries` failed reads in a row (default: 2 × `interval`)
+
+## Device States
+
+Each device has a `state`. `bridge.getDevice()` and `bridge.listDevices()` return it.
+
+| State          | Meaning                                                                              |
+| -------------- | ------------------------------------------------------------------------------------ |
+| `disconnected` | The device is disabled (`enabled: false`). The bridge does not poll it.              |
+| `connecting`   | The bridge is loading the driver.                                                    |
+| `connected`    | The driver is loaded. Fewer than `maxRetries` reads in a row failed.                 |
+| `error`        | The last `maxRetries` reads failed. The bridge still polls, every `retryBackoff` ms. |
+
+How the state changes:
+
+- `disconnected` → `connecting` - the device is added and is enabled
+- `connecting` → `connected` - the driver is loaded. If the driver does not load, `addDevice()` fails and the device is not added.
+- `connected` → `error` - `maxRetries` reads failed in a row
+- `error` → `connected` - the next read works
+
+When the state changes between `connected` and `error`, the bridge publishes a message to `{topicPrefix}/{deviceId}/status`:
+
+```json
+{ "deviceId": "sensor1", "timestamp": 1760000000000, "state": "error", "errors": ["Timed out"] }
+```
+
+The `errors` field is only there when the state is `error`. It has the message of the last failed read. Status messages use QoS 0 and are not retained, the same as the messages on `{topicPrefix}/{deviceId}/data`. If the bridge is not connected to the broker when the state changes, the message is lost. Use `bridge.getDevice()` to read the current state at any time.
+
+The `connected` field of the device status is deprecated. Use `state` instead. `connected` is `true` only when `state` is `connected`.
 
 ## Programmatic Usage
 

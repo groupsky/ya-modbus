@@ -1,8 +1,8 @@
 import mqtt from 'mqtt'
 
-import { DeviceManager } from './device-manager.js'
+import { DeviceManager, type DeviceStatusUpdate } from './device-manager.js'
 import { DriverLoader } from './driver-loader.js'
-import { PollingScheduler } from './polling-scheduler.js'
+import { DEFAULT_MAX_RETRIES, PollingScheduler } from './polling-scheduler.js'
 import type {
   MqttBridgeConfig,
   MqttBridge,
@@ -61,11 +61,15 @@ export function createBridge(
   const deviceManager = dependencies?.deviceManager ?? new DeviceManager(driverLoader)
 
   // Bridge reference to be set after bridge object is created
-  // This ensures publishData is always defined before PollingScheduler starts
+  // This ensures publishDeviceMessage is always defined before PollingScheduler starts
   let bridgeRef: MqttBridge | null = null
 
   // Publish function that will be called from polling
-  const publishData = (deviceId: string, data: Record<string, unknown>): void => {
+  const publishDeviceMessage = (
+    deviceId: string,
+    topic: 'data' | 'status',
+    fields: Record<string, unknown>
+  ): void => {
     if (!bridgeRef) {
       // Bridge not fully initialized yet - skip publishing
       return
@@ -74,21 +78,33 @@ export function createBridge(
     const payload = JSON.stringify({
       deviceId,
       timestamp: Date.now(),
-      data,
+      ...fields,
     })
 
     // Publish to device-specific topic
-    void bridgeRef.publish(`${deviceId}/data`, payload, { qos: 0 }).catch((error: Error) => {
-      console.error(`Failed to publish data for device ${deviceId}:`, error)
+    void bridgeRef.publish(`${deviceId}/${topic}`, payload, { qos: 0 }).catch((error: Error) => {
+      console.error(`Failed to publish ${topic} for device ${deviceId}:`, error)
     })
+  }
+
+  // Update device status and publish the state (with the errors that caused it) when it changes
+  const updateDeviceStatus = (deviceId: string, updates: DeviceStatusUpdate): void => {
+    const previousState = deviceManager.getDevice(deviceId)?.state
+    deviceManager.updateDeviceState(deviceId, updates)
+
+    const { state, errors } = updates
+    if (state !== undefined && state !== previousState) {
+      publishDeviceMessage(deviceId, 'status', { state, ...(errors && { errors }) })
+    }
   }
 
   // Handle data from polling
   const handlePollingData = (deviceId: string, data: Record<string, unknown>): void => {
-    publishData(deviceId, data)
+    publishDeviceMessage(deviceId, 'data', { data })
 
-    // Update device status and reset failure count on success
-    deviceManager.updateDeviceState(deviceId, {
+    // A successful read resets the failure count and recovers a device in error state
+    updateDeviceStatus(deviceId, {
+      state: 'connected',
       lastPoll: Date.now(),
       lastUpdate: Date.now(),
       consecutiveFailures: 0,
@@ -99,9 +115,14 @@ export function createBridge(
   const handlePollingError = (deviceId: string, error: Error, failureCount: number): void => {
     console.error(`Polling error for device ${deviceId}:`, error)
 
-    deviceManager.updateDeviceState(deviceId, {
+    // Same limit after which the polling scheduler switches to retryBackoff
+    const maxRetries =
+      deviceManager.getDeviceConfig(deviceId)?.polling?.maxRetries ?? DEFAULT_MAX_RETRIES
+
+    updateDeviceStatus(deviceId, {
       consecutiveFailures: failureCount,
       errors: [error.message],
+      ...(failureCount >= maxRetries && { state: 'error' }),
     })
   }
 
