@@ -36,12 +36,12 @@ updates:
       prefix: 'chore(deps)'
       include: 'scope'
     versioning-strategy: widen
-    # Pin @types/node to v20.x to match minimum supported Node.js version
-    # This ensures we don't use APIs unavailable in Node.js 20
+    # Pin @types/node to v22.x to match minimum supported Node.js version
+    # This ensures we don't use APIs unavailable in Node.js 22
     ignore:
       - dependency-name: '@types/node'
         update-types: ['version-update:semver-major']
-        versions: ['>=21']
+        versions: ['>=23']
     groups:
       # Production dependencies (grouped by type)
       npm-production:
@@ -183,11 +183,11 @@ updates:
     commit-message:
       prefix: 'chore(deps)'
       include: 'scope'
-    # Pin @types/node to v20.x to match minimum supported Node.js version
+    # Pin @types/node to v22.x to match minimum supported Node.js version
     ignore:
       - dependency-name: '@types/node'
         update-types: ['version-update:semver-major']
-        versions: ['>=21']
+        versions: ['>=23']
     open-pull-requests-limit: 5
 
   - package-ecosystem: 'npm'

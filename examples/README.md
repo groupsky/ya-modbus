@@ -242,6 +242,6 @@ This ensures examples test the actual built packages (from `dist/` directories),
 
 ### Tests pass locally but fail in CI
 
-- Check Node.js version (CI uses 20.x, 22.x, 24.x)
+- Check Node.js version (CI uses 22.x, 24.x)
 - Ensure no absolute paths are used
 - Verify all dependencies are declared in package.json

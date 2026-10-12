@@ -25,7 +25,7 @@ End-to-end integration tests for ya-modbus using real services and BATS testing 
   - Follow [official Docker installation guide](https://docs.docker.com/get-docker/)
 
 - **Node.js** - For running emulators and tools
-  - Version 20, 22, or 24 (see `.nvmrc`)
+  - Version 22 or 24 (see `.nvmrc`)
 
 - **Mosquitto clients** - MQTT testing
 
