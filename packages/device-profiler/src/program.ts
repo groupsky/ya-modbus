@@ -11,6 +11,7 @@ import { Command, Option } from 'commander'
 
 import { runProfileScan } from './cli.js'
 import { MAX_PORT, MIN_PORT } from './constants.js'
+import { OUTPUT_FORMATS, type OutputFormat } from './output-format.js'
 import { RegisterType } from './read-tester.js'
 import { parseInteger, validateOptions } from './validation.js'
 
@@ -26,7 +27,7 @@ interface CliOptions {
   dataBits: DataBits
   stopBits: StopBits
   timeout: number
-  format: 'table' | 'json'
+  format: OutputFormat
 }
 
 export const program = new Command()
@@ -51,8 +52,8 @@ program
   .option('--stop-bits <bits>', 'Stop bits for RTU', parseInteger, 1)
   .option('--timeout <ms>', 'Response timeout in milliseconds', parseInteger, 1000)
   .addOption(
-    new Option('-f, --format <format>', 'Output format: table or json')
-      .choices(['table', 'json'])
+    new Option('-f, --format <format>', 'Output format: table, json or yaml')
+      .choices(OUTPUT_FORMATS)
       .default('table')
   )
   .action(async (options: CliOptions) => {

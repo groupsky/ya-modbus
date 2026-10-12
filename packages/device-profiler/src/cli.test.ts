@@ -1,4 +1,5 @@
 import type { Transport } from '@ya-modbus/driver-types'
+import yaml from 'js-yaml'
 
 import { runProfileScan } from './cli.js'
 import { RegisterType } from './read-tester.js'
@@ -330,6 +331,103 @@ describe('runProfileScan', () => {
         Array.from({ length: 2000 }, (_, address) => address)
       )
       expect(results.filter((result) => !result.success || result.value !== 0x0101)).toEqual([])
+    })
+  })
+
+  describe('YAML output format', () => {
+    /** Parse the single YAML document that the scan printed */
+    function printedYAML(): unknown {
+      expect(mockConsoleLog).toHaveBeenCalledTimes(1)
+      return yaml.load(mockConsoleLog.mock.calls[0][0] as string)
+    }
+
+    it('should print the scan as one YAML document when format is yaml', async () => {
+      const mockTransport: Transport = {
+        readHoldingRegisters: jest.fn().mockResolvedValue(Buffer.from([0x12, 0x34])),
+        close: jest.fn().mockResolvedValue(undefined),
+      } as unknown as Transport
+
+      await runProfileScan({
+        transport: mockTransport,
+        type: RegisterType.Holding,
+        startAddress: 0,
+        endAddress: 0,
+        format: 'yaml',
+        port: '/dev/ttyUSB0',
+      })
+
+      expect(printedYAML()).toEqual({
+        timestamp: expect.any(String),
+        scan: { type: 'holding', startAddress: 0, endAddress: 0, batchSize: 10 },
+        connection: { port: '/dev/ttyUSB0' },
+        results: [
+          { address: 0, type: 'holding', success: true, value: 4660, timing: expect.any(Number) },
+        ],
+        summary: {
+          total: 1,
+          successful: 1,
+          failed: 0,
+          totalTimeMs: expect.any(Number),
+          averageTimeMs: expect.any(Number),
+        },
+      })
+      expect(mockTransport.close).toHaveBeenCalled()
+    })
+
+    it('should suppress progress output when format is yaml', async () => {
+      const mockStdoutWrite = jest.spyOn(process.stdout, 'write').mockImplementation()
+
+      const mockTransport: Transport = {
+        readHoldingRegisters: readsWithByte(0x00),
+        close: jest.fn().mockResolvedValue(undefined),
+      } as unknown as Transport
+
+      try {
+        await runProfileScan({
+          transport: mockTransport,
+          type: RegisterType.Holding,
+          startAddress: 0,
+          endAddress: 5,
+          format: 'yaml',
+          port: 'localhost:502',
+        })
+
+        expect(mockStdoutWrite).not.toHaveBeenCalled()
+      } finally {
+        mockStdoutWrite.mockRestore()
+      }
+
+      // The only line on the console is the YAML document
+      printedYAML()
+    })
+
+    it('should report registers that failed to read with their error', async () => {
+      const mockTransport: Transport = {
+        readHoldingRegisters: jest.fn().mockRejectedValue(new Error('Timeout: no response')),
+        close: jest.fn().mockResolvedValue(undefined),
+      } as unknown as Transport
+
+      await runProfileScan({
+        transport: mockTransport,
+        type: RegisterType.Holding,
+        startAddress: 0,
+        endAddress: 0,
+        format: 'yaml',
+        port: '/dev/ttyUSB0',
+      })
+
+      expect(printedYAML()).toMatchObject({
+        results: [
+          {
+            address: 0,
+            success: false,
+            value: null,
+            error: 'Timeout: no response',
+            errorType: 'timeout',
+          },
+        ],
+        summary: { total: 1, successful: 0, failed: 1 },
+      })
     })
   })
 })

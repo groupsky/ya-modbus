@@ -10,7 +10,7 @@ Device profiler for discovering Modbus register maps through automated scanning.
 - Timing measurement for each read operation
 - Error classification (timeout, CRC, Modbus exceptions)
 - Summary table of discovered registers
-- **JSON output format** for automation and integration
+- **JSON and YAML output formats** for automation and integration
 
 ## Installation
 
@@ -28,6 +28,9 @@ ya-modbus-profile --port /dev/ttyUSB0 --slave-id 1 --baud 9600
 
 # JSON output for automation
 ya-modbus-profile --port /dev/ttyUSB0 --slave-id 1 --format json
+
+# YAML output
+ya-modbus-profile --port /dev/ttyUSB0 --slave-id 1 --format yaml
 ```
 
 Options:
@@ -43,7 +46,7 @@ Options:
 - `--data-bits` - Data bits for RTU (default: `8`)
 - `--stop-bits` - Stop bits for RTU (default: `1`)
 - `--timeout` - Response timeout in milliseconds, 1-2147483647 (default: `1000`)
-- `-f, --format` - Output format: `table` or `json` (default: `table`)
+- `-f, --format` - Output format: `table`, `json` or `yaml` (default: `table`)
 
 ### Programmatic
 
@@ -94,6 +97,8 @@ const json = formatJSON(results, {
   port: '/dev/ttyUSB0',
 })
 ```
+
+`formatYAML` takes the same arguments and returns the YAML document of `--format yaml`.
 
 ## Output
 
@@ -224,6 +229,59 @@ The JSON output includes:
 - **Error fields** (`error`, `errorType`) are only included when `success=false`
 - **Timing precision** is milliseconds with up to 2 decimal places
 - **Output is formatted** with 2-space indentation for readability
+
+### YAML Format
+
+`--format yaml` prints the same data as the JSON format, written as YAML:
+
+```bash
+ya-modbus-profile --port /dev/ttyUSB0 --slave-id 1 --format yaml
+```
+
+See [JSON Structure](#json-structure) for the fields.
+
+#### YAML Example
+
+```yaml
+timestamp: '2026-02-13T18:17:41.367Z'
+scan:
+  type: holding
+  startAddress: 0
+  endAddress: 10
+  batchSize: 10
+connection:
+  port: /dev/ttyUSB0
+results:
+  - address: 0
+    type: holding
+    success: true
+    value: 4660
+    timing: 15
+  - address: 1
+    type: holding
+    success: false
+    value: null
+    timing: 1000
+    error: Timeout waiting for response
+    errorType: timeout
+  - address: 2
+    type: holding
+    success: true
+    value: 22136
+    timing: 12
+summary:
+  total: 3
+  successful: 2
+  failed: 1
+  totalTimeMs: 1027
+  averageTimeMs: 342.33
+```
+
+#### YAML Output Notes
+
+- **Progress messages** are suppressed in YAML mode, like in JSON mode
+- **Long error messages** stay on one line
+- **`timestamp`** is quoted so YAML parsers read it as text, the same as in JSON
 
 ## License
 

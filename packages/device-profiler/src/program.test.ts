@@ -99,8 +99,8 @@ describe('CLI Program - Integration Tests', () => {
           --data-bits <bits>     Data bits for RTU (default: 8)
           --stop-bits <bits>     Stop bits for RTU (default: 1)
           --timeout <ms>         Response timeout in milliseconds (default: 1000)
-          -f, --format <format>  Output format: table or json (choices: "table", "json",
-                                 default: "table")
+          -f, --format <format>  Output format: table, json or yaml (choices: "table",
+                                 "json", "yaml", default: "table")
           -h, --help             display help for command
         "
       `)
@@ -217,7 +217,7 @@ describe('CLI Program - Integration Tests', () => {
       expect(processExitSpy).toHaveBeenCalledWith(1)
     })
 
-    it('should parse format option as table', async () => {
+    it.each(['table', 'json', 'yaml'])('should parse format option as %s', async (format) => {
       const mockRunProfileScan = jest.fn().mockResolvedValue(undefined)
       ;(cliModule.runProfileScan as jest.Mock) = mockRunProfileScan
 
@@ -229,36 +229,10 @@ describe('CLI Program - Integration Tests', () => {
         '--slave-id',
         '1',
         '--format',
-        'table',
+        format,
       ])
 
-      expect(mockRunProfileScan).toHaveBeenCalledWith(
-        expect.objectContaining({
-          format: 'table',
-        })
-      )
-    })
-
-    it('should parse format option as json', async () => {
-      const mockRunProfileScan = jest.fn().mockResolvedValue(undefined)
-      ;(cliModule.runProfileScan as jest.Mock) = mockRunProfileScan
-
-      await program.parseAsync([
-        'node',
-        'ya-modbus-profile',
-        '--port',
-        '/dev/ttyUSB0',
-        '--slave-id',
-        '1',
-        '--format',
-        'json',
-      ])
-
-      expect(mockRunProfileScan).toHaveBeenCalledWith(
-        expect.objectContaining({
-          format: 'json',
-        })
-      )
+      expect(mockRunProfileScan).toHaveBeenCalledWith(expect.objectContaining({ format }))
     })
 
     it('should default format to table when not specified', async () => {
