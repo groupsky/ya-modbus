@@ -7,6 +7,7 @@ interface ScheduledDevice {
   driver: DeviceDriver
   timer?: NodeJS.Timeout | undefined
   interval: number
+  dataPointIds: string[]
   lastFailureCount: number
 }
 
@@ -44,6 +45,7 @@ export class PollingScheduler {
     this.devices.set(deviceId, {
       config,
       driver,
+      dataPointIds: driver.dataPoints.map((dp) => dp.id),
       interval,
       lastFailureCount: 0,
     })
@@ -134,23 +136,20 @@ export class PollingScheduler {
     }
 
     device.timer = setTimeout(() => {
+      // Look the device up again: it can be removed while a timer is still pending
       const currentDevice = this.devices.get(deviceId)
       if (!currentDevice || !this.running) return
 
-      void this.pollDevice(deviceId)
+      void this.pollDevice(deviceId, currentDevice)
     }, delay)
   }
 
   /**
    * Poll a device once
    */
-  private async pollDevice(deviceId: string): Promise<void> {
-    const device = this.devices.get(deviceId)
-    if (!device || !this.running) return
-
+  private async pollDevice(deviceId: string, device: ScheduledDevice): Promise<void> {
     try {
-      const dataPointIds = device.driver.dataPoints.map((dp) => dp.id)
-      const data = await device.driver.readDataPoints(dataPointIds)
+      const data = await device.driver.readDataPoints(device.dataPointIds)
 
       // Reset failure count BEFORE callback - polling succeeded regardless of callback result
       device.lastFailureCount = 0
