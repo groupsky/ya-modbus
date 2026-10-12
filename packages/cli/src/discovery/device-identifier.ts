@@ -37,6 +37,13 @@ const FC43_OBJECT_ID = {
 } as const
 
 /**
+ * Exception codes with which a gateway answers a request that it cannot pass on to a device:
+ * 0x0A Gateway Path Unavailable and 0x0B Gateway Target Device Failed to Respond. A Modbus TCP
+ * gateway answers so for a slave ID that has no device behind it.
+ */
+const GATEWAY_EXCEPTION_CODES: readonly number[] = [0x0a, 0x0b]
+
+/**
  * Device identification result from discovery attempt
  * Provides comprehensive information about device presence and capabilities
  */
@@ -65,7 +72,7 @@ export interface DeviceIdentificationResult {
   supportsFC43?: boolean
 
   // Error classification
-  /** Device present but returned Modbus exception code */
+  /** Device present but returned Modbus exception code (not a gateway exception) */
   exceptionCode?: number
 
   /** Request timed out (no response) */
@@ -76,7 +83,8 @@ export interface DeviceIdentificationResult {
 }
 
 /**
- * Check if error is a Modbus exception (device present but unsupported function/address)
+ * Check if error is a Modbus exception and return its code. Whether the exception comes from
+ * a device or from a gateway depends on the code (see GATEWAY_EXCEPTION_CODES).
  */
 function isModbusException(error: unknown): number | undefined {
   if (error && typeof error === 'object' && 'modbusCode' in error) {
@@ -136,12 +144,14 @@ function isCRCError(error: unknown): boolean {
  * FC43/14 is the standard MEI (Modbus Encapsulated Interface) for device identification.
  * Not all devices support this - device-level support is handled via exception codes.
  *
- * Any Modbus response (including exceptions) indicates a device is present.
- * Throws for timeout/CRC errors which indicate no device with these parameters.
+ * Any Modbus response indicates a device is present, including an exception, except the
+ * exceptions of a gateway (0x0A and 0x0B), which mean there is no device at this address.
+ * Throws for timeout/CRC errors which indicate no device with these parameters, and for
+ * gateway exceptions.
  *
  * @param client - Configured ModbusRTU client
  * @param startTime - Start time for response time calculation
- * @throws Error for timeout, CRC, or other communication failures
+ * @throws Error for timeout, CRC, gateway exception, or other communication failures
  * @returns DeviceIdentificationResult with present: true guaranteed
  */
 async function tryFC43(client: ModbusRTU, startTime: number): Promise<DeviceIdentificationResult> {
@@ -185,7 +195,7 @@ async function tryFC43(client: ModbusRTU, startTime: number): Promise<DeviceIden
     const responseTime = performance.now() - startTime
     const exceptionCode = isModbusException(error)
 
-    if (exceptionCode !== undefined) {
+    if (exceptionCode !== undefined && !GATEWAY_EXCEPTION_CODES.includes(exceptionCode)) {
       // Exception means device is present but doesn't support FC43 or the specific registers
       // This is still a successful device detection - we found a device, just don't know what it is
       return {
@@ -196,7 +206,7 @@ async function tryFC43(client: ModbusRTU, startTime: number): Promise<DeviceIden
       }
     }
 
-    // Timeout, CRC, or other communication error - let caller handle it
+    // Timeout, CRC, gateway exception, or other communication error - let caller handle it
     throw error
   }
 }
@@ -205,8 +215,9 @@ async function tryFC43(client: ModbusRTU, startTime: number): Promise<DeviceIden
  * Attempt to identify a Modbus device at the current client configuration
  *
  * Uses FC43 (Read Device Identification) to probe for device presence.
- * Any Modbus response (including exceptions) indicates a device is present.
- * Only timeouts and CRC errors mean no device with these parameters.
+ * Any Modbus response indicates a device is present, including an exception.
+ * Timeouts, CRC errors and the exceptions of a gateway (0x0A and 0x0B) mean no device with
+ * these parameters.
  *
  * @param client - Configured ModbusRTU client (address, serial params, and timeout already set)
  * @returns Device identification result
@@ -250,7 +261,7 @@ export async function identifyDevice(client: ModbusRTU): Promise<DeviceIdentific
       }
     }
 
-    // Other error (network, etc.) - treat as not present
+    // Gateway exception, other error (network, etc.) - treat as not present
     return {
       present: false,
       responseTimeMs: responseTime,

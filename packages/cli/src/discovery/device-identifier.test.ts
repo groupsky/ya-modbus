@@ -5,6 +5,11 @@ import { identifyDevice } from './device-identifier.js'
 // Mock modbus-serial
 jest.mock('modbus-serial')
 
+// The error that the modbus-serial client rejects with for an exception response
+function modbusException(code: number, name: string): Error {
+  return Object.assign(new Error(`Modbus exception ${code}: ${name}`), { modbusCode: code })
+}
+
 describe('identifyDevice', () => {
   let mockClient: jest.Mocked<Partial<ModbusRTU>>
 
@@ -59,9 +64,44 @@ describe('identifyDevice', () => {
       expect(result.exceptionCode).toBe(1)
       expect(result.responseTimeMs).toBeGreaterThan(0)
     })
+
+    // Every exception except the two gateway exceptions comes from a device
+    test.each([
+      [0x02, 'Illegal data address (register not supported by device)'],
+      [0x04, 'Slave device failure (device reports internal error)'],
+      [0x06, 'Slave device busy (retry request again later)'],
+      [0x09, 'Unknown error'],
+      [0x0c, 'Unknown error'],
+    ])('identifies device that answers FC43 with exception code %i', async (code, name) => {
+      mockClient.readDeviceIdentification = jest.fn().mockRejectedValue(modbusException(code, name))
+
+      const result = await identifyDevice(mockClient as ModbusRTU)
+
+      expect(result.present).toBe(true)
+      expect(result.supportsFC43).toBe(false)
+      expect(result.exceptionCode).toBe(code)
+    })
   })
 
   describe('device not present', () => {
+    // Issue #583: a Modbus TCP gateway answers a request for a slave ID with no device behind
+    // it with exception 0x0A or 0x0B. The exception comes from the gateway, not from a device.
+    test.each([
+      [0x0a, 'Gateway path unavailable (misconfigured gateway)'],
+      [0x0b, 'Gateway target device failed to respond (retry request again later)'],
+    ])('returns not present on gateway exception code %i', async (code, name) => {
+      mockClient.readDeviceIdentification = jest.fn().mockRejectedValue(modbusException(code, name))
+
+      const result = await identifyDevice(mockClient as ModbusRTU)
+
+      expect(result.present).toBe(false)
+      expect(result.responseTimeMs).toBeGreaterThan(0)
+      expect(result.supportsFC43).toBeUndefined()
+      expect(result.exceptionCode).toBeUndefined()
+      expect(result.timeout).toBeUndefined()
+      expect(result.crcError).toBeUndefined()
+    })
+
     test('returns not present on timeout', async () => {
       mockClient.readDeviceIdentification = jest.fn().mockRejectedValue({
         message: 'Timeout exceeded',
