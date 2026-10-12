@@ -5,6 +5,7 @@ import ModbusRTU from 'modbus-serial'
 import { connectTCP, DEFAULT_TIMEOUT_MS } from './client-config.js'
 import { ModbusConnection } from './connection.js'
 import type { RTUConfig, TCPConfig, TransportConfig } from './factory.js'
+import { normalizeModbusError, type ModbusError } from './normalize-error.js'
 import { SlaveTransport } from './slave-transport.js'
 
 /**
@@ -15,6 +16,21 @@ interface ConnectionEntry {
   mutex: Mutex // Shared mutex for serializing operations
   config: TransportConfig
   isRTU: boolean
+}
+
+/**
+ * Options for TransportManager
+ */
+export interface TransportManagerOptions {
+  /**
+   * Return a transport also when its port cannot be opened (for example a USB serial adapter
+   * that is not plugged in). The connection then starts lost: requests reject with a
+   * ConnectionLostError, and a request after the reopen delay opens the port (see
+   * ModbusConnection). getConnectionError() returns the error.
+   *
+   * Default: false, getTransport() rejects when the port cannot be opened.
+   */
+  startLost?: boolean
 }
 
 /**
@@ -39,6 +55,8 @@ export interface TransportStats {
  * - A lost connection (USB adapter unplugged, TCP connection closed) drops the client.
  *   The first request after a backoff opens a new client for all devices on the
  *   connection (see ModbusConnection)
+ * - With the `startLost` option, a port that cannot be opened (USB adapter missing at
+ *   start) gives a lost connection instead of an error
  *
  * This architecture solves the multi-device problem:
  * - Each device gets its own SlaveTransport with its own slave ID
@@ -55,6 +73,10 @@ export interface TransportStats {
  */
 export class TransportManager {
   private readonly connections = new Map<string, ConnectionEntry>()
+  // Connections that are opening, so that devices added at the same time share one client
+  private readonly opening = new Map<string, Promise<ConnectionEntry>>()
+
+  constructor(private readonly options: TransportManagerOptions = {}) {}
 
   /**
    * Get or create a transport for the given configuration.
@@ -63,25 +85,20 @@ export class TransportManager {
    *
    * @param config - RTU or TCP transport configuration
    * @returns SlaveTransport instance for the specific slave device
+   * @throws When the port cannot be opened, unless the `startLost` option is set
    */
   async getTransport(config: TransportConfig): Promise<Transport> {
     const key = this.getPhysicalConnectionKey(config)
-    const isRTU = this.isRTUConfig(config)
 
     // Get or create the shared connection
     let entry = this.connections.get(key)
     if (!entry) {
-      // Create new client for this physical connection
-      const open = isRTU ? () => this.createRTUClient(config) : () => this.createTCPClient(config)
-      const client = await open()
-
-      entry = {
-        connection: new ModbusConnection(client, this.getTarget(config), open),
-        mutex: new Mutex(),
-        config,
-        isRTU,
+      let opening = this.opening.get(key)
+      if (!opening) {
+        opening = this.openConnection(key, config).finally(() => this.opening.delete(key))
+        this.opening.set(key, opening)
       }
-      this.connections.set(key, entry)
+      entry = await opening
     }
 
     // Return a new SlaveTransport for this specific slave
@@ -92,6 +109,42 @@ export class TransportManager {
       config.maxRetries ?? 3,
       config.logger
     )
+  }
+
+  /**
+   * Open the shared connection for a physical connection and add it to the pool
+   *
+   * @param key - Physical connection key
+   * @param config - Transport configuration
+   * @returns The pool entry
+   */
+  private async openConnection(key: string, config: TransportConfig): Promise<ConnectionEntry> {
+    const isRTU = this.isRTUConfig(config)
+    const open = isRTU ? () => this.createRTUClient(config) : () => this.createTCPClient(config)
+    const target = this.getTarget(config)
+
+    let connection: ModbusConnection
+    try {
+      connection = new ModbusConnection(await open(), target, open)
+    } catch (error) {
+      if (!this.options.startLost) throw error
+      connection = new ModbusConnection(normalizeModbusError(error), target, open)
+    }
+
+    const entry = { connection, mutex: new Mutex(), config, isRTU }
+    this.connections.set(key, entry)
+    return entry
+  }
+
+  /**
+   * Get the error of a lost connection
+   *
+   * @param config - Configuration of a transport on the connection
+   * @returns The error that requests on the connection reject with while it is lost.
+   *   Undefined while the connection works, or when there is no connection for the config.
+   */
+  getConnectionError(config: TransportConfig): ModbusError | undefined {
+    return this.connections.get(this.getPhysicalConnectionKey(config))?.connection.error
   }
 
   /**

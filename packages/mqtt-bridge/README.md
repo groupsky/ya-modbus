@@ -252,7 +252,8 @@ After the bridge has connected to the broker, it loads the devices one after ano
 
 - Devices share one connection when they use the same serial port with the same `baudRate`, `dataBits`, `parity` and `stopBits`, or the same TCP `host` and `port`. The first of them opens the connection and its `timeout` is used for all of them. Devices that share a connection are read one at a time.
 - A device ID can be used only once. If it is used twice, loading the second device fails with `Device <deviceId> already exists`.
-- If a device fails to load, for example because the driver is not installed or the serial port cannot be opened, the CLI prints the error and exits with code 1. The devices after it are not loaded.
+- If a device fails to load, for example because the driver is not installed, the CLI prints the error and exits with code 1. The devices after it are not loaded.
+- A port that cannot be opened does not stop the bridge, for example a USB serial adapter that is not plugged in, or a TCP device that refuses the connection. The bridge prints a warning, the device starts in the `error` state, and the other devices start normally. A later poll opens the port (see [Unplugging a Serial Adapter](#unplugging-a-serial-adapter)). This does not work for a driver that reads from the device while it loads: that device fails to load.
 
 ### Common Configuration Errors
 
@@ -315,18 +316,18 @@ Error: Invalid configuration: mqtt.url: URL must start with mqtt://, mqtts://, w
 
 Each device has a `state`. `bridge.getDevice()` and `bridge.listDevices()` return it.
 
-| State          | Meaning                                                                             |
-| -------------- | ----------------------------------------------------------------------------------- |
-| `disconnected` | The device is disabled (`enabled: false`). The bridge does not poll it.             |
-| `connecting`   | The bridge is loading the driver.                                                   |
-| `connected`    | The driver is loaded. The device is not in the `error` state.                       |
-| `error`        | `maxRetries` consecutive reads failed. The bridge still polls, with `retryBackoff`. |
+| State          | Meaning                                                                                                            |
+| -------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `disconnected` | The device is disabled (`enabled: false`). The bridge does not poll it.                                            |
+| `connecting`   | The bridge is loading the driver.                                                                                  |
+| `connected`    | The driver is loaded. The device is not in the `error` state.                                                      |
+| `error`        | `maxRetries` consecutive reads failed, or the port was not open when the device was added. The bridge still polls. |
 
 How the state changes:
 
 - `disconnected` → `connecting` - the device is added and is enabled
 - `connecting` → `connected` - the driver is loaded. If the driver does not load, `addDevice()` fails and the device is not added.
-- `connected` → `error` - `maxRetries` consecutive reads failed (at least 1, so `0` works like `1`)
+- `connected` → `error` - `maxRetries` consecutive reads failed (at least 1, so `0` works like `1`), or the port of the device is not open when the device is added. In the second case `addDevice()` works, and the state changes right after the driver is loaded.
 - `error` → `connected` - the next read works
 
 When the state changes between `connected` and `error`, the bridge publishes a message to `{topicPrefix}/{deviceId}/status`:
@@ -335,7 +336,7 @@ When the state changes between `connected` and `error`, the bridge publishes a m
 { "deviceId": "sensor1", "timestamp": 1760000000000, "state": "error", "errors": ["Timed out"] }
 ```
 
-The `errors` field is only there when the state is `error`. It has the message of the last failed read. Status messages use QoS 0 and are not retained, the same as the messages on `{topicPrefix}/{deviceId}/data`. If the bridge is not connected to the broker when the state changes, the message is lost. Use `bridge.getDevice()` to read the current state at any time.
+The `errors` field is only there when the state is `error`. It has the message of the last failed read, or why the port could not be opened. Status messages use QoS 0 and are not retained, the same as the messages on `{topicPrefix}/{deviceId}/data`. If the bridge is not connected to the broker when the state changes, the message is lost. Use `bridge.getDevice()` to read the current state at any time.
 
 The `connected` field of the device status is deprecated. Use `state` instead. `connected` is `true` only when `state` is `connected`.
 
@@ -354,9 +355,11 @@ The bridge keeps running when a USB serial adapter is unplugged:
 - When the adapter is back, the next attempt opens the port and the devices are read again. No
   restart is needed.
 
-The port must exist when the bridge starts. If it does not, the bridge exits with an error.
-systemd starts it again after 5 seconds, but at most 5 times in 5 minutes. After that, the
-service stays failed until you run `sudo systemctl restart ya-modbus-bridge`.
+The bridge also starts when an adapter is not plugged in. It prints a warning like
+`Device meter1 is not connected, the bridge keeps trying to open its port: Connection to /dev/ttyUSB0 lost: Error: No such file or directory, cannot open /dev/ttyUSB0`.
+The devices on that port start in the `error` state, and the other devices start normally. The
+port is opened with the same delays as above, so the devices are read soon after the adapter is
+plugged in.
 
 Linux can give the adapter a new name when it is plugged in again (`/dev/ttyUSB0` becomes
 `/dev/ttyUSB1`). The bridge opens the same path again, so use a stable path in `port`:

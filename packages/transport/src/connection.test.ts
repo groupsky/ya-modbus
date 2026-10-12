@@ -45,6 +45,39 @@ test('opens one client when several requests come while the port opens', async (
   expect(open).toHaveBeenCalledTimes(1)
 })
 
+// A long-running program must not stop when a USB adapter is missing at start
+test('a connection created with the error of a failed open starts lost and reopens after the backoff', async () => {
+  let now = 0
+  jest.spyOn(performance, 'now').mockImplementation(() => now)
+  const notPluggedIn = new Error('Error: No such file or directory, cannot open /dev/ttyUSB0')
+  const open = jest
+    .fn<Promise<ModbusRTU>, []>()
+    .mockRejectedValueOnce(notPluggedIn)
+    .mockResolvedValue(createClient())
+  const lost = {
+    name: 'ConnectionLostError',
+    message:
+      'Connection to /dev/ttyUSB0 lost: Error: No such file or directory, cannot open /dev/ttyUSB0',
+  }
+
+  const connection = new ModbusConnection(notPluggedIn, '/dev/ttyUSB0', open)
+  expect(connection.error).toMatchObject(lost)
+  now += 999
+  await expect(connection.run(read)).rejects.toMatchObject(lost)
+  expect(open).not.toHaveBeenCalled()
+
+  // Still not plugged in: the next attempt waits twice as long
+  now += 1
+  await expect(connection.run(read)).rejects.toMatchObject(lost)
+  now += 1999
+  await expect(connection.run(read)).rejects.toMatchObject(lost)
+  expect(open).toHaveBeenCalledTimes(1)
+
+  now += 1
+  await expect(connection.run(read)).resolves.toEqual(Buffer.from([0, 1]))
+  expect(connection.error).toBeUndefined()
+})
+
 test('works again with a client that its owner opens again', async () => {
   const client = createClient()
   const connection = new ModbusConnection(client)

@@ -65,6 +65,14 @@ function connectionLostError(target: string | undefined, cause: unknown): Modbus
 }
 
 /**
+ * A connection that works has a client. A lost connection has the error that requests
+ * reject with, and the client that was lost (none when the connection started lost).
+ */
+type ConnectionState =
+  | { client: ModbusRTU; lostError?: undefined }
+  | { client: ModbusRTU | undefined; lostError: ModbusError }
+
+/**
  * A modbus-serial client together with the state of its connection.
  *
  * modbus-serial emits 'error' (for example when a USB serial adapter is unplugged)
@@ -78,11 +86,13 @@ function connectionLostError(target: string | undefined, cause: unknown): Modbus
  *   not lead to a successful request, up to MAX_REOPEN_DELAY_MS.
  * - without an `open` function, requests reject until the owner of the client
  *   opens it again
+ *
+ * A connection created with the error of a failed open (for example a USB serial
+ * adapter that is not plugged in) starts lost in the same way.
  */
 export class ModbusConnection {
   readonly [CONNECTION] = true
-  private client: ModbusRTU
-  private lostError: ModbusError | undefined
+  private state: ConnectionState
   private reopenDelay = REOPEN_DELAY_MS
   private reopenAt = 0
   private reopening: Promise<ModbusRTU> | undefined
@@ -94,13 +104,35 @@ export class ModbusConnection {
    * @param target - Port path or host:port, used in error messages
    * @param open - Opens a new client after the connection is lost
    */
+  constructor(client: ModbusRTU, target?: string, open?: OpenClient)
+  /**
+   * @param openError - Error of a failed attempt to open the port. The connection starts
+   *   lost: requests reject with a ConnectionLostError, and the first request after
+   *   REOPEN_DELAY_MS calls `open`.
+   * @param target - Port path or host:port, used in error messages
+   * @param open - Opens a new client
+   */
+  constructor(openError: Error, target: string | undefined, open: OpenClient)
   constructor(
-    client: ModbusRTU,
+    client: ModbusRTU | Error,
     private readonly target?: string,
     private readonly open?: OpenClient
   ) {
-    this.client = client
-    this.watch(client)
+    if (client instanceof Error) {
+      this.state = { client: undefined, lostError: connectionLostError(target, client) }
+      this.delayReopen()
+    } else {
+      this.state = { client }
+      this.watch(client)
+    }
+  }
+
+  /**
+   * The error that requests reject with while the connection is lost, or undefined while it
+   * works. The request that opens the port again clears it.
+   */
+  get error(): ModbusError | undefined {
+    return this.state.lostError
   }
 
   /**
@@ -111,8 +143,9 @@ export class ModbusConnection {
    * @throws ConnectionLostError when the connection is lost before or during the request
    */
   async run<T>(request: (client: ModbusRTU) => Promise<T>): Promise<T> {
+    const { state } = this
     // No await while the connection works, so the request starts at once
-    const client = this.lostError === undefined ? this.client : await this.reopen(this.lostError)
+    const client = state.lostError === undefined ? state.client : await this.reopen(state.lostError)
 
     // Assigned at once: the promise executor runs synchronously
     let rejectOnLoss!: (error: ModbusError) => void
@@ -141,11 +174,12 @@ export class ModbusConnection {
    */
   async close(): Promise<void> {
     this.closed = true
+    const { state } = this
     // A lost client or a client that is not open needs no close. modbus-serial never
     // calls back when it closes a TCP client whose socket is closed.
-    if (this.lostError !== undefined || !this.client.isOpen) return
+    if (state.lostError !== undefined || !state.client.isOpen) return
 
-    const client = this.client
+    const { client } = state
     await new Promise<void>((resolve) => {
       closeClient(client, () => resolve())
     })
@@ -160,11 +194,12 @@ export class ModbusConnection {
 
   private lose(client: ModbusRTU, cause: unknown): void {
     // Ignore events from clients that were replaced, and repeated events
-    if (client !== this.client || this.lostError !== undefined || this.closed) return
+    if (client !== this.state.client || this.state.lostError !== undefined || this.closed) return
 
-    this.lostError = connectionLostError(this.target, cause)
+    const lostError = connectionLostError(this.target, cause)
+    this.state = { client, lostError }
     this.delayReopen()
-    for (const reject of this.inFlight) reject(this.lostError)
+    for (const reject of this.inFlight) reject(lostError)
     // serialport closes the port on a disconnect. A port that is still open keeps
     // its lock, and the reopen would fail.
     if (client.isOpen) closeClient(client, () => undefined)
@@ -184,9 +219,10 @@ export class ModbusConnection {
   private reopen(lostError: ModbusError): Promise<ModbusRTU> {
     if (this.open === undefined) {
       // The owner of the client can open it again
-      if (this.client.isOpen && !this.closed) {
-        this.lostError = undefined
-        return Promise.resolve(this.client)
+      const { client } = this.state
+      if (client?.isOpen && !this.closed) {
+        this.state = { client }
+        return Promise.resolve(client)
       }
       return Promise.reject(lostError)
     }
@@ -205,7 +241,7 @@ export class ModbusConnection {
       client = await open()
     } catch (error) {
       const openError = connectionLostError(this.target, error)
-      this.lostError = openError
+      this.state = { client: this.state.client, lostError: openError }
       this.delayReopen()
       throw openError
     }
@@ -215,8 +251,7 @@ export class ModbusConnection {
       throw lostError
     }
 
-    this.client = client
-    this.lostError = undefined
+    this.state = { client }
     this.watch(client)
     return client
   }

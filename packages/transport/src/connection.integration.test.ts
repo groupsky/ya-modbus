@@ -126,4 +126,25 @@ async function tryRead(transport: Transport): Promise<string> {
     await waitUntil(async () => (await tryRead(transport)) === 'ok')
     await expect(transport.readHoldingRegisters(0, 1)).resolves.toEqual(Buffer.from([0, 42]))
   }, 20_000)
+
+  test('with startLost, opens a port that is missing at start after it appears', async () => {
+    await unplug()
+    manager = new TransportManager({ startLost: true })
+
+    const transport = await manager.getTransport({
+      port: clientPath,
+      baudRate: 9600,
+      dataBits: 8,
+      parity: 'none',
+      stopBits: 1,
+      slaveId: 1,
+      timeout: 500,
+      maxRetries: 1,
+    })
+    expect(await tryRead(transport)).toBe('ConnectionLostError')
+
+    await plugIn()
+    await waitUntil(async () => (await tryRead(transport)) === 'ok')
+    await expect(transport.readHoldingRegisters(0, 1)).resolves.toEqual(Buffer.from([0, 42]))
+  }, 20_000)
 })

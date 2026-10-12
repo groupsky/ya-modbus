@@ -570,6 +570,7 @@ export function createMockTransportManager(): jest.Mocked<TransportManager> {
   const mockTransport = createMockTransport()
   return {
     getTransport: jest.fn<(...args: any[]) => any>().mockResolvedValue(mockTransport),
+    getConnectionError: jest.fn<(...args: any[]) => any>(),
     getStats: jest
       .fn<(...args: any[]) => any>()
       .mockReturnValue({ totalTransports: 0, rtuTransports: 0, tcpTransports: 0 }),
