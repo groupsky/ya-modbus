@@ -16,6 +16,16 @@ export interface TcpTransportConfig {
   port: number
 }
 
+/**
+ * Every start() creates a new ServerTCP and never reuses an earlier one, so listeners added
+ * to it cannot pile up across start/stop cycles. stop() forgets the server once it is closed.
+ *
+ * start() and stop() remove the 'initialized' and 'error' listeners they added. The listeners
+ * that modbus-serial registers on its own net.Server and sockets are not reachable from here,
+ * and its close() removes only the 'data' listener. They are released together with the server
+ * once nothing references it. Reusing a server instance would also require removing them
+ * (see #253).
+ */
 export class TcpTransport extends BaseTransport {
   private config: TcpTransportConfig
   private requestHandler?: RequestHandler

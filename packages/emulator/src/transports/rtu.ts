@@ -20,6 +20,16 @@ export interface RtuTransportConfig {
   lock?: boolean
 }
 
+/**
+ * Every start() creates a new ServerSerial and never reuses an earlier one, so listeners added
+ * to it cannot pile up across start/stop cycles. stop() forgets the server once it is closed.
+ *
+ * start() and stop() remove the 'error' listener they added. The listeners that modbus-serial
+ * registers on the serial port and its parser stream are not reachable from here, and its
+ * close() removes only the 'data' listener. They are released together with the server once
+ * nothing references it. Reusing a server instance would also require removing them
+ * (see #253).
+ */
 export class RtuTransport extends BaseTransport {
   private config: RtuTransportConfig
   private requestHandler?: RequestHandler
