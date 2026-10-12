@@ -24,7 +24,7 @@ The MQTT bridge orchestrates the following components:
 ### Data Topics
 
 - `modbus/{deviceId}/data` - Device data publications (future)
-- `modbus/{deviceId}/status/*` - Device status (future)
+- `modbus/{deviceId}/status` - Device state changes (see README.md, Device States)
 - `modbus/{deviceId}/errors/*` - Device errors (future)
 - `modbus/bridge/status/*` - Bridge health and status (future)
 

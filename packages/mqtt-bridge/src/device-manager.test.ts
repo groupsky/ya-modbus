@@ -3,7 +3,7 @@ import type { DeviceDriver } from '@ya-modbus/driver-types'
 
 import { DeviceManager } from './device-manager.js'
 import { DriverLoader } from './driver-loader.js'
-import type { DeviceConfig } from './types.js'
+import type { DeviceConfig, DeviceStatus } from './types.js'
 
 describe('DeviceManager', () => {
   let manager: DeviceManager
@@ -332,30 +332,65 @@ describe('DeviceManager', () => {
   })
 
   describe('updateDeviceState', () => {
-    it('should update device state', async () => {
-      const config: DeviceConfig = {
+    // Adds device1 and moves it to the given state through valid transitions
+    const addDeviceInState = async (
+      state: Exclude<DeviceStatus['state'], 'connecting'>
+    ): Promise<void> => {
+      await manager.addDevice({
         deviceId: 'device1',
         driver: 'ya-modbus-driver-test',
-        connection: {
-          type: 'rtu',
-          port: '/dev/ttyUSB0',
-          baudRate: 9600,
-          slaveId: 1,
-        },
-        enabled: false,
+        connection: { type: 'tcp', host: 'localhost', port: 502, slaveId: 1 },
+        enabled: state !== 'disconnected',
+      })
+      if (state === 'error') {
+        manager.updateDeviceState('device1', { state: 'error' })
       }
+    }
 
-      await manager.addDevice(config)
+    it('should update device state', async () => {
+      await addDeviceInState('connected')
       manager.updateDeviceState('device1', {
-        state: 'connected',
-        connected: true,
+        state: 'error',
+        consecutiveFailures: 3,
         lastUpdate: Date.now(),
       })
 
       const device = manager.getDevice('device1')
-      expect(device?.state).toBe('connected')
-      expect(device?.connected).toBe(true)
+      expect(device?.state).toBe('error')
+      expect(device?.consecutiveFailures).toBe(3)
       expect(device?.lastUpdate).toBeDefined()
+    })
+
+    it.each([
+      { from: 'connected', to: 'error', connected: false },
+      { from: 'error', to: 'connected', connected: true },
+      { from: 'connected', to: 'connected', connected: true },
+      { from: 'error', to: 'error', connected: false },
+    ] as const)(
+      'should set connected to $connected when state goes from $from to $to',
+      async ({ from, to, connected }) => {
+        await addDeviceInState(from)
+
+        manager.updateDeviceState('device1', { state: to })
+
+        expect(manager.getDevice('device1')).toMatchObject({ state: to, connected })
+      }
+    )
+
+    it.each([
+      { from: 'disconnected', to: 'connected' },
+      { from: 'disconnected', to: 'error' },
+      { from: 'connected', to: 'connecting' },
+      { from: 'connected', to: 'disconnected' },
+      { from: 'error', to: 'connecting' },
+      { from: 'error', to: 'disconnected' },
+    ] as const)('should reject state change from $from to $to', async ({ from, to }) => {
+      await addDeviceInState(from)
+
+      expect(() => manager.updateDeviceState('device1', { state: to })).toThrow(
+        `Invalid state change for device device1: ${from} -> ${to}`
+      )
+      expect(manager.getDevice('device1')?.state).toBe(from)
     })
 
     it('should throw error if device not found', () => {

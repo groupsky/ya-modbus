@@ -1,4 +1,4 @@
-import type { MqttBridgeConfig } from './types.js'
+import type { DeviceConfig, MqttBridgeConfig, PollingConfig } from './types.js'
 import {
   createMessageCollector,
   createTestBridgeConfig,
@@ -8,6 +8,7 @@ import {
   waitForAllClientsToDisconnect,
   waitForClientDisconnect,
   waitForClientReady,
+  waitForPublish,
   waitForSubscribe,
   waitForUnsubscribe,
   withBridge,
@@ -513,6 +514,88 @@ describe('MQTT Bridge Integration Tests', () => {
         expect(mocks.mockTransportManager.getTransport).toHaveBeenCalledWith(
           expect.objectContaining({ port: 503, slaveId: 2 })
         )
+      })
+    })
+  })
+
+  describe('Device State', () => {
+    const createDeviceConfig = (polling: PollingConfig): DeviceConfig => ({
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: { type: 'tcp', host: 'localhost', port: 502, slaveId: 1 },
+      polling,
+    })
+
+    const parsePayload = (message: { payload: Buffer }): unknown =>
+      JSON.parse(message.payload.toString())
+
+    // Long retryBackoff keeps the device from polling again while the test checks it
+    test.each([
+      { polling: { interval: 100, maxRetries: 1, retryBackoff: 60000 }, failures: 1 },
+      { polling: { interval: 100, retryBackoff: 60000 }, failures: 3 },
+    ])(
+      'should go to error state after $failures failed reads in a row',
+      async ({ polling, failures }) => {
+        await withBridgeAndMockDriver(broker, async (bridge, mocks) => {
+          mocks.mockDriver.readDataPoints.mockRejectedValue(new Error('Read timeout'))
+          const statusPublished = waitForPublish(broker, 'modbus/device1/status', 2000)
+
+          await bridge.addDevice(createDeviceConfig(polling))
+
+          expect(parsePayload(await statusPublished)).toEqual({
+            deviceId: 'device1',
+            timestamp: expect.any(Number),
+            state: 'error',
+            errors: ['Read timeout'],
+          })
+          expect(bridge.getDevice('device1')).toMatchObject({
+            state: 'error',
+            connected: false,
+            consecutiveFailures: failures,
+          })
+        })
+      }
+    )
+
+    test('should go back to connected state on the next successful read', async () => {
+      await withBridgeAndMockDriver(broker, async (bridge, mocks) => {
+        // Record the state of every status message the broker gets, in order
+        const states: unknown[] = []
+        const onPublish = (packet: { topic: string; payload: Buffer | string }): void => {
+          if (packet.topic === 'modbus/device1/status') {
+            states.push((JSON.parse(packet.payload.toString()) as { state: unknown }).state)
+          }
+        }
+        broker.broker.on('publish', onPublish)
+
+        try {
+          // Only the first read fails, the next reads work
+          mocks.mockDriver.readDataPoints.mockRejectedValueOnce(new Error('Read timeout'))
+          const errorPublished = waitForPublish(broker, 'modbus/device1/status', 2000)
+          await bridge.addDevice(
+            createDeviceConfig({ interval: 100, maxRetries: 1, retryBackoff: 100 })
+          )
+          await errorPublished
+
+          const connectedPublished = waitForPublish(broker, 'modbus/device1/status', 2000)
+          expect(parsePayload(await connectedPublished)).toEqual({
+            deviceId: 'device1',
+            timestamp: expect.any(Number),
+            state: 'connected',
+          })
+          expect(bridge.getDevice('device1')).toMatchObject({
+            state: 'connected',
+            connected: true,
+            consecutiveFailures: 0,
+          })
+
+          // More successful reads keep the device connected and publish no new status
+          await waitForPublish(broker, 'modbus/device1/data', 2000)
+          await waitForPublish(broker, 'modbus/device1/data', 2000)
+          expect(states).toEqual(['error', 'connected'])
+        } finally {
+          broker.broker.off('publish', onPublish)
+        }
       })
     })
   })

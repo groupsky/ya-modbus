@@ -2,6 +2,19 @@ import type { DriverLoader } from './driver-loader.js'
 import type { DeviceConfig, DeviceStatus } from './types.js'
 import { validateDeviceConfig } from './utils/device-validation.js'
 
+type DeviceState = DeviceStatus['state']
+
+/** Fields of a device status that callers can change; `connected` follows `state` */
+export type DeviceStatusUpdate = Partial<Omit<DeviceStatus, 'deviceId' | 'connected'>>
+
+// State changes allowed by updateDeviceState (see DeviceStatus['state'])
+const ALLOWED_STATE_CHANGES: Record<DeviceState, readonly DeviceState[]> = {
+  disconnected: ['connecting'],
+  connecting: ['connected'],
+  connected: ['error'],
+  error: ['connected'],
+}
+
 export class DeviceManager {
   private devices = new Map<string, DeviceStatus>()
   private configs = new Map<string, DeviceConfig>()
@@ -34,7 +47,6 @@ export class DeviceManager {
         await this.driverLoader.loadDriver(config.driver, config.connection, config.deviceId)
         this.updateDeviceState(config.deviceId, {
           state: 'connected',
-          connected: true,
           lastUpdate: Date.now(),
         })
       } catch (error) {
@@ -68,15 +80,21 @@ export class DeviceManager {
     return this.devices.size
   }
 
-  updateDeviceState(deviceId: string, updates: Partial<Omit<DeviceStatus, 'deviceId'>>): void {
+  updateDeviceState(deviceId: string, updates: DeviceStatusUpdate): void {
     const device = this.devices.get(deviceId)
     if (!device) {
       throw new Error(`Device ${deviceId} not found`)
     }
 
+    const state = updates.state ?? device.state
+    if (state !== device.state && !ALLOWED_STATE_CHANGES[device.state].includes(state)) {
+      throw new Error(`Invalid state change for device ${deviceId}: ${device.state} -> ${state}`)
+    }
+
     this.devices.set(deviceId, {
       ...device,
       ...updates,
+      connected: state === 'connected',
     })
   }
 
