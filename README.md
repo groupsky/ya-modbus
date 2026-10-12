@@ -209,16 +209,14 @@ npm install -g @ya-modbus/cli ya-modbus-driver-solar
 
 ## Documentation
 
-- **[Getting Started](./docs/getting-started.md)** - Installation, configuration, first steps
+- **[Quick Start](#quick-start)** - Installation, configuration, first steps
 - **[Architecture](./docs/ARCHITECTURE.md)** - System design, key decisions, data flow
 - **[Driver Development](./docs/DRIVER-DEVELOPMENT.md)** - Creating third-party device drivers
 - **[Contributing](./CONTRIBUTING.md)** - Development workflow, testing, code style
 - **[AGENTS.md](./AGENTS.md)** - Quick guide for AI assistants and developers
-- **[API Reference](./docs/api/)** - Package APIs and interfaces
-- **[Device Drivers](./docs/devices/)** - Adding and converting device drivers
+- **[Package Docs](./packages/)** - Package APIs and interfaces, one README per package
 - **[systemd Service](./packages/mqtt-bridge/systemd/INSTALL.md)** - Run the MQTT bridge as a Linux service
-- **[Troubleshooting](./docs/troubleshooting.md)** - Common issues and solutions
-- **[FAQ](./docs/faq.md)** - Frequently asked questions
+- **[CLI Troubleshooting](./packages/cli/README.md#troubleshooting)** - Serial port permissions, missing drivers, timeouts
 
 ## Development
 
