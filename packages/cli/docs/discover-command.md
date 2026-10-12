@@ -51,8 +51,9 @@ This will:
 
 - `--delay <ms>` - Delay between attempts in milliseconds (default: `100`)
   - Prevents bus contention on RS-485
-  - Lower values scan faster but may cause errors
-  - Recommended: 100ms minimum
+  - After an attempt that does not find a device, the scanner waits `delay - timeout` ms, and only when `--delay` is larger than `--timeout`. The timeout already used that time.
+  - So a `--delay` at or below `--timeout` adds no wait after such attempts. A larger `--delay` makes each attempt that times out take about `--delay` ms.
+  - After a device is found, the scanner waits the full `--delay`, unless `--max-devices` is reached and the scan stops
 
 - `--id <spec>` - Limit search to specific slave IDs (can be specified multiple times)
   - Format: Single IDs or ranges separated by commas (e.g., `1,2,3-5`)
@@ -195,8 +196,8 @@ Discovery complete! Found 2 device(s).
 ┌──────────┬───────────┬────────┬───────────┬──────────┬────────────┬───────────────────────┐
 │ Slave ID │ Baud Rate │ Parity │ Data/Stop │ Response │ Vendor     │ Model                 │
 ├──────────┼───────────┼────────┼───────────┼──────────┼────────────┼───────────────────────┤
-│ 1        │ 9600      │ E      │ 8E1       │ 12.3ms   │ XY-MD1     │ Temperature Sensor    │
-│ 3        │ 14400     │ N      │ 8N1       │ 18.7ms   │ -          │ -                     │
+│ 1        │ 9600      │ E      │ 8E1       │ 12ms     │ XY-MD1     │ AC-100                │
+│ 3        │ 14400     │ N      │ 8N1       │ 19ms     │ -          │ -                     │
 └──────────┴───────────┴────────┴───────────┴──────────┴────────────┴───────────────────────┘
 ```
 
@@ -220,9 +221,7 @@ Output:
     "identification": {
       "vendorName": "XY-MD1",
       "productCode": "AC-100",
-      "modelName": "Temperature Sensor",
       "revision": "v1.2.3",
-      "supportsFC03": true,
       "supportsFC43": true
     }
   }
@@ -242,7 +241,7 @@ Output:
 
 Discovery time depends on several factors:
 
-**Formula:** `Time ≈ (combinations × timeout) / 1000` seconds
+**Formula:** `Time ≈ (combinations × timeout) / 1000` seconds (use `--delay` instead of `--timeout` when `--delay` is larger)
 
 **Combinations:** `slave IDs × baud rates × parities × data bits × stop bits`
 
@@ -267,7 +266,7 @@ Discovery time depends on several factors:
 1. **Filter slave IDs** - Use `--id` if you know which IDs to search (5 IDs instead of 247 reduces combinations by 98%)
 2. **Use a driver** - Limits the scan to the driver's SUPPORTED_CONFIG (with `--strategy thorough`, the XYMD1 driver reduces combinations by 94%)
 3. **Lower timeout** - Use 250-500ms if devices respond quickly
-4. **Start with quick strategy** - Finds 90% of devices
+4. **Start with quick strategy** - Without a driver or filters, it tests 1,482 combinations and the thorough strategy tests 23,712
 5. **Stop after first device** - Default `--max-devices 1` stops after finding one device
 
 ### Progress Monitoring
@@ -347,11 +346,9 @@ Progress: 35% (520/1482) | Devices found: 1 | Elapsed: 8m 40s | ETA: 16m 2s
 
    **Warning:** May miss slow-responding devices
 
-3. **Reduce delay** (risky)
-   ```bash
-   ya-modbus discover --port /dev/ttyUSB0 --delay 50
-   ```
-   **Warning:** May cause bus contention errors
+3. **Keep `--delay` at or below `--timeout`**
+
+   A larger `--delay` makes each attempt that times out take about `--delay` ms instead of `--timeout` ms. See [Command Options](#command-options).
 
 ### Found Wrong Device or Duplicate Entries
 
@@ -371,7 +368,7 @@ Progress: 35% (520/1482) | Devices found: 1 | Elapsed: 8m 40s | ETA: 16m 2s
 
 **Causes:**
 
-- Discovery uses basic function codes (FC03, FC43)
+- Discovery only sends FC43 (Read Device Identification). It does not read any registers, so a found device may still lack the registers your driver reads
 - Your driver may use different register ranges
 - Device may have restricted register access
 
@@ -415,7 +412,7 @@ ya-modbus discover --port /dev/ttyUSB0 --driver @ya-modbus/driver-xymd1
 Quick scan for fast-responding devices:
 
 ```bash
-ya-modbus discover --port /dev/ttyUSB0 --timeout 500 --delay 50
+ya-modbus discover --port /dev/ttyUSB0 --timeout 500
 ```
 
 ### Example 4: Thorough Scan
@@ -539,17 +536,14 @@ jq '.[] | {id: .slaveId, baud: .baudRate, parity: .parity}' devices.json
 
 ### Detection Methods
 
-The discover command uses multiple Modbus function codes:
+The discover command sends one Modbus function code to each parameter combination:
 
-1. **FC43/14 - Read Device Identification** (tries first)
-   - MEI (Modbus Encapsulated Interface)
-   - Returns vendor name, product code, model, revision
-   - Not supported by all devices
+**FC43/14 - Read Device Identification**
 
-2. **FC03 - Read Holding Registers** (fallback)
-   - Universal fallback
-   - Reads register 0, count 1
-   - Supported by nearly all Modbus devices
+- MEI (Modbus Encapsulated Interface)
+- Reads vendor name, product code, revision
+- Not supported by all devices. A device that answers with an exception is still reported as present.
+- A device that does not answer at all (timeout) is reported as not found, even if it supports other function codes such as FC03
 
 ### Response Classification
 
@@ -563,7 +557,7 @@ The command distinguishes between:
 
 ## See Also
 
-- [`read` command](../README.md#read-command) - Read data points after discovery
-- [`write` command](../README.md#write-command) - Write data points after discovery
-- [`show-defaults` command](../README.md#show-defaults-command) - View driver defaults
+- [`read` command](../README.md#read-data-points) - Read data points after discovery
+- [`write` command](../README.md#write-data-points) - Write data points after discovery
+- [`show-defaults` command](../README.md#working-with-third-party-and-development-drivers) - View driver defaults
 - [Driver Development Guide](../../../docs/DRIVER-DEVELOPMENT.md) - Creating custom drivers

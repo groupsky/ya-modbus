@@ -189,11 +189,10 @@ ya-modbus discover \
 **Custom timing:**
 
 ```bash
-# Adjust timeout and delay for specific bus conditions
+# Adjust timeout for specific bus conditions
 ya-modbus discover \
   --port /dev/ttyUSB0 \
-  --timeout 100 \
-  --delay 50
+  --timeout 100
 ```
 
 **Filter specific slave IDs:**
@@ -285,7 +284,7 @@ ya-modbus discover \
   - **Thorough**: Tests all standard Modbus parameters (8 baud rates, 3 parity modes, 2 data bit and 2 stop bit options, 247 addresses)
 - `--driver <package>` - Driver package to use for parameter prioritization (auto-detects from cwd if not specified)
 - `--timeout <ms>` - Response timeout in milliseconds (default: 1000)
-- `--delay <ms>` - Delay between attempts in milliseconds (default: 100)
+- `--delay <ms>` - Delay between attempts in milliseconds (default: 100). After an attempt that does not find a device, only `delay - timeout` ms are added, so a value at or below `--timeout` adds no wait
 - `--max-devices <count>` - Maximum number of devices to find (default: 1, use 0 for unlimited)
 - `--id <spec>` - Limit search to specific slave IDs (e.g., "1,2,3-5"). Dramatically reduces scan time. Can be specified multiple times
 - `--parity <spec>` - Limit search to specific parities (e.g., "none,even"). Can be specified multiple times
@@ -332,7 +331,7 @@ Based on real-world testing with default settings (timeout=1000ms, delay=100ms):
 - Use `--driver` to test the device's default settings first and limit the search to its supported parameters
 - Use `--max-devices 1` (default) to stop after finding first device
 - Further reduce `--timeout` if your devices respond quickly (e.g., `--timeout 100` for local devices)
-- Increase `--delay` if you experience bus contention
+- Set `--delay` larger than `--timeout` if you experience bus contention
 
 ### Connection Options
 

@@ -35,14 +35,14 @@ src/
 
 ### Device Identifier
 
-- Uses FC43 (Read Device Identification) to probe for device presence and gather vendor/model info
+- Uses FC43 (Read Device Identification) to probe for device presence and gather vendor/product info
 - Distinguishes timeout (no device) vs exception (device present but unsupported function) vs CRC error (wrong serial params)
 - Measures response time for each device
 
 ### Scanner
 
-- Creates new ModbusRTU client for each parameter combination
-- Configurable delay between attempts (default 100ms) to prevent bus contention
+- Creates one ModbusRTU client per serial configuration (baud rate, parity, data bits, stop bits) and reuses it for all slave IDs with `setID`. Closes it after the last slave ID of that configuration.
+- Configurable delay between attempts (default 100ms) to prevent bus contention. After an attempt that does not find a device, it waits only `delay - timeout` ms (and only when `delay` is larger than `timeout`), because the timeout already used that time. After a found device it waits the full delay, unless `--max-devices` is reached and the scan stops.
 - Progress callbacks for real-time status updates
 - Error handling: connection errors don't stop the scan
 
