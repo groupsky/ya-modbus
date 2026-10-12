@@ -287,7 +287,7 @@ ya-modbus discover \
 - `--timeout <ms>` - Response timeout in milliseconds (default: 1000)
 - `--delay <ms>` - Delay between attempts in milliseconds (default: 100)
 - `--max-devices <count>` - Maximum number of devices to find (default: 1, use 0 for unlimited)
-- `--id <spec>` - Limit search to specific slave IDs (e.g., "1,2,3-5"). Can be specified multiple times
+- `--id <spec>` - Limit search to specific slave IDs (e.g., "1,2,3-5"). Dramatically reduces scan time. Can be specified multiple times
 - `--parity <spec>` - Limit search to specific parities (e.g., "none,even"). Can be specified multiple times
 - `--baud-rate <spec>` - Limit search to specific baud rates (e.g., "9600,19200" or "9600-38400"). Can be specified multiple times
 - `--verbose` - Show detailed progress with current parameters being tested
