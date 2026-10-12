@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.14.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.14.0...@ya-modbus/emulator@0.14.1) (2026-10-12)
+
+### Bug Fixes
+
+- **emulator:** report TCP server errors and fail fast when the port is in use ([#592](https://github.com/groupsky/ya-modbus/issues/592)) ([baa0f54](https://github.com/groupsky/ya-modbus/commit/baa0f54627497356858c3e7b1346e981fa68356c)), closes [#582](https://github.com/groupsky/ya-modbus/issues/582)
+
 # [0.14.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.13.12...@ya-modbus/emulator@0.14.0) (2026-10-12)
 
 ### Features
