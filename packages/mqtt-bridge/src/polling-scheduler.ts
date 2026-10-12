@@ -5,7 +5,10 @@ import type { DeviceConfig } from './types.js'
 interface ScheduledDevice {
   config: DeviceConfig
   driver: DeviceDriver
+  // Pending timer of the poll chain, undefined while a read is in flight or polling is stopped
   timer?: NodeJS.Timeout | undefined
+  // True from the start of a read until its poll chain continues or ends
+  readInFlight: boolean
   interval: number
   dataPointIds: string[]
   lastFailureCount: number
@@ -44,12 +47,16 @@ export class PollingScheduler {
       throw new Error(`Invalid polling interval for device ${deviceId}: ${interval}`)
     }
 
+    // A device scheduled again must not keep the timer of its previous schedule
+    this.unscheduleDevice(deviceId)
+
     this.devices.set(deviceId, {
       config,
       driver,
       dataPointIds: driver.dataPoints.map((dp) => dp.id),
       interval,
       lastFailureCount: 0,
+      readInFlight: false,
     })
 
     if (this.running) {
@@ -69,7 +76,8 @@ export class PollingScheduler {
   }
 
   /**
-   * Start polling all scheduled devices
+   * Start polling all scheduled devices. Devices that already have a poll chain are left alone,
+   * so it is safe to call this again, for example on every MQTT reconnect.
    */
   start(): void {
     this.running = true
@@ -107,16 +115,19 @@ export class PollingScheduler {
     const device = this.devices.get(deviceId)
     if (!device) return
 
+    // A device has one poll chain: a pending timer or a read in flight. A read that was in flight
+    // when polling stopped continues the chain when it finishes.
+    if (device.timer || device.readInFlight) return
+
     // Schedule first poll after the interval
-    this.scheduleNextPoll(deviceId)
+    this.scheduleNextPoll(deviceId, device)
   }
 
   /**
    * Schedule the next poll for a device, with backoff if needed
    */
-  private scheduleNextPoll(deviceId: string): void {
-    const device = this.devices.get(deviceId)
-    if (!device || !this.running) return
+  private scheduleNextPoll(deviceId: string, device: ScheduledDevice): void {
+    if (!this.running) return
 
     const maxRetries = device.config.polling?.maxRetries ?? DEFAULT_MAX_RETRIES
     const retryBackoff = device.config.polling?.retryBackoff ?? device.interval * 2
@@ -137,12 +148,11 @@ export class PollingScheduler {
       delay = device.interval
     }
 
+    // stop(), unscheduleDevice() and scheduleDevice() clear the timer, so it only fires for a
+    // device that is still scheduled while polling runs
     device.timer = setTimeout(() => {
-      // Look the device up again: it can be removed while a timer is still pending
-      const currentDevice = this.devices.get(deviceId)
-      if (!currentDevice || !this.running) return
-
-      void this.pollDevice(deviceId, currentDevice)
+      device.timer = undefined
+      void this.pollDevice(deviceId, device)
     }, delay)
   }
 
@@ -150,6 +160,8 @@ export class PollingScheduler {
    * Poll a device once
    */
   private async pollDevice(deviceId: string, device: ScheduledDevice): Promise<void> {
+    device.readInFlight = true
+
     try {
       const data = await device.driver.readDataPoints(device.dataPointIds)
 
@@ -184,6 +196,12 @@ export class PollingScheduler {
       }
     }
 
-    this.scheduleNextPoll(deviceId)
+    device.readInFlight = false
+
+    // The device can be unscheduled during the read, and scheduled again under the same id.
+    // Only the device that was polled continues its own chain.
+    if (this.devices.get(deviceId) === device) {
+      this.scheduleNextPoll(deviceId, device)
+    }
   }
 }
