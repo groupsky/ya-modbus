@@ -65,6 +65,36 @@ await scanRegisters({
 })
 ```
 
+To get the same JSON as `--format json`, collect the results and pass them to `formatJSON`:
+
+```typescript
+import {
+  formatJSON,
+  scanRegisters,
+  RegisterType,
+  type ScanResult,
+} from '@ya-modbus/device-profiler'
+
+const results: ScanResult[] = []
+
+await scanRegisters({
+  transport,
+  type: RegisterType.Holding,
+  startAddress: 0,
+  endAddress: 100,
+  batchSize: 10,
+  onResult: (result) => results.push(result),
+})
+
+const json = formatJSON(results, {
+  type: RegisterType.Holding,
+  startAddress: 0,
+  endAddress: 100,
+  batchSize: 10,
+  port: '/dev/ttyUSB0',
+})
+```
+
 ## Output
 
 ### Table Format (Default)

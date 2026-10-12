@@ -2,6 +2,7 @@
  * Tests for JSON formatter
  */
 
+import { ErrorType } from './error-classifier.js'
 import { formatJSON, type JSONFormatterOptions } from './json-formatter.js'
 import { RegisterType } from './read-tester.js'
 import type { ScanResult } from './register-scanner.js'
@@ -216,5 +217,74 @@ describe('formatJSON', () => {
     expect(output).toContain('  "timestamp"')
     expect(output).toContain('  "scan"')
     expect(output).toContain('    "type"')
+  })
+
+  describe('edge cases', () => {
+    const options: JSONFormatterOptions = {
+      type: RegisterType.Holding,
+      startAddress: 0,
+      endAddress: 0,
+      batchSize: 10,
+      port: '/dev/ttyUSB0',
+    }
+
+    it.each([
+      { bytes: [0x00, 0x00], value: 0 },
+      { bytes: [0xff, 0xff], value: 65535 },
+      { bytes: [0x80, 0x00], value: 32768 },
+      { bytes: [0x00, 0xff], value: 255 },
+      { bytes: [0xff, 0x00], value: 65280 },
+    ])('should format register bytes $bytes as $value', ({ bytes, value }) => {
+      const results: ScanResult[] = [
+        {
+          address: 0,
+          type: RegisterType.Holding,
+          success: true,
+          value: Buffer.from(bytes),
+          timing: 1,
+        },
+      ]
+
+      const parsed = JSON.parse(formatJSON(results, options))
+
+      expect(parsed.results[0].value).toBe(value)
+    })
+
+    it('should keep very large timing values', () => {
+      const results: ScanResult[] = [
+        { address: 0, type: RegisterType.Holding, success: false, timing: 999999 },
+        { address: 1, type: RegisterType.Holding, success: false, timing: 1 },
+      ]
+
+      const parsed = JSON.parse(formatJSON(results, options))
+
+      expect(parsed.results[0].timing).toBe(999999)
+      expect(parsed.summary.totalTimeMs).toBe(1000000)
+      expect(parsed.summary.averageTimeMs).toBe(500000)
+    })
+
+    it('should leave out an empty error message but keep the error type', () => {
+      const results: ScanResult[] = [
+        {
+          address: 0,
+          type: RegisterType.Holding,
+          success: false,
+          timing: 5,
+          error: '',
+          errorType: ErrorType.Unknown,
+        },
+      ]
+
+      const parsed = JSON.parse(formatJSON(results, options))
+
+      expect(parsed.results[0]).toEqual({
+        address: 0,
+        type: 'holding',
+        success: false,
+        value: null,
+        timing: 5,
+        errorType: 'unknown',
+      })
+    })
   })
 })

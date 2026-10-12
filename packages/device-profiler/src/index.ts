@@ -4,6 +4,7 @@
 
 export { classifyError, ErrorType } from './error-classifier.js'
 export { formatProgress, formatSummary } from './console-formatter.js'
+export { formatJSON, type JSONFormatterOptions } from './json-formatter.js'
 export { testRead, RegisterType, type ReadTestResult } from './read-tester.js'
 export { scanRegisters, type ScanOptions, type ScanResult } from './register-scanner.js'
 export {
