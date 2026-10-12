@@ -32,9 +32,12 @@ See: `packages/driver-ex9em/src/device.ts` for usage examples
 ## Naming Conventions
 
 - Package: `@ya-modbus/driver-<name>` (e.g., `@ya-modbus/driver-ex9em`)
-- Third-party: `@org/ya-modbus-driver-<name>` or `ya-modbus-driver-<name>`
+- Third-party: `ya-modbus-driver-<name>` or `@<scope>/ya-modbus-driver-<name>`
+- Names use only lowercase letters, numbers and hyphens. The MQTT bridge rejects other names.
 - Data points: semantic, not `reg_0000` or `holding_6`
 - Units: canonical from driver-sdk (`V` not `volts`)
+
+See: `packages/driver-loader/src/driver-package-name.ts` for the shared rule behind the package names
 
 ## Development Workflow
 

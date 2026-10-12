@@ -109,8 +109,22 @@ describe('DriverLoader', () => {
       expect(mockLoadDriver).toHaveBeenCalledWith({ driverPackage: '@ya-modbus/driver-test' })
     })
 
-    it('should reject scoped driver with path traversal', async () => {
-      const loader = new DriverLoader(undefined, createMockTransportManager())
+    it('should accept scoped third-party driver package names', async () => {
+      const mockDriver: DeviceDriver = {
+        name: 'test-device',
+        manufacturer: 'Test Manufacturer',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
+      const mockLoadedDriver: LoadedDriver = { createDriver: mockCreateDriver }
+      const mockLoadDriver = jest.fn().mockResolvedValue(mockLoadedDriver)
+
+      const loader = new DriverLoader(mockLoadDriver, createMockTransportManager())
 
       const connection: DeviceConnection = {
         type: 'tcp',
@@ -119,9 +133,10 @@ describe('DriverLoader', () => {
         slaveId: 1,
       }
 
-      await expect(loader.loadDriver('@ya-modbus/driver-../evil', connection)).rejects.toThrow(
-        'path traversal not allowed'
-      )
+      const driver = await loader.loadDriver('@org/ya-modbus-driver-solar', connection, 'device1')
+
+      expect(driver).toBe(mockDriver)
+      expect(mockLoadDriver).toHaveBeenCalledWith({ driverPackage: '@org/ya-modbus-driver-solar' })
     })
 
     it('should create different instances for different devices', async () => {
@@ -294,8 +309,14 @@ describe('DriverLoader', () => {
       )
     })
 
-    it('should reject invalid driver package name format', async () => {
-      const loader = new DriverLoader(undefined, createMockTransportManager())
+    it.each([
+      ['a scoped package that is not a driver', '@org/not-a-driver'],
+      ['an empty name after the monorepo prefix', '@ya-modbus/driver-'],
+      ['a parent directory path', '../../malicious-code'],
+      ['traversal with backslashes', 'ya-modbus-driver-test\\..\\evil'],
+    ])('should reject %s without loading anything', async (_description, packageName) => {
+      const mockLoadDriver = jest.fn()
+      const loader = new DriverLoader(mockLoadDriver, createMockTransportManager())
 
       const connection: DeviceConnection = {
         type: 'rtu',
@@ -307,63 +328,10 @@ describe('DriverLoader', () => {
         stopBits: 1,
       }
 
-      await expect(loader.loadDriver('malicious-driver', connection)).rejects.toThrow(
-        'must be @ya-modbus/driver-<name> or ya-modbus-driver-<name>'
+      await expect(loader.loadDriver(packageName, connection)).rejects.toThrow(
+        'must be @ya-modbus/driver-<name>, ya-modbus-driver-<name> or @<scope>/ya-modbus-driver-<name>'
       )
-    })
-
-    it('should reject driver package name with path traversal', async () => {
-      const loader = new DriverLoader(undefined, createMockTransportManager())
-
-      const connection: DeviceConnection = {
-        type: 'rtu',
-        port: '/dev/ttyUSB0',
-        baudRate: 9600,
-        slaveId: 1,
-        parity: 'none',
-        dataBits: 8,
-        stopBits: 1,
-      }
-
-      await expect(loader.loadDriver('../../malicious-code', connection)).rejects.toThrow(
-        'must be @ya-modbus/driver-<name> or ya-modbus-driver-<name>'
-      )
-    })
-
-    it('should reject driver package name with forward slash', async () => {
-      const loader = new DriverLoader(undefined, createMockTransportManager())
-
-      const connection: DeviceConnection = {
-        type: 'rtu',
-        port: '/dev/ttyUSB0',
-        baudRate: 9600,
-        slaveId: 1,
-        parity: 'none',
-        dataBits: 8,
-        stopBits: 1,
-      }
-
-      await expect(loader.loadDriver('ya-modbus-driver-test/../evil', connection)).rejects.toThrow(
-        'path traversal not allowed'
-      )
-    })
-
-    it('should reject driver package name with backslash', async () => {
-      const loader = new DriverLoader(undefined, createMockTransportManager())
-
-      const connection: DeviceConnection = {
-        type: 'rtu',
-        port: '/dev/ttyUSB0',
-        baudRate: 9600,
-        slaveId: 1,
-        parity: 'none',
-        dataBits: 8,
-        stopBits: 1,
-      }
-
-      await expect(
-        loader.loadDriver('ya-modbus-driver-test\\..\\evil', connection)
-      ).rejects.toThrow('path traversal not allowed')
+      expect(mockLoadDriver).not.toHaveBeenCalled()
     })
 
     it('should not cache driver if deviceId is not provided', async () => {

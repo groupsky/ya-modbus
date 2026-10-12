@@ -82,7 +82,7 @@ export interface Logger {
 export interface LoadDriverOptions {
   /**
    * Explicit driver package name
-   * e.g., 'ya-modbus-driver-xymd1' or '@org/driver-pkg'
+   * e.g., 'ya-modbus-driver-xymd1' or '@org/ya-modbus-driver-xymd1'
    */
   driverPackage?: string
 

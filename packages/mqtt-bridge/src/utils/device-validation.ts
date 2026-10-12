@@ -1,3 +1,4 @@
+import { DRIVER_PACKAGE_NAME_RULE, isValidDriverPackageName } from '@ya-modbus/driver-loader'
 import { z } from 'zod'
 
 /**
@@ -24,13 +25,7 @@ const deviceIdSchema = z
 const driverNameSchema = z
   .string()
   .min(1, 'Driver name must not be empty')
-  .regex(/^(@ya-modbus\/driver-[a-z0-9-]+|ya-modbus-driver-[a-z0-9-]+)$/, {
-    message:
-      'Driver must be @ya-modbus/driver-<name> or ya-modbus-driver-<name> with only lowercase letters, numbers, and hyphens',
-  })
-  .refine((name) => !name.includes('..') && !name.includes('\\'), {
-    message: 'Driver name cannot contain path traversal sequences',
-  })
+  .refine(isValidDriverPackageName, { message: `Driver package name ${DRIVER_PACKAGE_NAME_RULE}` })
 
 const timeoutSchema = z
   .number()

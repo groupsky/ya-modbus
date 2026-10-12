@@ -188,7 +188,7 @@ Times, counts and ports are whole numbers.
 **Device configuration:**
 
 - `deviceId` (required) - Unique device identifier. The bridge uses it in the MQTT topics (`{topicPrefix}/{deviceId}/data`). It must not be empty. It must not contain `+`, `#`, `/`, `$` or the null character.
-- `driver` (required) - Driver package name: `@ya-modbus/driver-<name>` or `ya-modbus-driver-<name>`. The name can have lowercase letters, numbers and hyphens. The package must be installed.
+- `driver` (required) - Driver package name: `@ya-modbus/driver-<name>`, `ya-modbus-driver-<name>` or `@<scope>/ya-modbus-driver-<name>`. `<name>` and `<scope>` can have lowercase letters, numbers and hyphens. The package must be installed.
 - `connection` (required) - Connection configuration (RTU or TCP)
 - `enabled` (optional) - Enable/disable device (default: true). A disabled device is added with the state `disconnected`. The bridge does not load its driver and does not poll it.
 - `polling` (optional) - Polling configuration. Without it, the bridge polls the device every 5000 ms and uses the defaults of the polling options below.

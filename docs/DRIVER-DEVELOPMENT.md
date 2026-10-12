@@ -20,7 +20,7 @@ Device drivers are distributed as npm packages that:
 - Directory: `packages/driver-<name>`
 - Package name: `@ya-modbus/driver-<name>`
 
-**Third-party packages**: `ya-modbus-driver-<name>` or `@org/ya-modbus-driver-<name>`
+**Third-party packages**: `ya-modbus-driver-<name>` or `@<scope>/ya-modbus-driver-<name>`
 
 - Makes drivers easily discoverable
 - Consistent with ecosystem conventions
@@ -471,8 +471,9 @@ Document in driver implementation, enforce via function composition.
 **Naming conventions**:
 
 - **Monorepo**: `@ya-modbus/driver-<name>` (e.g., `@ya-modbus/driver-ex9em`)
-- **Third-party**: `ya-modbus-driver-<name>` or `@org/ya-modbus-driver-<name>`
-- Any name works if `keywords` includes `"ya-modbus-driver"`
+- **Third-party**: `ya-modbus-driver-<name>` or `@<scope>/ya-modbus-driver-<name>` (e.g., `@acme/ya-modbus-driver-solar`)
+- `<name>` and `<scope>` use only lowercase letters, numbers and hyphens. The MQTT bridge rejects every other driver name.
+- The CLI loads a driver from the current directory under any package name if `keywords` includes `"ya-modbus-driver"`
 
 **Required fields**:
 
@@ -635,7 +636,7 @@ npm install -g ya-modbus-driver-solar
 
 **Configuration format**:
 
-- `driver`: Package name only (e.g., `ya-modbus-driver-solar`)
+- `driver`: Package name only, in one of the forms from [Package Metadata](#package-metadata) (e.g., `ya-modbus-driver-solar` or `@acme/ya-modbus-driver-solar`)
 - `device`: Optional, specifies which device variant (use `ya-modbus list-devices` to see available devices)
 - Auto-detection: Omit `device` and driver will detect device model
 - Single package handles entire device family

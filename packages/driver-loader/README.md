@@ -192,6 +192,29 @@ import { getCallerPackageInfo } from '@ya-modbus/driver-loader'
 program.version(getCallerPackageInfo().version)
 ```
 
+### `isValidDriverPackageName(name: unknown): boolean`
+
+Checks a driver package name against the shared naming rule for applications that read the driver name from a configuration, such as the MQTT bridge. Allowed forms:
+
+- `@ya-modbus/driver-<name>`
+- `ya-modbus-driver-<name>`
+- `@<scope>/ya-modbus-driver-<name>`
+
+`<name>` and `<scope>` use only lowercase letters, numbers and hyphens. Paths (`../x`, `/opt/x`), sub paths, backslashes and any other package name are rejected. `loadDriver` does not check this rule. If your tool reads the driver name from a config file, call `assertValidDriverPackageName` before `loadDriver`.
+
+### `assertValidDriverPackageName(name: string): void`
+
+Same check as `isValidDriverPackageName`. Throws a `ValidationError` (field `driverPackage`) that shows the rejected name and lists the allowed forms.
+
+`DRIVER_PACKAGE_NAME_RULE` is the text of the rule ("must be ..."), for applications that build their own error message.
+
+```typescript
+import { assertValidDriverPackageName, loadDriver } from '@ya-modbus/driver-loader'
+
+assertValidDriverPackageName(config.driver)
+await loadDriver({ driverPackage: config.driver })
+```
+
 ## Testing Utilities
 
 The package provides testing utilities for applications using driver-loader.
@@ -255,7 +278,7 @@ If you encounter `Driver package not found` errors:
 
 3. **Check the package name:**
    - Ensure the package name in your code matches the actual npm package name
-   - Driver packages typically follow the naming convention: `ya-modbus-driver-<device>`
+   - Driver packages follow the naming rule described under `isValidDriverPackageName` (for example `ya-modbus-driver-<device>` or `@<scope>/ya-modbus-driver-<device>`)
 
 ### Module Resolution Issues
 

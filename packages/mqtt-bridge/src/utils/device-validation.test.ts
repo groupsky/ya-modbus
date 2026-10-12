@@ -48,28 +48,18 @@ describe('validateDeviceConfig', () => {
     expect(() => validateDeviceConfig(config)).not.toThrow()
   })
 
-  it('should reject scoped driver with path traversal attempt', () => {
-    const invalidDrivers = [
-      '@ya-modbus/driver-../evil',
-      '@ya-modbus/driver-test/../hack',
-      '@ya-modbus/driver-..\\evil',
-    ]
-
-    invalidDrivers.forEach((driver) => {
+  it.each([['@org/ya-modbus-driver-solar'], ['@my-org/ya-modbus-driver-sh5k-20']])(
+    'should accept scoped third-party driver %s',
+    (driver) => {
       const config = {
         deviceId: 'device1',
         driver,
-        connection: {
-          type: 'tcp',
-          host: 'localhost',
-          port: 502,
-          slaveId: 1,
-        },
+        connection: { type: 'tcp', host: 'localhost', port: 502, slaveId: 1 },
       }
 
-      expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
-    })
-  })
+      expect(() => validateDeviceConfig(config)).not.toThrow()
+    }
+  )
 
   it('should throw error for deviceId with MQTT special characters', () => {
     const invalidIds = ['device+1', 'device#1', 'device/1', '$device1']
@@ -121,46 +111,23 @@ describe('validateDeviceConfig', () => {
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
   })
 
-  it('should throw error for invalid driver package name format', () => {
+  it.each([
+    ['a scoped package that is not a driver', '@org/not-a-driver'],
+    ['an empty name after the monorepo prefix', '@ya-modbus/driver-'],
+    ['a parent directory path', '../x'],
+    ['traversal after the unscoped prefix', 'ya-modbus-driver-../evil'],
+    ['traversal with backslashes', 'ya-modbus-driver-test\\..\\evil'],
+  ])('should reject %s and list the allowed forms', (_description, driver) => {
     const config = {
       deviceId: 'device1',
-      driver: 'malicious-driver',
-      connection: {
-        type: 'tcp',
-        host: 'localhost',
-        port: 502,
-        slaveId: 1,
-      },
+      driver,
+      connection: { type: 'tcp', host: 'localhost', port: 502, slaveId: 1 },
     }
 
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
     expect(() => validateDeviceConfig(config)).toThrow(
-      '@ya-modbus/driver-<name> or ya-modbus-driver-<name>'
+      'driver: Driver package name must be @ya-modbus/driver-<name>, ya-modbus-driver-<name> or @<scope>/ya-modbus-driver-<name>'
     )
-  })
-
-  it('should throw error for driver with path traversal attempts', () => {
-    const invalidDrivers = [
-      '../../malicious-code',
-      'ya-modbus-driver-../evil',
-      'ya-modbus-driver-test/../../hack',
-      'ya-modbus-driver-test\\..\\evil',
-    ]
-
-    invalidDrivers.forEach((driver) => {
-      const config = {
-        deviceId: 'device1',
-        driver,
-        connection: {
-          type: 'tcp',
-          host: 'localhost',
-          port: 502,
-          slaveId: 1,
-        },
-      }
-
-      expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
-    })
   })
 
   it('should throw error for driver with uppercase letters', () => {

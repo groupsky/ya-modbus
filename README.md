@@ -193,7 +193,8 @@ npm install -g @ya-modbus/cli ya-modbus-driver-solar
 **Naming conventions**:
 
 - Monorepo packages: `@ya-modbus/driver-<name>` (e.g., `@ya-modbus/driver-ex9em`)
-- Third-party packages: `ya-modbus-driver-<name>` for easy discovery
+- Third-party packages: `ya-modbus-driver-<name>` or `@<scope>/ya-modbus-driver-<name>` for easy discovery
+- `<name>` and `<scope>` use only lowercase letters, numbers and hyphens
 
 **Auto-detection**: Drivers can auto-detect device model when `deviceType` is omitted
 
