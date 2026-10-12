@@ -528,4 +528,21 @@ describe('Read Command', () => {
     expect(output.dataPoints).toHaveLength(1)
     expect(output.dataPoints[0].value).toBe(24.5)
   })
+
+  test('should reject both --port and --host before loading the driver or connecting', async () => {
+    const options = {
+      port: '/dev/ttyUSB0',
+      host: '192.168.1.100',
+      slaveId: 1,
+      dataPoint: ['temperature'],
+      format: 'table',
+    }
+
+    await expect(readCommand(options)).rejects.toThrow(
+      'Use either --port (RTU) or --host (TCP), not both'
+    )
+
+    expect(driverLoader.loadDriver).not.toHaveBeenCalled()
+    expect(transportFactory.createTransport).not.toHaveBeenCalled()
+  })
 })

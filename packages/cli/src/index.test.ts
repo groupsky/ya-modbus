@@ -390,32 +390,6 @@ describe('CLI Entry Point - Integration Tests', () => {
       )
     })
 
-    it('should accept both RTU and TCP parameters (transport layer decides)', async () => {
-      const mockReadCommand = jest.mocked(readModule.readCommand)
-      mockReadCommand.mockResolvedValue()
-
-      await program.parseAsync([
-        'node',
-        'ya-modbus',
-        'read',
-        '--port',
-        '/dev/ttyUSB0',
-        '--host',
-        '192.168.1.100',
-        '-s',
-        '1',
-        '--all',
-      ])
-
-      expect(mockReadCommand).toHaveBeenCalledWith(
-        expect.objectContaining({
-          port: '/dev/ttyUSB0',
-          host: '192.168.1.100',
-          slaveId: 1,
-        })
-      )
-    })
-
     it('should accept RTU-specific options without port', async () => {
       const mockReadCommand = jest.mocked(readModule.readCommand)
       mockReadCommand.mockResolvedValue()
@@ -1094,6 +1068,82 @@ describe('CLI Entry Point - Integration Tests', () => {
           strategy: 'quick',
         })
       )
+    })
+  })
+
+  describe('RTU and TCP connection options', () => {
+    afterEach(() => {
+      // Drop an unused real implementation so it cannot leak into other tests
+      jest.mocked(readModule.readCommand).mockReset()
+      jest.mocked(writeModule.writeCommand).mockReset()
+    })
+
+    // The rejection comes from the real command, so these tests run it as a user would
+    async function expectBothTransportsRejected(args: string[]): Promise<void> {
+      await expect(
+        program.parseAsync([
+          'node',
+          'ya-modbus',
+          ...args,
+          '--port',
+          '/dev/ttyUSB0',
+          '--host',
+          '192.168.1.100',
+          '-s',
+          '1',
+        ])
+      ).rejects.toThrow('process.exit called')
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Error: Use either --port (RTU) or --host (TCP), not both'
+      )
+      expect(processExitSpy).toHaveBeenCalledWith(1)
+    }
+
+    it('should reject both --port and --host for read', async () => {
+      jest
+        .mocked(readModule.readCommand)
+        .mockImplementationOnce(
+          jest.requireActual<typeof readModule>('./commands/read.js').readCommand
+        )
+
+      await expectBothTransportsRejected(['read', '--all'])
+    })
+
+    it('should reject both --port and --host for write', async () => {
+      jest
+        .mocked(writeModule.writeCommand)
+        .mockImplementationOnce(
+          jest.requireActual<typeof writeModule>('./commands/write.js').writeCommand
+        )
+
+      await expectBothTransportsRejected(['write', '--data-point', 'setpoint', '--value', '25.5'])
+    })
+
+    it('should reject --host because discover works on a serial port only', async () => {
+      const stderrWriteSpy = jest.spyOn(process.stderr, 'write').mockImplementation()
+
+      try {
+        await expect(
+          program.parseAsync([
+            'node',
+            'ya-modbus',
+            'discover',
+            '--port',
+            '/dev/ttyUSB0',
+            '--host',
+            '192.168.1.100',
+          ])
+        ).rejects.toThrow('process.exit called')
+
+        expect(stderrWriteSpy).toHaveBeenCalledWith(
+          expect.stringContaining("unknown option '--host'")
+        )
+        expect(processExitSpy).toHaveBeenCalledWith(1)
+        expect(discoverModule.discoverCommand).not.toHaveBeenCalled()
+      } finally {
+        stderrWriteSpy.mockRestore()
+      }
     })
   })
 })
