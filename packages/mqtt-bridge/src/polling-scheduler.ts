@@ -15,6 +15,9 @@ type ErrorCallback = (deviceId: string, error: Error, failureCount: number) => v
 
 const DEFAULT_POLLING_INTERVAL = 5000 // 5 seconds
 
+// Longest delay setTimeout supports; it runs longer delays after 1ms
+const MAX_TIMER_DELAY = 2 ** 31 - 1
+
 /**
  * Coordinates polling across multiple devices
  */
@@ -32,6 +35,11 @@ export class PollingScheduler {
    */
   scheduleDevice(deviceId: string, config: DeviceConfig, driver: DeviceDriver): void {
     const interval = config.polling?.interval ?? DEFAULT_POLLING_INTERVAL
+
+    // Written as a negation so that NaN is rejected too
+    if (!(interval > 0 && interval <= MAX_TIMER_DELAY)) {
+      throw new Error(`Invalid polling interval for device ${deviceId}: ${interval}`)
+    }
 
     this.devices.set(deviceId, {
       config,

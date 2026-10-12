@@ -66,6 +66,60 @@ describe('PollingScheduler', () => {
       expect(scheduler.isScheduled('device1')).toBe(true)
     })
 
+    it('should first poll after the default interval when polling is not configured', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+      }
+
+      const mockReadDataPoints = jest.fn().mockResolvedValue({ temp: 25.5 })
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: mockReadDataPoints,
+      }
+
+      scheduler.scheduleDevice('device1', config, driver)
+      scheduler.start()
+
+      await jest.advanceTimersByTimeAsync(4999)
+      expect(mockReadDataPoints).not.toHaveBeenCalled()
+
+      await jest.advanceTimersByTimeAsync(1)
+      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
+    })
+
+    // setTimeout turns a delay below 1, NaN or above 2^31-1 (Infinity included) into 1ms, which
+    // would poll the device in a tight loop and flood the bus when config validation was bypassed
+    it.each([0, -1000, NaN, Infinity, 2 ** 31])('should reject polling interval %p', (interval) => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval },
+      }
+
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      expect(() => scheduler.scheduleDevice('device1', config, driver)).toThrow(
+        `Invalid polling interval for device device1: ${interval}`
+      )
+      expect(scheduler.isScheduled('device1')).toBe(false)
+    })
+
     it('should start polling immediately if scheduler is already running', async () => {
       scheduler.start()
 
