@@ -45,13 +45,13 @@ describe('showDefaultsCommand', () => {
     loadDriver.mockResolvedValue(driverMetadata)
 
     const options: ShowDefaultsOptions = {
-      driver: 'ya-modbus-driver-xymd1',
+      driver: '@ya-modbus/driver-xymd1',
     }
 
     await showDefaultsCommand(options)
 
     // Verify loadDriver was called correctly
-    expect(loadDriver).toHaveBeenCalledWith({ driverPackage: 'ya-modbus-driver-xymd1' })
+    expect(loadDriver).toHaveBeenCalledWith({ driverPackage: '@ya-modbus/driver-xymd1' })
 
     // Verify output includes DEFAULT_CONFIG
     const output = consoleLogSpy.mock.calls.map((call) => call.join(' ')).join('\n')
@@ -162,7 +162,7 @@ describe('showDefaultsCommand', () => {
     loadDriver.mockResolvedValue(driverMetadata)
 
     const options: ShowDefaultsOptions = {
-      driver: 'ya-modbus-driver-xymd1',
+      driver: '@ya-modbus/driver-xymd1',
       format: 'json',
     }
 

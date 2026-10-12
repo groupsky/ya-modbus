@@ -249,7 +249,7 @@ describe('Read Command', () => {
 
   test('should load driver from explicit package', async () => {
     const options = {
-      driver: 'ya-modbus-driver-xymd1',
+      driver: '@ya-modbus/driver-xymd1',
       port: '/dev/ttyUSB0',
       slaveId: 1,
       baudRate: 9600,
@@ -266,7 +266,7 @@ describe('Read Command', () => {
 
     // Verify driver loader was called with package name
     expect(driverLoader.loadDriver).toHaveBeenCalledWith({
-      driverPackage: 'ya-modbus-driver-xymd1',
+      driverPackage: '@ya-modbus/driver-xymd1',
     })
   })
 

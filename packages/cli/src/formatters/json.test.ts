@@ -17,7 +17,7 @@ describe('JSON Formatter', () => {
 
     const values = { temperature: 24.5 }
     const metadata = {
-      driver: 'ya-modbus-driver-xymd1',
+      driver: '@ya-modbus/driver-xymd1',
       connection: { port: '/dev/ttyUSB0', slaveId: 1 },
     }
 
@@ -26,7 +26,7 @@ describe('JSON Formatter', () => {
     expect(result).toContain('"temperature"')
     expect(result).toContain('24.5')
     expect(result).toContain('°C')
-    expect(result).toContain('ya-modbus-driver-xymd1')
+    expect(result).toContain('@ya-modbus/driver-xymd1')
 
     // Should be valid JSON
     expect(() => JSON.parse(result)).not.toThrow()
@@ -143,7 +143,7 @@ describe('JSON Formatter', () => {
     }
 
     const metadata = {
-      driver: 'ya-modbus-driver-xymd1',
+      driver: '@ya-modbus/driver-xymd1',
       connection: { port: '/dev/ttyUSB0', slaveId: 1 },
       performance: {
         responseTimeMs: 45,
@@ -182,7 +182,7 @@ describe('JSON Formatter', () => {
             "value": 65.2,
           },
         ],
-        "driver": "ya-modbus-driver-xymd1",
+        "driver": "@ya-modbus/driver-xymd1",
         "performance": {
           "errors": 0,
           "operations": 2,

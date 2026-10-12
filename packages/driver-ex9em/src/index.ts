@@ -74,7 +74,7 @@ export const SUPPORTED_CONFIG = {
  *
  * @example
  * ```typescript
- * import { DEFAULT_CONFIG } from 'ya-modbus-driver-ex9em'
+ * import { DEFAULT_CONFIG } from '@ya-modbus/driver-ex9em'
  *
  * const transport = await createRTUTransport({
  *   port: '/dev/ttyUSB0',

@@ -74,7 +74,7 @@ export interface Logger {
  * const driver1 = await loadDriver({})
  *
  * // Load specific package
- * const driver2 = await loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' })
+ * const driver2 = await loadDriver({ driverPackage: '@ya-modbus/driver-xymd1' })
  *
  * // With custom logger
  * const driver3 = await loadDriver({
@@ -89,7 +89,7 @@ export interface Logger {
 export interface LoadDriverOptions {
   /**
    * Explicit driver package name
-   * e.g., 'ya-modbus-driver-xymd1' or '@org/ya-modbus-driver-xymd1'
+   * e.g., '@ya-modbus/driver-xymd1' or '@org/ya-modbus-driver-xymd1'
    *
    * A short name such as 'xymd1' is tried as '@ya-modbus/driver-xymd1',
    * then 'ya-modbus-driver-xymd1', then 'xymd1'.
@@ -191,7 +191,7 @@ export function getDriverCacheStats(): DriverCacheStats {
  * Load a driver package dynamically
  *
  * Supports two modes:
- * 1. Explicit package: `loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' })`
+ * 1. Explicit package: `loadDriver({ driverPackage: '@ya-modbus/driver-xymd1' })`
  * 2. Auto-detect from cwd: `loadDriver({})` - reads package.json from current directory
  *
  * Auto-detection checks for `ya-modbus-driver` keyword in package.json keywords and loads
@@ -204,7 +204,7 @@ export function getDriverCacheStats(): DriverCacheStats {
  * const driver = await loadDriver({})
  *
  * // Load explicit package
- * const driver = await loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' })
+ * const driver = await loadDriver({ driverPackage: '@ya-modbus/driver-xymd1' })
  *
  * @param options - Loading options (defaults to local package detection)
  * @param deps - System dependencies (for testing, uses Node.js built-ins by default)
