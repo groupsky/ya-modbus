@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.13.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.12.3...@ya-modbus/emulator@0.13.0) (2026-10-12)
+
+- feat!: drop Node.js 20 support (#516) ([70002ab](https://github.com/groupsky/ya-modbus/commit/70002ab28155432e0984c67a70d1469fc5be7cb3)), closes [#516](https://github.com/groupsky/ya-modbus/issues/516)
+
+### BREAKING CHANGES
+
+- Node.js 20 is no longer supported. Use Node.js 22 or 24.
+
 ## [0.12.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.12.2...@ya-modbus/emulator@0.12.3) (2026-10-12)
 
 ### Bug Fixes

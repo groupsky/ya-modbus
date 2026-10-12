@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.11.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.10.6...@ya-modbus/mqtt-bridge@0.11.0) (2026-10-12)
+
+- feat!: drop Node.js 20 support (#516) ([70002ab](https://github.com/groupsky/ya-modbus/commit/70002ab28155432e0984c67a70d1469fc5be7cb3)), closes [#516](https://github.com/groupsky/ya-modbus/issues/516)
+
+### BREAKING CHANGES
+
+- Node.js 20 is no longer supported. Use Node.js 22 or 24.
+
 ## [0.10.6](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.10.5...@ya-modbus/mqtt-bridge@0.10.6) (2026-10-12)
 
 ### Performance Improvements
