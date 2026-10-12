@@ -97,10 +97,12 @@ opens but is lost again before a request succeeds. A successful request sets the
 A short-lived program, like a CLI command, can stop at the first `ConnectionLostError`.
 
 ```typescript
+import { isConnectionLostError } from '@ya-modbus/transport'
+
 try {
   await transport.readHoldingRegisters(0, 10)
 } catch (error) {
-  if ((error as Error).name === 'ConnectionLostError') {
+  if (isConnectionLostError(error)) {
     // port is gone, the transport opens it again on a later request
   }
 }

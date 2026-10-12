@@ -1,4 +1,4 @@
-import { ModbusConnection } from '@ya-modbus/transport'
+import { isConnectionLostError, ModbusConnection } from '@ya-modbus/transport'
 import ModbusRTU from 'modbus-serial'
 
 import { identifyDevice, type DeviceIdentificationResult } from './device-identifier.js'
@@ -44,13 +44,6 @@ export interface ScanOptions {
 
   /** Verbose progress callback - called for each test attempt */
   onTestAttempt?: (params: ParameterCombination, result: 'testing' | 'found' | 'not-found') => void
-}
-
-/**
- * Check if an error means that the serial port is lost (see ModbusConnection)
- */
-function isConnectionLost(error: unknown): boolean {
-  return error instanceof Error && error.name === 'ConnectionLostError'
 }
 
 /**
@@ -193,7 +186,7 @@ export async function scanForDevices(
             }
           } catch (error) {
             // The port is gone, so all other tests would fail too
-            if (isConnectionLost(error)) throw error
+            if (isConnectionLostError(error)) throw error
 
             // Device identification error - skip this slave ID
             onTestAttempt?.(combination, 'not-found')
@@ -210,7 +203,7 @@ export async function scanForDevices(
         await connection.close()
       }
     } catch (error) {
-      if (isConnectionLost(error)) throw error
+      if (isConnectionLostError(error)) throw error
 
       // Connection error for this serial parameter set - skip entire group
       // This can happen if port is busy, doesn't exist, or serial params are invalid

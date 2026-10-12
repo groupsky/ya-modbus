@@ -17,6 +17,16 @@ export const MAX_REOPEN_DELAY_MS = 60_000
  */
 export type OpenClient = () => Promise<ModbusRTU>
 
+/**
+ * Check if an error means that the connection is lost (see ModbusConnection)
+ *
+ * @param error - Value that was thrown or used to reject a promise
+ * @returns True for a ConnectionLostError
+ */
+export function isConnectionLostError(error: unknown): error is ModbusError {
+  return error instanceof Error && error.name === 'ConnectionLostError'
+}
+
 /** Marks ModbusConnection objects, the same for all copies of this package */
 const CONNECTION = Symbol.for('@ya-modbus/transport/ModbusConnection')
 

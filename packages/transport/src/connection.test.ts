@@ -4,7 +4,7 @@ import type { Transport } from '@ya-modbus/driver-types'
 import { Mutex } from 'async-mutex'
 import type ModbusRTU from 'modbus-serial'
 
-import { ModbusConnection } from './connection.js'
+import { isConnectionLostError, ModbusConnection } from './connection.js'
 import { createModbusTransport } from './create-modbus-transport.js'
 import { SlaveTransport } from './slave-transport.js'
 
@@ -113,4 +113,16 @@ test('keeps the client after a response timeout', async () => {
   await expect(connection.run(read)).resolves.toEqual(Buffer.from([0, 1]))
   expect(client.readHoldingRegisters).toHaveBeenCalledTimes(2)
   expect(open).not.toHaveBeenCalled()
+})
+
+test('isConnectionLostError tells a lost connection from other errors', async () => {
+  const client = createClient()
+  const connection = new ModbusConnection(client, '/dev/ttyUSB0')
+  client.isOpen = false
+  client.emit('close')
+  const lost = await connection.run(read).catch((error: unknown) => error)
+
+  expect(isConnectionLostError(lost)).toBe(true)
+  expect(isConnectionLostError(new Error('Timed out'))).toBe(false)
+  expect(isConnectionLostError({ name: 'ConnectionLostError' })).toBe(false)
 })
