@@ -2,6 +2,8 @@
  * Tests for RtuTransport
  */
 
+import { EventEmitter } from 'node:events'
+
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals'
 
 import { RtuTransport } from './rtu.js'
@@ -310,6 +312,134 @@ describe('RtuTransport', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledWith('RTU transport error:', testError)
       consoleErrorSpy.mockRestore()
+    })
+  })
+
+  describe('stop() during initialization', () => {
+    // Test for issue #297: stop() returned early while the port was still opening, so the
+    // openCallback that fired afterwards marked the stopped transport as started.
+
+    // The next ServerSerial stays "opening" until the test calls pending.openCallback()
+    const mockPortStillOpening = async (): Promise<{
+      server: EventEmitter & { close: jest.Mock<(cb?: (err: Error | null) => void) => void> }
+      openCallback: (err: Error | null) => void
+    }> => {
+      const { ServerSerial } = await import('modbus-serial')
+      const pending = {} as any
+      ;(ServerSerial as any).mockImplementationOnce((_vector: any, options: any) => {
+        pending.openCallback = options.openCallback
+        pending.server = Object.assign(new EventEmitter(), {
+          close: jest.fn((cb?: (err: Error | null) => void) => cb?.(null)),
+          socks: new Map(),
+        })
+        return pending.server
+      })
+      return pending
+    }
+
+    it('should reject start() and remove listeners when stop() is called while the port opens', async () => {
+      const pending = await mockPortStillOpening()
+      transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+
+      const startResult = transport.start().then(
+        () => 'started',
+        (err: Error) => err.message
+      )
+      await transport.stop()
+      pending.openCallback(null) // the port finishes opening after stop()
+
+      expect(await startResult).toBe('Transport stopped during initialization')
+      expect(pending.server.listenerCount('error')).toBe(0)
+    })
+
+    it('should stay stopped when the port finishes opening after stop()', async () => {
+      const pending = await mockPortStillOpening()
+      transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+
+      const startResult = transport.start().catch(() => undefined)
+      await transport.stop()
+      pending.openCallback(null)
+      await startResult
+
+      await expect(transport.send(1, Buffer.from([0x01, 0x03]))).rejects.toThrow(
+        'Transport not started'
+      )
+    })
+
+    it('should close a port that finishes opening after stop()', async () => {
+      const pending = await mockPortStillOpening()
+      transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+
+      const startResult = transport.start().catch(() => undefined)
+      await transport.stop()
+      expect(pending.server.close).not.toHaveBeenCalled() // nothing is open yet
+
+      pending.openCallback(null)
+      await startResult
+
+      expect(pending.server.close).toHaveBeenCalledTimes(1)
+    })
+
+    it('should log when closing a port that opened after stop() fails', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+      try {
+        const closeError = new Error('Failed to close port')
+        const pending = await mockPortStillOpening()
+        transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+
+        const startResult = transport.start().catch(() => undefined)
+        await transport.stop()
+        pending.server.close.mockImplementation((cb) => cb?.(closeError))
+        pending.openCallback(null)
+        await startResult
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith('RTU transport error:', closeError)
+      } finally {
+        consoleErrorSpy.mockRestore()
+      }
+    })
+
+    it('should ignore an open error that arrives after stop()', async () => {
+      const pending = await mockPortStillOpening()
+      transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+
+      const startResult = transport.start().then(
+        () => 'started',
+        (err: Error) => err.message
+      )
+      await transport.stop()
+      pending.openCallback(new Error('Failed to open port'))
+
+      expect(await startResult).toBe('Transport stopped during initialization')
+      expect(pending.server.close).not.toHaveBeenCalled()
+    })
+
+    it('should reject a second start() while the first one is still opening', async () => {
+      const pending = await mockPortStillOpening()
+      transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+
+      const firstStart = transport.start()
+      await expect(transport.start()).rejects.toThrow('Transport already starting')
+
+      pending.openCallback(null)
+      await expect(firstStart).resolves.toBeUndefined()
+      await expect(transport.send(1, Buffer.from([0x01, 0x03]))).resolves.toBeUndefined()
+    })
+
+    it('should allow restart after stop() during initialization', async () => {
+      const first = await mockPortStillOpening()
+      transport = new RtuTransport({ port: '/dev/ttyUSB0' })
+
+      const firstStart = transport.start().catch((err: Error) => err.message)
+      await transport.stop()
+      await transport.start() // second attempt opens normally
+      first.openCallback(null) // the abandoned first port opens late
+
+      expect(await firstStart).toBe('Transport stopped during initialization')
+      expect(first.server.close).toHaveBeenCalledTimes(1)
+      // The running transport is not affected by the abandoned attempt
+      expect(mockServerInstance.close).not.toHaveBeenCalled()
+      await expect(transport.send(1, Buffer.from([0x01, 0x03]))).resolves.toBeUndefined()
     })
   })
 
