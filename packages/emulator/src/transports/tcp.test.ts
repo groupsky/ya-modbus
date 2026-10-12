@@ -73,6 +73,18 @@ jest.mock('modbus-serial', () => {
   }
 })
 
+// Real EventEmitter standing in for a ServerTCP. Use it when a test needs to emit server
+// events or count listeners; the mock above is enough for everything else.
+function createEmitterServer(): EventEmitter & {
+  close: jest.Mock<(cb: (err: Error | null) => void) => void>
+  socks: Map<unknown, 0>
+} {
+  return Object.assign(new EventEmitter(), {
+    close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
+    socks: new Map<unknown, 0>(),
+  })
+}
+
 describe('TcpTransport', () => {
   let transport: TcpTransport
 
@@ -199,42 +211,8 @@ describe('TcpTransport', () => {
       // When start() Promise is pending and stop() is called, the start() Promise should
       // reject and event listeners should be cleaned up properly
       const { ServerTCP } = await import('modbus-serial')
-      let localMockInstance: any
-      ;(ServerTCP as any).mockImplementationOnce((vector: any, _options: any) => {
-        capturedServiceVector = vector
-        initializedListener = undefined
-        errorListener = undefined
-        eventListeners = new Map()
-
-        // Create mock that extends EventEmitter
-        localMockInstance = Object.create(EventEmitter.prototype)
-        Object.assign(localMockInstance, {
-          close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
-          socks: new Map(),
-        })
-
-        // Initialize EventEmitter state
-        EventEmitter.call(localMockInstance)
-
-        // Override on() to track listeners
-        const originalOn = localMockInstance.on.bind(localMockInstance)
-        localMockInstance.on = jest.fn((event: string, listener: any) => {
-          if (event === 'initialized') {
-            initializedListener = listener
-          } else if (event === 'error') {
-            errorListener = listener
-          }
-          if (!eventListeners.has(event)) {
-            eventListeners.set(event, new Set())
-          }
-          eventListeners.get(event)!.add(listener)
-          return originalOn(event, listener)
-        })
-
-        // Don't emit initialized automatically - let test control timing
-
-        return localMockInstance
-      })
+      const server = createEmitterServer() // never emits 'initialized'
+      ;(ServerTCP as any).mockImplementationOnce(() => server)
 
       const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
       const startPromise = testTransport.start()
@@ -246,71 +224,25 @@ describe('TcpTransport', () => {
       await expect(startPromise).rejects.toThrow('Transport stopped during initialization')
 
       // Verify event listeners are cleaned up
-      expect(localMockInstance.listenerCount('initialized')).toBe(0)
-      expect(localMockInstance.listenerCount('error')).toBe(0)
+      expect(server.listenerCount('initialized')).toBe(0)
+      expect(server.listenerCount('error')).toBe(0)
 
       // Server should not be closed (it never fully initialized), just cleaned up
-      expect(localMockInstance.close).not.toHaveBeenCalled()
-    }, 15000)
+      expect(server.close).not.toHaveBeenCalled()
+    })
 
     it('should allow restart after stop() during initialization', async () => {
-      // Test for issue #275 acceptance criteria: rapid start() → stop() → start() sequence
+      // Test for issue #275 acceptance criteria: rapid start() -> stop() -> start() sequence
       // Verifies transport is reusable after stop() interrupts initialization
       const { ServerTCP } = await import('modbus-serial')
-      let mockInstance1: any
-      let mockInstance2: any
-      let callCount = 0
-
-      const originalMock = (ServerTCP as any).getMockImplementation()
-
-      ;(ServerTCP as any).mockImplementation((vector: any, _options: any) => {
-        capturedServiceVector = vector
-        initializedListener = undefined
-        errorListener = undefined
-        eventListeners = new Map()
-        callCount++
-
-        // Create mock that extends EventEmitter
-        const localMockInstance = Object.create(EventEmitter.prototype)
-        Object.assign(localMockInstance, {
-          close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
-          socks: new Map(),
+      const firstServer = createEmitterServer() // never emits 'initialized'
+      const secondServer = createEmitterServer()
+      ;(ServerTCP as any)
+        .mockImplementationOnce(() => firstServer)
+        .mockImplementationOnce(() => {
+          setImmediate(() => secondServer.emit('initialized'))
+          return secondServer
         })
-
-        // Initialize EventEmitter state
-        EventEmitter.call(localMockInstance)
-
-        // Override on() to track listeners
-        const originalOn = localMockInstance.on.bind(localMockInstance)
-        localMockInstance.on = jest.fn((event: string, listener: any) => {
-          if (event === 'initialized') {
-            initializedListener = listener
-          } else if (event === 'error') {
-            errorListener = listener
-          }
-          if (!eventListeners.has(event)) {
-            eventListeners.set(event, new Set())
-          }
-          eventListeners.get(event)!.add(listener)
-          return originalOn(event, listener)
-        })
-
-        // Store reference based on call count
-        if (callCount === 1) {
-          mockInstance1 = localMockInstance
-          // Don't emit initialized for first attempt
-        } else if (callCount === 2) {
-          mockInstance2 = localMockInstance
-          // Emit initialized for second attempt after a tick
-          setImmediate(() => {
-            if (initializedListener) {
-              initializedListener()
-            }
-          })
-        }
-
-        return localMockInstance
-      })
 
       const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
 
@@ -320,197 +252,57 @@ describe('TcpTransport', () => {
       await expect(startPromise1).rejects.toThrow('Transport stopped during initialization')
 
       // Verify first server was cleaned up
-      expect(mockInstance1.listenerCount('initialized')).toBe(0)
-      expect(mockInstance1.listenerCount('error')).toBe(0)
+      expect(firstServer.listenerCount('initialized')).toBe(0)
+      expect(firstServer.listenerCount('error')).toBe(0)
 
       // Second attempt - should succeed
-      const startPromise2 = testTransport.start()
-      await expect(startPromise2).resolves.not.toThrow()
+      await expect(testTransport.start()).resolves.toBeUndefined()
+      await expect(testTransport.send(1, Buffer.from([0x01, 0x03]))).resolves.toBeUndefined()
 
-      // Verify second server initialized properly
-      expect(mockInstance2).toBeDefined()
-
-      // Clean up
       await testTransport.stop()
+      expect(secondServer.close).toHaveBeenCalledTimes(1)
+    })
 
-      // Restore original mock implementation for subsequent tests
-      if (originalMock) {
-        ;(ServerTCP as any).mockImplementation(originalMock)
-      } else {
-        // Restore default behavior
-        jest.clearAllMocks()
-      }
-    }, 15000)
-
-    it('should not leak event listeners when start() fails due to port binding error', async () => {
-      // Test for issue #274: Event listeners should be cleaned up on initialization failure
-      // Before the fix, when start() fails with an error event, the 'initialized' and 'error'
-      // listeners remain attached to the server instance, causing a memory leak
+    it('should reject start() and remove listeners on port binding error', async () => {
+      // Tests for issues #254 and #274: start() rejects when port binding fails, and the
+      // 'initialized' and 'error' listeners do not stay attached to the failed server
       const { ServerTCP } = await import('modbus-serial')
-      const bindError = new Error('listen EADDRINUSE: address already in use')
-      let errorCallback: ((err: Error) => void) | undefined
-      let localMockInstance: any
-      ;(ServerTCP as any).mockImplementationOnce((vector: any, _options: any) => {
-        capturedServiceVector = vector
-        initializedListener = undefined
-        errorListener = undefined
-        eventListeners = new Map()
-
-        // Create mock that extends EventEmitter so EventEmitter.prototype.removeAllListeners.call() works
-        localMockInstance = Object.create(EventEmitter.prototype)
-        Object.assign(localMockInstance, {
-          close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
-          socks: new Map(),
-        })
-
-        // Initialize EventEmitter state
-        EventEmitter.call(localMockInstance)
-
-        // Override on() to track listeners in both EventEmitter and our test Map
-        const originalOn = localMockInstance.on.bind(localMockInstance)
-        localMockInstance.on = jest.fn((event: string, listener: any) => {
-          if (event === 'initialized') {
-            initializedListener = listener
-          } else if (event === 'error') {
-            errorListener = listener
-            errorCallback = listener
-          }
-          // Track listeners in our Map
-          if (!eventListeners.has(event)) {
-            eventListeners.set(event, new Set())
-          }
-          eventListeners.get(event)!.add(listener)
-          // Also add to real EventEmitter
-          return originalOn(event, listener)
-        })
-
-        // Simulate error during initialization (instead of initialized event)
-        setImmediate(() => {
-          if (errorCallback) {
-            errorCallback(bindError)
-          }
-        })
-
-        return localMockInstance
+      const server = createEmitterServer()
+      ;(ServerTCP as any).mockImplementationOnce(() => {
+        setImmediate(() => server.emit('error', new Error('listen EADDRINUSE')))
+        return server
       })
 
       const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
-      await expect(testTransport.start()).rejects.toThrow(
-        'listen EADDRINUSE: address already in use'
-      )
+      await expect(testTransport.start()).rejects.toThrow('listen EADDRINUSE')
 
-      // After failed start(), verify no listeners remain attached
-      // This prevents memory leaks when repeatedly attempting to start on a busy port
-      expect(localMockInstance.listenerCount('initialized')).toBe(0)
-      expect(localMockInstance.listenerCount('error')).toBe(0)
+      expect(server.listenerCount('initialized')).toBe(0)
+      expect(server.listenerCount('error')).toBe(0)
     })
 
-    it('should not leak event listeners when start() fails due to timeout', async () => {
-      // Test for issue #274: Event listeners should be cleaned up on initialization timeout
-      // Before the fix, when start() times out waiting for 'initialized' event, the listeners
-      // remain attached to the server instance, causing a memory leak
+    it('should reject start() and remove listeners on initialization timeout', async () => {
+      // Tests for issues #254 and #274: start() rejects if the server never emits 'initialized'
+      // or 'error', and the listeners do not stay attached to the abandoned server
       const { ServerTCP } = await import('modbus-serial')
-      let localMockInstance: any
-      ;(ServerTCP as any).mockImplementationOnce((vector: any, _options: any) => {
-        capturedServiceVector = vector
-        initializedListener = undefined
-        errorListener = undefined
-        eventListeners = new Map()
-
-        // Create mock that extends EventEmitter so EventEmitter.prototype.removeAllListeners.call() works
-        localMockInstance = Object.create(EventEmitter.prototype)
-        Object.assign(localMockInstance, {
-          close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
-          socks: new Map(),
-        })
-
-        // Initialize EventEmitter state
-        EventEmitter.call(localMockInstance)
-
-        // Override on() to track listeners in both EventEmitter and our test Map
-        const originalOn = localMockInstance.on.bind(localMockInstance)
-        localMockInstance.on = jest.fn((event: string, listener: any) => {
-          if (event === 'initialized') {
-            initializedListener = listener
-          } else if (event === 'error') {
-            errorListener = listener
-          }
-          // Track listeners in our Map
-          if (!eventListeners.has(event)) {
-            eventListeners.set(event, new Set())
-          }
-          eventListeners.get(event)!.add(listener)
-          // Also add to real EventEmitter
-          return originalOn(event, listener)
-        })
-
-        // Don't emit initialized or error - simulate hanging server
-
-        return localMockInstance
-      })
+      const server = createEmitterServer() // hangs: never emits anything
+      ;(ServerTCP as any).mockImplementationOnce(() => server)
 
       const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
       await expect(testTransport.start()).rejects.toThrow(/timeout/i)
 
-      // After failed start() due to timeout, verify no listeners remain attached
-      // This prevents memory leaks when start() hangs and times out
-      expect(localMockInstance.listenerCount('initialized')).toBe(0)
-      expect(localMockInstance.listenerCount('error')).toBe(0)
+      expect(server.listenerCount('initialized')).toBe(0)
+      expect(server.listenerCount('error')).toBe(0)
     }, 15000) // Increase test timeout to allow for implementation timeout
-
-    it('should reject start() on port binding error', async () => {
-      // Test for issue #254: start() should reject when port binding fails
-      const { ServerTCP } = await import('modbus-serial')
-      const bindError = new Error('listen EADDRINUSE: address already in use')
-      let errorCallback: ((err: Error) => void) | undefined
-      ;(ServerTCP as any).mockImplementationOnce((vector: any, _options: any) => {
-        capturedServiceVector = vector
-        initializedListener = undefined
-        errorListener = undefined
-
-        const localMockInstance = {
-          close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
-          on: jest.fn((event: string, listener: any) => {
-            if (event === 'initialized') {
-              initializedListener = listener
-            } else if (event === 'error') {
-              errorListener = listener
-              errorCallback = listener
-            }
-          }),
-          removeAllListeners: jest.fn(),
-          socks: new Map(),
-        }
-
-        // Simulate error during initialization (instead of initialized event)
-        setImmediate(() => {
-          if (errorCallback) {
-            errorCallback(bindError)
-          }
-        })
-
-        return localMockInstance
-      })
-
-      const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
-      await expect(testTransport.start()).rejects.toThrow(
-        'listen EADDRINUSE: address already in use'
-      )
-    })
 
     it('should not leave the initialization timeout pending after start() fails', async () => {
       jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] })
       try {
         const { ServerTCP } = await import('modbus-serial')
-        ;(ServerTCP as any).mockImplementationOnce(() => ({
-          close: jest.fn(),
-          on: jest.fn((event: string, listener: (err: Error) => void) => {
-            if (event === 'error') {
-              setImmediate(() => listener(new Error('listen EADDRINUSE')))
-            }
-          }),
-          socks: new Map(),
-        }))
+        const server = createEmitterServer()
+        ;(ServerTCP as any).mockImplementationOnce(() => {
+          setImmediate(() => server.emit('error', new Error('listen EADDRINUSE')))
+          return server
+        })
 
         const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
         await expect(testTransport.start()).rejects.toThrow('listen EADDRINUSE')
@@ -521,77 +313,21 @@ describe('TcpTransport', () => {
       }
     })
 
-    it('should reject start() on initialization timeout', async () => {
-      // Test for issue #254: start() should timeout if server never emits initialized or error
-      const { ServerTCP } = await import('modbus-serial')
-
-      ;(ServerTCP as any).mockImplementationOnce((vector: any, _options: any) => {
-        capturedServiceVector = vector
-        initializedListener = undefined
-        errorListener = undefined
-
-        const localMockInstance = {
-          close: jest.fn((cb: (err: Error | null) => void) => cb(null)),
-          on: jest.fn((event: string, listener: any) => {
-            if (event === 'initialized') {
-              initializedListener = listener
-            } else if (event === 'error') {
-              errorListener = listener
-            }
-          }),
-          removeAllListeners: jest.fn(),
-          socks: new Map(),
-        }
-
-        // Don't emit initialized or error - simulate hanging server
-
-        return localMockInstance
-      })
-
-      const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
-      await expect(testTransport.start()).rejects.toThrow(/timeout/i)
-    }, 15000) // Increase test timeout to allow for implementation timeout
-
     it('should reject on stop error', async () => {
       const { ServerTCP } = await import('modbus-serial')
-      const closeError = new Error('Failed to close server')
-      let closeCallback: ((err: Error | null) => void) | undefined
-      ;(ServerTCP as any).mockImplementationOnce((vector: any, _options: any) => {
-        capturedServiceVector = vector
-        initializedListener = undefined
-        errorListener = undefined
-
-        const localMockInstance = {
-          close: jest.fn((cb: (err: Error | null) => void) => {
-            closeCallback = cb
-          }),
-          on: jest.fn((event: string, listener: any) => {
-            if (event === 'initialized') {
-              initializedListener = listener
-            } else if (event === 'error') {
-              errorListener = listener
-            }
-          }),
-          removeAllListeners: jest.fn(),
-          socks: new Map(),
-        }
-
-        setImmediate(() => {
-          if (initializedListener) {
-            initializedListener()
-          }
-        })
-
-        return localMockInstance
+      const server = createEmitterServer()
+      server.close.mockImplementation((cb) => {
+        setImmediate(() => cb(new Error('Failed to close server')))
+      })
+      ;(ServerTCP as any).mockImplementationOnce(() => {
+        setImmediate(() => server.emit('initialized'))
+        return server
       })
 
       const testTransport = new TcpTransport({ host: 'localhost', port: 502 })
       await testTransport.start()
 
-      const stopPromise = testTransport.stop()
-      setImmediate(() => closeCallback?.(closeError))
-
-      await expect(stopPromise).rejects.toThrow('Failed to close server')
+      await expect(testTransport.stop()).rejects.toThrow('Failed to close server')
     })
 
     it('should handle error event', async () => {
