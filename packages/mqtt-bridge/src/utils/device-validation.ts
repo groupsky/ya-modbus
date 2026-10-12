@@ -1,5 +1,11 @@
 import { z } from 'zod'
 
+/**
+ * Longest duration a device config accepts: 24 hours. setTimeout runs delays above 2^31-1 ms
+ * (24.8 days) after 1 ms, so a longer interval, retry backoff or timeout would act as a tight loop.
+ */
+const MAX_DURATION_MS = 86400000
+
 // MQTT topic segment requirements:
 // - Cannot contain null character
 // - Cannot contain + or # (MQTT wildcards)
@@ -26,6 +32,13 @@ const driverNameSchema = z
     message: 'Driver name cannot contain path traversal sequences',
   })
 
+const timeoutSchema = z
+  .number()
+  .int()
+  .positive()
+  .max(MAX_DURATION_MS, 'Connection timeout must not exceed 24 hours')
+  .optional()
+
 const rtuConnectionSchema = z
   .object({
     type: z.literal('rtu'),
@@ -35,7 +48,7 @@ const rtuConnectionSchema = z
     parity: z.enum(['none', 'even', 'odd']).default('none'),
     dataBits: z.union([z.literal(7), z.literal(8)]).default(8),
     stopBits: z.union([z.literal(1), z.literal(2)]).default(1),
-    timeout: z.number().int().positive().optional(),
+    timeout: timeoutSchema,
   })
   .transform((data) => {
     const { timeout, ...rest } = data
@@ -48,7 +61,7 @@ const tcpConnectionSchema = z
     host: z.string().min(1),
     port: z.number().int().positive().max(65535).optional(),
     slaveId: z.number().int().min(0).max(247),
-    timeout: z.number().int().positive().optional(),
+    timeout: timeoutSchema,
   })
   .transform((data) => {
     const { port, timeout, ...rest } = data
@@ -66,7 +79,7 @@ const pollingConfigSchema = z
       .int()
       .positive()
       .min(100, 'Polling interval must be at least 100ms')
-      .max(86400000, 'Polling interval must not exceed 24 hours'),
+      .max(MAX_DURATION_MS, 'Polling interval must not exceed 24 hours'),
     mode: z.enum(['interval', 'continuous']).optional(),
     maxRetries: z
       .number()
@@ -74,7 +87,12 @@ const pollingConfigSchema = z
       .nonnegative()
       .max(100, 'Max retries should not exceed 100')
       .optional(),
-    retryBackoff: z.number().int().positive().optional(),
+    retryBackoff: z
+      .number()
+      .int()
+      .positive()
+      .max(MAX_DURATION_MS, 'Retry backoff must not exceed 24 hours')
+      .optional(),
   })
   .transform((data) => {
     const { mode, maxRetries, retryBackoff, ...rest } = data

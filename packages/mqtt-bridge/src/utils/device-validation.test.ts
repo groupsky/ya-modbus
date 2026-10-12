@@ -438,6 +438,55 @@ describe('validateDeviceConfig', () => {
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
   })
 
+  // setTimeout runs a delay above 2^31-1 ms after 1 ms. For retryBackoff that turns the backoff
+  // of a failing device into a tight retry loop that floods the bus, and for timeouts it makes
+  // every request time out at once. So every duration in a device config is capped at 24 hours.
+  describe('duration limits', () => {
+    const device = { deviceId: 'device1', driver: 'ya-modbus-driver-test' }
+    const rtu = { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 }
+    const tcp = { type: 'tcp', host: 'localhost', slaveId: 1 }
+
+    const durationFields = [
+      {
+        name: 'polling.interval',
+        build: (ms: number) => ({ ...device, connection: tcp, polling: { interval: ms } }),
+        message: 'Polling interval must not exceed 24 hours',
+      },
+      {
+        name: 'polling.retryBackoff',
+        build: (ms: number) => ({
+          ...device,
+          connection: tcp,
+          polling: { interval: 5000, retryBackoff: ms },
+        }),
+        message: 'Retry backoff must not exceed 24 hours',
+      },
+      {
+        name: 'RTU connection.timeout',
+        build: (ms: number) => ({ ...device, connection: { ...rtu, timeout: ms } }),
+        // A union of connection types reports only "Invalid input" without the reason
+        message: 'Invalid device configuration: connection',
+      },
+      {
+        name: 'TCP connection.timeout',
+        build: (ms: number) => ({ ...device, connection: { ...tcp, timeout: ms } }),
+        message: 'Invalid device configuration: connection',
+      },
+    ]
+
+    it.each(durationFields)('should accept $name of exactly 24 hours', ({ build }) => {
+      expect(() => validateDeviceConfig(build(86400000))).not.toThrow()
+    })
+
+    const tooLong = durationFields.flatMap((field) =>
+      [86400001, 2 ** 31 - 1, 2 ** 31].map((ms) => ({ ...field, ms }))
+    )
+
+    it.each(tooLong)('should reject $name of $ms ms', ({ build, ms, message }) => {
+      expect(() => validateDeviceConfig(build(ms))).toThrow(message)
+    })
+  })
+
   describe('RTU connection defaults', () => {
     it('should apply defaults for omitted RTU serial parameters', () => {
       const config = {
