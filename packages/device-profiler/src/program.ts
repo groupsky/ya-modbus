@@ -11,6 +11,8 @@ import { Command, Option } from 'commander'
 
 import { runProfileScan } from './cli.js'
 import { MAX_PORT, MIN_PORT } from './constants.js'
+import { assertOutputWritable } from './output-file.js'
+import { OUTPUT_FORMATS, resolveOutput, type OutputFormat } from './output-format.js'
 import { RegisterType } from './read-tester.js'
 import { parseInteger, validateOptions } from './validation.js'
 
@@ -26,7 +28,8 @@ interface CliOptions {
   dataBits: DataBits
   stopBits: StopBits
   timeout: number
-  format: 'table' | 'json'
+  format?: OutputFormat
+  output?: string
 }
 
 export const program = new Command()
@@ -51,13 +54,20 @@ program
   .option('--stop-bits <bits>', 'Stop bits for RTU', parseInteger, 1)
   .option('--timeout <ms>', 'Response timeout in milliseconds', parseInteger, 1000)
   .addOption(
-    new Option('-f, --format <format>', 'Output format: table or json')
-      .choices(['table', 'json'])
-      .default('table')
+    new Option(
+      '-f, --format <format>',
+      'Output format: table, json or yaml (default: table, or taken from the --output file extension)'
+    ).choices(OUTPUT_FORMATS)
   )
+  .option('--output <file>', 'Write the result to a json or yaml file instead of printing it')
   .action(async (options: CliOptions) => {
     try {
       validateOptions(options)
+
+      const output = resolveOutput(options.format, options.output)
+      if (output.file !== undefined) {
+        await assertOutputWritable(output.file)
+      }
 
       const registerType = options.type === 'input' ? RegisterType.Input : RegisterType.Holding
 
@@ -100,7 +110,8 @@ program
         startAddress: options.start,
         endAddress: options.end,
         batchSize: options.batch,
-        format: options.format,
+        format: output.format,
+        ...(output.file !== undefined && { outputFile: output.file }),
         port: options.port,
       })
     } catch (error) {

@@ -1,3 +1,5 @@
+import yaml from 'js-yaml'
+
 import {
   BYTES_PER_REGISTER,
   classifyError,
@@ -6,6 +8,7 @@ import {
   formatJSON,
   formatProgress,
   formatSummary,
+  formatYAML,
   MAX_PORT,
   MAX_SLAVE_ID,
   MIN_PORT,
@@ -15,6 +18,7 @@ import {
   scanRegisters,
   testRead,
   type JSONFormatterOptions,
+  type YAMLFormatterOptions,
 } from './index.js'
 
 describe('index exports', () => {
@@ -59,6 +63,23 @@ describe('index exports', () => {
 
     expect(parsed.scan).toEqual({ type: 'holding', startAddress: 0, endAddress: 0, batchSize: 10 })
     expect(parsed.connection).toEqual({ port: '/dev/ttyUSB0' })
+  })
+
+  it('should export formatYAML', () => {
+    const options: YAMLFormatterOptions = {
+      type: RegisterType.Input,
+      startAddress: 5,
+      endAddress: 6,
+      batchSize: 2,
+      port: 'localhost:502',
+    }
+
+    const parsed = yaml.load(formatYAML([], options))
+
+    expect(parsed).toMatchObject({
+      scan: { type: 'input', startAddress: 5, endAddress: 6, batchSize: 2 },
+      connection: { port: 'localhost:502' },
+    })
   })
 
   it('should export MIN_PORT', () => {

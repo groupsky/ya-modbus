@@ -1,4 +1,9 @@
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import type { Transport } from '@ya-modbus/driver-types'
+import yaml from 'js-yaml'
 
 import { runProfileScan } from './cli.js'
 import { RegisterType } from './read-tester.js'
@@ -330,6 +335,254 @@ describe('runProfileScan', () => {
         Array.from({ length: 2000 }, (_, address) => address)
       )
       expect(results.filter((result) => !result.success || result.value !== 0x0101)).toEqual([])
+    })
+  })
+
+  describe('YAML output format', () => {
+    /** Parse the single YAML document that the scan printed */
+    function printedYAML(): unknown {
+      expect(mockConsoleLog).toHaveBeenCalledTimes(1)
+      return yaml.load(mockConsoleLog.mock.calls[0][0] as string)
+    }
+
+    it('should print the scan as one YAML document when format is yaml', async () => {
+      const mockTransport: Transport = {
+        readHoldingRegisters: jest.fn().mockResolvedValue(Buffer.from([0x12, 0x34])),
+        close: jest.fn().mockResolvedValue(undefined),
+      } as unknown as Transport
+
+      await runProfileScan({
+        transport: mockTransport,
+        type: RegisterType.Holding,
+        startAddress: 0,
+        endAddress: 0,
+        format: 'yaml',
+        port: '/dev/ttyUSB0',
+      })
+
+      expect(printedYAML()).toEqual({
+        timestamp: expect.any(String),
+        scan: { type: 'holding', startAddress: 0, endAddress: 0, batchSize: 10 },
+        connection: { port: '/dev/ttyUSB0' },
+        results: [
+          { address: 0, type: 'holding', success: true, value: 4660, timing: expect.any(Number) },
+        ],
+        summary: {
+          total: 1,
+          successful: 1,
+          failed: 0,
+          totalTimeMs: expect.any(Number),
+          averageTimeMs: expect.any(Number),
+        },
+      })
+      expect(mockTransport.close).toHaveBeenCalled()
+    })
+
+    it('should suppress progress output when format is yaml', async () => {
+      const mockStdoutWrite = jest.spyOn(process.stdout, 'write').mockImplementation()
+
+      const mockTransport: Transport = {
+        readHoldingRegisters: readsWithByte(0x00),
+        close: jest.fn().mockResolvedValue(undefined),
+      } as unknown as Transport
+
+      try {
+        await runProfileScan({
+          transport: mockTransport,
+          type: RegisterType.Holding,
+          startAddress: 0,
+          endAddress: 5,
+          format: 'yaml',
+          port: 'localhost:502',
+        })
+
+        expect(mockStdoutWrite).not.toHaveBeenCalled()
+      } finally {
+        mockStdoutWrite.mockRestore()
+      }
+
+      // The only line on the console is the YAML document
+      printedYAML()
+    })
+
+    it('should report registers that failed to read with their error', async () => {
+      const mockTransport: Transport = {
+        readHoldingRegisters: jest.fn().mockRejectedValue(new Error('Timeout: no response')),
+        close: jest.fn().mockResolvedValue(undefined),
+      } as unknown as Transport
+
+      await runProfileScan({
+        transport: mockTransport,
+        type: RegisterType.Holding,
+        startAddress: 0,
+        endAddress: 0,
+        format: 'yaml',
+        port: '/dev/ttyUSB0',
+      })
+
+      expect(printedYAML()).toMatchObject({
+        results: [
+          {
+            address: 0,
+            success: false,
+            value: null,
+            error: 'Timeout: no response',
+            errorType: 'timeout',
+          },
+        ],
+        summary: { total: 1, successful: 0, failed: 1 },
+      })
+    })
+  })
+
+  describe('output file', () => {
+    let directory: string
+    let mockStdoutWrite: jest.SpyInstance
+
+    beforeEach(async () => {
+      directory = await mkdtemp(join(tmpdir(), 'profiler-cli-'))
+      mockStdoutWrite = jest.spyOn(process.stdout, 'write').mockImplementation()
+    })
+
+    afterEach(async () => {
+      mockStdoutWrite.mockRestore()
+      await rm(directory, { recursive: true, force: true })
+    })
+
+    function createTransport(read: jest.Mock): Transport {
+      return {
+        readHoldingRegisters: read,
+        close: jest.fn().mockResolvedValue(undefined),
+      } as unknown as Transport
+    }
+
+    it('should write the JSON document to the file', async () => {
+      const file = join(directory, 'scan.json')
+
+      await runProfileScan({
+        transport: createTransport(readsWithByte(0x12)),
+        type: RegisterType.Holding,
+        startAddress: 0,
+        endAddress: 1,
+        format: 'json',
+        outputFile: file,
+        port: '/dev/ttyUSB0',
+      })
+
+      const content = await readFile(file, 'utf8')
+      expect(content).toMatch(/\n$/)
+      expect(JSON.parse(content)).toMatchObject({
+        scan: { type: 'holding', startAddress: 0, endAddress: 1 },
+        connection: { port: '/dev/ttyUSB0' },
+        results: [
+          { address: 0, success: true, value: 0x1212 },
+          { address: 1, success: true, value: 0x1212 },
+        ],
+        summary: { total: 2, successful: 2, failed: 0 },
+      })
+    })
+
+    it('should write the YAML document to the file', async () => {
+      const file = join(directory, 'scan.yaml')
+
+      await runProfileScan({
+        transport: createTransport(readsWithByte(0x12)),
+        type: RegisterType.Holding,
+        startAddress: 0,
+        endAddress: 1,
+        format: 'yaml',
+        outputFile: file,
+        port: '/dev/ttyUSB0',
+      })
+
+      const content = await readFile(file, 'utf8')
+      expect(content).toMatch(/[^\n]\n$/)
+      expect(yaml.load(content)).toMatchObject({
+        scan: { type: 'holding', startAddress: 0, endAddress: 1 },
+        results: [
+          { address: 0, success: true, value: 0x1212 },
+          { address: 1, success: true, value: 0x1212 },
+        ],
+        summary: { total: 2, successful: 2, failed: 0 },
+      })
+    })
+
+    it('should replace the content of an existing file', async () => {
+      const file = join(directory, 'scan.json')
+      await writeFile(file, 'old content that is longer than the new document'.repeat(100))
+
+      await runProfileScan({
+        transport: createTransport(readsWithByte(0x00)),
+        type: RegisterType.Holding,
+        startAddress: 0,
+        endAddress: 0,
+        format: 'json',
+        outputFile: file,
+      })
+
+      expect(JSON.parse(await readFile(file, 'utf8'))).toMatchObject({ summary: { total: 1 } })
+    })
+
+    it.each(['json', 'yaml'] as const)(
+      'should keep stdout empty and put no progress in the %s file',
+      async (format) => {
+        const file = join(directory, 'scan')
+
+        await runProfileScan({
+          transport: createTransport(readsWithByte(0x00)),
+          type: RegisterType.Holding,
+          startAddress: 0,
+          endAddress: 5,
+          format,
+          outputFile: file,
+        })
+
+        expect(mockConsoleLog).not.toHaveBeenCalled()
+        expect(mockStdoutWrite).not.toHaveBeenCalled()
+        expect(await readFile(file, 'utf8')).not.toContain('Progress')
+      }
+    )
+
+    it('should print a one-line summary to stderr', async () => {
+      const file = join(directory, 'scan.json')
+      // The batch read fails, then register 0 succeeds and register 1 fails
+      const read = jest
+        .fn()
+        .mockImplementation((address: number, count: number) =>
+          count === 1 && address === 0
+            ? Promise.resolve(Buffer.from([0x00, 0x2a]))
+            : Promise.reject(new Error('Timeout waiting for response'))
+        )
+
+      await runProfileScan({
+        transport: createTransport(read),
+        type: RegisterType.Holding,
+        startAddress: 0,
+        endAddress: 1,
+        format: 'json',
+        outputFile: file,
+      })
+
+      expect(mockConsoleError).toHaveBeenCalledTimes(1)
+      expect(mockConsoleError).toHaveBeenCalledWith(`Wrote 2 registers (1 ok, 1 failed) to ${file}`)
+    })
+
+    it('should close the transport and report the error when the file cannot be written', async () => {
+      const transport = createTransport(readsWithByte(0x00))
+
+      await expect(
+        runProfileScan({
+          transport,
+          type: RegisterType.Holding,
+          startAddress: 0,
+          endAddress: 0,
+          format: 'json',
+          outputFile: join(directory, 'missing', 'scan.json'),
+        })
+      ).rejects.toThrow('ENOENT')
+
+      expect(transport.close).toHaveBeenCalled()
+      expect(mockConsoleError).not.toHaveBeenCalled()
     })
   })
 })

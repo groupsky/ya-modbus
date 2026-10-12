@@ -1,3 +1,7 @@
+import { randomUUID } from 'node:crypto'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { createTransport } from '@ya-modbus/transport'
 
 import packageJson from '../package.json'
@@ -99,8 +103,11 @@ describe('CLI Program - Integration Tests', () => {
           --data-bits <bits>     Data bits for RTU (default: 8)
           --stop-bits <bits>     Stop bits for RTU (default: 1)
           --timeout <ms>         Response timeout in milliseconds (default: 1000)
-          -f, --format <format>  Output format: table or json (choices: "table", "json",
-                                 default: "table")
+          -f, --format <format>  Output format: table, json or yaml (default: table, or
+                                 taken from the --output file extension) (choices:
+                                 "table", "json", "yaml")
+          --output <file>        Write the result to a json or yaml file instead of
+                                 printing it
           -h, --help             display help for command
         "
       `)
@@ -217,7 +224,7 @@ describe('CLI Program - Integration Tests', () => {
       expect(processExitSpy).toHaveBeenCalledWith(1)
     })
 
-    it('should parse format option as table', async () => {
+    it.each(['table', 'json', 'yaml'])('should parse format option as %s', async (format) => {
       const mockRunProfileScan = jest.fn().mockResolvedValue(undefined)
       ;(cliModule.runProfileScan as jest.Mock) = mockRunProfileScan
 
@@ -229,36 +236,10 @@ describe('CLI Program - Integration Tests', () => {
         '--slave-id',
         '1',
         '--format',
-        'table',
+        format,
       ])
 
-      expect(mockRunProfileScan).toHaveBeenCalledWith(
-        expect.objectContaining({
-          format: 'table',
-        })
-      )
-    })
-
-    it('should parse format option as json', async () => {
-      const mockRunProfileScan = jest.fn().mockResolvedValue(undefined)
-      ;(cliModule.runProfileScan as jest.Mock) = mockRunProfileScan
-
-      await program.parseAsync([
-        'node',
-        'ya-modbus-profile',
-        '--port',
-        '/dev/ttyUSB0',
-        '--slave-id',
-        '1',
-        '--format',
-        'json',
-      ])
-
-      expect(mockRunProfileScan).toHaveBeenCalledWith(
-        expect.objectContaining({
-          format: 'json',
-        })
-      )
+      expect(mockRunProfileScan).toHaveBeenCalledWith(expect.objectContaining({ format }))
     })
 
     it('should default format to table when not specified', async () => {
@@ -296,6 +277,79 @@ describe('CLI Program - Integration Tests', () => {
       ).rejects.toThrow()
 
       expect(processExitSpy).toHaveBeenCalledWith(1)
+    })
+  })
+
+  describe('Output File', () => {
+    const connectionArgs = [
+      'node',
+      'ya-modbus-profile',
+      '--port',
+      '/dev/ttyUSB0',
+      '--slave-id',
+      '1',
+    ]
+    const file = (name: string): string => join(tmpdir(), name)
+
+    it.each([
+      { args: ['--output', file('scan.json')], format: 'json', name: 'scan.json' },
+      { args: ['--output', file('scan.yaml')], format: 'yaml', name: 'scan.yaml' },
+      { args: ['--output', file('scan.yml')], format: 'yaml', name: 'scan.yml' },
+      {
+        args: ['--format', 'yaml', '--output', file('scan.json')],
+        format: 'yaml',
+        name: 'scan.json',
+      },
+      { args: ['-f', 'json', '--output', file('scan.txt')], format: 'json', name: 'scan.txt' },
+    ])('should write $format to $name for $args', async ({ args, format, name }) => {
+      const mockRunProfileScan = jest.fn().mockResolvedValue(undefined)
+      ;(cliModule.runProfileScan as jest.Mock) = mockRunProfileScan
+
+      await program.parseAsync([...connectionArgs, ...args])
+
+      expect(mockRunProfileScan).toHaveBeenCalledWith(
+        expect.objectContaining({ format, outputFile: file(name) })
+      )
+    })
+
+    it('should not pass an output file when --output is not given', async () => {
+      const mockRunProfileScan = jest.fn().mockResolvedValue(undefined)
+      ;(cliModule.runProfileScan as jest.Mock) = mockRunProfileScan
+
+      await program.parseAsync([...connectionArgs, '--format', 'yaml'])
+
+      expect(mockRunProfileScan).toHaveBeenCalledTimes(1)
+      expect(mockRunProfileScan.mock.calls[0][0]).not.toHaveProperty('outputFile')
+    })
+
+    it.each([
+      {
+        name: 'a file name that does not tell the format',
+        args: ['--output', file('scan.txt')],
+        message: `Cannot tell the output format from "${file('scan.txt')}". Use a .json, .yaml or .yml file name, or set --format json or --format yaml`,
+      },
+      {
+        name: 'the table format',
+        args: ['--format', 'table', '--output', file('scan.json')],
+        message: 'The table format cannot be written to a file. Use --format json or --format yaml',
+      },
+      {
+        name: 'a directory that does not exist',
+        args: ['--output', join(tmpdir(), randomUUID(), 'scan.json')],
+        message: expect.stringContaining('ENOENT'),
+      },
+      {
+        name: 'a path that is a directory',
+        args: ['--format', 'json', '--output', tmpdir()],
+        message: expect.stringContaining('EISDIR'),
+      },
+    ])('should reject $name before connecting', async ({ args, message }) => {
+      await expect(program.parseAsync([...connectionArgs, ...args])).rejects.toThrow()
+
+      expect(processExitSpy).toHaveBeenCalledWith(1)
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error:', message)
+      expect(createTransport).not.toHaveBeenCalled()
+      expect(cliModule.runProfileScan).not.toHaveBeenCalled()
     })
   })
 

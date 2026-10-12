@@ -7,6 +7,7 @@ export { formatProgress, formatSummary } from './console-formatter.js'
 export { formatJSON, type JSONFormatterOptions } from './json-formatter.js'
 export { testRead, RegisterType, type ReadTestResult } from './read-tester.js'
 export { scanRegisters, type ScanOptions, type ScanResult } from './register-scanner.js'
+export { formatYAML, type YAMLFormatterOptions } from './yaml-formatter.js'
 export {
   BYTES_PER_REGISTER,
   DEFAULT_BATCH_SIZE,

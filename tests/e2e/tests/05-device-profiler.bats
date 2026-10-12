@@ -6,6 +6,8 @@
 
 load helpers
 
+bats_require_minimum_version 1.5.0
+
 setup() {
   EMULATOR_PID=""
   PROFILER_BIN="$(get_project_root)/packages/device-profiler/dist/esm/bin/profile.js"
@@ -501,6 +503,205 @@ teardown() {
   assert_output_contains "Status"
   assert_output_contains "Value"
   assert_output_contains "Timing"
+}
+
+@test "prints the scan as JSON with --format json" {
+  # Start emulator
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run timeout 30 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --start 0 \
+    --end 5 \
+    --batch 10 \
+    --format json
+
+  assert_success
+  # The whole output is one JSON document: no progress or table text
+  # Register 0 contains voltage: 2300
+  assert_output_json '.scan.type == "holding" and .connection.port == "/tmp/ttyV1" and .summary.total == 6 and .summary.failed == 0 and .results[0].value == 2300'
+}
+
+@test "prints the scan as YAML with --format yaml" {
+  # Start emulator
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run timeout 30 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --start 0 \
+    --end 5 \
+    --batch 10 \
+    --format yaml
+
+  assert_success
+  assert_output_contains "^timestamp: "
+  assert_output_contains "connection:"
+  assert_output_contains "port: /tmp/ttyV1"
+  assert_output_contains "  - address: 0"
+  # Register 0 contains voltage: 2300
+  assert_output_contains "value: 2300"
+  assert_output_contains "total: 6"
+  # No progress or table text
+  assert_output_not_contains "Progress:"
+  assert_output_not_contains "Scan complete!"
+}
+
+@test "rejects an unknown output format" {
+  run timeout 10 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --format xml
+
+  assert_failure
+  assert_output_contains "Allowed choices are table, json, yaml"
+}
+
+# ==========================================
+# Output File Tests
+# ==========================================
+# With --output, stdout stays empty and a one-line summary goes to stderr.
+# "run --separate-stderr" keeps the two streams apart.
+
+@test "writes JSON to the file named by --output" {
+  # Start emulator
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  local file="$BATS_TEST_TMPDIR/scan.json"
+
+  run --separate-stderr timeout 30 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --start 0 \
+    --end 5 \
+    --batch 10 \
+    --output "$file"
+
+  assert_success
+  # Nothing on stdout, a summary line on stderr
+  [ -z "$output" ]
+  [[ "$stderr" == "Wrote 6 registers (6 ok, 0 failed) to $file" ]]
+  # The file holds one JSON document without progress text
+  # Register 0 contains voltage: 2300
+  jq -e '.scan.type == "holding" and .summary.total == 6 and .results[0].value == 2300' "$file"
+}
+
+@test "writes YAML to a file with a .yaml extension" {
+  # Start emulator
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  local file="$BATS_TEST_TMPDIR/scan.yaml"
+
+  run --separate-stderr timeout 30 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --start 0 \
+    --end 5 \
+    --batch 10 \
+    --output "$file"
+
+  assert_success
+  [ -z "$output" ]
+  assert_file_contains "$file" "^timestamp: "
+  assert_file_contains "$file" "  - address: 0"
+  # Register 0 contains voltage: 2300
+  assert_file_contains "$file" "value: 2300"
+  run grep -c -E "Progress|Scan complete" "$file"
+  [ "$output" = "0" ]
+}
+
+@test "--format overrides the file extension" {
+  # Start emulator
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  local file="$BATS_TEST_TMPDIR/scan.txt"
+
+  run --separate-stderr timeout 30 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --start 0 \
+    --end 5 \
+    --batch 10 \
+    --format yaml \
+    --output "$file"
+
+  assert_success
+  [ -z "$output" ]
+  assert_file_contains "$file" "value: 2300"
+}
+
+@test "replaces an existing output file" {
+  # Start emulator
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  local file="$BATS_TEST_TMPDIR/scan.json"
+  echo "old content" > "$file"
+
+  run timeout 30 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --start 0 \
+    --end 1 \
+    --batch 10 \
+    --output "$file"
+
+  assert_success
+  jq -e '.summary.total == 2' "$file"
+}
+
+@test "rejects an output file name that does not tell the format" {
+  local file="$BATS_TEST_TMPDIR/scan.txt"
+
+  run timeout 10 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --output "$file"
+
+  assert_failure
+  assert_output_contains "Cannot tell the output format from"
+  assert_output_contains "set --format json or --format yaml"
+  [ ! -e "$file" ]
+}
+
+@test "rejects the table format for an output file" {
+  local file="$BATS_TEST_TMPDIR/scan.json"
+
+  run timeout 10 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --format table \
+    --output "$file"
+
+  assert_failure
+  assert_output_contains "The table format cannot be written to a file"
+  [ ! -e "$file" ]
+}
+
+@test "rejects an output file in a missing directory before scanning" {
+  # No emulator is running: the check must fail before any connection is made
+  local file="$BATS_TEST_TMPDIR/missing-directory/scan.json"
+
+  run timeout 10 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --output "$file"
+
+  assert_failure
+  assert_output_contains "Cannot write to $file"
+  assert_output_contains "ENOENT"
 }
 
 # ==========================================
