@@ -45,7 +45,8 @@
   "dependencies": {
     "@ya-modbus/driver-types": "^0.8.0",
     "async-mutex": "^0.5.0",
-    "modbus-serial": "^8.0.25"
+    "modbus-serial": "^8.0.25",
+    "tslib": "^2.8.1"
   },
   "engines": {
     "node": ">=22.0.0"
