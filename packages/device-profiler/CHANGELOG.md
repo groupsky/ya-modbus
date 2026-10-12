@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.9.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.9.1...@ya-modbus/device-profiler@0.9.2) (2026-10-12)
+
+### Bug Fixes
+
+- **device-profiler:** validate scan parameters before connecting ([#541](https://github.com/groupsky/ya-modbus/issues/541)) ([bb61a37](https://github.com/groupsky/ya-modbus/commit/bb61a37c48a362178c8f9909b93982b185c5dff2)), closes [#374](https://github.com/groupsky/ya-modbus/issues/374) [#369](https://github.com/groupsky/ya-modbus/issues/369)
+
 ## [0.9.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.9.0...@ya-modbus/device-profiler@0.9.1) (2026-10-12)
 
 ### Bug Fixes
