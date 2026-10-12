@@ -478,7 +478,7 @@ For 10 devices @ 9600 baud:
 
 **Service configuration**: Simple service type, automatic restart, runs as dedicated user, configurable state file location.
 
-**Configuration**: See `deployment/systemd/` directory for service unit file examples.
+**Configuration**: See `packages/mqtt-bridge/systemd/` directory for the service unit file and installation guide.
 
 ## Monitoring & Observability
 
