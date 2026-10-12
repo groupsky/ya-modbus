@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository is configured with GitHub Dependabot for automated dependency management, including grouped updates, verification workflows, and auto-merge capabilities for safe updates.
+This repository is configured with GitHub Dependabot for automated dependency management, including grouped updates, verification workflows, and automatic approval of safe updates. Dependabot PRs are merged by a maintainer after CI passes.
 
 ## Configuration Files
 
@@ -50,27 +50,26 @@ Validates Dependabot configuration coverage:
 
 #### `dependabot-auto-merge.yml`
 
-Automated approval and merging for safe updates:
+Automated approval and review requests for Dependabot PRs. It never merges.
 
-**Auto-approved and auto-merged**:
+**Auto-approved**:
 
-- ✅ Patch updates to development dependencies
-- ✅ Minor updates to development dependencies
-- ✅ Patch and minor updates to GitHub Actions
+- ✅ Patch and minor updates (any dependency)
 
 **Manual review required**:
 
 - ⚠️ Major version updates (any dependency)
 - ⚠️ Production dependency updates (any version)
 
+Patch and minor production updates are both approved and flagged for manual review.
+
 **Features**:
 
 - Fetches Dependabot metadata (dependency type, update type)
-- Automatically approves safe PRs
-- Enables auto-merge after CI passes
-- Adds labels: `dependabot-approved`, `dependabot-auto-merge`, `dependabot-manual-review`
+- Automatically approves patch and minor updates
+- Adds labels: `dependabot-approved`, `dependabot-manual-review`
 - Comments on PRs requiring manual review with checklist
-- Requests code owner review for production changes
+- Requests review from the repository owner on PRs requiring manual review
 
 ## Dependency Optimization
 
@@ -126,18 +125,17 @@ gh run list --workflow=dependabot-verify.yml
 
 ### Managing Dependabot PRs
 
-Dependabot PRs are automatically handled based on update type:
+Every Dependabot PR is merged by a maintainer, only after all CI checks pass. Open Dependabot PRs are checked weekly, after the Monday run.
 
-**Patch/Minor Dev Deps & GitHub Actions**:
+**Patch/Minor Updates**:
 
 - Automatically approved
-- Automatically merged after CI passes
-- No action needed
+- Merge after CI passes
 
 **Major Updates & Production Deps**:
 
 - Comment added with review checklist
-- Code owner review requested
+- Repository owner review requested
 - Manual approval and merge required
 
 ### Manual Dependabot Triggers
@@ -150,19 +148,18 @@ gh api -X POST /repos/{owner}/{repo}/dependabot/updates
 gh api /repos/{owner}/{repo}/dependabot/alerts
 ```
 
-### Customizing Auto-Merge Behavior
+### Customizing Approval and Review Behavior
 
 Edit `.github/workflows/dependabot-auto-merge.yml` to adjust:
 
-- Update types that auto-merge
-- Dependency types that auto-merge
-- Package ecosystems that auto-merge
+- Update types that are auto-approved
+- Update types and dependency types that require manual review
 - Labels applied to PRs
 
 ## Best Practices
 
 1. **Review major updates carefully**: Check changelogs for breaking changes
-2. **Monitor CI**: Ensure all checks pass before auto-merge occurs
+2. **Monitor CI**: Merge a Dependabot PR only after all checks pass
 3. **Check grouped PRs**: Grouped updates may include multiple dependency changes
 4. **Security updates**: These are not grouped and should be reviewed promptly
 5. **Keep branch protection**: Ensure required status checks prevent broken merges
@@ -176,11 +173,11 @@ Edit `.github/workflows/dependabot-auto-merge.yml` to adjust:
 3. Check if updates are already at latest version
 4. Review Dependabot logs in Security > Dependabot
 
-### Auto-merge not working
+### Approval or review comment missing
 
-1. Ensure branch protection allows auto-merge
-2. Check required status checks are passing
-3. Verify GitHub token permissions (read/write for PRs and contents)
+1. Check the `Dependabot PR Triage` workflow run for the PR
+2. Verify the PR author is `dependabot[bot]`
+3. Verify GitHub token permissions (read for contents, write for PRs)
 4. Review workflow run logs
 
 ### Too many PRs

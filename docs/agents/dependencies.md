@@ -47,6 +47,11 @@ paths: package.json
 - EXCLUDE grouped @types/\* packages from the generic npm-types group
 - See `.github/dependabot.yml` groups section for examples
 
+## Dependabot PRs
+
+- NEVER merge before ALL CI checks pass
+- Workflow NEVER merges; merging is manual
+
 ## Update Workflow
 
 1. Run `npm audit` to identify issues
