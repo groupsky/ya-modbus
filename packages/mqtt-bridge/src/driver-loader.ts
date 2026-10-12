@@ -1,4 +1,7 @@
-import { loadDriver as loadDriverPackage } from '@ya-modbus/driver-loader'
+import {
+  assertValidDriverPackageName,
+  loadDriver as loadDriverPackage,
+} from '@ya-modbus/driver-loader'
 import type { DeviceDriver } from '@ya-modbus/driver-types'
 import { TransportManager, type TransportConfig } from '@ya-modbus/transport'
 
@@ -24,7 +27,8 @@ export class DriverLoader {
   /**
    * Load a driver package and create an instance for a device
    *
-   * @param packageName - NPM package name (e.g., '@ya-modbus/driver-xymd1' or 'ya-modbus-driver-test')
+   * @param packageName - NPM package name (e.g., '@ya-modbus/driver-xymd1', 'ya-modbus-driver-test'
+   *   or '@org/ya-modbus-driver-test')
    * @param connection - Device connection configuration
    * @param deviceId - Unique device identifier for tracking the instance
    * @returns Driver instance
@@ -34,18 +38,9 @@ export class DriverLoader {
     connection: DeviceConnection,
     deviceId?: string
   ): Promise<DeviceDriver> {
-    // Security validation: prevent path traversal and code injection
-    // Accept both scoped (@ya-modbus/driver-*) and unscoped (ya-modbus-driver-*) packages
-    const isValidScopedDriver = packageName.startsWith('@ya-modbus/driver-')
-    const isValidUnscopedDriver = packageName.startsWith('ya-modbus-driver-')
-    if (!isValidScopedDriver && !isValidUnscopedDriver) {
-      throw new Error(
-        `Invalid driver package name: must be @ya-modbus/driver-<name> or ya-modbus-driver-<name>`
-      )
-    }
-    if (packageName.includes('..') || packageName.includes('\\')) {
-      throw new Error('Invalid driver package name: path traversal not allowed')
-    }
+    // Security validation: the name becomes an import specifier, so only npm package names
+    // of the allowed driver forms pass (never paths)
+    assertValidDriverPackageName(packageName)
 
     // Load driver package using driver-loader
     const loadedDriver = await this.loadDriverFn({ driverPackage: packageName })

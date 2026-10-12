@@ -34,6 +34,7 @@ This package provides runtime driver loading and validation functionality for ya
 - **config-validator.ts**: Validation of driver configuration exports
 - **testing.ts**: Test utilities for applications using driver-loader
 - **package-info.ts**: Reads the calling package's version and description (used by CLIs for `--version`)
+- **driver-package-name.ts**: The shared naming rule for driver package names (used by mqtt-bridge)
 
 ## Usage
 

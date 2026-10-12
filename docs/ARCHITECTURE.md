@@ -565,7 +565,8 @@ No cyclic dependencies: SDK is contract, mqtt-bridge is runtime, drivers are plu
 1. **Package naming**:
    - Drivers in this repository: `@ya-modbus/driver-<name>` (e.g., `@ya-modbus/driver-xymd1`)
    - Third-party drivers, recommended: `ya-modbus-driver-<name>` (e.g., `ya-modbus-driver-solar`)
-   - Third-party scoped packages: `@org/ya-modbus-driver-<name>` (the MQTT bridge accepts only names that start with `@ya-modbus/driver-` or `ya-modbus-driver-`)
+   - Third-party scoped packages: `@<scope>/ya-modbus-driver-<name>` (e.g., `@acme/ya-modbus-driver-solar`)
+   - `<name>` and `<scope>` use only lowercase letters, numbers and hyphens. The MQTT bridge rejects every other driver name; the rule lives in `packages/driver-loader/src/driver-package-name.ts`
    - Required: keyword `"ya-modbus-driver"` in package.json
 2. **Standard exports**: `createDriver` factory, optional `DEFAULT_CONFIG`, `SUPPORTED_CONFIG`, `DEVICES`
 
@@ -723,7 +724,7 @@ npm install ya-modbus ya-modbus-driver-solar
 
 **Configuration pattern**:
 
-- `driver`: Package name (e.g., `ya-modbus-driver-solar`)
+- `driver`: Package name in one of the forms above (e.g., `ya-modbus-driver-solar` or `@acme/ya-modbus-driver-solar`)
 - `device`: Optional device variant within package (use `ya-modbus list-devices` to see options)
 - Auto-detection: Omit `device` and driver reads identification registers
 
