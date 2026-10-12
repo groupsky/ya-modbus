@@ -7,18 +7,9 @@
 import { EventEmitter } from 'events'
 
 import { ServerTCP } from 'modbus-serial'
-import type { IServiceVector } from 'modbus-serial/ServerTCP'
-
-import {
-  buildRegisterReadRequest,
-  parseRegisterReadResponse,
-  buildRegisterWriteRequest,
-  buildCoilReadRequest,
-  parseCoilReadResponse,
-  buildCoilWriteRequest,
-} from '../utils/modbus-protocol-helpers.js'
 
 import { BaseTransport } from './base.js'
+import { createServiceVector, type RequestHandler } from './service-vector.js'
 
 export interface TcpTransportConfig {
   host: string
@@ -27,7 +18,7 @@ export interface TcpTransportConfig {
 
 export class TcpTransport extends BaseTransport {
   private config: TcpTransportConfig
-  private requestHandler?: (slaveId: number, request: Buffer) => Promise<Buffer>
+  private requestHandler?: RequestHandler
   private server?: ServerTCP
   private started = false
   private initReject?: (reason: Error) => void
@@ -43,72 +34,7 @@ export class TcpTransport extends BaseTransport {
       throw new Error('Transport already started')
     }
 
-    // Create service vector that bridges modbus-serial callbacks to our request handler
-    // Note: Use callback-style for read operations due to modbus-serial bug where
-    // Promise-based callbacks are not properly awaited (see #303, yaacov/node-modbus-serial#548)
-    const serviceVector: IServiceVector = {
-      getHoldingRegister: (
-        addr: number,
-        unitID: number,
-        cb: (err: Error | null, value: number) => void
-      ) => {
-        this.handleRegisterRead(unitID, 0x03, addr, 1)
-          .then((values) => cb(null, values[0] ?? 0))
-          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err)), 0))
-      },
-      getInputRegister: (
-        addr: number,
-        unitID: number,
-        cb: (err: Error | null, value: number) => void
-      ) => {
-        this.handleRegisterRead(unitID, 0x04, addr, 1)
-          .then((values) => cb(null, values[0] ?? 0))
-          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err)), 0))
-      },
-      getMultipleHoldingRegisters: (
-        addr: number,
-        length: number,
-        unitID: number,
-        cb: (err: Error | null, values: number[]) => void
-      ) => {
-        this.handleRegisterRead(unitID, 0x03, addr, length)
-          .then((values) => cb(null, values))
-          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err)), []))
-      },
-      getMultipleInputRegisters: (
-        addr: number,
-        length: number,
-        unitID: number,
-        cb: (err: Error | null, values: number[]) => void
-      ) => {
-        this.handleRegisterRead(unitID, 0x04, addr, length)
-          .then((values) => cb(null, values))
-          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err)), []))
-      },
-      setRegister: async (addr: number, value: number, unitID: number) => {
-        return this.handleRegisterWrite(unitID, 0x06, addr, [value])
-      },
-      setRegisterArray: async (addr: number, values: number[], unitID: number) => {
-        return this.handleRegisterWrite(unitID, 0x10, addr, values)
-      },
-      getCoil: (addr: number, unitID: number, cb: (err: Error | null, value: boolean) => void) => {
-        this.handleCoilRead(unitID, 0x01, addr, 1)
-          .then((value) => cb(null, value))
-          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err)), false))
-      },
-      getDiscreteInput: (
-        addr: number,
-        unitID: number,
-        cb: (err: Error | null, value: boolean) => void
-      ) => {
-        this.handleCoilRead(unitID, 0x02, addr, 1)
-          .then((value) => cb(null, value))
-          .catch((err: unknown) => cb(err instanceof Error ? err : new Error(String(err)), false))
-      },
-      setCoil: async (addr: number, value: boolean, unitID: number) => {
-        return this.handleCoilWrite(unitID, 0x05, addr, value)
-      },
-    }
+    const serviceVector = createServiceVector(() => this.requestHandler)
 
     // Build options - all values are required for TCP
     const options = {
@@ -230,77 +156,7 @@ export class TcpTransport extends BaseTransport {
     return Promise.resolve()
   }
 
-  onRequest(handler: (slaveId: number, request: Buffer) => Promise<Buffer>): void {
+  onRequest(handler: RequestHandler): void {
     this.requestHandler = handler
-  }
-
-  /**
-   * Handle register read operations
-   */
-  private async handleRegisterRead(
-    unitID: number,
-    functionCode: number,
-    addr: number,
-    length: number
-  ): Promise<number[]> {
-    if (!this.requestHandler) {
-      throw new Error('No request handler set')
-    }
-
-    const request = buildRegisterReadRequest({ unitID, functionCode, addr, length })
-    const response = await this.requestHandler(unitID, request)
-    return parseRegisterReadResponse(response, { unitID, functionCode })
-  }
-
-  /**
-   * Handle register write operations
-   */
-  private async handleRegisterWrite(
-    unitID: number,
-    functionCode: number,
-    addr: number,
-    values: number[]
-  ): Promise<void> {
-    if (!this.requestHandler) {
-      throw new Error('No request handler set')
-    }
-
-    const request = buildRegisterWriteRequest({ unitID, functionCode, addr, values })
-    await this.requestHandler(unitID, request)
-  }
-
-  /**
-   * Handle coil read operations
-   */
-  private async handleCoilRead(
-    unitID: number,
-    functionCode: number,
-    addr: number,
-    length: number
-  ): Promise<boolean> {
-    if (!this.requestHandler) {
-      throw new Error('No request handler set')
-    }
-
-    const request = buildCoilReadRequest({ unitID, functionCode, addr, length })
-    const response = await this.requestHandler(unitID, request)
-    return parseCoilReadResponse(response, { unitID, functionCode })
-  }
-
-  /**
-   * Handle coil write operations
-   */
-  private async handleCoilWrite(
-    unitID: number,
-    functionCode: number,
-    addr: number,
-    value: boolean
-  ): Promise<void> {
-    if (!this.requestHandler) {
-      throw new Error('No request handler set')
-    }
-
-    const request = buildCoilWriteRequest({ unitID, functionCode, addr, value })
-    await this.requestHandler(unitID, request)
   }
 }
