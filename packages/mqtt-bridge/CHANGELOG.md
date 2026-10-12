@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.12.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.12.3...@ya-modbus/mqtt-bridge@0.12.4) (2026-10-12)
+
+### Bug Fixes
+
+- **mqtt-bridge:** cap durations in device config at 24 hours ([#550](https://github.com/groupsky/ya-modbus/issues/550)) ([c516346](https://github.com/groupsky/ya-modbus/commit/c516346d6f22d80084897fa93a99bced31dddbaa)), closes [#518](https://github.com/groupsky/ya-modbus/issues/518)
+- **mqtt-bridge:** stop the bridge when a device fails to load and cap reconnectPeriod ([#557](https://github.com/groupsky/ya-modbus/issues/557)) ([89d120b](https://github.com/groupsky/ya-modbus/commit/89d120b0e36f2ccb90c12bfe9d95719c947efefc)), closes [#342](https://github.com/groupsky/ya-modbus/issues/342) [#344](https://github.com/groupsky/ya-modbus/issues/344) [#518](https://github.com/groupsky/ya-modbus/issues/518)
+
 ## [0.12.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.12.2...@ya-modbus/mqtt-bridge@0.12.3) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/mqtt-bridge
