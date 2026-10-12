@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.9.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.8.3...@ya-modbus/mqtt-bridge@0.9.0) (2026-10-12)
+
+### Features
+
+- **mqtt-bridge:** add continuous polling mode ([#383](https://github.com/groupsky/ya-modbus/issues/383)) ([4b8f84c](https://github.com/groupsky/ya-modbus/commit/4b8f84cdfc8032b32b19b9227eb756c31ecb2be3))
+
 ## [0.8.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.8.2...@ya-modbus/mqtt-bridge@0.8.3) (2026-02-11)
 
 **Note:** Version bump only for package @ya-modbus/mqtt-bridge
