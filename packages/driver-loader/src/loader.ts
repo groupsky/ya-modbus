@@ -15,6 +15,8 @@ import {
   validateDevices,
   validateSupportedConfig,
 } from './config-validator.js'
+import { importDriverPackage } from './driver-import.js'
+import { getDriverPackageCandidates } from './driver-name.js'
 import { DriverNotFoundError, PackageJsonError, ValidationError } from './errors.js'
 
 /**
@@ -83,6 +85,9 @@ export interface LoadDriverOptions {
   /**
    * Explicit driver package name
    * e.g., 'ya-modbus-driver-xymd1' or '@org/ya-modbus-driver-xymd1'
+   *
+   * A short name such as 'xymd1' is tried as '@ya-modbus/driver-xymd1',
+   * then 'ya-modbus-driver-xymd1', then 'xymd1'.
    */
   driverPackage?: string
 
@@ -264,24 +269,21 @@ export async function loadDriver(
     let driverModule: unknown
 
     if (driverPackage) {
-      packageName = driverPackage
+      const candidates = getDriverPackageCandidates(driverPackage)
 
-      const cached = driverCache.get(packageName)
-      if (cached) {
-        cacheStats.hits++
-        return cached
+      for (const candidate of candidates) {
+        const cached = driverCache.get(candidate)
+        if (cached) {
+          cacheStats.hits++
+          return cached
+        }
       }
 
       cacheStats.misses++
 
-      try {
-        driverModule = await deps.importModule(driverPackage)
-      } catch {
-        throw new DriverNotFoundError(
-          `Driver package not found: ${driverPackage}\nInstall it with: npm install ${driverPackage}`,
-          driverPackage
-        )
-      }
+      const imported = await importDriverPackage(driverPackage, candidates, deps)
+      packageName = imported.packageName
+      driverModule = imported.driverModule
     } else {
       packageName = await detectLocalPackage(deps)
 

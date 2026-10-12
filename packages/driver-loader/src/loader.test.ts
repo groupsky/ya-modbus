@@ -1,6 +1,20 @@
 import { ValidationError, DriverNotFoundError, PackageJsonError } from './errors.js'
-import { clearDriverCache, loadDriver } from './loader.js'
+import { clearDriverCache, getDriverCacheStats, loadDriver } from './loader.js'
 import type { SystemDependencies } from './loader.js'
+
+// What Node reports when a package is not installed (ESM and CommonJS wording)
+function notInstalled(name: string, style: 'esm' | 'cjs' = 'esm'): Error {
+  const error =
+    style === 'esm'
+      ? new Error(`Cannot find package '${name}' imported from /app/loader.js`)
+      : new Error(`Cannot find module '${name}'\nRequire stack:\n- /app/loader.js`)
+  return Object.assign(error, {
+    code: style === 'esm' ? 'ERR_MODULE_NOT_FOUND' : 'MODULE_NOT_FOUND',
+  })
+}
+
+// importModule for a project where no package is installed
+const nothingInstalled = (name: string): Promise<never> => Promise.reject(notInstalled(name))
 
 describe('Driver Loader', () => {
   let mockDeps: SystemDependencies
@@ -122,19 +136,158 @@ describe('Driver Loader', () => {
       const driverModule = { createDriver: jest.fn() }
       mockDeps.importModule = jest.fn().mockResolvedValue(driverModule)
 
-      const result = await loadDriver({ driverPackage: 'test-driver' }, mockDeps)
+      const result = await loadDriver({ driverPackage: 'ya-modbus-driver-test' }, mockDeps)
 
-      expect(mockDeps.importModule).toHaveBeenCalledWith('test-driver')
+      expect(mockDeps.importModule).toHaveBeenCalledWith('ya-modbus-driver-test')
       expect(result.createDriver).toBeDefined()
     })
 
     test('should throw error if explicit package not found', async () => {
-      const error = new Error('Cannot find module')
-      mockDeps.importModule = jest.fn().mockRejectedValue(error)
+      mockDeps.importModule = jest.fn().mockImplementation(nothingInstalled)
 
       await expect(loadDriver({ driverPackage: 'nonexistent' }, mockDeps)).rejects.toThrow(
         'Driver package not found: nonexistent'
       )
+    })
+  })
+
+  describe('short driver names', () => {
+    test('should load the scoped package first', async () => {
+      mockDeps.importModule = jest.fn().mockResolvedValue({ createDriver: jest.fn() })
+
+      await loadDriver({ driverPackage: 'xymd1' }, mockDeps)
+
+      expect(mockDeps.importModule).toHaveBeenCalledTimes(1)
+      expect(mockDeps.importModule).toHaveBeenCalledWith('@ya-modbus/driver-xymd1')
+    })
+
+    test.each(['esm', 'cjs'] as const)(
+      'should fall back to the unscoped package when the scoped one is not installed (%s)',
+      async (style) => {
+        const driverModule = { createDriver: jest.fn() }
+        mockDeps.importModule = jest
+          .fn()
+          .mockRejectedValueOnce(notInstalled('@ya-modbus/driver-xymd1', style))
+          .mockResolvedValueOnce(driverModule)
+
+        const result = await loadDriver({ driverPackage: 'xymd1' }, mockDeps)
+
+        expect(mockDeps.importModule).toHaveBeenNthCalledWith(2, 'ya-modbus-driver-xymd1')
+        expect(result.createDriver).toBe(driverModule.createDriver)
+      }
+    )
+
+    test('should fall back to the name as given when no driver-named package is installed', async () => {
+      const driverModule = { createDriver: jest.fn() }
+      mockDeps.importModule = jest
+        .fn()
+        .mockRejectedValueOnce(notInstalled('@ya-modbus/driver-my-driver'))
+        .mockRejectedValueOnce(notInstalled('ya-modbus-driver-my-driver'))
+        .mockResolvedValueOnce(driverModule)
+
+      const result = await loadDriver({ driverPackage: 'my-driver' }, mockDeps)
+
+      expect(mockDeps.importModule).toHaveBeenNthCalledWith(3, 'my-driver')
+      expect(result.createDriver).toBe(driverModule.createDriver)
+    })
+
+    test('should list every tried package when none is installed', async () => {
+      mockDeps.importModule = jest
+        .fn()
+        .mockRejectedValueOnce(notInstalled('@ya-modbus/driver-xymd1'))
+        .mockRejectedValueOnce(notInstalled('ya-modbus-driver-xymd1'))
+        .mockRejectedValueOnce(notInstalled('xymd1'))
+
+      const error = await loadDriver({ driverPackage: 'xymd1' }, mockDeps).catch((err) => err)
+
+      expect(error).toBeInstanceOf(DriverNotFoundError)
+      expect(error.packageName).toBe('@ya-modbus/driver-xymd1')
+      expect(error.message).toContain('Driver package not found: xymd1')
+      expect(error.message).toContain(
+        'Tried: @ya-modbus/driver-xymd1, ya-modbus-driver-xymd1, xymd1'
+      )
+      expect(error.message).toContain('npm install @ya-modbus/driver-xymd1')
+    })
+
+    test('should report the load error of an installed package and not try further', async () => {
+      // The package is installed, so a later candidate must not hide the real problem
+      const loadError = new SyntaxError('Unexpected token')
+      mockDeps.importModule = jest
+        .fn()
+        .mockRejectedValueOnce(notInstalled('@ya-modbus/driver-xymd1'))
+        .mockRejectedValueOnce(loadError)
+
+      const error = await loadDriver({ driverPackage: 'xymd1' }, mockDeps).catch((err) => err)
+
+      expect(error).toBeInstanceOf(DriverNotFoundError)
+      expect(error.message).toBe(
+        'Failed to load driver package ya-modbus-driver-xymd1: Unexpected token'
+      )
+      expect(error.packageName).toBe('ya-modbus-driver-xymd1')
+      expect(error.cause).toBe(loadError)
+      expect(mockDeps.importModule).toHaveBeenCalledTimes(2)
+    })
+
+    test('should report a thrown value that is not an Error as a load error', async () => {
+      mockDeps.importModule = jest.fn().mockRejectedValue('boom')
+
+      await expect(loadDriver({ driverPackage: 'xymd1' }, mockDeps)).rejects.toThrow(
+        'Failed to load driver package @ya-modbus/driver-xymd1: boom'
+      )
+    })
+
+    test('should report a missing dependency of the package as a load error', async () => {
+      mockDeps.importModule = jest.fn().mockRejectedValue(notInstalled('modbus-serial'))
+
+      const error = await loadDriver({ driverPackage: 'xymd1' }, mockDeps).catch((err) => err)
+
+      expect(error).toBeInstanceOf(DriverNotFoundError)
+      expect(error.message).toContain(
+        "Failed to load driver package @ya-modbus/driver-xymd1: Cannot find package 'modbus-serial'"
+      )
+      expect(mockDeps.importModule).toHaveBeenCalledTimes(1)
+    })
+
+    test.each([
+      '@ya-modbus/driver-xymd1',
+      'ya-modbus-driver-xymd1',
+      '@org/ya-modbus-driver-xymd1',
+      '@org/driver-pkg',
+    ])('should import the full name %s as given', async (name) => {
+      mockDeps.importModule = jest.fn().mockRejectedValue(notInstalled(name))
+
+      await expect(loadDriver({ driverPackage: name }, mockDeps)).rejects.toThrow(
+        `Driver package not found: ${name}\nInstall it with: npm install ${name}`
+      )
+
+      expect(mockDeps.importModule).toHaveBeenCalledTimes(1)
+      expect(mockDeps.importModule).toHaveBeenCalledWith(name)
+    })
+
+    test('should share one cache entry between the short and the full name', async () => {
+      mockDeps.importModule = jest.fn().mockResolvedValue({ createDriver: jest.fn() })
+
+      const first = await loadDriver({ driverPackage: 'xymd1' }, mockDeps)
+      const second = await loadDriver({ driverPackage: '@ya-modbus/driver-xymd1' }, mockDeps)
+      const third = await loadDriver({ driverPackage: 'xymd1' }, mockDeps)
+
+      expect(second).toBe(first)
+      expect(third).toBe(first)
+      expect(mockDeps.importModule).toHaveBeenCalledTimes(1)
+      expect(getDriverCacheStats()).toEqual({ hits: 2, misses: 1, size: 1 })
+    })
+
+    test('should cache a driver found through the unscoped fallback', async () => {
+      mockDeps.importModule = jest
+        .fn()
+        .mockRejectedValueOnce(notInstalled('@ya-modbus/driver-xymd1'))
+        .mockResolvedValue({ createDriver: jest.fn() })
+
+      const first = await loadDriver({ driverPackage: 'xymd1' }, mockDeps)
+      const second = await loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' }, mockDeps)
+
+      expect(second).toBe(first)
+      expect(mockDeps.importModule).toHaveBeenCalledTimes(2)
     })
   })
 
@@ -306,8 +459,7 @@ describe('Driver Loader', () => {
     })
 
     test('should throw DriverNotFoundError with packageName metadata', async () => {
-      const error = new Error('Cannot find module')
-      mockDeps.importModule = jest.fn().mockRejectedValue(error)
+      mockDeps.importModule = jest.fn().mockImplementation(nothingInstalled)
 
       await expect(loadDriver({ driverPackage: 'missing-driver' }, mockDeps)).rejects.toThrow(
         DriverNotFoundError
@@ -319,7 +471,8 @@ describe('Driver Loader', () => {
       )
       expect(thrownError).toBeInstanceOf(Error)
       expect(thrownError.name).toBe('DriverNotFoundError')
-      expect(thrownError.packageName).toBe('missing-driver')
+      // The package to install: the short name stands for the scoped package
+      expect(thrownError.packageName).toBe('@ya-modbus/driver-missing-driver')
       expect(thrownError.message).toContain('missing-driver')
     })
 
@@ -374,7 +527,8 @@ describe('Driver Loader', () => {
         (err) => err
       )
       expect(thrownError).toBeInstanceOf(DriverNotFoundError)
-      expect(thrownError.message).toBeTruthy()
+      expect(thrownError.message).toContain('Original module error')
+      expect(thrownError.cause).toBe(originalError)
     })
 
     test('should allow type-safe error handling patterns', async () => {
@@ -427,6 +581,13 @@ describe('Driver Loader', () => {
       expect(typeof result.createDriver).toBe('function')
       expect(result.defaultConfig).toBeDefined()
       expect(result.supportedConfig).toBeDefined()
+    })
+
+    test('should load real driver package by its short name', async () => {
+      const result = await loadDriver({ driverPackage: 'xymd1' })
+
+      expect(typeof result.createDriver).toBe('function')
+      expect(result.defaultConfig).toBeDefined()
     })
   })
 

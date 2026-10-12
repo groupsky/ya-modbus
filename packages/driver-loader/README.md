@@ -26,6 +26,21 @@ import { loadDriver } from '@ya-modbus/driver-loader'
 const driver = await loadDriver({ driverPackage: '@ya-modbus/driver-xymd1' })
 ```
 
+### Load a driver by short name
+
+A plain lowercase name such as `xymd1` is a short name. The loader tries these packages in order and uses the first one that is installed:
+
+1. `@ya-modbus/driver-<name>`
+2. `ya-modbus-driver-<name>`
+3. `<name>`, the name as given
+
+```typescript
+// Loads @ya-modbus/driver-xymd1
+const driver = await loadDriver({ driverPackage: 'xymd1' })
+```
+
+Anything else (scoped names, `ya-modbus-driver-*` names, paths) is used as given. If a candidate package is installed but fails to load, the search stops there and the `DriverNotFoundError` message shows the load error (the original error is its `cause`), so a later candidate does not hide it. If no candidate is installed, the message lists every package that was tried, and `packageName` is the preferred one (`@ya-modbus/driver-<name>`).
+
 ### Error Handling
 
 The driver-loader exports custom error classes for type-safe error handling:
@@ -43,8 +58,13 @@ try {
 } catch (error) {
   // Type-safe error handling with instanceof
   if (error instanceof DriverNotFoundError) {
-    console.error(`Package not found: ${error.packageName}`)
-    console.error(`Install with: npm install ${error.packageName}`)
+    if (error.cause) {
+      // The package is installed but failed to load
+      console.error(`Failed to load ${error.packageName}:`, error.cause)
+    } else {
+      console.error(`Package not found: ${error.packageName}`)
+      console.error(`Install with: npm install ${error.packageName}`)
+    }
   } else if (error instanceof ValidationError) {
     console.error(`Validation failed for field: ${error.field}`)
     console.error(`Error: ${error.message}`)
@@ -63,8 +83,9 @@ try {
   - Example: Invalid DEFAULT_CONFIG, missing createDriver function
 
 - **`DriverNotFoundError`**: Driver package not found or cannot be loaded
-  - `packageName: string` - The package that couldn't be found
-  - Example: Package not installed, wrong package name
+  - `packageName: string` - The package that could not be found or loaded. For a package that is not installed this is the package to install
+  - `cause?: unknown` - Set when the package is installed but fails to load: the original error
+  - Example: Package not installed, wrong package name, syntax error in the driver
 
 - **`PackageJsonError`**: package.json not found or invalid
   - Example: Missing package.json, invalid JSON, missing ya-modbus-driver keyword
@@ -95,7 +116,7 @@ Loads a ya-modbus driver package and validates its exports.
 
 **Options:**
 
-- `driverPackage` (optional): Name of the driver package to load. If omitted, auto-detects from current directory's package.json.
+- `driverPackage` (optional): Name of the driver package to load, or a short name such as `xymd1`. If omitted, auto-detects from current directory's package.json.
 
 **Returns:**
 
@@ -148,7 +169,7 @@ Returns cache statistics including hits, misses, and current cache size.
 **Cache Behavior:**
 
 - **Automatic caching:** Drivers are cached by package name after first load
-- **Cache key:** Package name (e.g., '@ya-modbus/driver-xymd1')
+- **Cache key:** Name of the package that was loaded (e.g., '@ya-modbus/driver-xymd1'). A short name and the full name share one entry. If two candidates of a short name are installed, a candidate that was loaded earlier in the process is returned
 - **Cache lifetime:** Persists for the lifetime of the Node.js process
 - **Auto-detect mode:** Even auto-detected drivers are cached by their package name
 - **No cache on errors:** Failed loads are not cached, allowing retry
@@ -267,18 +288,20 @@ If you encounter `Driver package not found` errors:
 1. **Verify the package is installed:**
 
    ```bash
-   npm list ya-modbus-driver-<name>
+   npm list @ya-modbus/driver-<name>
    ```
 
 2. **Install the driver package:**
 
    ```bash
-   npm install ya-modbus-driver-<name>
+   npm install @ya-modbus/driver-<name>
    ```
 
 3. **Check the package name:**
    - Ensure the package name in your code matches the actual npm package name
    - Driver packages follow the naming rule described under `isValidDriverPackageName` (for example `ya-modbus-driver-<device>` or `@<scope>/ya-modbus-driver-<device>`)
+
+If the message starts with `Failed to load driver package`, the package is installed but its code failed to load. Read the reason in the message (or `error.cause`) instead of reinstalling.
 
 ### Module Resolution Issues
 

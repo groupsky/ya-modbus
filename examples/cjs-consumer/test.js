@@ -78,6 +78,14 @@ async function main() {
   }
   console.log('✓ Driver loader exports work')
 
+  // A short name stands for the installed @ya-modbus/driver-<name> package
+  const byShortName = await loadDriver({ driverPackage: 'xymd1' })
+  if (typeof byShortName.createDriver !== 'function') {
+    console.error('❌ Failed: driver loaded by short name has no createDriver')
+    process.exit(1)
+  }
+  console.log('✓ Driver loader finds a driver by its short name')
+
   // Test emulator exports
   const { ModbusEmulator } = packages.emulator
   if (typeof ModbusEmulator !== 'function') {

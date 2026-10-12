@@ -36,6 +36,8 @@ export class ValidationError extends Error {
 /**
  * Error thrown when a driver package cannot be found or loaded
  *
+ * `cause` is set when the package is installed but fails to load.
+ *
  * @example
  * ```typescript
  * import { loadDriver, DriverNotFoundError } from '@ya-modbus/driver-loader'
@@ -44,8 +46,12 @@ export class ValidationError extends Error {
  *   await loadDriver({ driverPackage: 'missing-driver' })
  * } catch (error) {
  *   if (error instanceof DriverNotFoundError) {
- *     console.error(`Package not found: ${error.packageName}`)
- *     console.error(`Install with: npm install ${error.packageName}`)
+ *     if (error.cause) {
+ *       console.error(`Failed to load ${error.packageName}:`, error.cause)
+ *     } else {
+ *       console.error(`Package not found: ${error.packageName}`)
+ *       console.error(`Install with: npm install ${error.packageName}`)
+ *     }
  *   }
  * }
  * ```
@@ -53,9 +59,10 @@ export class ValidationError extends Error {
 export class DriverNotFoundError extends Error {
   constructor(
     message: string,
-    public readonly packageName: string
+    public readonly packageName: string,
+    options?: ErrorOptions
   ) {
-    super(message)
+    super(message, options)
     this.name = 'DriverNotFoundError'
     Object.setPrototypeOf(this, DriverNotFoundError.prototype)
   }
