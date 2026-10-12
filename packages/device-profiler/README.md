@@ -50,7 +50,7 @@ Options:
 - `--parity` - Parity for RTU: `none`, `even`, `odd` (default: `none`)
 - `--data-bits` - Data bits for RTU (default: `8`)
 - `--stop-bits` - Stop bits for RTU (default: `1`)
-- `--timeout` - Response timeout in milliseconds, 1-2147483647 (default: `1000`)
+- `--timeout` - Response timeout in milliseconds, 1-2147483647 (default: `1000`). For TCP, also the longest time to open the connection
 - `-f, --format` - Output format: `table`, `json` or `yaml` (default: `table`, or the format named by the `--output` file extension)
 - `--output` - Write the result to a `json` or `yaml` file instead of printing it, see [Output File](#output-file)
 

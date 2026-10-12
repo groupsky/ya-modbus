@@ -23,6 +23,9 @@ describe('TransportManager', () => {
       close: jest.fn((callback?: () => void) => {
         if (callback) callback()
       }),
+      destroy: jest.fn((callback?: () => void) => {
+        if (callback) callback()
+      }),
       readHoldingRegisters: jest.fn(),
       readInputRegisters: jest.fn(),
       readCoils: jest.fn(),
@@ -264,6 +267,22 @@ describe('TransportManager', () => {
         await manager.getTransport({ ...config, timeout })
 
         expect(mockClient1.setTimeout).toHaveBeenCalledWith(expected)
+      }
+    )
+
+    // A connect to a host that does not answer would hold the bus for about 2 minutes
+    test.each([
+      { timeout: undefined, expected: 1000 },
+      { timeout: 2500, expected: 2500 },
+    ])(
+      'should end a TCP connect after $expected ms when timeout is $timeout',
+      async ({ timeout, expected }) => {
+        await manager.getTransport({ ...tcpConfig, timeout })
+
+        expect(mockClient1.connectTCP).toHaveBeenCalledWith('192.168.1.100', {
+          port: 502,
+          timeout: expected,
+        })
       }
     )
   })
@@ -845,7 +864,10 @@ describe('TransportManager', () => {
       now += 1000
 
       await expect(transport.readHoldingRegisters(0, 1)).resolves.toEqual(reading.buffer)
-      expect(mockClient2.connectTCP).toHaveBeenCalledWith('192.168.1.100', { port: 502 })
+      expect(mockClient2.connectTCP).toHaveBeenCalledWith('192.168.1.100', {
+        port: 502,
+        timeout: 1000,
+      })
     })
 
     test('keeps the code of the error when a TCP connection cannot be reopened', async () => {

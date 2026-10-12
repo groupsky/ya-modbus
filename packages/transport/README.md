@@ -87,6 +87,12 @@ so the process does not crash. The connection is then lost:
 After a TCP socket error, `modbus-serial` emits no event. The next request fails with the error of
 `modbus-serial` (for example `Port Not Open`), and the connection is lost from then on.
 
+Opening a TCP connection takes at most `timeout` ms (the response timeout, default 1000 ms).
+When the host does not answer, the open fails with `TCP Connection Timed Out`. Without this
+limit it would wait for the TCP timeout of the system (about 2 minutes), and the other devices
+on the connection would wait too. On a slow network, or one that loses packets, use a larger
+`timeout` (for example 3000).
+
 `createTransport` and `TransportManager` open the port again on a later request. There are no
 attempts in the background. The first request 1 second after the loss opens the port again. If
 this fails, the next attempt waits 2 seconds, then 4 seconds, and so on, up to 60 seconds.
