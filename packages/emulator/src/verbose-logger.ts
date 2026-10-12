@@ -39,6 +39,18 @@ export class VerboseLogger {
     console.log(this.formatMessage('WRITE', slaveId, functionCode, address, count, formattedValues))
   }
 
+  /**
+   * Log an error of a transport that does not stop the emulator, such as a client that
+   * resets its connection.
+   */
+  logError(source: string, err: Error): void {
+    if (!this.enabled) {
+      return
+    }
+
+    console.error(`[VERBOSE] ERROR ${source}: ${err.message}`)
+  }
+
   private formatHex(value: number, width: number): string {
     return `0x${value.toString(16).toUpperCase().padStart(width, '0')}`
   }

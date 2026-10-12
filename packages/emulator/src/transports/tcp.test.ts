@@ -6,6 +6,8 @@ import { EventEmitter } from 'node:events'
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals'
 
+import { VerboseLogger } from '../verbose-logger.js'
+
 import { TcpTransport } from './tcp.js'
 import { callServiceVector } from './test-helpers.js'
 
@@ -142,7 +144,7 @@ describe('TcpTransport', () => {
 
     it('should not accumulate event listeners after repeated start/stop cycles', async () => {
       // Issue #253: every start() creates a new server, so nothing piles up on one server.
-      // A running server keeps only the 'error' listener (issue #544).
+      // A running server keeps only its error listeners.
       const { ServerTCP } = await import('modbus-serial')
 
       for (let i = 0; i < 5; i++) {
@@ -156,12 +158,14 @@ describe('TcpTransport', () => {
         await transport.start()
 
         expect(server.listenerCount('initialized')).toBe(0)
-        expect(server.listenerCount('error')).toBe(1)
+        expect(server.listenerCount('serverError')).toBe(1)
+        expect(server.listenerCount('socketError')).toBe(1)
 
         await transport.stop()
 
         expect(server.listenerCount('initialized')).toBe(0)
-        expect(server.listenerCount('error')).toBe(0)
+        expect(server.listenerCount('serverError')).toBe(0)
+        expect(server.listenerCount('socketError')).toBe(0)
       }
     })
   })
@@ -260,26 +264,22 @@ describe('TcpTransport', () => {
       expect(secondServer.close).toHaveBeenCalledTimes(1)
     })
 
-    it.each(['error', 'serverError'])(
-      'should not close the server that reports %s after stop() during initialization',
-      async (event) => {
-        // modbus-serial reports a failed listen() as 'serverError'. A server that failed to
-        // start has no port to release.
-        const { ServerTCP } = await import('modbus-serial')
-        const server = createEmitterServer()
-        ;(ServerTCP as any).mockImplementationOnce(() => server)
+    it('should not close the server that reports serverError after stop() during initialization', async () => {
+      // A server that failed to start has no port to release
+      const { ServerTCP } = await import('modbus-serial')
+      const server = createEmitterServer()
+      ;(ServerTCP as any).mockImplementationOnce(() => server)
 
-        const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
-        const settled = Promise.allSettled([testTransport.start(), testTransport.stop()])
-        server.emit(event, new Error('listen EADDRINUSE'))
-        const [start, stop] = await settled
+      const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
+      const settled = Promise.allSettled([testTransport.start(), testTransport.stop()])
+      server.emit('serverError', new Error('listen EADDRINUSE'))
+      const [start, stop] = await settled
 
-        expect(start.status).toBe('rejected')
-        expect(stop.status).toBe('fulfilled')
-        expect(server.close).not.toHaveBeenCalled()
-        expect(server.listenerCount('initialized')).toBe(0)
-      }
-    )
+      expect(start.status).toBe('rejected')
+      expect(stop.status).toBe('fulfilled')
+      expect(server.close).not.toHaveBeenCalled()
+      expect(server.listenerCount('initialized')).toBe(0)
+    })
 
     it('should stop waiting for a server that does not initialize before the timeout', async () => {
       jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] })
@@ -324,11 +324,12 @@ describe('TcpTransport', () => {
 
     it('should reject start() and remove listeners on port binding error', async () => {
       // Tests for issues #254 and #274: start() rejects when port binding fails, and the
-      // 'initialized' and 'error' listeners do not stay attached to the failed server
+      // 'initialized', 'serverError' and 'socketError' listeners do not stay attached to the
+      // failed server
       const { ServerTCP } = await import('modbus-serial')
       const server = createEmitterServer()
       ;(ServerTCP as any).mockImplementationOnce(() => {
-        setImmediate(() => server.emit('error', new Error('listen EADDRINUSE')))
+        setImmediate(() => server.emit('serverError', new Error('listen EADDRINUSE')))
         return server
       })
 
@@ -336,12 +337,13 @@ describe('TcpTransport', () => {
       await expect(testTransport.start()).rejects.toThrow('listen EADDRINUSE')
 
       expect(server.listenerCount('initialized')).toBe(0)
-      expect(server.listenerCount('error')).toBe(0)
+      expect(server.listenerCount('serverError')).toBe(0)
+      expect(server.listenerCount('socketError')).toBe(0)
     })
 
     it('should reject start() and remove listeners on initialization timeout', async () => {
       // Tests for issues #254 and #274: start() rejects if the server never emits 'initialized'
-      // or 'error', and the listeners do not stay attached to the abandoned server
+      // or 'serverError', and the listeners do not stay attached to the abandoned server
       const { ServerTCP } = await import('modbus-serial')
       const server = createEmitterServer() // hangs: never emits anything
       ;(ServerTCP as any).mockImplementationOnce(() => server)
@@ -350,7 +352,8 @@ describe('TcpTransport', () => {
       await expect(testTransport.start()).rejects.toThrow(/timeout/i)
 
       expect(server.listenerCount('initialized')).toBe(0)
-      expect(server.listenerCount('error')).toBe(0)
+      expect(server.listenerCount('serverError')).toBe(0)
+      expect(server.listenerCount('socketError')).toBe(0)
     }, 15000) // Increase test timeout to allow for implementation timeout
 
     it('should not leave the initialization timeout pending after start() fails', async () => {
@@ -359,7 +362,7 @@ describe('TcpTransport', () => {
         const { ServerTCP } = await import('modbus-serial')
         const server = createEmitterServer()
         ;(ServerTCP as any).mockImplementationOnce(() => {
-          setImmediate(() => server.emit('error', new Error('listen EADDRINUSE')))
+          setImmediate(() => server.emit('serverError', new Error('listen EADDRINUSE')))
           return server
         })
 
@@ -388,16 +391,29 @@ describe('TcpTransport', () => {
 
       await expect(testTransport.stop()).rejects.toThrow('Failed to close server')
 
-      // The server is still running, so it keeps its 'error' listener
-      expect(server.listenerCount('error')).toBe(1)
+      // The server is still running, so it keeps its error listeners
+      expect(server.listenerCount('serverError')).toBe(1)
+      expect(server.listenerCount('socketError')).toBe(1)
     })
 
-    it('should log server errors that occur after start() succeeded', async () => {
-      // Issue #544: the success path removed the 'error' listener, so a later 'error' event
-      // had no listener and EventEmitter threw it as an uncaught exception. The emitter
-      // removes listeners like the real server; a mock that keeps removed listeners hides this.
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
-      try {
+    describe('errors after start() succeeded', () => {
+      // modbus-serial reports the errors of its net.Server as 'serverError' and the errors of
+      // a client socket as 'socketError' (issue #582). It never emits 'error'. The emitter
+      // removes listeners like the real server; a mock that keeps removed listeners hides
+      // a missing listener.
+      let consoleErrorSpy: jest.SpiedFunction<typeof console.error>
+
+      beforeEach(() => {
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+      })
+
+      afterEach(() => {
+        consoleErrorSpy.mockRestore()
+      })
+
+      const startOnEmitterServer = async (
+        logger?: VerboseLogger
+      ): Promise<ReturnType<typeof createEmitterServer>> => {
         const { ServerTCP } = await import('modbus-serial')
         const server = createEmitterServer()
         ;(ServerTCP as any).mockImplementationOnce(() => {
@@ -405,16 +421,48 @@ describe('TcpTransport', () => {
           return server
         })
 
-        transport = new TcpTransport({ host: 'localhost', port: 502 })
+        transport = new TcpTransport({ host: 'localhost', port: 502 }, logger)
         await transport.start()
-
-        const testError = new Error('TCP server error')
-        expect(() => server.emit('error', testError)).not.toThrow()
-
-        expect(consoleErrorSpy).toHaveBeenCalledWith('TCP transport error:', testError)
-      } finally {
-        consoleErrorSpy.mockRestore()
+        return server
       }
+
+      it.each([
+        { name: 'without a verbose logger', logger: undefined },
+        { name: 'with a verbose logger', logger: new VerboseLogger(true) },
+      ])(
+        'should print a serverError once and keep the server running $name',
+        async ({ logger }) => {
+          const server = await startOnEmitterServer(logger)
+          const testError = new Error('accept EMFILE')
+
+          expect(() => server.emit('serverError', testError)).not.toThrow()
+
+          expect(consoleErrorSpy).toHaveBeenCalledTimes(1)
+          expect(consoleErrorSpy).toHaveBeenCalledWith('TCP transport error:', testError)
+          expect(server.close).not.toHaveBeenCalled()
+          await expect(transport.send(1, Buffer.from([0x01, 0x03]))).resolves.toBeUndefined()
+        }
+      )
+
+      it('should log a socketError with the verbose logger and keep the server running', async () => {
+        const server = await startOnEmitterServer(new VerboseLogger(true))
+
+        expect(() => server.emit('socketError', new Error('read ECONNRESET'))).not.toThrow()
+
+        expect(consoleErrorSpy).toHaveBeenCalledTimes(1)
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[VERBOSE] ERROR TCP socket: read ECONNRESET')
+        expect(server.close).not.toHaveBeenCalled()
+        await expect(transport.send(1, Buffer.from([0x01, 0x03]))).resolves.toBeUndefined()
+      })
+
+      it('should ignore a socketError without a verbose logger and keep the server running', async () => {
+        const server = await startOnEmitterServer()
+
+        expect(() => server.emit('socketError', new Error('read ECONNRESET'))).not.toThrow()
+
+        expect(consoleErrorSpy).not.toHaveBeenCalled()
+        await expect(transport.send(1, Buffer.from([0x01, 0x03]))).resolves.toBeUndefined()
+      })
     })
   })
 

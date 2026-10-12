@@ -2,8 +2,12 @@
  * Tests for ModbusEmulator verbose logging integration
  */
 
+import ModbusRTU from 'modbus-serial'
+
 import { ModbusEmulator } from './emulator.js'
 import type { MemoryTransport } from './transports/memory.js'
+import { getFreePort } from './transports/test-free-port.js'
+import { resetConnection, waitUntil } from './transports/test-socket.js'
 
 describe('ModbusEmulator verbose logging', () => {
   let emulator: ModbusEmulator
@@ -215,6 +219,43 @@ describe('ModbusEmulator verbose logging', () => {
       expect(output1).toContain('values=[0x1111]')
       expect(output2).toContain('slave=2')
       expect(output2).toContain('values=[0x2222]')
+    })
+  })
+
+  describe('over TCP', () => {
+    test('logs the error of a client socket when verbose is enabled', async () => {
+      // Issue #582: the TCP transport logs the errors of a running server with the logger
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+      try {
+        const port = await getFreePort()
+        emulator = new ModbusEmulator({
+          transport: 'tcp',
+          host: '127.0.0.1',
+          port,
+          verbose: true,
+        })
+        emulator.addDevice({ slaveId: 1, registers: { holding: { 0: 230 } } })
+        await emulator.start()
+
+        await resetConnection('127.0.0.1', port)
+        await waitUntil(() => consoleErrorSpy.mock.calls.length > 0)
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/^\[VERBOSE\] ERROR TCP socket: .*ECONNRESET/)
+        )
+        // The emulator keeps serving
+        const client = new ModbusRTU()
+        try {
+          await client.connectTCP('127.0.0.1', { port })
+          client.setID(1)
+          client.setTimeout(2000)
+          await expect(client.readHoldingRegisters(0, 1)).resolves.toMatchObject({ data: [230] })
+        } finally {
+          await new Promise<void>((resolve) => client.close(() => resolve()))
+        }
+      } finally {
+        consoleErrorSpy.mockRestore()
+      }
     })
   })
 
