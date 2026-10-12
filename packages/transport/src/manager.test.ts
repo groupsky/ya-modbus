@@ -238,6 +238,32 @@ describe('TransportManager', () => {
     })
   })
 
+  describe('Client Configuration', () => {
+    const rtuConfig: RTUConfig = {
+      port: '/dev/ttyUSB0',
+      baudRate: 9600,
+      dataBits: 8,
+      parity: 'even',
+      stopBits: 1,
+      slaveId: 1,
+    }
+    const tcpConfig: TCPConfig = { host: '192.168.1.100', slaveId: 1 }
+
+    test.each([
+      { type: 'RTU', config: rtuConfig, timeout: undefined, expected: 1000 },
+      { type: 'RTU', config: rtuConfig, timeout: 2500, expected: 2500 },
+      { type: 'TCP', config: tcpConfig, timeout: undefined, expected: 1000 },
+      { type: 'TCP', config: tcpConfig, timeout: 2500, expected: 2500 },
+    ])(
+      'should set $type client timeout to $expected when config timeout is $timeout',
+      async ({ config, timeout, expected }) => {
+        await manager.getTransport({ ...config, timeout })
+
+        expect(mockClient1.setTimeout).toHaveBeenCalledWith(expected)
+      }
+    )
+  })
+
   describe('Mutex Serialization', () => {
     test('should serialize RTU operations using mutex', async () => {
       const config: RTUConfig = {

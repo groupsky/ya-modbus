@@ -2,6 +2,7 @@ import type { Transport } from '@ya-modbus/driver-types'
 import { Mutex } from 'async-mutex'
 import ModbusRTU from 'modbus-serial'
 
+import { DEFAULT_TIMEOUT_MS } from './client-config.js'
 import type { RTUConfig, TCPConfig, TransportConfig } from './factory.js'
 import { SlaveTransport } from './slave-transport.js'
 
@@ -157,7 +158,7 @@ export class TransportManager {
       stopBits: config.stopBits,
     })
 
-    client.setTimeout(config.timeout ?? 1000)
+    client.setTimeout(config.timeout ?? DEFAULT_TIMEOUT_MS)
 
     return client
   }
@@ -174,7 +175,7 @@ export class TransportManager {
 
     await client.connectTCP(config.host, { port: config.port ?? 502 })
 
-    client.setTimeout(config.timeout ?? 1000)
+    client.setTimeout(config.timeout ?? DEFAULT_TIMEOUT_MS)
 
     return client
   }
