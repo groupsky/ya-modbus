@@ -23,6 +23,8 @@ module.exports = {
     '!<rootDir>/src/**/*.d.ts',
     '!<rootDir>/src/cli.ts', // Entry point - tested manually
   ],
+  // Loaded by the CLI tests, but still an entry point that is excluded from coverage
+  coveragePathIgnorePatterns: ['/node_modules/', '<rootDir>/src/cli.ts'],
   coverageThreshold: {
     global: {
       branches: 95,
