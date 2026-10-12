@@ -38,7 +38,7 @@ const transport = await createRTUTransport({
 })
 
 // Create driver
-const driver = await createDriver({ transport })
+const driver = await createDriver({ transport, slaveId: 1 })
 
 // Read voltages and frequency
 const values = await driver.readDataPoints(['voltage_l1', 'voltage_l2', 'voltage_l3', 'frequency'])
@@ -77,7 +77,10 @@ const transport = await createRTUTransport({
   slaveId: DEFAULT_CONFIG.defaultAddress, // 1
 })
 
-const driver = await createDriver({ transport })
+const driver = await createDriver({
+  transport,
+  slaveId: DEFAULT_CONFIG.defaultAddress, // 1
+})
 ```
 
 ## Data Points

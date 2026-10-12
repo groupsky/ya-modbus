@@ -21,7 +21,7 @@ npm install @ya-modbus/driver-ex9em
 
 ```typescript
 import { createDriver, DEFAULT_CONFIG } from '@ya-modbus/driver-ex9em'
-import { createRTUTransport } from '@ya-modbus/transport-rtu'
+import { createRTUTransport } from '@ya-modbus/transport'
 
 // Create transport with factory default settings
 const transport = await createRTUTransport({
@@ -34,7 +34,10 @@ const transport = await createRTUTransport({
 })
 
 // Create driver
-const driver = await createDriver({ transport })
+const driver = await createDriver({
+  transport,
+  slaveId: DEFAULT_CONFIG.defaultAddress,
+})
 
 // Read single data point
 const voltage = await driver.readDataPoint('voltage')

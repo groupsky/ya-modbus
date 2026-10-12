@@ -24,13 +24,16 @@ npm install @ya-modbus/driver-xymd1
 
 ```typescript
 import { createDriver } from '@ya-modbus/driver-xymd1'
-import { ModbusRTU } from '@ya-modbus/transport-rtu'
+import { createRTUTransport } from '@ya-modbus/transport'
 
 // Create transport
-const transport = new ModbusRTU({
-  path: '/dev/ttyUSB0',
+const transport = await createRTUTransport({
+  port: '/dev/ttyUSB0',
   baudRate: 9600,
   parity: 'even',
+  dataBits: 8,
+  stopBits: 1,
+  slaveId: 1,
 })
 
 // Create driver
@@ -66,15 +69,16 @@ The driver exports a `DEFAULT_CONFIG` constant with factory-default device setti
 
 ```typescript
 import { createDriver, DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
-import { ModbusRTU } from '@ya-modbus/transport-rtu'
+import { createRTUTransport } from '@ya-modbus/transport'
 
 // Use default configuration for connecting to factory-default device
-const transport = new ModbusRTU({
-  path: '/dev/ttyUSB0',
+const transport = await createRTUTransport({
+  port: '/dev/ttyUSB0',
   baudRate: DEFAULT_CONFIG.baudRate, // 9600
   parity: DEFAULT_CONFIG.parity, // 'even'
   dataBits: DEFAULT_CONFIG.dataBits, // 8
   stopBits: DEFAULT_CONFIG.stopBits, // 1
+  slaveId: DEFAULT_CONFIG.defaultAddress, // 1
 })
 
 const driver = await createDriver({
