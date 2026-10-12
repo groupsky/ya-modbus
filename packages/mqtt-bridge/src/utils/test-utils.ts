@@ -542,15 +542,15 @@ export async function startTestBroker(options?: { port?: number }): Promise<Test
  */
 export function createMockTransport(): jest.Mocked<Transport> {
   return {
-    readHoldingRegisters: jest.fn<any>().mockResolvedValue([0, 0]),
-    readInputRegisters: jest.fn<any>().mockResolvedValue([0, 0]),
-    readCoils: jest.fn<any>().mockResolvedValue([false]),
-    readDiscreteInputs: jest.fn<any>().mockResolvedValue([false]),
-    writeSingleCoil: jest.fn<any>().mockResolvedValue(undefined),
-    writeSingleRegister: jest.fn<any>().mockResolvedValue(undefined),
-    writeMultipleRegisters: jest.fn<any>().mockResolvedValue(undefined),
-    writeMultipleCoils: jest.fn<any>().mockResolvedValue(undefined),
-    close: jest.fn<any>().mockResolvedValue(undefined),
+    readHoldingRegisters: jest.fn<(...args: any[]) => any>().mockResolvedValue([0, 0]),
+    readInputRegisters: jest.fn<(...args: any[]) => any>().mockResolvedValue([0, 0]),
+    readCoils: jest.fn<(...args: any[]) => any>().mockResolvedValue([false]),
+    readDiscreteInputs: jest.fn<(...args: any[]) => any>().mockResolvedValue([false]),
+    writeSingleCoil: jest.fn<(...args: any[]) => any>().mockResolvedValue(undefined),
+    writeSingleRegister: jest.fn<(...args: any[]) => any>().mockResolvedValue(undefined),
+    writeMultipleRegisters: jest.fn<(...args: any[]) => any>().mockResolvedValue(undefined),
+    writeMultipleCoils: jest.fn<(...args: any[]) => any>().mockResolvedValue(undefined),
+    close: jest.fn<(...args: any[]) => any>().mockResolvedValue(undefined),
   }
 }
 
@@ -569,11 +569,11 @@ export function createMockTransport(): jest.Mocked<Transport> {
 export function createMockTransportManager(): jest.Mocked<TransportManager> {
   const mockTransport = createMockTransport()
   return {
-    getTransport: jest.fn<any>().mockResolvedValue(mockTransport),
+    getTransport: jest.fn<(...args: any[]) => any>().mockResolvedValue(mockTransport),
     getStats: jest
-      .fn<any>()
+      .fn<(...args: any[]) => any>()
       .mockReturnValue({ totalTransports: 0, rtuTransports: 0, tcpTransports: 0 }),
-    closeAll: jest.fn<any>().mockResolvedValue(undefined),
+    closeAll: jest.fn<(...args: any[]) => any>().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<TransportManager>
 }
 
@@ -610,11 +610,11 @@ export function createMockDriver(overrides?: {
         unit: 'unit',
       },
     ]) as any,
-    readDataPoint: jest.fn<any>().mockResolvedValue(123),
-    writeDataPoint: jest.fn<any>().mockResolvedValue(undefined),
-    readDataPoints: jest.fn<any>().mockResolvedValue({ 'test-value': 123 }),
-    initialize: jest.fn<any>().mockResolvedValue(undefined),
-    destroy: jest.fn<any>().mockResolvedValue(undefined),
+    readDataPoint: jest.fn<(...args: any[]) => any>().mockResolvedValue(123),
+    writeDataPoint: jest.fn<(...args: any[]) => any>().mockResolvedValue(undefined),
+    readDataPoints: jest.fn<(...args: any[]) => any>().mockResolvedValue({ 'test-value': 123 }),
+    initialize: jest.fn<(...args: any[]) => any>().mockResolvedValue(undefined),
+    destroy: jest.fn<(...args: any[]) => any>().mockResolvedValue(undefined),
   }
 }
 
@@ -661,9 +661,9 @@ export function createTestBridgeWithMockDriver(
   // Mock loadDriverFn that creates NEW instances on each call for driver isolation
   // First call returns the pre-created mockDriver for backward compatibility
   let isFirstDriverCall = true
-  const mockLoadDriverFn = jest.fn<any>().mockImplementation(() => {
+  const mockLoadDriverFn = jest.fn<(...args: any[]) => any>().mockImplementation(() => {
     return Promise.resolve({
-      createDriver: jest.fn<any>().mockImplementation(() => {
+      createDriver: jest.fn<(...args: any[]) => any>().mockImplementation(() => {
         if (isFirstDriverCall) {
           isFirstDriverCall = false
           return Promise.resolve(mockDriver)
