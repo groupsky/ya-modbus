@@ -239,3 +239,47 @@ teardown() {
   run assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/data" ".timestamp" "number"
   assert_success
 }
+
+@test "stopping bridge removes PID file, log symlink and captured log" {
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run start_mqtt_bridge "fixtures/bridge-config.json"
+  assert_success
+  BRIDGE_PID="$output"
+
+  local temp_log
+  temp_log=$(readlink "/tmp/bridge-$BRIDGE_PID.log")
+  [ -f "$temp_log" ]
+  [ -f "/tmp/bridge-$BRIDGE_PID.pid" ]
+
+  stop_mqtt_bridge "$BRIDGE_PID"
+
+  [ ! -e "$temp_log" ]
+  [ ! -e "/tmp/bridge-$BRIDGE_PID.pid" ]
+  [ ! -e "/tmp/bridge-$BRIDGE_PID-logfile.txt" ]
+  [ ! -L "/tmp/bridge-$BRIDGE_PID.log" ]
+}
+
+@test "start_mqtt_bridge fails and shows the log when bridge exits during startup" {
+  run start_mqtt_bridge "fixtures/does-not-exist.json"
+  assert_failure
+  assert_output_contains "process died during startup"
+  assert_output_contains "ENOENT"
+}
+
+@test "assert_bridge_log_contains fails when pattern is not in the log" {
+  echo "bridge log line" > /tmp/bridge-424242.log
+
+  run assert_bridge_log_contains 424242 "missing pattern"
+  assert_failure
+  assert_output_contains "Expected bridge log to contain: missing pattern"
+  assert_output_contains "bridge log line"
+}
+
+@test "assert_bridge_log_contains fails when the log file does not exist" {
+  run assert_bridge_log_contains 424242 "anything"
+  assert_failure
+  assert_output_contains "log file not found"
+}
