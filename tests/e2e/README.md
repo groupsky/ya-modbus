@@ -102,17 +102,24 @@ tests/e2e/
 │   ├── create-virtual-ports.sh      # Create socat port pairs
 │   └── cleanup.sh                   # Cleanup all resources
 ├── fixtures/
+│   ├── README.md                    # Register layouts of the fixtures
 │   ├── emulators/
-│   │   ├── port1-single-device.json # Single device emulator config
-│   │   ├── port2-multi-device.json  # Multi-device emulator config
-│   │   ├── tcp-single-device.json   # Single device emulator config (Modbus TCP)
-│   │   └── tcp-slow-device.json     # Emulator on Modbus TCP that answers after 1500 ms
+│   │   ├── port1-single-device.json     # Single device emulator config
+│   │   ├── port1-single-device-alt.json # Single device with other register values
+│   │   ├── port2-multi-device.json      # Multi-device emulator config
+│   │   ├── tcp-single-device.json       # Single device emulator config (Modbus TCP)
+│   │   └── tcp-slow-device.json         # Emulator on Modbus TCP that answers after 1500 ms
 │   ├── mosquitto.conf               # MQTT broker config
-│   └── bridge-config.json           # mqtt-bridge config
+│   ├── bridge-config.json           # mqtt-bridge config (single device)
+│   └── bridge-config-multi-device.json # mqtt-bridge config (two devices)
 ├── tests/
 │   ├── helpers.bash                 # Shared helper functions
 │   ├── 01-environment.bats          # Environment setup tests
 │   ├── 02-emulator.bats             # Emulator tests
+│   ├── 03-mqtt-bridge.bats          # mqtt-bridge tests
+│   ├── 04-cli.bats                  # CLI tests
+│   ├── 05-device-profiler.bats      # Device profiler tests
+│   ├── 06-assertion-helpers.bats    # Assertion helper tests
 │   ├── 07-tcp.bats                  # Modbus TCP tests (CLI and device-profiler)
 │   └── 99-cleanup.bats              # Cleanup verification
 └── vendor/
