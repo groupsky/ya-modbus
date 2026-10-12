@@ -12,6 +12,7 @@ import { Command, Option } from 'commander'
 import { runProfileScan } from './cli.js'
 import { MAX_PORT, MIN_PORT } from './constants.js'
 import { RegisterType } from './read-tester.js'
+import { parseInteger, validateOptions } from './validation.js'
 
 interface CliOptions {
   port: string
@@ -28,8 +29,6 @@ interface CliOptions {
   format: 'table' | 'json'
 }
 
-const parseNumber = (value: string): number => parseInt(value, 10)
-
 export const program = new Command()
 
 program
@@ -37,20 +36,20 @@ program
   .description('Profile Modbus devices by scanning register ranges')
   .version(getCallerPackageInfo().version)
   .requiredOption('--port <port>', 'Serial port (e.g., /dev/ttyUSB0) or TCP host:port')
-  .requiredOption('--slave-id <id>', 'Modbus slave ID (1-247)', parseNumber)
+  .requiredOption('--slave-id <id>', 'Modbus slave ID (1-247)', parseInteger)
   .option('--type <type>', 'Register type: holding or input', 'holding')
-  .option('--start <address>', 'Start register address', parseNumber, 0)
-  .option('--end <address>', 'End register address', parseNumber, 100)
-  .option('--batch <size>', 'Batch size for reads', parseNumber, 10)
-  .option('--baud <rate>', 'Baud rate for RTU', parseNumber, 9600)
+  .option('--start <address>', 'Start register address', parseInteger, 0)
+  .option('--end <address>', 'End register address', parseInteger, 100)
+  .option('--batch <size>', 'Batch size for reads', parseInteger, 10)
+  .option('--baud <rate>', 'Baud rate for RTU', parseInteger, 9600)
   .addOption(
     new Option('--parity <parity>', 'Parity for RTU')
       .choices(['none', 'even', 'odd'])
       .default('none')
   )
-  .option('--data-bits <bits>', 'Data bits for RTU', parseNumber, 8)
-  .option('--stop-bits <bits>', 'Stop bits for RTU', parseNumber, 1)
-  .option('--timeout <ms>', 'Response timeout in milliseconds', parseNumber, 1000)
+  .option('--data-bits <bits>', 'Data bits for RTU', parseInteger, 8)
+  .option('--stop-bits <bits>', 'Stop bits for RTU', parseInteger, 1)
+  .option('--timeout <ms>', 'Response timeout in milliseconds', parseInteger, 1000)
   .addOption(
     new Option('-f, --format <format>', 'Output format: table or json')
       .choices(['table', 'json'])
@@ -58,6 +57,8 @@ program
   )
   .action(async (options: CliOptions) => {
     try {
+      validateOptions(options)
+
       const registerType = options.type === 'input' ? RegisterType.Input : RegisterType.Holding
 
       let transport: Awaited<ReturnType<typeof createTransport>>

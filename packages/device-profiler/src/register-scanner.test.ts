@@ -238,4 +238,25 @@ describe('scanRegisters', () => {
       expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0, 1)
     })
   })
+
+  describe('invalid batch size', () => {
+    // Regression: a batch size below 1 never advanced the scan loop, so it ran forever
+    it.each([0, -1, 1.5, NaN])('should reject batch size %s before reading', async (batchSize) => {
+      const mockTransport: Transport = {
+        readHoldingRegisters: jest.fn().mockResolvedValue(Buffer.from([0x00, 0x01])),
+      } as unknown as Transport
+
+      await expect(
+        scanRegisters({
+          transport: mockTransport,
+          type: RegisterType.Holding,
+          startAddress: 0,
+          endAddress: 10,
+          batchSize,
+        })
+      ).rejects.toThrow(`Invalid batch size: ${batchSize}. Must be a whole number of 1 or more`)
+
+      expect(mockTransport.readHoldingRegisters).not.toHaveBeenCalled()
+    })
+  })
 })

@@ -149,13 +149,8 @@ teardown() {
   assert_output_contains "Scan complete!"
 }
 
-@test "completes scan with invalid slave ID showing errors" {
-  # Start emulator (slave ID 1)
-  run start_test_emulator "fixtures/emulators/port1-single-device.json"
-  assert_success
-  EMULATOR_PID="$output"
-
-  # Scan with wrong slave ID (999) - completes but shows FAIL status
+@test "rejects slave ID outside the Modbus range" {
+  # Slave ID 999 is invalid, so the profiler must stop before connecting
   run timeout 30 node "$PROFILER_BIN" \
     --port /tmp/ttyV1 \
     --slave-id 999 \
@@ -163,6 +158,26 @@ teardown() {
     --start 0 \
     --end 5 \
     --batch 10
+
+  assert_failure
+  assert_output_contains "Invalid slave ID: 999. Must be between 1 and 247"
+}
+
+@test "completes scan with unused slave ID showing errors" {
+  # Start emulator (slave ID 1)
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  # Scan with a valid slave ID that has no device (2) - completes but shows FAIL status
+  run timeout 30 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 2 \
+    --type holding \
+    --start 0 \
+    --end 1 \
+    --batch 2 \
+    --timeout 200
 
   assert_success
   # Should complete scan but show FAIL statuses
@@ -186,6 +201,169 @@ teardown() {
 
   assert_failure
   assert_output_contains "required option"
+}
+
+# ==========================================
+# Parameter Validation Tests
+# ==========================================
+# Invalid values are rejected before any connection is made, so these tests
+# do not need an emulator. The timeout stops the test if a scan loops forever.
+
+@test "rejects slave ID 0" {
+  run timeout 10 node "$PROFILER_BIN" --port /tmp/ttyV1 --slave-id 0
+
+  assert_failure
+  assert_output_contains "Invalid slave ID: 0. Must be between 1 and 247"
+}
+
+@test "rejects slave ID 248" {
+  run timeout 10 node "$PROFILER_BIN" --port /tmp/ttyV1 --slave-id 248
+
+  assert_failure
+  assert_output_contains "Invalid slave ID: 248. Must be between 1 and 247"
+}
+
+@test "rejects start address greater than end address" {
+  run timeout 10 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --start 100 \
+    --end 50
+
+  assert_failure
+  assert_output_contains "Invalid address range: start .100. is greater than end .50."
+}
+
+@test "rejects end address above 65535" {
+  run timeout 10 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --end 65536
+
+  assert_failure
+  assert_output_contains "Invalid end address: 65536. Must be between 0 and 65535"
+}
+
+@test "rejects batch size 0 instead of looping forever" {
+  run timeout 10 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --batch 0
+
+  assert_failure
+  assert_output_contains "Invalid batch size: 0. Must be between 1 and 125"
+}
+
+@test "rejects negative batch size" {
+  run timeout 10 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --batch -1
+
+  assert_failure
+  assert_output_contains "Invalid batch size: -1. Must be between 1 and 125"
+}
+
+@test "rejects batch size above the Modbus limit" {
+  run timeout 10 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --batch 200
+
+  assert_failure
+  assert_output_contains "Invalid batch size: 200. Must be between 1 and 125"
+}
+
+@test "rejects non-numeric batch size" {
+  run timeout 10 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --batch abc
+
+  assert_failure
+  assert_output_contains "Expected a whole number"
+}
+
+@test "rejects timeout 0" {
+  run timeout 10 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --timeout 0
+
+  assert_failure
+  assert_output_contains "Invalid timeout: 0. Must be between 1 and 2147483647"
+}
+
+@test "rejects timeout above the Node.js timer limit" {
+  run timeout 10 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --timeout 3000000000
+
+  assert_failure
+  assert_output_contains "Invalid timeout: 3000000000. Must be between 1 and 2147483647"
+}
+
+@test "rejects baud rate 0" {
+  run timeout 10 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --baud 0
+
+  assert_failure
+  assert_output_contains "Invalid baud rate: 0. Must be greater than 0"
+}
+
+@test "scans the maximum batch size of 125 registers" {
+  # Start emulator
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run timeout 30 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --start 0 \
+    --end 124 \
+    --batch 125
+
+  assert_success
+  assert_output_contains "Scan complete!"
+}
+
+@test "scans the maximum register address 65535" {
+  # Start emulator
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run timeout 30 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --start 65535 \
+    --end 65535 \
+    --batch 10
+
+  assert_success
+  assert_output_contains "Scanning holding registers from 65535 to 65535"
+  assert_output_contains "Scan complete!"
+}
+
+@test "scans a large address range of 1001 registers" {
+  # Start emulator
+  run start_test_emulator "fixtures/emulators/port1-single-device.json"
+  assert_success
+  EMULATOR_PID="$output"
+
+  run timeout 60 node "$PROFILER_BIN" \
+    --port /tmp/ttyV1 \
+    --slave-id 1 \
+    --start 0 \
+    --end 1000 \
+    --batch 100
+
+  assert_success
+  assert_output_contains "Scan complete!"
 }
 
 # ==========================================

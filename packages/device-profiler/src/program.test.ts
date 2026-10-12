@@ -1,3 +1,5 @@
+import { createTransport } from '@ya-modbus/transport'
+
 import packageJson from '../package.json'
 
 import * as cliModule from './cli.js'
@@ -333,6 +335,117 @@ describe('CLI Program - Integration Tests', () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error:',
         expect.stringContaining('Must be between')
+      )
+    })
+  })
+
+  describe('Parameter Validation', () => {
+    const connectionArgs = ['node', 'ya-modbus-profile', '--port', '/dev/ttyUSB0']
+
+    it.each([
+      {
+        name: 'slave ID 0',
+        args: ['--slave-id', '0'],
+        message: 'Invalid slave ID: 0. Must be between 1 and 247 (Modbus specification)',
+      },
+      {
+        name: 'slave ID 248',
+        args: ['--slave-id', '248'],
+        message: 'Invalid slave ID: 248. Must be between 1 and 247 (Modbus specification)',
+      },
+      {
+        name: 'start address greater than end address',
+        args: ['--slave-id', '1', '--start', '100', '--end', '50'],
+        message: 'Invalid address range: start (100) is greater than end (50)',
+      },
+      {
+        name: 'end address above 65535',
+        args: ['--slave-id', '1', '--end', '65536'],
+        message: 'Invalid end address: 65536. Must be between 0 and 65535',
+      },
+      {
+        // Regression: a batch size of 0 made the scan loop run forever
+        name: 'batch size 0',
+        args: ['--slave-id', '1', '--batch', '0'],
+        message: 'Invalid batch size: 0. Must be between 1 and 125 (Modbus limit for one read)',
+      },
+      {
+        name: 'negative batch size',
+        args: ['--slave-id', '1', '--batch', '-1'],
+        message: 'Invalid batch size: -1. Must be between 1 and 125 (Modbus limit for one read)',
+      },
+      {
+        name: 'batch size above the Modbus limit',
+        args: ['--slave-id', '1', '--batch', '200'],
+        message: 'Invalid batch size: 200. Must be between 1 and 125 (Modbus limit for one read)',
+      },
+      {
+        name: 'timeout 0',
+        args: ['--slave-id', '1', '--timeout', '0'],
+        message: 'Invalid timeout: 0. Must be between 1 and 2147483647 milliseconds',
+      },
+      {
+        name: 'timeout above the setTimeout limit',
+        args: ['--slave-id', '1', '--timeout', '2147483648'],
+        message: 'Invalid timeout: 2147483648. Must be between 1 and 2147483647 milliseconds',
+      },
+      {
+        name: 'baud rate 0',
+        args: ['--slave-id', '1', '--baud', '0'],
+        message: 'Invalid baud rate: 0. Must be greater than 0',
+      },
+    ])('should reject $name before connecting', async ({ args, message }) => {
+      await expect(program.parseAsync([...connectionArgs, ...args])).rejects.toThrow()
+
+      expect(processExitSpy).toHaveBeenCalledWith(1)
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error:', message)
+      expect(createTransport).not.toHaveBeenCalled()
+      expect(cliModule.runProfileScan).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      { option: '--slave-id', value: 'abc' },
+      { option: '--slave-id', value: '1.5' },
+      { option: '--batch', value: '10abc' },
+      { option: '--start', value: '' },
+    ])('should reject non-integer $option value "$value"', async ({ option, value }) => {
+      const stderrWriteSpy = jest.spyOn(process.stderr, 'write').mockImplementation()
+
+      try {
+        const args = [...connectionArgs, '--slave-id', '1', option, value]
+        await expect(program.parseAsync(args)).rejects.toThrow()
+
+        expect(processExitSpy).toHaveBeenCalledWith(1)
+        const stderrOutput = stderrWriteSpy.mock.calls.map((call) => call[0]).join('')
+        expect(stderrOutput).toContain(`option '${option}`)
+        expect(stderrOutput).toContain('Expected a whole number')
+        expect(cliModule.runProfileScan).not.toHaveBeenCalled()
+      } finally {
+        stderrWriteSpy.mockRestore()
+      }
+    })
+
+    it('should accept values at the limits of the allowed ranges', async () => {
+      const mockRunProfileScan = jest.fn().mockResolvedValue(undefined)
+      ;(cliModule.runProfileScan as jest.Mock) = mockRunProfileScan
+
+      await program.parseAsync([
+        ...connectionArgs,
+        '--slave-id',
+        '247',
+        '--start',
+        '0',
+        '--end',
+        '65535',
+        '--batch',
+        '125',
+        '--timeout',
+        '1',
+      ])
+
+      expect(processExitSpy).not.toHaveBeenCalled()
+      expect(mockRunProfileScan).toHaveBeenCalledWith(
+        expect.objectContaining({ startAddress: 0, endAddress: 65535, batchSize: 125 })
       )
     })
   })
