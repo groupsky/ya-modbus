@@ -307,8 +307,9 @@ ya-modbus-profile --port /dev/ttyUSB0 --slave-id 1 --format yaml --output scan.t
 - **Format**: `--format json` or `--format yaml`. Without `--format`, the extension decides: `.json` is JSON, `.yaml` and `.yml` are YAML, in any letter case. Any other file name without `--format` is an error. The `table` format cannot be written to a file.
 - **File content**: the same document that `--format json` or `--format yaml` prints, with a newline at the end. An existing file is overwritten.
 - **Progress messages** are never written to the file.
-- **Standard output stays empty**, so it is safe to use in scripts and pipes. When the file is written, one summary line goes to standard error, for example `Wrote 101 registers (98 ok, 3 failed) to scan.json`. Use `2>/dev/null` to hide it.
-- **The file must be writable.** This is checked before the device is contacted, so a wrong path (a missing directory, a directory instead of a file) does not cost a long scan.
+- **Standard output stays empty** when the file is written, so it is safe to use in scripts and pipes. One summary line goes to standard error, for example `Wrote 101 registers (98 ok, 3 failed) to scan.json`. Use `2>/dev/null` to hide it.
+- **The file must be writable.** This is checked before the device is contacted, so a wrong path (a missing directory, a directory instead of a file, a read-only file, a symbolic link to a missing directory) does not cost a long scan. A named pipe (FIFO) is accepted without waiting for a reader.
+- **If the file cannot be written after the scan** (for example, the disk is full), the result is not lost: the same document is printed to standard output and the error goes to standard error.
 - **Exit code** is `0` when the file was written and `1` on any error.
 
 ## License

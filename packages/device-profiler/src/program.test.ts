@@ -322,6 +322,18 @@ describe('CLI Program - Integration Tests', () => {
       expect(mockRunProfileScan.mock.calls[0][0]).not.toHaveProperty('outputFile')
     })
 
+    it('should report the error and exit with code 1 when the result cannot be written', async () => {
+      const message = `Cannot write to ${file('scan.json')}: ENOSPC. The report is printed to stdout instead.`
+      ;(cliModule.runProfileScan as jest.Mock) = jest.fn().mockRejectedValue(new Error(message))
+
+      await expect(
+        program.parseAsync([...connectionArgs, '--output', file('scan.json')])
+      ).rejects.toThrow('process.exit called')
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error:', message)
+      expect(processExitSpy).toHaveBeenCalledWith(1)
+    })
+
     it.each([
       {
         name: 'a file name that does not tell the format',

@@ -39,11 +39,33 @@ export interface ProfileScanOptions {
 }
 
 /**
+ * Write the report to the output file
+ *
+ * A scan can take minutes and cannot be repeated for free. If the file cannot
+ * be written, for example because the disk is full, the report is printed to
+ * stdout instead, so the result is not lost, and the error is thrown.
+ */
+async function writeReportFile(file: string, report: string): Promise<void> {
+  try {
+    await writeFile(file, `${report}\n`)
+  } catch (error) {
+    // The caller exits right after the error. Wait for the report to reach stdout,
+    // or a pipe that is not read fast enough would get only the start of it.
+    await new Promise<void>((resolve) => process.stdout.write(`${report}\n`, () => resolve()))
+    // A failed write always fails with a system error, which has a message
+    throw new Error(
+      `Cannot write to ${file}: ${(error as Error).message}. The report is printed to stdout instead.`
+    )
+  }
+}
+
+/**
  * Run a register profile scan with console output
  *
  * The json and yaml formats print only the document, so stdout can be piped.
  * With an output file nothing is printed to stdout: the document goes to the
- * file and a one-line summary goes to stderr.
+ * file and a one-line summary goes to stderr. If the file cannot be written,
+ * the document is printed to stdout and the function throws.
  *
  * @param options - Scan configuration
  */
@@ -105,7 +127,7 @@ export async function runProfileScan(options: ProfileScanOptions): Promise<void>
       if (outputFile === undefined) {
         console.log(report)
       } else {
-        await writeFile(outputFile, `${report}\n`)
+        await writeReportFile(outputFile, report)
         const failed = results.filter((result) => !result.success).length
         console.error(
           `Wrote ${results.length} registers (${results.length - failed} ok, ${failed} failed) to ${outputFile}`
