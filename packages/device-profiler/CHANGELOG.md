@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.9.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.9.0...@ya-modbus/device-profiler@0.9.1) (2026-10-12)
+
+### Bug Fixes
+
+- **cli:** read CLI versions from package.json in ESM and CJS builds ([#539](https://github.com/groupsky/ya-modbus/issues/539)) ([f3275f3](https://github.com/groupsky/ya-modbus/commit/f3275f3ab3c0f4019304ca7abb0f0fdecc6faf11)), closes [#256](https://github.com/groupsky/ya-modbus/issues/256)
+
 # [0.9.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.8.3...@ya-modbus/device-profiler@0.9.0) (2026-10-12)
 
 - feat!: drop Node.js 20 support (#516) ([70002ab](https://github.com/groupsky/ya-modbus/commit/70002ab28155432e0984c67a70d1469fc5be7cb3)), closes [#516](https://github.com/groupsky/ya-modbus/issues/516)
