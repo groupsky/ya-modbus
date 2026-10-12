@@ -102,9 +102,17 @@ async function runCommand(options: RunCommandOptions): Promise<void> {
   // Load devices from config if provided
   if (config.devices?.length) {
     console.log(chalk.blue(`Loading ${config.devices.length} device(s) from configuration...`))
-    for (const deviceConfig of config.devices) {
-      await bridge.addDevice(deviceConfig)
-      console.log(chalk.green(`✓ Loaded device: ${deviceConfig.deviceId}`))
+    try {
+      for (const deviceConfig of config.devices) {
+        await bridge.addDevice(deviceConfig)
+        console.log(chalk.green(`✓ Loaded device: ${deviceConfig.deviceId}`))
+      }
+    } catch (error) {
+      // The loaded devices and the MQTT connection stay open until the bridge stops
+      await bridge
+        .stop()
+        .catch((stopError: unknown) => console.error(chalk.red('Shutdown error:'), stopError))
+      throw error
     }
   }
 

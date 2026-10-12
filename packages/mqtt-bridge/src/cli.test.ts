@@ -602,6 +602,7 @@ describe('CLI - ya-modbus-bridge', () => {
         expect.stringContaining('✓ Loaded device: device1'),
         expect.stringContaining('✓ Loaded device: device2'),
       ])
+      expect(mockBridge.stop).not.toHaveBeenCalled()
     })
 
     it('should stop loading at the first device that fails and exit with 1', async () => {
@@ -626,6 +627,54 @@ describe('CLI - ya-modbus-bridge', () => {
         expect.stringContaining('Error:'),
         'Failed to load driver'
       )
+      expect(processUtils.exit).toHaveBeenCalledWith(1)
+    })
+
+    // The devices that loaded keep their serial ports and the MQTT connection open until the
+    // bridge stops, so the bridge has to stop before the process exits
+    it('should stop the bridge before exiting when a device fails to load', async () => {
+      const events: string[] = []
+      mockBridge.addDevice = jest.fn().mockRejectedValue(new Error('Failed to load driver'))
+      mockBridge.stop.mockImplementation(async () => {
+        await new Promise((resolve) => setImmediate(resolve))
+        events.push('stopped')
+      })
+      jest.mocked(processUtils.exit).mockImplementationOnce((code) => {
+        events.push(`exit ${code}`)
+      })
+      jest.mocked(configModule.loadConfig).mockResolvedValue({
+        mqtt: { url: 'mqtt://localhost:1883' },
+        devices: [rtuDevice('device1')],
+      } as any)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(events).toEqual(['stopped', 'exit 1'])
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error:'),
+        'Failed to load driver'
+      )
+    })
+
+    it('should report the device error and exit with 1 when stopping the bridge fails too', async () => {
+      mockBridge.addDevice = jest.fn().mockRejectedValue(new Error('Failed to load driver'))
+      mockBridge.stop.mockRejectedValue(new Error('Failed to close port'))
+      jest.mocked(configModule.loadConfig).mockResolvedValue({
+        mqtt: { url: 'mqtt://localhost:1883' },
+        devices: [rtuDevice('device1')],
+      } as any)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Shutdown error:'),
+        expect.objectContaining({ message: 'Failed to close port' })
+      )
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error:'),
+        'Failed to load driver'
+      )
+      expect(processUtils.exit).toHaveBeenCalledTimes(1)
       expect(processUtils.exit).toHaveBeenCalledWith(1)
     })
 
