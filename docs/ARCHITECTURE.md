@@ -204,13 +204,14 @@ modbus/
 **Strategy**: Publish all errors to MQTT for monitoring.
 
 **Error Categories**:
-| Category | Action | MQTT Topic |
-|--------------------|----------------|-----------------------------------|
-| Timeout | Retry 3x | `modbus/{deviceId}/errors/timeout` |
-| CRC error | Retry 3x | `modbus/{deviceId}/errors/crc` |
-| Invalid response | Retry 3x | `modbus/{deviceId}/errors/invalid` |
-| Modbus exception | Log & continue | `modbus/{deviceId}/errors/exception` |
-| Connection lost | Reconnect | `modbus/{deviceId}/events/disconnected` |
+
+| Category         | Action         | MQTT Topic                              |
+| ---------------- | -------------- | --------------------------------------- |
+| Timeout          | Retry 3x       | `modbus/{deviceId}/errors/timeout`      |
+| CRC error        | Retry 3x       | `modbus/{deviceId}/errors/crc`          |
+| Invalid response | Retry 3x       | `modbus/{deviceId}/errors/invalid`      |
+| Modbus exception | Log & continue | `modbus/{deviceId}/errors/exception`    |
+| Connection lost  | Reconnect      | `modbus/{deviceId}/events/disconnected` |
 
 **Error Message Format**: Published errors include timestamp, error type, operation details (read/write, address, count), retry attempt number, and human-readable message.
 
