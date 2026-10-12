@@ -78,6 +78,43 @@ describe('Transport Factory', () => {
     expect(transport).toBe(mockTCPTransport)
   })
 
+  // Regression: the TCP config carries the TCP port number in `port`. The factory used to
+  // reject every config containing both `port` and `host`, so no TCP transport could be
+  // created with an explicit port (CLI read/write, device-profiler).
+  test('should create TCP transport when host is provided with a numeric port', async () => {
+    const mockTCPTransport = {} as any
+    jest.spyOn(tcpTransport, 'createTCPTransport').mockResolvedValue(mockTCPTransport)
+
+    const config = {
+      host: '192.168.1.100',
+      port: 5020,
+      slaveId: 1,
+      timeout: 2000,
+    }
+
+    const transport = await createTransport(config)
+
+    expect(tcpTransport.createTCPTransport).toHaveBeenCalledWith(config)
+    expect(rtuTransport.createRTUTransport).not.toHaveBeenCalled()
+    expect(transport).toBe(mockTCPTransport)
+  })
+
+  test('should create TCP transport when the port is explicitly undefined', async () => {
+    const mockTCPTransport = {} as any
+    jest.spyOn(tcpTransport, 'createTCPTransport').mockResolvedValue(mockTCPTransport)
+
+    const config = {
+      host: '192.168.1.100',
+      port: undefined,
+      slaveId: 1,
+    }
+
+    const transport = await createTransport(config)
+
+    expect(tcpTransport.createTCPTransport).toHaveBeenCalledWith(config)
+    expect(transport).toBe(mockTCPTransport)
+  })
+
   test('should throw error if neither port nor host is provided', async () => {
     const config = {
       slaveId: 1,
@@ -92,7 +129,7 @@ describe('Transport Factory', () => {
     )
   })
 
-  test('should throw error if both port and host are provided', async () => {
+  test('should throw error if both a serial port path and host are provided', async () => {
     const config = {
       port: '/dev/ttyUSB0',
       host: '192.168.1.100',
@@ -106,5 +143,7 @@ describe('Transport Factory', () => {
     await expect(createTransport(config)).rejects.toThrow(
       'Cannot specify both port (RTU) and host (TCP)'
     )
+    expect(rtuTransport.createRTUTransport).not.toHaveBeenCalled()
+    expect(tcpTransport.createTCPTransport).not.toHaveBeenCalled()
   })
 })
