@@ -135,10 +135,15 @@ describe('runProfileScan', () => {
   })
 
   describe('JSON output format', () => {
+    interface PrintedReport {
+      connection: { port: string }
+      results: Array<{ address: number; success: boolean; value: number | null }>
+    }
+
     /** Parse the single JSON document that the scan printed */
-    function printedJSON(): unknown {
+    function printedJSON(): PrintedReport {
       expect(mockConsoleLog).toHaveBeenCalledTimes(1)
-      return JSON.parse(mockConsoleLog.mock.calls[0][0] as string)
+      return JSON.parse(mockConsoleLog.mock.calls[0][0] as string) as PrintedReport
     }
 
     it('should print the scan as one JSON document when format is json', async () => {
@@ -284,6 +289,47 @@ describe('runProfileScan', () => {
         ],
         summary: { total: 2, successful: 1, failed: 1 },
       })
+    })
+
+    it('should report an empty port when no port is given', async () => {
+      const mockTransport: Transport = {
+        readHoldingRegisters: readsWithByte(0x00),
+        close: jest.fn().mockResolvedValue(undefined),
+      } as unknown as Transport
+
+      await runProfileScan({
+        transport: mockTransport,
+        type: RegisterType.Holding,
+        startAddress: 0,
+        endAddress: 0,
+        format: 'json',
+      })
+
+      expect(printedJSON().connection.port).toBe('')
+    })
+
+    it('should report every register of a large scan', async () => {
+      const mockTransport: Transport = {
+        readHoldingRegisters: readsWithByte(0x01),
+        close: jest.fn().mockResolvedValue(undefined),
+      } as unknown as Transport
+
+      await runProfileScan({
+        transport: mockTransport,
+        type: RegisterType.Holding,
+        startAddress: 0,
+        endAddress: 1999,
+        batchSize: 100,
+        format: 'json',
+        port: '/dev/ttyUSB0',
+      })
+
+      const { results } = printedJSON()
+      expect(results).toHaveLength(2000)
+      expect(results.map((result) => result.address)).toEqual(
+        Array.from({ length: 2000 }, (_, address) => address)
+      )
+      expect(results.filter((result) => !result.success || result.value !== 0x0101)).toEqual([])
     })
   })
 })
