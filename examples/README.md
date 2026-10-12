@@ -13,6 +13,8 @@ These examples serve as:
 
 ## Examples
 
+The tests check that packages load and that `createDriver` returns a driver object. They do not connect to a device, so they pass a placeholder object as `transport`. The snippets below show real usage: create a transport with `createTransport`, then pass it to `createDriver` together with a `slaveId`.
+
 ### 1. CommonJS Consumer (`cjs-consumer/`)
 
 **Type**: Pure CommonJS project
@@ -25,12 +27,14 @@ const { createTransport, createRTUTransport } = require('@ya-modbus/transport')
 
 // Driver packages (NO .default workaround needed)
 const driverXymd1 = require('@ya-modbus/driver-xymd1')
-const driver = await driverXymd1.createDriver({
-  transport: { type: 'tcp', host: 'localhost', port: 502 },
-})
+
+async function main() {
+  const transport = await createTransport({ host: 'localhost', slaveId: 1 })
+  const driver = await driverXymd1.createDriver({ transport, slaveId: 1 })
+}
 ```
 
-**Key verification**: Default exports work directly without `.default` access
+**Key verification**: Named exports are available directly on the `require()` result, without `.default` access (no package has a default export)
 
 **Note**: JavaScript consumers cannot import type-only packages like `@ya-modbus/driver-types`
 
@@ -46,10 +50,12 @@ import { createTransport, createRTUTransport } from '@ya-modbus/transport'
 
 // Driver packages
 import { createDriver as createXYMD1Driver, DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
-const driver = await createXYMD1Driver({ transport: { type: 'tcp', host: 'localhost', port: 502 } })
+
+const transport = await createTransport({ host: 'localhost', slaveId: 1 })
+const driver = await createXYMD1Driver({ transport, slaveId: 1 })
 ```
 
-**Key verification**: Both named and default imports work correctly
+**Key verification**: Named imports work correctly (no package has a default export, so `import pkg from` is not used)
 
 **Note**: JavaScript consumers cannot import type-only packages like `@ya-modbus/driver-types`
 
@@ -65,12 +71,11 @@ import type { DataType, DeviceDriver } from '@ya-modbus/driver-types'
 // Runtime imports
 import { readScaledUInt16BE, createEnumValidator } from '@ya-modbus/driver-sdk'
 import { createDriver as createXYMD1Driver, DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
+import { createTransport } from '@ya-modbus/transport'
 
 // Full type safety
-const driver: DeviceDriver = await createXYMD1Driver({
-  transport: { type: 'tcp', host: 'localhost', port: 502 },
-  slaveId: 1,
-} as any)
+const transport = await createTransport({ host: 'localhost', slaveId: 1 })
+const driver: DeviceDriver = await createXYMD1Driver({ transport, slaveId: 1 })
 
 const dataType: DataType = 'float' // Type-only usage
 ```
@@ -94,11 +99,12 @@ import type { DataType, DeviceDriver } from '@ya-modbus/driver-types'
 // Runtime imports (NO .default workaround needed!)
 import { readScaledUInt16BE } from '@ya-modbus/driver-sdk'
 import { createDriver as createXYMD1Driver, DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
+import { createTransport } from '@ya-modbus/transport'
 
-const driver: DeviceDriver = await createXYMD1Driver({
-  transport: { type: 'tcp', host: 'localhost', port: 502 },
-  slaveId: 1,
-} as any)
+async function main() {
+  const transport = await createTransport({ host: 'localhost', slaveId: 1 })
+  const driver: DeviceDriver = await createXYMD1Driver({ transport, slaveId: 1 })
+}
 ```
 
 **Key verification**:
@@ -133,7 +139,8 @@ This script dynamically discovers all publishable packages and verifies:
 
 - All consumer examples include all packages in `dependencies`
 - All test files import from all packages
-- Both default and named import patterns are tested
+
+It also prints which import patterns (named, default/namespace) each test file uses. This output is informational and does not fail the check.
 
 ### Run Individual Example
 
@@ -150,7 +157,6 @@ Each example verifies:
 ### Import Patterns
 
 - ✅ Named exports (`import { DataType }`)
-- ✅ Default exports (`import driver from`)
 - ✅ Type-only imports (`import type`)
 - ✅ No `.default` workaround needed in CJS
 
