@@ -677,7 +677,6 @@ describe('TransportManager', () => {
       await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject({
         name: 'ConnectionLostError',
         message: 'Connection to /dev/ttyUSB0 lost: EIO: i/o error, write',
-        errno: 'ECONNREFUSED',
       })
       expect(ModbusRTUMock).toHaveBeenCalledTimes(1)
       expect(mockClient1.readHoldingRegisters).not.toHaveBeenCalled()

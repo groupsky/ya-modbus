@@ -80,11 +80,13 @@ describe('when the serial port fails', () => {
     expect(port.write).toHaveBeenCalled()
     port.unplug()
 
-    await expect(request).resolves.toMatchObject({
+    const error = await request
+    expect(error).toMatchObject({
       name: 'ConnectionLostError',
       message: 'Connection lost: EIO: i/o error, write',
-      errno: 'ECONNREFUSED',
     })
+    // modbus-serial gives every port error errno 'ECONNREFUSED', also an unplugged adapter
+    expect(error).not.toHaveProperty('errno')
   })
 
   test('rejects later requests with the same error without writing to the port', async () => {

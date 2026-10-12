@@ -80,8 +80,9 @@ so the process does not crash. The connection is then lost:
 - Later requests reject at once, without using the port.
 - The error has the name `ConnectionLostError` and a message like
   `Connection to /dev/ttyUSB0 lost: port closed`, or
-  `Connection to /dev/ttyUSB0 lost: EIO: i/o error, write` when a write failed. It keeps `errno`
-  and `code` of the underlying error, which is in `cause`.
+  `Connection to /dev/ttyUSB0 lost: EIO: i/o error, write` when a write failed. The underlying
+  error is in `cause`. `code` and `errno` are set only when the underlying error is a Node.js
+  system error, for example `ECONNREFUSED` when a TCP connection cannot be opened again.
 
 After a TCP socket error, `modbus-serial` emits no event. The next request fails with the error of
 `modbus-serial` (for example `Port Not Open`), and the connection is lost from then on.

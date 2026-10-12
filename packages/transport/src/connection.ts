@@ -21,7 +21,7 @@ export type OpenClient = () => Promise<ModbusRTU>
 const CONNECTION = Symbol.for('@ya-modbus/transport/ModbusConnection')
 
 /**
- * Error for a lost connection, with errno and code of the cause
+ * Error for a lost connection, with code and errno of a Node.js system error cause
  */
 function connectionLostError(target: string | undefined, cause: unknown): ModbusError {
   const reason = normalizeModbusError(cause)
@@ -30,8 +30,12 @@ function connectionLostError(target: string | undefined, cause: unknown): Modbus
     { cause: reason }
   )
   error.name = 'ConnectionLostError'
-  if (reason.errno !== undefined) error.errno = reason.errno
-  if (reason.code !== undefined) error.code = reason.code
+  // modbus-serial gives all its port errors errno 'ECONNREFUSED', also an unplugged
+  // serial adapter. Only Node.js system errors (they have a code) give a real errno.
+  if (reason.code !== undefined) {
+    error.code = reason.code
+    error.errno = reason.errno
+  }
   return error
 }
 
