@@ -35,7 +35,7 @@ export function createEnumValidator<T extends readonly unknown[]>(
   values: T
 ): (value: unknown) => value is T[number] {
   return (value: unknown): value is T[number] => {
-    return values.includes(value as T[number])
+    return values.includes(value)
   }
 }
 

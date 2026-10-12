@@ -101,20 +101,10 @@ export function mockSystemDeps(options: MockSystemDepsOptions = {}): SystemDepen
   const { readFile, importModule, getCwd } = options
 
   return {
-    readFile:
-      readFile ??
-      (jest
-        .fn<SystemDependencies['readFile']>()
-        .mockResolvedValue('{}') as SystemDependencies['readFile']),
+    readFile: readFile ?? jest.fn<SystemDependencies['readFile']>().mockResolvedValue('{}'),
     importModule:
       importModule ??
-      (jest
-        .fn<SystemDependencies['importModule']>()
-        .mockResolvedValue(createMockDriver()) as SystemDependencies['importModule']),
-    getCwd:
-      getCwd ??
-      (jest
-        .fn<SystemDependencies['getCwd']>()
-        .mockReturnValue('/mock/cwd') as SystemDependencies['getCwd']),
+      jest.fn<SystemDependencies['importModule']>().mockResolvedValue(createMockDriver()),
+    getCwd: getCwd ?? jest.fn<SystemDependencies['getCwd']>().mockReturnValue('/mock/cwd'),
   }
 }

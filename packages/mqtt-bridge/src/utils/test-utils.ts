@@ -551,7 +551,7 @@ export function createMockTransport(): jest.Mocked<Transport> {
     writeMultipleRegisters: jest.fn<any>().mockResolvedValue(undefined),
     writeMultipleCoils: jest.fn<any>().mockResolvedValue(undefined),
     close: jest.fn<any>().mockResolvedValue(undefined),
-  } as unknown as jest.Mocked<Transport>
+  }
 }
 
 /**
@@ -615,7 +615,7 @@ export function createMockDriver(overrides?: {
     readDataPoints: jest.fn<any>().mockResolvedValue({ 'test-value': 123 }),
     initialize: jest.fn<any>().mockResolvedValue(undefined),
     destroy: jest.fn<any>().mockResolvedValue(undefined),
-  } as unknown as jest.Mocked<DeviceDriver>
+  }
 }
 
 /**

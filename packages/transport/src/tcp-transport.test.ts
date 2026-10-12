@@ -87,7 +87,7 @@ describe('TCP Transport', () => {
     mockModbus.readHoldingRegisters.mockResolvedValue({
       data: [0x1234, 0x5678],
       buffer: Buffer.from([0x12, 0x34, 0x56, 0x78]),
-    } as never)
+    })
 
     const transport = await createTCPTransport(config)
     const result = await transport.readHoldingRegisters(100, 2)
@@ -129,7 +129,7 @@ describe('TCP Transport', () => {
       .mockResolvedValueOnce({
         data: [0x1111],
         buffer: Buffer.from([0x11, 0x11]),
-      } as never)
+      })
 
     const transport = await createTCPTransport(config)
     const result = await transport.readHoldingRegisters(0, 1)
@@ -165,7 +165,7 @@ describe('TCP Transport', () => {
     mockModbus.readInputRegisters.mockResolvedValue({
       data: [0xabcd],
       buffer: Buffer.from([0xab, 0xcd]),
-    } as never)
+    })
 
     const transport = await createTCPTransport(config)
     const result = await transport.readInputRegisters(50, 1)
@@ -186,7 +186,7 @@ describe('TCP Transport', () => {
     mockModbus.readCoils.mockResolvedValue({
       data: [true, false, true],
       buffer: Buffer.from([0b00000101]),
-    } as never)
+    })
 
     const transport = await createTCPTransport(config)
     const result = await transport.readCoils(10, 3)
@@ -206,7 +206,7 @@ describe('TCP Transport', () => {
     mockModbus.readDiscreteInputs.mockResolvedValue({
       data: [false, true],
       buffer: Buffer.from([0b00000010]),
-    } as never)
+    })
 
     const transport = await createTCPTransport(config)
     const result = await transport.readDiscreteInputs(20, 2)
@@ -362,7 +362,7 @@ describe('TCP Transport', () => {
       .mockResolvedValueOnce({
         data: [0x1234],
         buffer: Buffer.from([0x12, 0x34]),
-      } as never)
+      })
 
     const transport = await createTCPTransport(config)
     const result = await transport.readHoldingRegisters(0, 1)

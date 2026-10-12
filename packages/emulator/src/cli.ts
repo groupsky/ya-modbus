@@ -79,7 +79,7 @@ async function main(): Promise<void> {
         ...(options.verbose === true && { verbose: true }),
       }
 
-      devices = fileConfig.devices as Array<{ slaveId: number }>
+      devices = fileConfig.devices
     } else {
       // Build from CLI args
       if (options.transport === undefined) {

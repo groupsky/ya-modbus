@@ -72,7 +72,7 @@ describe('SlaveTransport', () => {
       mockClient.readHoldingRegisters.mockResolvedValue({
         data: [0x0000],
         buffer: Buffer.from([0x00, 0x00]),
-      } as never)
+      })
 
       await transport1.readHoldingRegisters(0, 1)
       await transport2.readHoldingRegisters(0, 1)
@@ -95,7 +95,7 @@ describe('SlaveTransport', () => {
         return {
           data: [0x0000],
           buffer: Buffer.from([0x00, 0x00]),
-        } as never
+        }
       })
 
       // Start two operations concurrently
@@ -121,7 +121,7 @@ describe('SlaveTransport', () => {
         return {
           data: [0x0000],
           buffer: Buffer.from([0x00, 0x00]),
-        } as never
+        }
       })
 
       // Start operations on different slaves concurrently
@@ -143,7 +143,7 @@ describe('SlaveTransport', () => {
       mockClient.readHoldingRegisters.mockResolvedValue({
         data: [0x00f5, 0x0064],
         buffer: Buffer.from([0x00, 0xf5, 0x00, 0x64]),
-      } as never)
+      })
 
       const result = await transport.readHoldingRegisters(0, 2)
 
@@ -159,7 +159,7 @@ describe('SlaveTransport', () => {
       mockClient.readInputRegisters.mockResolvedValue({
         data: [0x0100, 0x0200],
         buffer: Buffer.from([0x01, 0x00, 0x02, 0x00]),
-      } as never)
+      })
 
       const result = await transport.readInputRegisters(10, 2)
 
@@ -174,7 +174,7 @@ describe('SlaveTransport', () => {
       mockClient.readCoils.mockResolvedValue({
         data: [true, false, true],
         buffer: Buffer.from([0x05]),
-      } as never)
+      })
 
       const result = await transport.readCoils(0, 3)
 
@@ -189,7 +189,7 @@ describe('SlaveTransport', () => {
       mockClient.readDiscreteInputs.mockResolvedValue({
         data: [false, true],
         buffer: Buffer.from([0x02]),
-      } as never)
+      })
 
       const result = await transport.readDiscreteInputs(5, 2)
 
@@ -299,7 +299,7 @@ describe('SlaveTransport', () => {
         .mockResolvedValueOnce({
           data: [0x00f5],
           buffer: Buffer.from([0x00, 0xf5]),
-        } as never)
+        })
 
       const result = await transport.readHoldingRegisters(0, 1)
 
@@ -337,7 +337,7 @@ describe('SlaveTransport', () => {
         .mockResolvedValueOnce({
           data: [0x1234],
           buffer: Buffer.from([0x12, 0x34]),
-        } as never)
+        })
 
       const result = await transport.readHoldingRegisters(0, 1)
 
@@ -372,7 +372,7 @@ describe('SlaveTransport', () => {
       mockClient.readHoldingRegisters.mockResolvedValue({
         data: [0x0000],
         buffer: Buffer.from([0x00, 0x00]),
-      } as never)
+      })
 
       await expect(transport.readHoldingRegisters(10, 2)).resolves.toEqual(
         Buffer.from([0x00, 0x00])
@@ -388,7 +388,7 @@ describe('SlaveTransport', () => {
         .mockResolvedValueOnce({
           data: [0x1234],
           buffer: Buffer.from([0x12, 0x34]),
-        } as never)
+        })
 
       await transport.readHoldingRegisters(0, 1)
 

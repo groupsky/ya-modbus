@@ -259,6 +259,8 @@ export async function withTransport<T>(
       }
     : {
         // RTU configuration
+        // False positive: the cast narrows `string | number` to `string`, removing it breaks the build
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
         port: (options.port as string | undefined) ?? DEFAULT_RTU_CONFIG.port,
         baudRate: options.baudRate ?? DEFAULT_RTU_CONFIG.baudRate,
         dataBits: (options.dataBits ?? DEFAULT_RTU_CONFIG.dataBits) as DataBits,

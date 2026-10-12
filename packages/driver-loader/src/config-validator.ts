@@ -234,7 +234,7 @@ export function validateSupportedConfig(config: unknown): SupportedConfig {
     )
   }
 
-  return config as SupportedConfig
+  return config
 }
 
 /**

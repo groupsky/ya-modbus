@@ -319,7 +319,7 @@ describe('Table Formatter', () => {
     const dataPoints: DataPoint[] = [
       {
         id: 'config',
-        type: 'string' as any,
+        type: 'string',
         access: 'r',
       },
     ]
@@ -336,7 +336,7 @@ describe('Table Formatter', () => {
     const dataPoints: DataPoint[] = [
       {
         id: 'readings',
-        type: 'string' as any,
+        type: 'string',
         access: 'r',
       },
     ]
@@ -388,7 +388,7 @@ describe('Table Formatter', () => {
     const dataPoints: DataPoint[] = [
       {
         id: 'date_field',
-        type: 'string' as any,
+        type: 'string',
         access: 'r',
       },
     ]

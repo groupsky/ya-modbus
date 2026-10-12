@@ -74,7 +74,7 @@ describe('RTU Transport', () => {
     mockModbus.readHoldingRegisters.mockResolvedValue({
       data: [0x00f5, 0x0064], // 245, 100
       buffer: Buffer.from([0x00, 0xf5, 0x00, 0x64]),
-    } as never)
+    })
 
     const transport = await createRTUTransport(config)
     const result = await transport.readHoldingRegisters(0, 2)
@@ -100,7 +100,7 @@ describe('RTU Transport', () => {
     mockModbus.readInputRegisters.mockResolvedValue({
       data: [0x0100, 0x0200],
       buffer: Buffer.from([0x01, 0x00, 0x02, 0x00]),
-    } as never)
+    })
 
     const transport = await createRTUTransport(config)
     const result = await transport.readInputRegisters(10, 2)
@@ -124,7 +124,7 @@ describe('RTU Transport', () => {
     mockModbus.readCoils.mockResolvedValue({
       data: [true, false, true, false, false, false, false, false],
       buffer: Buffer.from([0x05]),
-    } as never)
+    })
 
     const transport = await createRTUTransport(config)
     const result = await transport.readCoils(0, 8)
@@ -147,7 +147,7 @@ describe('RTU Transport', () => {
     mockModbus.readDiscreteInputs.mockResolvedValue({
       data: [false, true, true, false, false, false, false, false],
       buffer: Buffer.from([0x06]),
-    } as never)
+    })
 
     const transport = await createRTUTransport(config)
     const result = await transport.readDiscreteInputs(5, 8)
@@ -289,7 +289,7 @@ describe('RTU Transport', () => {
       .mockResolvedValueOnce({
         data: [0x00f5],
         buffer: Buffer.from([0x00, 0xf5]),
-      } as never)
+      })
 
     const transport = await createRTUTransport(config)
     const result = await transport.readHoldingRegisters(0, 1)
@@ -408,7 +408,7 @@ describe('RTU Transport', () => {
       .mockResolvedValueOnce({
         data: [0x1234],
         buffer: Buffer.from([0x12, 0x34]),
-      } as never)
+      })
 
     const transport = await createRTUTransport(config)
     const result = await transport.readHoldingRegisters(0, 1)
