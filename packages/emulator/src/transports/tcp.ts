@@ -16,9 +16,49 @@ export interface TcpTransportConfig {
   port: number
 }
 
+const INIT_TIMEOUT_MS = 10000
+
+/**
+ * Close a server whose start() was cancelled by stop().
+ *
+ * ServerTCP starts to listen when it is created, and net.Server.close() has no effect before
+ * the port is bound. So the server is closed once it reports 'initialized', and the returned
+ * promise resolves when the port is released (issue #545). It also resolves when the server
+ * reports that it failed to start, and after the initialization timeout, so that a server
+ * which never answers cannot block stop() for longer. A server that binds after the timeout
+ * is still closed.
+ *
+ * The failure listeners stay on the abandoned server, so a late error is not thrown. They are
+ * released together with the server. modbus-serial reports the errors of its net.Server as
+ * 'serverError'.
+ */
+function closeWhenInitialized(server: ServerTCP): Promise<void> {
+  const emitter = server as unknown as EventEmitter
+
+  return new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(resolve, INIT_TIMEOUT_MS)
+
+    const onInitialized = (): void => {
+      clearTimeout(timeout)
+      server.close((err) => (err ? reject(err) : resolve()))
+    }
+    const onFailed = (): void => {
+      clearTimeout(timeout)
+      emitter.removeListener('initialized', onInitialized)
+      resolve()
+    }
+
+    emitter.once('initialized', onInitialized)
+    emitter.on('error', onFailed)
+    emitter.on('serverError', onFailed)
+  })
+}
+
 /**
  * Every start() creates a new ServerTCP and never reuses an earlier one, so listeners added
  * to it cannot pile up across start/stop cycles. stop() forgets the server once it is closed.
+ * The server of a start() that stop() cancelled is forgotten at once, and stop() waits until
+ * it is closed (see closeWhenInitialized).
  *
  * start() and stop() remove the 'initialized' and 'error' listeners they added. The 'error'
  * listener stays on a running server until it is closed, so a later 'error' event is logged.
@@ -43,6 +83,11 @@ export class TcpTransport extends BaseTransport {
   async start(): Promise<void> {
     if (this.started) {
       throw new Error('Transport already started')
+    }
+
+    // A second start() would replace the server the first one is still waiting for
+    if (this.initReject) {
+      throw new Error('Transport already starting')
     }
 
     const serviceVector = createServiceVector(() => this.requestHandler)
@@ -71,7 +116,7 @@ export class TcpTransport extends BaseTransport {
         EventEmitter.prototype.removeAllListeners.call(server, 'error')
         delete this.server
         reject(new Error('TCP server initialization timeout after 10s'))
-      }, 10000)
+      }, INIT_TIMEOUT_MS)
 
       server.on('initialized', () => {
         isInitializing = false
@@ -131,10 +176,11 @@ export class TcpTransport extends BaseTransport {
       return
     }
 
-    // Only close the server if it was started, otherwise just clean up
+    // The server of a start() that is still pending is binding the port (issue #545)
     if (!this.started) {
+      const pendingServer = this.server
       delete this.server
-      return
+      return closeWhenInitialized(pendingServer)
     }
 
     return new Promise<void>((resolve, reject) => {
