@@ -33,6 +33,25 @@ export interface CoilWriteRequest {
   value: boolean
 }
 
+/** Exception code of a request for a slave ID that has no device */
+export const GATEWAY_TARGET_DEVICE_FAILED = 0x0b
+
+/**
+ * A Modbus exception response. modbus-serial reads `modbusErrorCode` from an error that a
+ * service vector function throws and answers the client with that exception code.
+ */
+export class ModbusExceptionError extends Error {
+  readonly modbusErrorCode: number
+
+  constructor(functionCode: number, exceptionCode: number) {
+    super(
+      `Modbus exception response: function code ${functionCode}, exception code ${exceptionCode}`
+    )
+    this.name = 'ModbusExceptionError'
+    this.modbusErrorCode = exceptionCode
+  }
+}
+
 /**
  * Validates common Modbus response header fields
  * Returns the validated byteCount for further processing
@@ -59,10 +78,8 @@ function validateModbusResponseHeader(
 
   // Check for Modbus exception response (function code with 0x80 bit set)
   if (responseFunctionCode !== undefined && (responseFunctionCode & 0x80) !== 0) {
-    const exceptionCode = byteCount // In exception responses, byte 2 is the exception code
-    throw new Error(
-      `Modbus exception response: function code ${request.functionCode}, exception code ${exceptionCode}`
-    )
+    // In exception responses, byte 2 is the exception code
+    throw new ModbusExceptionError(request.functionCode, response.readUInt8(2))
   }
 
   // Validate function code matches
@@ -206,4 +223,17 @@ export function buildCoilWriteRequest(params: CoilWriteRequest): Buffer {
   request.writeUInt16BE(params.addr, 2)
   request.writeUInt16BE(params.value ? 0xff00 : 0x0000, 4)
   return request
+}
+
+/**
+ * Validates the response to a write request (function codes 0x05, 0x06 and 0x10)
+ *
+ * Throws a ModbusExceptionError for an exception response, so that the client gets the
+ * exception code. The write response itself carries nothing that the caller needs.
+ */
+export function validateWriteResponse(
+  response: Buffer,
+  request: { unitID: number; functionCode: number }
+): void {
+  validateModbusResponseHeader(response, request)
 }

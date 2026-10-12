@@ -8,6 +8,7 @@ import { MemoryTransport } from './transports/memory.js'
 import { RtuTransport } from './transports/rtu.js'
 import { TcpTransport } from './transports/tcp.js'
 import type { EmulatorConfig, DeviceConfig } from './types/config.js'
+import { GATEWAY_TARGET_DEVICE_FAILED } from './utils/modbus-protocol-helpers.js'
 import { VerboseLogger } from './verbose-logger.js'
 
 export class ModbusEmulator {
@@ -91,7 +92,7 @@ export class ModbusEmulator {
       response[0] = slaveId
       const functionCode = request[1]
       response[1] = functionCode !== undefined ? functionCode | 0x80 : 0x80
-      response[2] = 0x0b // Gateway Target Device Failed to Respond
+      response[2] = GATEWAY_TARGET_DEVICE_FAILED
       return response
     }
 

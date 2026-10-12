@@ -11,6 +11,7 @@ import {
   buildCoilReadRequest,
   parseCoilReadResponse,
   buildCoilWriteRequest,
+  validateWriteResponse,
 } from './modbus-protocol-helpers.js'
 
 describe('Modbus Protocol Helpers', () => {
@@ -102,6 +103,15 @@ describe('Modbus Protocol Helpers', () => {
 
       expect(() => parseRegisterReadResponse(response, { unitID: 1, functionCode: 0x03 })).toThrow(
         'Modbus exception response: function code 3, exception code 2'
+      )
+    })
+
+    it('should carry the exception code of an exception response in the error', () => {
+      // modbus-serial answers the client with the modbusErrorCode of the error
+      const response = Buffer.from([0x01, 0x83, 0x0b])
+
+      expect(() => parseRegisterReadResponse(response, { unitID: 1, functionCode: 0x03 })).toThrow(
+        expect.objectContaining({ modbusErrorCode: 0x0b })
       )
     })
 
@@ -354,6 +364,48 @@ describe('Modbus Protocol Helpers', () => {
       })
 
       expect(request.readUInt16BE(4)).toBe(0x0000)
+    })
+  })
+
+  describe('validateWriteResponse', () => {
+    it.each([
+      { name: 'single register', functionCode: 0x06, response: [1, 0x06, 0x00, 0x0a, 0x00, 0xe6] },
+      {
+        name: 'multiple registers',
+        functionCode: 0x10,
+        response: [1, 0x10, 0x00, 0x0a, 0x00, 0x02],
+      },
+      { name: 'single coil', functionCode: 0x05, response: [1, 0x05, 0x00, 0x0a, 0xff, 0x00] },
+    ])('should accept the response to a write of $name', ({ functionCode, response }) => {
+      expect(() =>
+        validateWriteResponse(Buffer.from(response), { unitID: 1, functionCode })
+      ).not.toThrow()
+    })
+
+    it('should throw an error with the exception code on an exception response', () => {
+      // Exception response: unit=1, func=0x86 (0x06 + 0x80), exceptionCode=3
+      const response = Buffer.from([0x01, 0x86, 0x03])
+
+      expect(() => validateWriteResponse(response, { unitID: 1, functionCode: 0x06 })).toThrow(
+        expect.objectContaining({
+          message: 'Modbus exception response: function code 6, exception code 3',
+          modbusErrorCode: 0x03,
+        })
+      )
+    })
+
+    it.each([
+      { name: 'unit ID', response: [2, 0x06, 0x00, 0x0a, 0x00, 0xe6], error: 'unitID mismatch' },
+      {
+        name: 'function code',
+        response: [1, 0x10, 0x00, 0x0a, 0x00, 0x02],
+        error: 'function code mismatch',
+      },
+      { name: 'length', response: [1, 0x06], error: 'too short' },
+    ])('should throw an error when the $name of the response is wrong', ({ response, error }) => {
+      expect(() =>
+        validateWriteResponse(Buffer.from(response), { unitID: 1, functionCode: 0x06 })
+      ).toThrow(error)
     })
   })
 })
