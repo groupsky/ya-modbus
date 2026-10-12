@@ -190,39 +190,50 @@ describe('TcpTransport', () => {
   })
 
   describe('error handling', () => {
-    it('should handle stop() called during initialization', async () => {
-      // Test for issue #275: Race condition when stop() is called during initialization
-      // When start() Promise is pending and stop() is called, the start() Promise should
-      // reject and event listeners should be cleaned up properly
+    it('should close the server when stop() is called during initialization', async () => {
+      // Issues #275 and #545: start() rejects, and the server is closed once it listens.
+      // Otherwise it binds the port after stop() returned and keeps it.
       const { ServerTCP } = await import('modbus-serial')
-      const server = createEmitterServer() // never emits 'initialized'
+      const server = createEmitterServer()
       ;(ServerTCP as any).mockImplementationOnce(() => server)
 
       const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
+      let stopped = false
       const startPromise = testTransport.start()
-
       // Call stop() while initialization is still pending
-      await testTransport.stop()
+      const stopPromise = testTransport.stop().then(() => {
+        stopped = true
+      })
+      const settled = Promise.allSettled([startPromise, stopPromise])
+      await new Promise((resolve) => setImmediate(resolve))
 
-      // start() Promise should reject with appropriate error
-      await expect(startPromise).rejects.toThrow('Transport stopped during initialization')
-
-      // Verify event listeners are cleaned up
-      expect(server.listenerCount('initialized')).toBe(0)
-      expect(server.listenerCount('error')).toBe(0)
-
-      // Server should not be closed (it never fully initialized), just cleaned up
+      // The port is not bound yet, so there is nothing to close and stop() is still waiting
       expect(server.close).not.toHaveBeenCalled()
+      expect(stopped).toBe(false)
+
+      server.emit('initialized')
+      const [start, stop] = await settled
+
+      expect(start).toEqual({
+        status: 'rejected',
+        reason: new Error('Transport stopped during initialization'),
+      })
+      expect(stop.status).toBe('fulfilled')
+      expect(server.close).toHaveBeenCalledTimes(1)
+      expect(server.listenerCount('initialized')).toBe(0)
     })
 
     it('should allow restart after stop() during initialization', async () => {
       // Test for issue #275 acceptance criteria: rapid start() -> stop() -> start() sequence
       // Verifies transport is reusable after stop() interrupts initialization
       const { ServerTCP } = await import('modbus-serial')
-      const firstServer = createEmitterServer() // never emits 'initialized'
+      const firstServer = createEmitterServer()
       const secondServer = createEmitterServer()
       ;(ServerTCP as any)
-        .mockImplementationOnce(() => firstServer)
+        .mockImplementationOnce(() => {
+          setImmediate(() => firstServer.emit('initialized'))
+          return firstServer
+        })
         .mockImplementationOnce(() => {
           setImmediate(() => secondServer.emit('initialized'))
           return secondServer
@@ -231,13 +242,15 @@ describe('TcpTransport', () => {
       const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
 
       // First attempt - stop during init
-      const startPromise1 = testTransport.start()
-      await testTransport.stop()
-      await expect(startPromise1).rejects.toThrow('Transport stopped during initialization')
+      const [start] = await Promise.allSettled([testTransport.start(), testTransport.stop()])
+      expect(start).toEqual({
+        status: 'rejected',
+        reason: new Error('Transport stopped during initialization'),
+      })
 
-      // Verify first server was cleaned up
+      // Verify first server was closed and cleaned up
+      expect(firstServer.close).toHaveBeenCalledTimes(1)
       expect(firstServer.listenerCount('initialized')).toBe(0)
-      expect(firstServer.listenerCount('error')).toBe(0)
 
       // Second attempt - should succeed
       await expect(testTransport.start()).resolves.toBeUndefined()
@@ -245,6 +258,68 @@ describe('TcpTransport', () => {
 
       await testTransport.stop()
       expect(secondServer.close).toHaveBeenCalledTimes(1)
+    })
+
+    it.each(['error', 'serverError'])(
+      'should not close the server that reports %s after stop() during initialization',
+      async (event) => {
+        // modbus-serial reports a failed listen() as 'serverError'. A server that failed to
+        // start has no port to release.
+        const { ServerTCP } = await import('modbus-serial')
+        const server = createEmitterServer()
+        ;(ServerTCP as any).mockImplementationOnce(() => server)
+
+        const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
+        const settled = Promise.allSettled([testTransport.start(), testTransport.stop()])
+        server.emit(event, new Error('listen EADDRINUSE'))
+        const [start, stop] = await settled
+
+        expect(start.status).toBe('rejected')
+        expect(stop.status).toBe('fulfilled')
+        expect(server.close).not.toHaveBeenCalled()
+        expect(server.listenerCount('initialized')).toBe(0)
+      }
+    )
+
+    it('should stop waiting for a server that does not initialize before the timeout', async () => {
+      jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] })
+      try {
+        const { ServerTCP } = await import('modbus-serial')
+        const server = createEmitterServer() // does not emit anything before the timeout
+        ;(ServerTCP as any).mockImplementationOnce(() => server)
+
+        const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
+        const settled = Promise.allSettled([testTransport.start(), testTransport.stop()])
+
+        jest.advanceTimersByTime(10000)
+        const [start, stop] = await settled
+
+        expect(start.status).toBe('rejected')
+        expect(stop.status).toBe('fulfilled')
+        expect(server.close).not.toHaveBeenCalled()
+        expect(jest.getTimerCount()).toBe(0)
+
+        // A server that binds after the timeout is still closed
+        server.emit('initialized')
+        expect(server.close).toHaveBeenCalledTimes(1)
+      } finally {
+        jest.useRealTimers()
+      }
+    })
+
+    it('should reject stop() when closing the server fails after stop() during initialization', async () => {
+      const { ServerTCP } = await import('modbus-serial')
+      const server = createEmitterServer()
+      server.close.mockImplementation((cb) => cb(new Error('Failed to close server')))
+      ;(ServerTCP as any).mockImplementationOnce(() => server)
+
+      const testTransport = new TcpTransport({ host: 'localhost', port: 8502 })
+      const settled = Promise.allSettled([testTransport.start(), testTransport.stop()])
+      server.emit('initialized')
+      const [start, stop] = await settled
+
+      expect(start.status).toBe('rejected')
+      expect(stop).toEqual({ status: 'rejected', reason: new Error('Failed to close server') })
     })
 
     it('should reject start() and remove listeners on port binding error', async () => {
