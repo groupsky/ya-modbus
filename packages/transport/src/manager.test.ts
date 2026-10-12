@@ -94,6 +94,27 @@ describe('TransportManager', () => {
       expect(mockClient1.setID).toHaveBeenCalledWith(1)
     })
 
+    // With a second client, the second open of a serial port fails because the first one locks it
+    test('should open one client for devices on the same bus that are added at the same time', async () => {
+      const config: RTUConfig = {
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'even',
+        stopBits: 1,
+        slaveId: 1,
+      }
+
+      await Promise.all([
+        manager.getTransport(config),
+        manager.getTransport({ ...config, slaveId: 2 }),
+      ])
+
+      const ModbusRTUMock = jest.requireMock('modbus-serial')
+      expect(ModbusRTUMock).toHaveBeenCalledTimes(1)
+      expect(manager.getStats().totalTransports).toBe(1)
+    })
+
     test('should return different SlaveTransport instances for different slave IDs sharing same client', async () => {
       const config1: RTUConfig = {
         port: '/dev/ttyUSB0',
@@ -629,6 +650,92 @@ describe('TransportManager', () => {
       await expect(manager.closeAll()).resolves.toBeUndefined()
     })
 
+    // For example when the bridge stops while it loads its devices
+    test('should close a client that is still opening when closeAll is called', async () => {
+      let finishOpening: () => void = () => undefined
+      mockClient1.connectRTUBuffered.mockReturnValue(
+        new Promise<void>((resolve) => {
+          finishOpening = resolve
+        })
+      )
+      const config: RTUConfig = {
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'even',
+        stopBits: 1,
+        slaveId: 1,
+      }
+
+      const transport = manager.getTransport(config)
+      await new Promise((resolve) => setImmediate(resolve))
+      const closed = manager.closeAll()
+      finishOpening()
+      await transport
+      await closed
+
+      expect(mockClient1.close).toHaveBeenCalledTimes(1)
+      expect(manager.getStats().totalTransports).toBe(0)
+    })
+
+    test('should also close a client that starts opening while closeAll waits', async () => {
+      const opens: (() => void)[] = []
+      for (const client of [mockClient1, mockClient2]) {
+        client.connectRTUBuffered.mockReturnValue(
+          new Promise<void>((resolve) => opens.push(resolve))
+        )
+      }
+      const config: RTUConfig = {
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'even',
+        stopBits: 1,
+        slaveId: 1,
+      }
+
+      const transport1 = manager.getTransport(config)
+      await new Promise((resolve) => setImmediate(resolve))
+      const closed = manager.closeAll()
+      const transport2 = manager.getTransport({ ...config, port: '/dev/ttyUSB1' })
+      await new Promise((resolve) => setImmediate(resolve))
+      // The first open finishes before the second one
+      opens[0]?.()
+      await transport1
+      await new Promise((resolve) => setImmediate(resolve))
+      opens[1]?.()
+      await Promise.all([transport2, closed])
+
+      expect(mockClient1.close).toHaveBeenCalledTimes(1)
+      expect(mockClient2.close).toHaveBeenCalledTimes(1)
+    })
+
+    // A connection that opens while the others close stays in the pool for the next closeAll
+    test('should keep a client that opens while closeAll closes the others', async () => {
+      const config: RTUConfig = {
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'even',
+        stopBits: 1,
+        slaveId: 1,
+      }
+      await manager.getTransport(config)
+      let finishClosing: () => void = () => undefined
+      mockClient1.close.mockImplementation((callback?: () => void) => {
+        finishClosing = () => callback?.()
+      })
+
+      const closed = manager.closeAll()
+      await manager.getTransport({ ...config, port: '/dev/ttyUSB1' })
+      finishClosing()
+      await closed
+
+      expect(manager.getStats().totalTransports).toBe(1)
+      await manager.closeAll()
+      expect(mockClient2.close).toHaveBeenCalledTimes(1)
+    })
+
     test('should close client only once even if shared by multiple slaves', async () => {
       const config1: RTUConfig = {
         port: '/dev/ttyUSB0',
@@ -941,6 +1048,122 @@ describe('TransportManager', () => {
       await expect(request).rejects.toMatchObject({ name: 'ConnectionLostError' })
       expect(mockClient2.close).toHaveBeenCalled()
       expect(mockClient2.readHoldingRegisters).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Ports that cannot be opened', () => {
+    const rtuConfig: RTUConfig = {
+      port: '/dev/ttyUSB0',
+      baudRate: 9600,
+      dataBits: 8,
+      parity: 'even',
+      stopBits: 1,
+      slaveId: 1,
+      maxRetries: 1,
+    }
+    const reading = { data: [1], buffer: Buffer.from([0x00, 0x01]) }
+    // The port was never open, so the message does not say that the connection was lost
+    const missing = {
+      name: 'ConnectionLostError',
+      message:
+        'Could not open /dev/ttyUSB0: Error: No such file or directory, cannot open /dev/ttyUSB0',
+    }
+
+    let now: number
+
+    beforeEach(() => {
+      now = 1_000_000
+      jest.spyOn(performance, 'now').mockImplementation(() => now)
+      // The USB adapter is missing at start, and is plugged in before the second attempt
+      mockClient1.connectRTUBuffered.mockRejectedValue(
+        new Error('Error: No such file or directory, cannot open /dev/ttyUSB0')
+      )
+      mockClient2.readHoldingRegisters.mockResolvedValue(reading)
+    })
+
+    afterEach(() => {
+      jest.restoreAllMocks()
+    })
+
+    // One-shot programs stop with a clear error
+    test('getTransport rejects by default', async () => {
+      await expect(manager.getTransport(rtuConfig)).rejects.toThrow(
+        'Error: No such file or directory, cannot open /dev/ttyUSB0'
+      )
+    })
+
+    test('getTransport tries to open the port again after it rejected', async () => {
+      await expect(manager.getTransport(rtuConfig)).rejects.toThrow()
+
+      const transport = await manager.getTransport(rtuConfig)
+
+      await expect(transport.readHoldingRegisters(0, 1)).resolves.toEqual(reading.buffer)
+      expect(mockClient2.connectRTUBuffered).toHaveBeenCalledTimes(1)
+    })
+
+    test('with startLost, devices added at the same time share one connection that opens once', async () => {
+      manager = new TransportManager({ startLost: true })
+
+      const [transport1, transport2] = await Promise.all([
+        manager.getTransport(rtuConfig),
+        manager.getTransport({ ...rtuConfig, slaveId: 2 }),
+      ])
+      expect(jest.requireMock('modbus-serial')).toHaveBeenCalledTimes(1)
+      expect(manager.getStats().totalTransports).toBe(1)
+      await expect(transport1.readHoldingRegisters(0, 1)).rejects.toMatchObject(missing)
+      await expect(transport2.readHoldingRegisters(0, 1)).rejects.toMatchObject(missing)
+
+      now += 1000
+      await expect(transport1.readHoldingRegisters(0, 1)).resolves.toEqual(reading.buffer)
+      await expect(transport2.readHoldingRegisters(0, 1)).resolves.toEqual(reading.buffer)
+      expect(jest.requireMock('modbus-serial')).toHaveBeenCalledTimes(2)
+    })
+
+    test('with startLost, devices on the port fail until a request after the backoff opens it', async () => {
+      manager = new TransportManager({ startLost: true })
+      const transport1 = await manager.getTransport(rtuConfig)
+      const transport2 = await manager.getTransport({ ...rtuConfig, slaveId: 2 })
+
+      now += 999
+      await expect(transport1.readHoldingRegisters(0, 1)).rejects.toMatchObject(missing)
+      await expect(transport2.readHoldingRegisters(0, 1)).rejects.toMatchObject(missing)
+      expect(mockClient1.connectRTUBuffered).toHaveBeenCalledTimes(1)
+      expect(mockClient2.connectRTUBuffered).not.toHaveBeenCalled()
+
+      now += 1
+      await expect(transport1.readHoldingRegisters(0, 1)).resolves.toEqual(reading.buffer)
+      await expect(transport2.readHoldingRegisters(0, 1)).resolves.toEqual(reading.buffer)
+      expect(mockClient2.connectRTUBuffered).toHaveBeenCalledTimes(1)
+      expect(mockClient2.connectRTUBuffered).toHaveBeenCalledWith('/dev/ttyUSB0', {
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'even',
+        stopBits: 1,
+      })
+    })
+
+    test('with startLost, closeAll stops a port that never opened from opening', async () => {
+      manager = new TransportManager({ startLost: true })
+      const transport = await manager.getTransport(rtuConfig)
+
+      await manager.closeAll()
+      now += 1000
+
+      await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject(missing)
+      expect(mockClient2.connectRTUBuffered).not.toHaveBeenCalled()
+    })
+
+    test('getConnectionError returns the error of a connection until it opens', async () => {
+      manager = new TransportManager({ startLost: true })
+      const transport = await manager.getTransport(rtuConfig)
+
+      // Devices on the same bus share the connection
+      expect(manager.getConnectionError({ ...rtuConfig, slaveId: 2 })).toMatchObject(missing)
+      expect(manager.getConnectionError({ host: '192.168.1.100', slaveId: 1 })).toBeUndefined()
+
+      now += 1000
+      await transport.readHoldingRegisters(0, 1)
+      expect(manager.getConnectionError(rtuConfig)).toBeUndefined()
     })
   })
 })

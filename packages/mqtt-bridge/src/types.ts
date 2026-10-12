@@ -105,13 +105,15 @@ export interface DeviceStatus {
    * - `connecting` - driver is loading
    * - `connected` - driver is loaded and the device is not in the `error` state
    * - `error` - `polling.maxRetries` consecutive reads failed (at least 1, so `0` works like
-   *   `1`); the bridge waits `polling.retryBackoff` ms between reads
+   *   `1`); the bridge waits `polling.retryBackoff` ms between reads. Also when the port is
+   *   not open when the device is added; the bridge polls it until a read works.
    *
    * State changes:
    *
    * - `disconnected` → `connecting` (device added and enabled)
    * - `connecting` → `connected` (driver loaded)
-   * - `connected` → `error` (`polling.maxRetries` consecutive failed reads)
+   * - `connected` → `error` (`polling.maxRetries` consecutive failed reads, or the port is
+   *   not open when the device is added)
    * - `error` → `connected` (next successful read)
    */
   state: 'connecting' | 'connected' | 'disconnected' | 'error'

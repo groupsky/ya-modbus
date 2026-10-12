@@ -367,6 +367,21 @@ export function createBridge(
               `This may indicate the device was removed during initialization.`
           )
         }
+
+        // A port that cannot be opened (USB adapter not plugged in) does not stop the bridge.
+        // The device is in error state until a poll opens the port and reads it.
+        const connectionError = driverLoader.getConnectionError(deviceConfig.connection)
+        if (connectionError) {
+          console.warn(
+            `Device ${deviceConfig.deviceId} is not connected, the bridge keeps trying to open ` +
+              `its port: ${connectionError.message}`
+          )
+          updateDeviceStatus(deviceConfig.deviceId, {
+            state: 'error',
+            errors: [connectionError.message],
+          })
+        }
+
         pollingScheduler.scheduleDevice(deviceConfig.deviceId, deviceConfig, driver)
       }
     },

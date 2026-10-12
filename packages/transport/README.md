@@ -100,6 +100,17 @@ Requests between the attempts reject with the last error. The delay also doubles
 opens but is lost again before a request succeeds. A successful request sets the delay back to
 1 second. `TransportManager` opens one new client for all devices on the bus.
 
+`createTransport` and `TransportManager.getTransport()` reject when the port cannot be opened,
+for example when a USB adapter is not plugged in. A long-running program can start anyway with
+`new TransportManager({ startLost: true })`. Then `getTransport()` returns the transport, and
+its connection starts lost with the error of the failed open. Requests reject with a
+`ConnectionLostError` with a message like
+`Could not open /dev/ttyUSB0: Error: No such file or directory, cannot open /dev/ttyUSB0`, until
+the port opens for the first time. The port is opened again after the same delays as above.
+`getConnectionError(config)` returns the error while the connection is lost, and `undefined`
+while it works. The MQTT bridge uses this, so one missing adapter does not stop the other
+devices.
+
 A short-lived program, like a CLI command, can stop at the first `ConnectionLostError`.
 
 ```typescript
@@ -142,6 +153,11 @@ const transport = createModbusTransport(connection)
 
 Without the `open` function, a lost connection works again only when you open the same client
 again.
+
+When the first `open()` fails, you can pass its error instead of the client:
+`new ModbusConnection(error, '/dev/ttyUSB0', open)`. The connection then starts lost with that
+error, and opens the port later in the same way. `connection.error` is the error while the
+connection is lost, and `undefined` while it works.
 
 ## License
 
