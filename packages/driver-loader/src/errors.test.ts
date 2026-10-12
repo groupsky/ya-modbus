@@ -33,6 +33,19 @@ describe('DriverNotFoundError', () => {
     expect(error.name).toBe('DriverNotFoundError')
     expect(error.packageName).toBe('ya-modbus-driver-test')
   })
+
+  test('should keep the error that caused it', () => {
+    const cause = new Error('Unexpected token')
+    const error = new DriverNotFoundError(
+      'Failed to load driver package',
+      'ya-modbus-driver-test',
+      {
+        cause,
+      }
+    )
+
+    expect(error.cause).toBe(cause)
+  })
 })
 
 describe('PackageJsonError', () => {

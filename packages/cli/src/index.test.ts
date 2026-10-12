@@ -135,8 +135,9 @@ describe('CLI Entry Point - Integration Tests', () => {
         Read data points from device
 
         Driver Options:
-          -d, --driver <package>  Driver package name (e.g., ya-modbus-driver-xymd1).
-                                  Use "show-defaults" to see driver config
+          -d, --driver <package>  Driver package name (e.g., ya-modbus-driver-xymd1) or
+                                  short name (e.g., xymd1). Use "show-defaults" to see
+                                  driver config
           --device <key>          Device key for multi-device drivers. Use
                                   "list-devices" to see available devices
 
@@ -421,8 +422,9 @@ describe('CLI Entry Point - Integration Tests', () => {
         Write data point to device
 
         Driver Options:
-          -d, --driver <package>  Driver package name (e.g., ya-modbus-driver-xymd1).
-                                  Use "show-defaults" to see driver config
+          -d, --driver <package>  Driver package name (e.g., ya-modbus-driver-xymd1) or
+                                  short name (e.g., xymd1). Use "show-defaults" to see
+                                  driver config
           --device <key>          Device key for multi-device drivers. Use
                                   "list-devices" to see available devices
 
@@ -661,8 +663,8 @@ describe('CLI Entry Point - Integration Tests', () => {
         Show driver DEFAULT_CONFIG and SUPPORTED_CONFIG
 
         Driver Options:
-          -d, --driver <package>  Driver package (auto-detects from cwd if not
-                                  specified)
+          -d, --driver <package>  Driver package name or short name, e.g. xymd1
+                                  (auto-detects from cwd if not specified)
 
         Output Options:
           -f, --format <type>     Output format: table or json (default: table)
@@ -788,8 +790,8 @@ describe('CLI Entry Point - Integration Tests', () => {
         List supported devices from driver DEVICES registry
 
         Driver Options:
-          -d, --driver <package>  Driver package (auto-detects from cwd if not
-                                  specified)
+          -d, --driver <package>  Driver package name or short name, e.g. xymd1
+                                  (auto-detects from cwd if not specified)
 
         Output Options:
           -f, --format <type>     Output format: table or json (default: table)
@@ -882,8 +884,8 @@ describe('CLI Entry Point - Integration Tests', () => {
           -p, --port <path>       Serial port for RTU (e.g., /dev/ttyUSB0, COM3)
 
         Driver Options:
-          -d, --driver <package>  Driver package (auto-detects from cwd if not
-                                  specified)
+          -d, --driver <package>  Driver package name or short name, e.g. xymd1
+                                  (auto-detects from cwd if not specified)
 
         Discovery Options:
           --strategy <type>       Discovery strategy: quick (driver params) or thorough

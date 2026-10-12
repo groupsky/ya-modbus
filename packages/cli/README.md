@@ -282,7 +282,7 @@ ya-modbus discover \
 - `--strategy <type>` - Discovery strategy: `quick` (default) or `thorough`
   - **Quick**: Tests SUPPORTED_CONFIG params or common Modbus parameters
   - **Thorough**: Tests all standard Modbus parameters (8 baud rates, 3 parity modes, 2 data bit and 2 stop bit options, 247 addresses)
-- `--driver <package>` - Driver package to use for parameter prioritization (auto-detects from cwd if not specified)
+- `--driver <package>` - Driver package name or short name (for example `xymd1`) to use for parameter prioritization (auto-detects from cwd if not specified)
 - `--timeout <ms>` - Response timeout in milliseconds (default: 1000)
 - `--delay <ms>` - Delay between attempts in milliseconds (default: 100). After an attempt that does not find a device, only `delay - timeout` ms are added, so a value at or below `--timeout` adds no wait
 - `--max-devices <count>` - Maximum number of devices to find (default: 1, use 0 for unlimited)
@@ -354,7 +354,7 @@ Use either `--port` (RTU) or `--host` (TCP), not both. The command fails with an
 
 - `--slave-id <id>` - Modbus slave ID (1-247) **(required)**
 - `--timeout <ms>` - Response timeout in milliseconds (default: 1000)
-- `--driver <package>` - Explicit driver package name
+- `--driver <package>` - Driver package name or short name (for example `xymd1`)
 - `--device <key>` - Device key for multi-device drivers (use `list-devices` to see available devices)
 
 ### Driver Loading
@@ -377,6 +377,21 @@ ya-modbus read \
   --slave-id 1 \
   --data-point temperature
 ```
+
+**Short driver name:**
+
+A plain lowercase name such as `xymd1` is a short name. The CLI tries `@ya-modbus/driver-<name>`, then `ya-modbus-driver-<name>`, then a package called `<name>`:
+
+```bash
+# Same as --driver @ya-modbus/driver-xymd1
+ya-modbus read \
+  --driver xymd1 \
+  --port /dev/ttyUSB0 \
+  --slave-id 1 \
+  --data-point temperature
+```
+
+Anything else (scoped names, `ya-modbus-driver-*` names, paths) is used as given.
 
 ### Driver Defaults and Validation
 
