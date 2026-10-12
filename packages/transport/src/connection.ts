@@ -132,6 +132,9 @@ export class ModbusConnection {
     this.lostError = connectionLostError(this.target, cause)
     this.delayReopen()
     for (const reject of this.inFlight) reject(this.lostError)
+    // serialport closes the port on a disconnect. A port that is still open keeps
+    // its lock, and the reopen would fail.
+    if (client.isOpen) client.close(() => undefined)
   }
 
   /** Set the time of the next reopen attempt, and wait longer after that one */

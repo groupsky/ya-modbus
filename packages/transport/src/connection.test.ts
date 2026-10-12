@@ -53,6 +53,20 @@ test('works again with a client that its owner opens again', async () => {
   await expect(connection.run(read)).resolves.toEqual(Buffer.from([0, 1]))
 })
 
+// An open client would keep the lock on the serial port, so the reopen would fail
+test.each([
+  { isOpen: true, closes: 'closes' },
+  { isOpen: false, closes: 'does not close' },
+])('$closes a lost client when isOpen is $isOpen', ({ isOpen }) => {
+  const client = createClient()
+  new ModbusConnection(client, '/dev/ttyUSB0', jest.fn())
+
+  client.isOpen = isOpen
+  client.emit('error', new Error('EIO: i/o error, write'))
+
+  expect(client.close).toHaveBeenCalledTimes(isOpen ? 1 : 0)
+})
+
 // A device that does not answer is not a lost port: the client stays open
 test('keeps the client after a response timeout', async () => {
   let now = 0
