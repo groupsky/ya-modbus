@@ -6,7 +6,7 @@ Example configuration files for the MQTT bridge.
 
 ### basic-config.json
 
-Minimal configuration with only the required MQTT broker URL.
+Minimal configuration with only the MQTT broker URL.
 
 ```bash
 ya-modbus-bridge run --config examples/basic-config.json
@@ -22,27 +22,16 @@ ya-modbus-bridge run --config examples/full-config.json
 
 ## Configuration Options
 
-### Required
-
-- `mqtt.url`: MQTT broker URL (mqtt://, mqtts://, ws://, wss://)
-
-### Optional
-
-- `mqtt.clientId`: MQTT client identifier
-- `mqtt.username`: MQTT authentication username
-- `mqtt.password`: MQTT authentication password
-- `mqtt.reconnectPeriod`: Reconnection interval in milliseconds (default: 5000)
-- `topicPrefix`: Topic prefix for all MQTT topics (default: "modbus")
-- `stateDir`: Directory path for state persistence
+See the [package README](../README.md#configuration-file) for all options, their defaults and their ranges.
 
 ## Security Best Practices
 
 ⚠️ **Never commit credentials to version control!**
 
 - Replace placeholder values (`<your-username>`, `<your-password>`) with actual credentials
-- Use environment variables for sensitive data in production
+- Make the config file readable only by the user that runs the bridge (`chmod 600`)
 - Keep configuration files with real credentials in `.gitignore`
-- Prefer passing credentials via CLI flags or environment variables
+- Put credentials in the config file. Other users can see CLI flags such as `--mqtt-password` in the process list
 - Use TLS/SSL (`mqtts://` or `wss://`) for production deployments
 
 ## CLI Overrides

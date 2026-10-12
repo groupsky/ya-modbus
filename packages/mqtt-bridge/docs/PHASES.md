@@ -1,8 +1,8 @@
 # MQTT Bridge Development Phases
 
-This document outlines the planned development phases for the MQTT bridge package.
+This document lists the development phases of the MQTT bridge package and the status of each.
 
-## Phase 1: Foundation (COMPLETED ✅)
+## Phase 1: Foundation (COMPLETED ✅, PR #86)
 
 **Goal**: Establish core bridge infrastructure
 
@@ -20,85 +20,23 @@ This document outlines the planned development phases for the MQTT bridge packag
 
 ---
 
-## Phase 2: Driver Integration (NEXT)
+## Phase 2: Driver Integration (COMPLETED ✅, PR #90)
 
 **Goal**: Connect devices to actual Modbus hardware via drivers
 
-**Key Features**:
+**Completed Features**:
 
-- Dynamic driver loading from npm packages
-- Driver lifecycle management (connect/disconnect)
-- Polling coordination across devices
-- Data point reading via driver interface
-- Data transformation and publishing to MQTT
-- Error handling and reconnection logic
+- ✅ Dynamic driver loading from npm packages, with validation of the package name (`src/driver-loader.ts`)
+- ✅ Device lifecycle: the driver is loaded on `addDevice()` and unloaded on `removeDevice()`. Device states: `disconnected`, `connecting`, `connected`, `error` (`src/device-manager.ts`, PR #537)
+- ✅ Shared transports, so devices on one serial port or TCP host and port do not collide (`TransportManager` in `@ya-modbus/transport`)
+- ✅ Polling of all devices with per-device intervals. A failed read does not stop the scheduler, and polling slows down to `retryBackoff` after repeated failures (`src/polling-scheduler.ts`)
+- ✅ Continuous polling mode (PR #383)
+- ✅ Data publishing to `{topicPrefix}/{deviceId}/data` and state publishing to `{topicPrefix}/{deviceId}/status` (`src/index.ts`)
+- ✅ Devices in the config file are loaded on startup (`src/cli.ts`, PR #341, PR #352)
+- ✅ MQTT reconnection with automatic resubscription (`src/index.ts`)
+- ✅ Unit tests with mocked drivers, reconnection tests with a mocked MQTT client (`src/index.reconnect.test.ts`) and integration tests with an Aedes MQTT broker (`src/index.integration.test.ts`, `src/cli.integration.test.ts`)
 
-**Implementation Tasks**:
-
-### 2.1 Driver Loading
-
-- Load driver packages dynamically using `import()`
-- Validate driver implements `ModbusDriver` interface
-- Cache loaded drivers for reuse
-- Handle driver loading errors
-
-### 2.2 Device Connection
-
-- Update `DeviceManager` to manage driver instances
-- Connect devices on `addDevice()`
-- Disconnect devices on `removeDevice()`
-- Track connection state (connecting/connected/disconnected/error)
-- Implement reconnection logic for failed connections
-
-### 2.3 Polling System
-
-- Create `PollingScheduler` class
-- Support per-device polling intervals
-- Coordinate polling to avoid bus conflicts (RTU)
-- Handle polling errors without stopping scheduler
-- Implement backoff for consecutive failures
-
-### 2.4 Data Publishing
-
-- Read data points from drivers
-- Transform driver data to MQTT payloads
-- Publish to `modbus/{deviceId}/data` topic
-- Include timestamps and metadata
-- Handle publish failures gracefully
-
-### 2.5 Testing
-
-- Mock driver interface for tests
-- Test driver loading and lifecycle
-- Test polling coordination
-- Test data transformation
-- Test error scenarios
-
-### 2.6 Integration Tests
-
-- Set up Aedes MQTT broker for integration testing
-- Test full MQTT bridge lifecycle (connect, publish, subscribe, disconnect)
-- Test CLI signal handlers (SIGTERM, SIGINT) with real process
-- Test MQTT reconnection and resubscription behavior
-- Test end-to-end device data flow (driver → bridge → MQTT)
-- Test concurrent device operations
-- Test bridge behavior under network failures
-- Test message handler error handling with real MQTT messages
-
-**Dependencies**:
-
-- `@ya-modbus/driver-types` (already added)
-- `@ya-modbus/driver-sdk` (already added)
-
-**Files to Modify**:
-
-- `src/device-manager.ts` - Add driver loading and instance management
-- `src/index.ts` - Integrate polling and data publishing
-- `src/types.ts` - Add polling configuration types
-- Add `src/polling-scheduler.ts` - New polling coordinator
-- Add `src/driver-loader.ts` - Dynamic driver loading
-
-**Estimated Complexity**: High (2-3 weeks)
+**Status**: Merged and production-ready
 
 ---
 
@@ -172,20 +110,16 @@ This document outlines the planned development phases for the MQTT bridge packag
 
 - `src/index.ts` - Integrate state manager and config handler
 - `src/types.ts` - Add state and config types
-- `src/config.ts` - Support state directory configuration
+- `src/utils/config.ts` - Use the state directory configuration
 
-### 3.4 Systemd Integration
+### 3.4 Systemd Integration (partly completed)
 
-- Create systemd service unit file
-- Support running as system service
-- Automatic restart on failure
-- Logging to journald
-- Service management (start/stop/restart/status)
+- ✅ Systemd service unit file with automatic restart on failure and logging to journald (`systemd/ya-modbus-bridge.service`, PR #157)
+- ✅ Installation guide and example config and environment files (`systemd/INSTALL.md`, `systemd/config.json.example`, `systemd/environment.example`)
 - Install/uninstall scripts
 
 **Files to Create**:
 
-- `systemd/ya-modbus-bridge.service` - Systemd unit file
 - `scripts/install-service.sh` - Service installation script
 - `scripts/uninstall-service.sh` - Service removal script
 
@@ -226,7 +160,7 @@ This document outlines the planned development phases for the MQTT bridge packag
 ### Testing Requirements
 
 - Maintain 95% test coverage for all phases
-- Add integration tests in Phase 2
+- Cover MQTT flows with integration tests that use an Aedes broker
 - Mock external dependencies (drivers, filesystem, MQTT)
 - Test error scenarios thoroughly
 
@@ -248,13 +182,13 @@ This document outlines the planned development phases for the MQTT bridge packag
 ## Current Status
 
 **Phase 1**: ✅ Complete (PR #86)
-**Phase 2**: 📋 Ready to start
-**Phase 3**: 📅 Planned
+**Phase 2**: ✅ Complete (PR #90)
+**Phase 3**: 📅 Planned (3.4 is partly completed)
 **Phase 4**: 💭 Future consideration
 
-## Next Steps
+## Open Work
 
-1. Review and approve Phase 1 PR
-2. Create Phase 2 implementation plan
-3. Begin driver integration work
-4. Set up integration test environment with actual Modbus devices/simulators
+1. State persistence (3.1)
+2. MQTT configuration topics (3.2)
+3. Bridge status publishing (3.3)
+4. Install/uninstall scripts for the systemd service (3.4)
