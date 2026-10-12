@@ -62,7 +62,7 @@ From the package directory:
 # Log in to npm (if not already authenticated)
 npm login
 
-# Build the package
+# Build the package (skip for packages without a build script, such as bin-only wrappers)
 npm run build
 
 # Publish with public access (required for scoped packages)
@@ -82,6 +82,10 @@ After the package exists on npm:
    - **Repository name**: Your repository name
    - **Workflow file**: `release.yml`
    - **Environment**: `npm`
+4. Allow direct publishing (`npm publish`). The release workflow does not use staged publishing, and configurations created after 2026-09-03 allow only staged publishing by default
+5. Configure it shortly before merging: a new configuration expires if its first successful publish does not happen within 2 days
+
+Unscoped packages (for example the `npx` wrappers described in `docs/agents/package-creation.md`) follow the same steps.
 
 ### Step 3: Verify Automated Publishing
 

@@ -52,7 +52,7 @@ List any known limitations:
 Use the `ya-modbus-profile` CLI to scan your device and attach the generated profile:
 
 ```bash
-npx @ya-modbus/device-profiler --port /dev/ttyUSB0 --slave-id 1 --output profile.json
+npx ya-modbus-profile --port /dev/ttyUSB0 --slave-id 1 --output profile.json
 ```
 
 - [ ] Device profile attached

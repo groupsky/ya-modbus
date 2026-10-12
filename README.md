@@ -27,6 +27,15 @@
 npm install -g @ya-modbus/cli
 ```
 
+Or run a tool without installing it. Each command has a short package name:
+
+| Command                  | Runs                         |
+| ------------------------ | ---------------------------- |
+| `npx ya-modbus`          | `@ya-modbus/cli`             |
+| `npx ya-modbus-bridge`   | `@ya-modbus/mqtt-bridge`     |
+| `npx ya-modbus-emulator` | `@ya-modbus/emulator`        |
+| `npx ya-modbus-profile`  | `@ya-modbus/device-profiler` |
+
 ### Basic Usage
 
 ```bash

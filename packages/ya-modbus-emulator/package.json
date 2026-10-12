@@ -1,0 +1,39 @@
+{
+  "name": "ya-modbus-emulator",
+  "version": "0.0.0",
+  "description": "Short name for @ya-modbus/emulator so that `npx ya-modbus-emulator` works",
+  "keywords": [
+    "modbus",
+    "emulator",
+    "npx"
+  ],
+  "license": "GPL-3.0-or-later",
+  "author": "Geno Roupsky <185580+groupsky@users.noreply.github.com>",
+  "type": "module",
+  "bin": {
+    "ya-modbus-emulator": "./bin/ya-modbus-emulator.js"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/groupsky/ya-modbus.git",
+    "directory": "packages/ya-modbus-emulator"
+  },
+  "homepage": "https://github.com/groupsky/ya-modbus/tree/main/packages/ya-modbus-emulator#readme",
+  "bugs": {
+    "url": "https://github.com/groupsky/ya-modbus/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@ya-modbus/emulator": "^0.14.2"
+  }
+}
