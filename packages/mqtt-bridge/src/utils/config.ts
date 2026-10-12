@@ -1,37 +1,17 @@
 import { readFile } from 'node:fs/promises'
 
-import { z } from 'zod'
-
 import type { MqttBridgeConfig } from '../types.js'
 
-import { deviceConfigSchema } from './device-validation.js'
+import { mqttBridgeConfigSchema, mqttConfigSchema, mqttUrlSchema } from './config-schema.js'
 
-const mqttConfigSchema = z.object({
-  url: z
-    .string()
-    .url()
-    .regex(/^(mqtt|mqtts|ws|wss):\/\//, {
-      message: 'URL must start with mqtt://, mqtts://, ws://, or wss://',
-    })
-    .default('mqtt://localhost:1883'),
-  clientId: z.string().optional(),
-  username: z.string().optional(),
-  password: z.string().optional(),
-  reconnectPeriod: z.number().int().positive().optional(),
-})
+const DEFAULT_MQTT_URL = 'mqtt://localhost:1883'
 
-const mqttBridgeConfigSchema = z.object({
-  mqtt: mqttConfigSchema.default({ url: 'mqtt://localhost:1883' }),
-  stateDir: z.string().optional(),
-  topicPrefix: z
-    .string()
-    // eslint-disable-next-line no-control-regex
-    .regex(/^[^+#/$\x00]+$/, {
-      message:
-        'Topic prefix must not contain MQTT special characters (+, #, /, $) or null character',
-    })
-    .optional(),
-  devices: z.array(deviceConfigSchema).optional(),
+// A config file can leave out the MQTT section or its URL. Options from the command line are
+// merged in afterwards, so only the file gets these defaults.
+const configFileSchema = mqttBridgeConfigSchema.extend({
+  mqtt: mqttConfigSchema
+    .extend({ url: mqttUrlSchema.default(DEFAULT_MQTT_URL) })
+    .default({ url: DEFAULT_MQTT_URL }),
 })
 
 export async function loadConfig(configPath: string): Promise<MqttBridgeConfig> {
@@ -39,7 +19,7 @@ export async function loadConfig(configPath: string): Promise<MqttBridgeConfig> 
   const json = JSON.parse(content) as unknown
 
   /* istanbul ignore next - defensive: JSON.parse never returns null */
-  const result = mqttBridgeConfigSchema.safeParse(json === null ? {} : json)
+  const result = configFileSchema.safeParse(json === null ? {} : json)
 
   if (!result.success) {
     const errors = result.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')

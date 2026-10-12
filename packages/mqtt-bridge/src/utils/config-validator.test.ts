@@ -67,6 +67,20 @@ describe('validateConfig', () => {
     expect(() => validateConfig(config)).toThrow('Invalid configuration')
   })
 
+  it('should accept reconnectPeriod of 24 hours', () => {
+    const config = { mqtt: { url: 'mqtt://localhost:1883', reconnectPeriod: 86400000 } }
+
+    expect(() => validateConfig(config)).not.toThrow()
+  })
+
+  // The MQTT client sets a timer with this value. setTimeout runs delays above 2^31-1 ms after
+  // 1 ms, which would make the client reconnect in a tight loop.
+  it.each([86400001, 2 ** 31 - 1, 2 ** 31])('should reject reconnectPeriod of %p ms', (ms) => {
+    const config = { mqtt: { url: 'mqtt://localhost:1883', reconnectPeriod: ms } }
+
+    expect(() => validateConfig(config)).toThrow('Reconnect period must not exceed 24 hours')
+  })
+
   it('should validate config with devices array', () => {
     const config = {
       mqtt: {
@@ -168,5 +182,39 @@ describe('validateConfig', () => {
 
     expect(() => validateConfig(config)).toThrow('Invalid configuration')
     expect(() => validateConfig(config)).toThrow('driver')
+  })
+
+  it.each(['a/b', 'a+', 'a#', '$SYS', 'a\u0000b'])(
+    'should throw error for topicPrefix with MQTT special characters: %j',
+    (topicPrefix) => {
+      const config = { mqtt: { url: 'mqtt://localhost:1883' }, topicPrefix }
+
+      expect(() => validateConfig(config)).toThrow('Topic prefix must not contain MQTT special')
+    }
+  )
+
+  // The error has to name the invalid device, not only the field
+  it('should name the invalid device when only one of several devices is invalid', () => {
+    const rtuDevice = (
+      deviceId: string
+    ): { deviceId: string; driver: string; connection: object } => ({
+      deviceId,
+      driver: '@ya-modbus/driver-ex9em',
+      connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+    })
+    const config = {
+      mqtt: { url: 'mqtt://localhost:1883' },
+      devices: [rtuDevice('device1'), rtuDevice('device+2'), rtuDevice('device3')],
+    }
+
+    expect(() => validateConfig(config)).toThrow(
+      /devices\.1\.deviceId: Device ID must not contain MQTT special characters/
+    )
+    expect(() => validateConfig(config)).not.toThrow(/devices\.[02]\./)
+  })
+
+  // Unlike loadConfig, validateConfig checks the merged config as it is and fills in nothing
+  it('should throw error when mqtt.url is missing', () => {
+    expect(() => validateConfig({ mqtt: {} })).toThrow('mqtt.url')
   })
 })

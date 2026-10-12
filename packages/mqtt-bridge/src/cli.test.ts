@@ -514,6 +514,7 @@ describe('CLI - ya-modbus-bridge', () => {
 
       expect(mockBridge.start).toHaveBeenCalled()
       expect(mockBridge.addDevice).not.toHaveBeenCalled()
+      expect(consoleLogSpy).not.toHaveBeenCalledWith(expect.stringContaining('device(s)'))
     })
 
     it('should handle device loading errors gracefully', async () => {
@@ -546,6 +547,173 @@ describe('CLI - ya-modbus-bridge', () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('Error:'),
         'Failed to load driver'
+      )
+      expect(processUtils.exit).toHaveBeenCalledWith(1)
+    })
+
+    const rtuDevice = (
+      deviceId: string,
+      slaveId = 1
+    ): { deviceId: string; driver: string; connection: object } => ({
+      deviceId,
+      driver: '@ya-modbus/driver-ex9em',
+      connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId },
+    })
+
+    const loadingMessages = (): string[] =>
+      consoleLogSpy.mock.calls
+        .map((call) => String(call[0]))
+        .filter((message) => /device/.test(message))
+
+    // The first device of a serial port opens the transport that the next ones share, so the
+    // devices have to load one after another in the order of the config
+    it.each([3, 12])('should load %p devices one after another in config order', async (count) => {
+      const devices = Array.from({ length: count }, (_, i) => rtuDevice(`device${i + 1}`, i + 1))
+      const events: string[] = []
+      mockBridge.addDevice = jest.fn(async (device: { deviceId: string }) => {
+        events.push(`start ${device.deviceId}`)
+        // Gives a parallel load the chance to start before this one is done
+        await new Promise((resolve) => setImmediate(resolve))
+        events.push(`end ${device.deviceId}`)
+      })
+      jest
+        .mocked(configModule.loadConfig)
+        .mockResolvedValue({ mqtt: { url: 'mqtt://localhost:1883' }, devices } as any)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(events).toEqual(
+        devices.flatMap((device) => [`start ${device.deviceId}`, `end ${device.deviceId}`])
+      )
+      expect(processUtils.exit).not.toHaveBeenCalled()
+    })
+
+    it('should report the number of devices and each loaded device', async () => {
+      mockBridge.addDevice = jest.fn().mockResolvedValue(undefined)
+      jest.mocked(configModule.loadConfig).mockResolvedValue({
+        mqtt: { url: 'mqtt://localhost:1883' },
+        devices: [rtuDevice('device1'), rtuDevice('device2', 2)],
+      } as any)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(loadingMessages()).toEqual([
+        expect.stringContaining('Loading 2 device(s) from configuration...'),
+        expect.stringContaining('✓ Loaded device: device1'),
+        expect.stringContaining('✓ Loaded device: device2'),
+      ])
+      expect(mockBridge.stop).not.toHaveBeenCalled()
+    })
+
+    it('should stop loading at the first device that fails and exit with 1', async () => {
+      mockBridge.addDevice = jest
+        .fn()
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error('Failed to load driver'))
+      jest.mocked(configModule.loadConfig).mockResolvedValue({
+        mqtt: { url: 'mqtt://localhost:1883' },
+        devices: [rtuDevice('device1'), rtuDevice('device2', 2), rtuDevice('device3', 3)],
+      } as any)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(mockBridge.addDevice).toHaveBeenCalledTimes(2)
+      expect(mockBridge.addDevice).toHaveBeenNthCalledWith(2, rtuDevice('device2', 2))
+      expect(loadingMessages()).toEqual([
+        expect.stringContaining('Loading 3 device(s) from configuration...'),
+        expect.stringContaining('✓ Loaded device: device1'),
+      ])
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error:'),
+        'Failed to load driver'
+      )
+      expect(processUtils.exit).toHaveBeenCalledWith(1)
+    })
+
+    // The devices that loaded keep their serial ports and the MQTT connection open until the
+    // bridge stops, so the bridge has to stop before the process exits
+    it('should stop the bridge before exiting when a device fails to load', async () => {
+      const events: string[] = []
+      mockBridge.addDevice = jest.fn().mockRejectedValue(new Error('Failed to load driver'))
+      mockBridge.stop.mockImplementation(async () => {
+        await new Promise((resolve) => setImmediate(resolve))
+        events.push('stopped')
+      })
+      jest.mocked(processUtils.exit).mockImplementationOnce((code) => {
+        events.push(`exit ${code}`)
+      })
+      jest.mocked(configModule.loadConfig).mockResolvedValue({
+        mqtt: { url: 'mqtt://localhost:1883' },
+        devices: [rtuDevice('device1')],
+      } as any)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(events).toEqual(['stopped', 'exit 1'])
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error:'),
+        'Failed to load driver'
+      )
+    })
+
+    it('should report the device error and exit with 1 when stopping the bridge fails too', async () => {
+      mockBridge.addDevice = jest.fn().mockRejectedValue(new Error('Failed to load driver'))
+      mockBridge.stop.mockRejectedValue(new Error('Failed to close port'))
+      jest.mocked(configModule.loadConfig).mockResolvedValue({
+        mqtt: { url: 'mqtt://localhost:1883' },
+        devices: [rtuDevice('device1')],
+      } as any)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Shutdown error:'),
+        expect.objectContaining({ message: 'Failed to close port' })
+      )
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error:'),
+        'Failed to load driver'
+      )
+      expect(processUtils.exit).toHaveBeenCalledTimes(1)
+      expect(processUtils.exit).toHaveBeenCalledWith(1)
+    })
+
+    it('should not load devices when the bridge fails to start', async () => {
+      mockBridge.start.mockRejectedValue(new Error('Connection refused'))
+      mockBridge.addDevice = jest.fn().mockResolvedValue(undefined)
+      jest.mocked(configModule.loadConfig).mockResolvedValue({
+        mqtt: { url: 'mqtt://localhost:1883' },
+        devices: [rtuDevice('device1'), rtuDevice('device2', 2)],
+      } as any)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(mockBridge.addDevice).not.toHaveBeenCalled()
+      expect(loadingMessages()).toEqual([])
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error:'),
+        'Connection refused'
+      )
+      expect(processUtils.exit).toHaveBeenCalledWith(1)
+    })
+
+    // The config is validated before the bridge connects, so no device loads when one of them
+    // is invalid. The error names the position of the invalid device.
+    it('should reject an invalid device before the bridge starts', async () => {
+      mockBridge.addDevice = jest.fn().mockResolvedValue(undefined)
+      jest.mocked(configModule.loadConfig).mockResolvedValue({
+        mqtt: { url: 'mqtt://localhost:1883' },
+        devices: [rtuDevice('device1'), rtuDevice(''), rtuDevice('device3', 3)],
+      } as any)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(indexModule.createBridge).not.toHaveBeenCalled()
+      expect(mockBridge.start).not.toHaveBeenCalled()
+      expect(mockBridge.addDevice).not.toHaveBeenCalled()
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error:'),
+        expect.stringContaining('devices.1.deviceId: Device ID must not be empty')
       )
       expect(processUtils.exit).toHaveBeenCalledWith(1)
     })
