@@ -20,11 +20,12 @@ export interface TcpTransportConfig {
  * Every start() creates a new ServerTCP and never reuses an earlier one, so listeners added
  * to it cannot pile up across start/stop cycles. stop() forgets the server once it is closed.
  *
- * start() and stop() remove the 'initialized' and 'error' listeners they added. The listeners
- * that modbus-serial registers on its own net.Server and sockets are not reachable from here,
- * and its close() removes only the 'data' listener. They are released together with the server
- * once nothing references it. Reusing a server instance would also require removing them
- * (see #253).
+ * start() and stop() remove the 'initialized' and 'error' listeners they added. The 'error'
+ * listener stays on a running server until it is closed, so a later 'error' event is logged.
+ * The listeners that modbus-serial registers on its own net.Server and sockets are not
+ * reachable from here, and its close() removes only the 'data' listener. They are released
+ * together with the server once nothing references it. Reusing a server instance would also
+ * require removing them (see #253).
  */
 export class TcpTransport extends BaseTransport {
   private config: TcpTransportConfig
@@ -77,8 +78,9 @@ export class TcpTransport extends BaseTransport {
         delete this.initReject
         clearTimeout(this.initTimeout)
         delete this.initTimeout
+        // Keep the 'error' listener: without it an error of the running server is thrown
+        // as an uncaught exception (issue #544). stop() removes it.
         EventEmitter.prototype.removeAllListeners.call(server, 'initialized')
-        EventEmitter.prototype.removeAllListeners.call(server, 'error')
         this.started = true
         resolve()
       })
@@ -113,7 +115,10 @@ export class TcpTransport extends BaseTransport {
     // This ensures 'initialized' can't fire after we reject the Promise
     if (this.server) {
       EventEmitter.prototype.removeAllListeners.call(this.server, 'initialized')
-      EventEmitter.prototype.removeAllListeners.call(this.server, 'error')
+      // A running server keeps its 'error' listener until it is closed
+      if (!this.started) {
+        EventEmitter.prototype.removeAllListeners.call(this.server, 'error')
+      }
     }
 
     // If initialization is pending, reject it
@@ -133,15 +138,17 @@ export class TcpTransport extends BaseTransport {
     }
 
     return new Promise<void>((resolve, reject) => {
-      if (!this.server) {
+      const server = this.server
+      if (!server) {
         resolve()
         return
       }
 
-      this.server.close((err) => {
+      server.close((err) => {
         if (err) {
           reject(err)
         } else {
+          EventEmitter.prototype.removeAllListeners.call(server, 'error')
           this.started = false
           delete this.server
           resolve()

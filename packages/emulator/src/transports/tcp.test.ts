@@ -15,7 +15,6 @@ let capturedServiceVector: any = null
 // Mock server instance - needs to be declared before the mock
 let mockServerInstance: any
 let initializedListener: (() => void) | undefined
-let errorListener: ((err: Error) => void) | undefined
 let eventListeners: Map<string, Set<(...args: unknown[]) => void>>
 // Track removeAllListeners calls across all mock instances
 let allRemoveAllListenersCalls: Array<{ event?: string }> = []
@@ -29,7 +28,6 @@ jest.mock('modbus-serial', () => {
 
       // Reset listeners
       initializedListener = undefined
-      errorListener = undefined
       eventListeners = new Map()
 
       // Create mock instance
@@ -38,8 +36,6 @@ jest.mock('modbus-serial', () => {
         on: jest.fn((event: string, listener: any) => {
           if (event === 'initialized') {
             initializedListener = listener
-          } else if (event === 'error') {
-            errorListener = listener
           }
           // Track listeners
           if (!eventListeners.has(event)) {
@@ -145,40 +141,28 @@ describe('TcpTransport', () => {
     })
 
     it('should not accumulate event listeners after repeated start/stop cycles', async () => {
-      // This test verifies the fix for issue #253: Event listener memory leak
-      // Before the fix, listeners are never removed during stop()
-      // Each start() adds listeners, so repeated cycles on the same server accumulate them
+      // Issue #253: every start() creates a new server, so nothing piles up on one server.
+      // A running server keeps only the 'error' listener (issue #544).
+      const { ServerTCP } = await import('modbus-serial')
 
-      // Track listener counts across multiple transports using the same mock server
-      const listenerCounts: number[] = []
-
-      // Run 5 start/stop cycles
       for (let i = 0; i < 5; i++) {
+        const server = createEmitterServer()
+        ;(ServerTCP as any).mockImplementationOnce(() => {
+          setImmediate(() => server.emit('initialized'))
+          return server
+        })
+
         transport = new TcpTransport({ host: 'localhost', port: 502 })
         await transport.start()
 
-        // Record listener count after start
-        const count =
-          mockServerInstance.listenerCount('initialized') +
-          mockServerInstance.listenerCount('error')
-        listenerCounts.push(count)
+        expect(server.listenerCount('initialized')).toBe(0)
+        expect(server.listenerCount('error')).toBe(1)
 
         await transport.stop()
+
+        expect(server.listenerCount('initialized')).toBe(0)
+        expect(server.listenerCount('error')).toBe(0)
       }
-
-      // After the fix: all cycles should have the same listener count (2 listeners per cycle)
-      // Before the fix: listener count would grow with each cycle
-      const EXPECTED_LISTENERS_PER_CYCLE = 2 // 'initialized' + 'error'
-      const CYCLE_COUNT = 5
-
-      // Verify listener counts remain constant (primary regression test)
-      expect(listenerCounts).toEqual(Array(CYCLE_COUNT).fill(EXPECTED_LISTENERS_PER_CYCLE))
-
-      // Verify no listener accumulation - the most important behavior
-      const minCount = Math.min(...listenerCounts)
-      const maxCount = Math.max(...listenerCounts)
-      expect(maxCount).toBe(minCount) // All counts should be equal (no growth)
-      expect(maxCount).toBe(EXPECTED_LISTENERS_PER_CYCLE) // Should match expected count
     })
   })
 
@@ -328,20 +312,34 @@ describe('TcpTransport', () => {
       await testTransport.start()
 
       await expect(testTransport.stop()).rejects.toThrow('Failed to close server')
+
+      // The server is still running, so it keeps its 'error' listener
+      expect(server.listenerCount('error')).toBe(1)
     })
 
-    it('should handle error event', async () => {
+    it('should log server errors that occur after start() succeeded', async () => {
+      // Issue #544: the success path removed the 'error' listener, so a later 'error' event
+      // had no listener and EventEmitter threw it as an uncaught exception. The emitter
+      // removes listeners like the real server; a mock that keeps removed listeners hides this.
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+      try {
+        const { ServerTCP } = await import('modbus-serial')
+        const server = createEmitterServer()
+        ;(ServerTCP as any).mockImplementationOnce(() => {
+          setImmediate(() => server.emit('initialized'))
+          return server
+        })
 
-      transport = new TcpTransport({ host: 'localhost', port: 502 })
-      await transport.start()
+        transport = new TcpTransport({ host: 'localhost', port: 502 })
+        await transport.start()
 
-      // Trigger error event
-      const testError = new Error('TCP server error')
-      errorListener?.(testError)
+        const testError = new Error('TCP server error')
+        expect(() => server.emit('error', testError)).not.toThrow()
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('TCP transport error:', testError)
-      consoleErrorSpy.mockRestore()
+        expect(consoleErrorSpy).toHaveBeenCalledWith('TCP transport error:', testError)
+      } finally {
+        consoleErrorSpy.mockRestore()
+      }
     })
   })
 
