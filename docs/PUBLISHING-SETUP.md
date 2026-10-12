@@ -144,8 +144,10 @@ npm run test
 npx lerna version --yes --no-private --sync-workspace-lock
 
 # Publish to npm
-npx lerna publish from-git --yes --no-private
+npx lerna publish from-package --yes --no-private
 ```
+
+`from-package` publishes every non-private package whose `package.json` version is not on npm yet. It does not check for uncommitted changes, so run it only on a clean, up-to-date `main`.
 
 **Note**: Manual releases do not include provenance attestations. Provenance is only available through the GitHub Actions workflow with OIDC authentication.
 
@@ -163,6 +165,18 @@ If npm publish fails with 401 in GitHub Actions:
 - Check `id-token: write` permission is set in workflow
 - Verify `environment: npm` is configured in the job
 - Ensure workflow file name matches the trusted publisher config
+
+### Publish Failed After Versioning
+
+If the "Publish to npm" step fails (for example a transient npm or sigstore error), the release commit, tags and GitHub releases already exist, but some versions are not on npm. The step retries the publish once. If it still fails:
+
+- Run the workflow manually on `main` right away, before more PRs are merged: Actions → Release → Run workflow (or `gh workflow run release.yml --ref main`)
+- Without that, the next release run publishes the missing version only if it does not bump that package again. A new bump publishes the newer version and leaves the old one as a gap on npm
+- Do NOT use "Re-run jobs" on the failed run: it checks out the commit before the release commit and publishes nothing
+
+The workflow publishes only when its checkout is the latest `main`. If `main` moved on during the run, the run for the newer commit publishes.
+
+A repair builds from the latest `main`. Files that lerna ignores for versioning (for example README and `tsconfig*.json`) can differ from the tagged commit. The `gitHead` field and the provenance show the commit that was used.
 
 ### GitHub Release Creation Failures
 

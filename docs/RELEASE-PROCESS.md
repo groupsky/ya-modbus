@@ -45,6 +45,7 @@ Production releases are published to npm with the `latest` dist-tag and are auto
 - On every push to `main` that contains package changes
 - Skipped when commit message starts with `chore(release):`
 - Skipped when only ignored files changed (see [Ignored Changes](#ignored-changes))
+- Manually on `main` to repair a failed publish (see [Publish Failed After Versioning](#publish-failed-after-versioning))
 
 ### Preview Packages (Pull Requests)
 
@@ -348,7 +349,7 @@ npm run test
 npx lerna version --yes --no-private --sync-workspace-lock
 
 # Publish to npm
-npx lerna publish from-git --yes --no-private
+npx lerna publish from-package --yes --no-private
 ```
 
 **Important notes:**
@@ -378,9 +379,11 @@ Understanding the release process helps troubleshoot issues and set expectations
    - Generates changelogs
    - Creates GitHub releases
    - Commits version changes to `main`
-8. **Publish**:
+8. **Publish** (runs also when nothing was versioned):
+   - Skipped when `main` moved on during the run; the run for the newer commit publishes
    - Authenticates to npm using OIDC (trusted publishers)
-   - Publishes changed packages with `latest` dist-tag
+   - Publishes every non-private package whose `package.json` version is not on npm yet, with `latest` dist-tag (this includes a version that an earlier failed run did not publish, if no newer version replaced it)
+   - Retries once when the publish fails
    - Includes provenance attestations
 9. **Success**: Packages available on npm
 
@@ -435,6 +438,14 @@ Understanding the release process helps troubleshoot issues and set expectations
 4. **Changes already released**
    - Solution: Check if another workflow already published these changes
    - Review git tags: `git tag -l`
+
+### Publish Failed After Versioning
+
+**Symptom:** "Publish to npm" step failed. Tags and GitHub releases exist, but some versions are not on npm.
+
+**Solution:** Run the Release workflow manually on `main` right away, before more PRs are merged. The next release run also publishes a missing version, but only if it does not bump that package again. Re-running the failed run does not help.
+
+See: `/docs/PUBLISHING-SETUP.md` → "Publish Failed After Versioning"
 
 ### Preview Package Workflow Does Not Run
 
