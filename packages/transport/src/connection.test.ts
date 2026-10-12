@@ -52,3 +52,21 @@ test('works again with a client that its owner opens again', async () => {
   client.isOpen = true
   await expect(connection.run(read)).resolves.toEqual(Buffer.from([0, 1]))
 })
+
+// A device that does not answer is not a lost port: the client stays open
+test('keeps the client after a response timeout', async () => {
+  let now = 0
+  jest.spyOn(performance, 'now').mockImplementation(() => now)
+  const client = createClient()
+  const open = jest.fn(() => Promise.resolve(createClient()))
+  const connection = new ModbusConnection(client, '/dev/ttyUSB0', open)
+  const timeout = { name: 'TransactionTimedOutError', message: 'Timed out', errno: 'ETIMEDOUT' }
+  jest.mocked(client.readHoldingRegisters).mockRejectedValueOnce(timeout)
+
+  await expect(connection.run(read)).rejects.toBe(timeout)
+  now += 60_000
+
+  await expect(connection.run(read)).resolves.toEqual(Buffer.from([0, 1]))
+  expect(client.readHoldingRegisters).toHaveBeenCalledTimes(2)
+  expect(open).not.toHaveBeenCalled()
+})
