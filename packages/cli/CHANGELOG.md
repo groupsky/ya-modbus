@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.13.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.13.1...@ya-modbus/cli@0.13.2) (2026-10-12)
+
+### Bug Fixes
+
+- **transport:** time out TCP connects that get no answer ([#588](https://github.com/groupsky/ya-modbus/issues/588)) ([2eeaf08](https://github.com/groupsky/ya-modbus/commit/2eeaf08e1c04c17953591bb3000a63339823bffc)), closes [#569](https://github.com/groupsky/ya-modbus/issues/569)
+
 ## [0.13.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.13.0...@ya-modbus/cli@0.13.1) (2026-10-12)
 
 ### Bug Fixes

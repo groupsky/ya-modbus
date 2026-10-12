@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.14.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.14.3...@ya-modbus/mqtt-bridge@0.14.4) (2026-10-12)
+
+### Bug Fixes
+
+- **transport:** time out TCP connects that get no answer ([#588](https://github.com/groupsky/ya-modbus/issues/588)) ([2eeaf08](https://github.com/groupsky/ya-modbus/commit/2eeaf08e1c04c17953591bb3000a63339823bffc)), closes [#569](https://github.com/groupsky/ya-modbus/issues/569)
+
 ## [0.14.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.14.2...@ya-modbus/mqtt-bridge@0.14.3) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/mqtt-bridge
