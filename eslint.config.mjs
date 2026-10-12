@@ -111,6 +111,24 @@ export default tseslint.config(
     },
   },
 
+  // Published code must declare every package it imports. In a monorepo an
+  // undeclared import still resolves through hoisting, so only this rule catches it.
+  {
+    files: ['packages/*/src/**/*.ts', 'packages/*/bin/**/*.ts'],
+    ignores: [
+      '**/*.test.ts',
+      '**/test-utils.ts',
+      '**/__mocks__/**',
+      // Imports @jest/globals, which comes with the jest install of the consumer
+      // (jest is an optional peer dependency of driver-loader)
+      'packages/driver-loader/src/testing.ts',
+    ],
+    rules: {
+      // devDependencies are not installed for consumers, so they do not count
+      'import-x/no-extraneous-dependencies': ['error', { devDependencies: false }],
+    },
+  },
+
   // Prettier config (must be last to override formatting rules)
   prettier
 )
