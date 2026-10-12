@@ -6,7 +6,7 @@ Software Modbus device emulator for testing device drivers without physical hard
 
 - **Realistic device simulation**: Mimic the timing characteristics of actual devices
 - **Test acceleration**: Enable fast, deterministic testing without hardware
-- **Edge case coverage**: Exception responses for unsupported function codes and unknown slave IDs
+- **Edge case coverage**: Exception responses for unsupported function codes and, except on RTU, unknown slave IDs
 - **Multiple transports**: TCP, RTU (virtual/real serial ports), and in-memory
 - **Register function codes**: Read holding and input registers, write holding registers (see [Supported Function Codes](#supported-function-codes))
 
@@ -339,23 +339,26 @@ All other function codes are not supported. This includes the coil functions (0x
 
 The emulator cannot serve some requests. The response depends on the transport:
 
-| Request                                               | Memory transport | TCP and RTU transports      |
-| ----------------------------------------------------- | ---------------- | --------------------------- |
-| Read Coils (0x01), Read Discrete Inputs (0x02)        | Exception 0x01   | Exception 0x04              |
-| Write Single Coil (0x05), Write Multiple Coils (0x0F) | Exception 0x01   | Accepted, nothing is stored |
-| Any other function code, for example 0x2B             | Exception 0x01   | Exception 0x01              |
-| Read from a slave ID that has no device               | Exception 0x0B   | Exception 0x04              |
-| Write to a slave ID that has no device                | Exception 0x0B   | Accepted, nothing is stored |
+| Request                                                | Memory transport | TCP transport  | RTU transport                     |
+| ------------------------------------------------------ | ---------------- | -------------- | --------------------------------- |
+| Read Coils (0x01), Read Discrete Inputs (0x02)         | Exception 0x01   | Exception 0x01 | Exception 0x01                    |
+| Write Single Coil (0x05), Write Multiple Coils (0x0F)  | Exception 0x01   | Exception 0x01 | Exception 0x01                    |
+| Any other function code, for example 0x2B              | Exception 0x01   | Exception 0x01 | Exception 0x01                    |
+| Read or write request to a slave ID that has no device | Exception 0x0B   | Exception 0x0B | No response, the client times out |
+
+The RTU transport behaves like a slave on a serial line, which ignores a request for an address that is not its own. The TCP transport behaves like a Modbus TCP gateway, which answers with exception 0x0B when the target device does not respond.
+
+On the TCP and RTU transports, `modbus-serial` answers some requests itself, for every slave ID, also for one that has no device: a function code that it does not handle gets exception 0x01, and a read with a quantity of 0 gets exception 0x02.
 
 ### Exception Codes
 
-| Code | Name                                    | Returned when                                                                                                                                          |
-| ---- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 0x01 | Illegal Function                        | The function code is not supported                                                                                                                     |
-| 0x02 | Illegal Data Address                    | TCP and RTU: modbus-serial rejects a read request with a quantity of 0                                                                                 |
-| 0x03 | Illegal Data Value                      | Memory transport: the request is too short for its function code, a write goes past address 65535, or the write data is shorter than its quantity says |
-| 0x04 | Slave Device Failure                    | TCP and RTU: a read request that the emulator cannot serve (see the table above), or a read of more than 127 registers                                 |
-| 0x0B | Gateway Target Device Failed to Respond | Memory transport: the request is for a slave ID that has no device                                                                                     |
+| Code | Name                                    | Returned when                                                                                                                                                          |
+| ---- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0x01 | Illegal Function                        | The function code is not supported                                                                                                                                     |
+| 0x02 | Illegal Data Address                    | TCP and RTU: modbus-serial rejects a read request with a quantity of 0                                                                                                 |
+| 0x03 | Illegal Data Value                      | All transports: a write goes past address 65535. Memory transport: the request is too short for its function code, or the write data is shorter than its quantity says |
+| 0x04 | Slave Device Failure                    | TCP and RTU: a read of more than 125 registers                                                                                                                         |
+| 0x0B | Gateway Target Device Failed to Respond | Memory and TCP transports: the request is for a slave ID that has no device                                                                                            |
 
 ## Configuration
 

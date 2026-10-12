@@ -52,7 +52,10 @@ export class RtuTransport extends BaseTransport {
       throw new Error('Transport already starting')
     }
 
-    const serviceVector = createServiceVector(() => this.requestHandler)
+    // A slave on a serial line ignores a request for an address that is not its own
+    const serviceVector = createServiceVector(() => this.requestHandler, {
+      unknownSlave: 'silence',
+    })
 
     // Build options with only defined serial port parameters
     // Filter out undefined values to satisfy exactOptionalPropertyTypes

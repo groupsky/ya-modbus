@@ -203,7 +203,23 @@ describe('ModbusEmulator RTU Integration', () => {
   })
 
   describe('Error handling', () => {
-    it('should handle requests to non-existent device', async () => {
+    // Issue #561: a slave on a serial line sends no response for an address that is not its
+    // own, so the client runs into its timeout. A write used to get a success response.
+    it.each([
+      {
+        name: 'read',
+        call: () =>
+          callServiceVector(
+            capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
+            0,
+            99
+          ),
+      },
+      {
+        name: 'write',
+        call: () => capturedServiceVector.setRegister(0, 1, 99) as Promise<void>,
+      },
+    ])('should not answer a $name request to a non-existent device', async ({ call }) => {
       emulator = new ModbusEmulator({
         transport: 'rtu',
         port: '/dev/ttyUSB0',
@@ -213,14 +229,15 @@ describe('ModbusEmulator RTU Integration', () => {
 
       await emulator.start()
 
-      // Requesting from non-existent device 99 should throw
-      await expect(
-        callServiceVector(
-          capturedServiceVector.getHoldingRegister.bind(capturedServiceVector),
-          0,
-          99
-        )
-      ).rejects.toThrow()
+      const answered = await Promise.race([
+        call().then(
+          () => true,
+          () => true
+        ),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 50)),
+      ])
+
+      expect(answered).toBe(false)
     })
   })
 
