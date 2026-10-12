@@ -18,201 +18,161 @@ Thank you for your interest in contributing! This document outlines the developm
 
 #### Example 1: Adding a New Device Driver
 
+Create the package first (see `docs/NEW-PACKAGE.md`).
+
 ```bash
 # 1. Create test file (next to the source file)
-cat > packages/ya-modbus-driver-energymeter/src/my-meter.test.ts << 'EOF'
-import { MyMeter } from '../my-meter';
-import { ModbusEmulator } from '@ya-modbus/emulator';
+cat > packages/driver-my-meter/src/index.test.ts << 'EOF'
+import type { Transport } from '@ya-modbus/driver-types'
 
-describe('MyMeter', () => {
-  let emulator: ModbusEmulator;
-  let device: MyMeter;
+import { createDriver } from './index'
 
-  beforeEach(async () => {
-    emulator = new ModbusEmulator();
-    emulator.addDevice({
-      slaveId: 1,
-      type: 'generic',
-      registers: {
-        0x0000: 230.5,  // voltage
-        0x0006: 5.2     // current
-      }
-    });
-    await emulator.start();
+describe('my-meter driver', () => {
+  let transport: jest.Mocked<Pick<Transport, 'readInputRegisters'>>
 
-    device = new MyMeter({
-      slaveId: 1,
-      transport: emulator.getTransport()
-    });
-  });
+  beforeEach(() => {
+    transport = { readInputRegisters: jest.fn() }
+  })
 
-  afterEach(async () => {
-    await emulator.stop();
-  });
+  it('should read voltage in volts', async () => {
+    // Register 0 holds 0x0901 = 2305, which is 230.5 V
+    transport.readInputRegisters.mockResolvedValue(Buffer.from([0x09, 0x01]))
+    const driver = await createDriver({ transport: transport as unknown as Transport, slaveId: 1 })
 
-  it('should read voltage correctly', async () => {
-    const data = await device.read(['voltage']);
-    expect(data.voltage).toBeCloseTo(230.5, 1);
-  });
+    const voltage = await driver.readDataPoint('voltage')
 
-  it('should read current correctly', async () => {
-    const data = await device.read(['current']);
-    expect(data.current).toBeCloseTo(5.2, 1);
-  });
-});
+    expect(voltage).toBeCloseTo(230.5, 1)
+  })
+})
 EOF
 
-# 2. Implement device
-cat > packages/ya-modbus-driver-energymeter/src/my-meter.ts << 'EOF'
-import { ModbusDevice, RegisterDefinition } from '@ya-modbus/core';
+# 2. Implement driver
+cat > packages/driver-my-meter/src/index.ts << 'EOF'
+import { readScaledUInt16BE } from '@ya-modbus/driver-sdk'
+import type { CreateDriverFunction, DataPoint, DeviceDriver } from '@ya-modbus/driver-types'
 
-export class MyMeter extends ModbusDevice {
-  name = 'my-meter';
-  vendor = 'VendorName';
-  model = 'Model123';
+const DATA_POINTS: ReadonlyArray<DataPoint> = [
+  { id: 'voltage', name: 'Voltage', type: 'float', unit: 'V', access: 'r', decimals: 1 },
+]
 
-  registers: RegisterDefinition[] = [
-    {
-      name: 'voltage',
-      address: 0x0000,
-      type: 'input',
-      format: 'float32',
-      unit: 'V',
-      pollType: 'dynamic'
+export const createDriver: CreateDriverFunction = ({ transport }) => {
+  const driver: DeviceDriver = {
+    name: 'my-meter',
+    manufacturer: 'VendorName',
+    model: 'Model123',
+    dataPoints: DATA_POINTS,
+
+    async readDataPoint(id) {
+      if (id !== 'voltage') throw new Error(`Unknown data point: ${id}`)
+      // Input register 0 holds the voltage in tenths of a volt
+      const buffer = await transport.readInputRegisters(0, 1)
+      return readScaledUInt16BE(buffer, 0, 10)
     },
-    {
-      name: 'current',
-      address: 0x0006,
-      type: 'input',
-      format: 'float32',
-      unit: 'A',
-      pollType: 'dynamic'
-    }
-  ];
+
+    writeDataPoint(id) {
+      return Promise.reject(new Error(`Data point ${id} is read-only`))
+    },
+
+    async readDataPoints(ids) {
+      const result: Record<string, unknown> = {}
+      for (const id of ids) result[id] = await driver.readDataPoint(id)
+      return result
+    },
+  }
+
+  return Promise.resolve(driver)
 }
 EOF
 
 # 3. Run tests
-npm test --workspace=packages/ya-modbus-driver-energymeter
+npm test --workspace=packages/driver-my-meter
 
 # 4. Commit with tests
-git add packages/ya-modbus-driver-energymeter/src/{my-meter.ts,my-meter.test.ts}
-git commit -m "feat(devices): add MyMeter energy meter driver
+git add packages/driver-my-meter/src/{index.ts,index.test.ts}
+git commit -m "feat(driver-my-meter): add MyMeter energy meter driver
 
-- Reads voltage and current from holding registers
-- Uses float32 format
-- Includes comprehensive test coverage"
+- Reads voltage from input register 0
+- Includes test coverage with a mocked transport"
 ```
 
 #### Example 2: Fixing a Bug
 
 ```bash
 # 1. Write test that reproduces the bug
-cat > packages/core/polling-bug.test.ts << 'EOF'
-import { PollingEngine } from '../polling';
+cat > packages/transport/src/retry.last-attempt.test.ts << 'EOF'
+import { withRetry } from './retry.js'
 
-describe('PollingEngine - Bug #123', () => {
-  it('should not crash when device disconnects during poll', async () => {
-    const engine = new PollingEngine();
-    const device = createMockDevice();
+describe('withRetry - bug #123', () => {
+  beforeEach(() => {
+    jest.useFakeTimers()
+  })
 
-    engine.addDevice(device);
+  afterEach(() => {
+    jest.useRealTimers()
+  })
 
-    // Simulate disconnection during poll
-    device.disconnect();
+  it('should not wait after the last failed attempt', async () => {
+    const operation = jest.fn().mockRejectedValue(new Error('timeout'))
 
-    // Should not throw
-    await expect(engine.poll()).resolves.not.toThrow();
-  });
-});
+    await expect(withRetry(operation, 1)).rejects.toThrow('timeout')
+
+    expect(jest.getTimerCount()).toBe(0)
+  })
+})
 EOF
 
 # 2. Fix the bug
-# Edit packages/core/src/polling.ts to handle disconnection
+# Edit packages/transport/src/retry.ts to return the error right after the last attempt
 
 # 3. Run tests
-npm test --workspace=packages/core
+npm test --workspace=packages/transport
 
 # 4. Commit with test
-git commit -m "fix(core): handle device disconnection during poll
+git commit -m "fix(transport): skip the retry delay after the last attempt
 
 Fixes #123
 
-- Add null check before polling disconnected devices
+- Return the error right after the last attempt
 - Includes regression test"
 ```
 
-#### Example 3: Adding Core Feature
+#### Example 3: Adding an SDK Feature
 
 ```bash
 # 1. Write tests for the feature
-cat > packages/core/multi-register-optimization.test.ts << 'EOF'
-import { ReadOptimizer } from '../read-optimizer';
+cat > packages/driver-sdk/src/codec-int32.test.ts << 'EOF'
+import { readScaledInt32BE } from './codec'
 
-describe('ReadOptimizer', () => {
-  let optimizer: ReadOptimizer;
+describe('readScaledInt32BE', () => {
+  it('should read and scale a positive int32', () => {
+    const buffer = Buffer.from([0x00, 0x00, 0x27, 0x10]) // 10000
+    expect(readScaledInt32BE(buffer, 0, 100)).toBe(100.0)
+  })
 
-  beforeEach(() => {
-    optimizer = new ReadOptimizer();
-  });
+  it('should read and scale a negative int32', () => {
+    const buffer = Buffer.from([0xff, 0xff, 0xd8, 0xf0]) // -10000
+    expect(readScaledInt32BE(buffer, 0, 100)).toBe(-100.0)
+  })
 
-  it('should batch adjacent registers', () => {
-    const registers = [
-      { address: 0, type: 'holding' },
-      { address: 1, type: 'holding' },
-      { address: 2, type: 'holding' }
-    ];
-
-    const operations = optimizer.optimize(registers);
-
-    expect(operations).toHaveLength(1);
-    expect(operations[0]).toMatchObject({
-      startAddress: 0,
-      count: 3
-    });
-  });
-
-  it('should split on large gaps', () => {
-    const registers = [
-      { address: 0, type: 'holding' },
-      { address: 1, type: 'holding' },
-      { address: 50, type: 'holding' }
-    ];
-
-    const operations = optimizer.optimize(registers);
-
-    expect(operations).toHaveLength(2);
-    expect(operations[0].startAddress).toBe(0);
-    expect(operations[1].startAddress).toBe(50);
-  });
-
-  it('should not exceed max batch size', () => {
-    const registers = Array.from({ length: 200 }, (_, i) => ({
-      address: i,
-      type: 'holding'
-    }));
-
-    const operations = optimizer.optimize(registers, { maxBatchSize: 80 });
-
-    expect(operations.every(op => op.count <= 80)).toBe(true);
-  });
-});
+  it('should throw when the buffer is too short', () => {
+    expect(() => readScaledInt32BE(Buffer.from([0x00, 0x01]), 0, 100)).toThrow()
+  })
+})
 EOF
 
 # 2. Implement feature
-# - Implement batching adjacent registers
-# - Add gap detection
-# - Add max size handling
+# - Add readScaledInt32BE to packages/driver-sdk/src/codec.ts
+# - Validate the scale and the buffer bounds like readScaledUInt32BE
 
 # 3. Run tests
-npm test --workspace=packages/core
+npm test --workspace=packages/driver-sdk
 
 # 4. Commit
-git commit -m "feat(core): add multi-register read optimization
+git commit -m "feat(driver-sdk): add readScaledInt32BE
 
-- Batches adjacent registers into single reads
-- Respects configurable max gap and batch size
-- Reduces read operations by 70-90% for typical devices"
+- Reads a signed 32-bit value from two consecutive registers
+- Divides the value by the scale factor
+- Throws when the scale or the buffer bounds are invalid"
 ```
 
 ## Testing Requirements
@@ -416,7 +376,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 Good (describes current state):
 
 ```
-feat(devices): add SDM630 energy meter driver
+feat(driver-sdm630): add SDM630 energy meter driver
 
 Reads voltage, current, and power from holding registers using float32 format.
 Includes test suite using emulator.
@@ -425,7 +385,7 @@ Includes test suite using emulator.
 Bad (references previous state):
 
 ```
-feat(devices): change energy meter to use new format
+feat(driver-sdm630): change energy meter to use new format
 
 Updated from int16 to float32.
 Removed old parser.
@@ -435,7 +395,7 @@ Changed test structure.
 Good (describes current behavior):
 
 ```
-fix(core): release mutex on device timeout
+fix(transport): release mutex on device timeout
 
 Mutex releases automatically when device timeout occurs, preventing deadlock.
 Includes regression test for timeout handling.
@@ -446,7 +406,7 @@ Fixes #42
 Bad (references what was wrong):
 
 ```
-fix(core): fix bug where mutex wasn't released
+fix(transport): fix bug where mutex wasn't released
 
 Previously the mutex would deadlock on timeout.
 Now it releases properly.
@@ -529,7 +489,7 @@ Brief description of changes
 ### Prerequisites
 
 - Node.js 22 or 24 (see `.nvmrc`)
-- npm 10+
+- npm 11+
 - Git
 
 ### Initial Setup
@@ -622,10 +582,12 @@ EOF
 ```json
 {
   "dependencies": {
-    "@ya-modbus/core": "workspace:*"
+    "@ya-modbus/driver-sdk": "^0.8.0"
   }
 }
 ```
+
+Use a version range that matches the version of the local package. npm then links the local package instead of downloading it.
 
 **External dependencies:**
 
@@ -650,10 +612,10 @@ Device drivers can be contributed as independent npm packages without modifying 
 
 ### Built-in Drivers
 
-To contribute a driver to the built-in collection (`@ya-modbus/devices`):
+To contribute a driver to this repository, as a `@ya-modbus/driver-<name>` package in `packages/driver-<name>` (see `docs/NEW-PACKAGE.md`):
 
 1. Implement using `@ya-modbus/driver-sdk` (same as third-party)
-2. Add tests using `@ya-modbus/driver-dev-tools`
+2. Add tests next to the source, with a mocked `Transport` (see `packages/driver-xymd1/src/index.test.ts`)
 3. Test with real hardware
 4. Document device quirks and constraints
 5. Submit PR with driver + tests

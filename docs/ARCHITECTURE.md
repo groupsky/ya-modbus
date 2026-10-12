@@ -535,8 +535,9 @@ No cyclic dependencies: SDK is contract, mqtt-bridge is runtime, drivers are plu
 **Convention-based loading**:
 
 1. **Package naming**:
-   - Recommended: `ya-modbus-driver-<name>` (e.g., `ya-modbus-driver-solar`)
-   - Scoped packages: `@org/ya-modbus-driver-<name>`
+   - Drivers in this repository: `@ya-modbus/driver-<name>` (e.g., `@ya-modbus/driver-xymd1`)
+   - Third-party drivers, recommended: `ya-modbus-driver-<name>` (e.g., `ya-modbus-driver-solar`)
+   - Third-party scoped packages: `@org/ya-modbus-driver-<name>` (the MQTT bridge accepts only names that start with `@ya-modbus/driver-` or `ya-modbus-driver-`)
    - Required: keyword `"ya-modbus-driver"` in package.json
 2. **Standard exports**: `createDriver` factory, optional `DEFAULT_CONFIG`, `SUPPORTED_CONFIG`, `DEVICES`
 
