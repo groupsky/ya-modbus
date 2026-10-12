@@ -104,13 +104,16 @@ tests/e2e/
 ├── fixtures/
 │   ├── emulators/
 │   │   ├── port1-single-device.json # Single device emulator config
-│   │   └── port2-multi-device.json  # Multi-device emulator config
+│   │   ├── port2-multi-device.json  # Multi-device emulator config
+│   │   ├── tcp-single-device.json   # Single device emulator config (Modbus TCP)
+│   │   └── tcp-slow-device.json     # Emulator on Modbus TCP that answers after 1500 ms
 │   ├── mosquitto.conf               # MQTT broker config
 │   └── bridge-config.json           # mqtt-bridge config
 ├── tests/
 │   ├── helpers.bash                 # Shared helper functions
 │   ├── 01-environment.bats          # Environment setup tests
 │   ├── 02-emulator.bats             # Emulator tests
+│   ├── 07-tcp.bats                  # Modbus TCP tests (CLI and device-profiler)
 │   └── 99-cleanup.bats              # Cleanup verification
 └── vendor/
     └── bats-core/                   # BATS framework (git submodule)
@@ -156,6 +159,7 @@ See `tests/helpers.bash` for all available helpers:
 - `stop_mqtt_subscriber <pid>` - Stop MQTT subscriber
 - `start_test_emulator <config_file>` - Start emulator with config (returns PID)
 - `stop_test_emulator <pid>` - Stop emulator
+- `start_tcp_emulator <config_file> [port]` - Start emulator with a Modbus TCP config (returns PID, stop with `stop_test_emulator`). Listens on `$TCP_EMULATOR_PORT` (15502) unless a port is given
 - `is_docker_service_healthy <service>` - Check Docker service health
 - `assert_success` - Assert command succeeded
 - `assert_failure` - Assert command failed

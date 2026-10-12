@@ -1,0 +1,24 @@
+{
+  "description": "EX9EM device on Modbus TCP (loopback) that answers 1500 ms after every request, longer than any short client timeout",
+  "transport": {
+    "type": "tcp",
+    "host": "127.0.0.1",
+    "port": 15502
+  },
+  "devices": [
+    {
+      "slaveId": 1,
+      "deviceType": "EX9EM",
+      "registers": {
+        "holding": {
+          "0": 2300,
+          "1": 520,
+          "2": 500
+        }
+      },
+      "timing": {
+        "processingDelay": 1500
+      }
+    }
+  ]
+}
