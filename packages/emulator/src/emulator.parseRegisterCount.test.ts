@@ -61,19 +61,22 @@ describe('ModbusEmulator - parseRegisterCount', () => {
     expect(parseRegisterCount(request)).toBe(0)
   })
 
-  it('should handle Read Coils (0x01) - unsupported but valid', () => {
+  it.each([
+    { name: 'Read Coils (0x01)', request: [0x01, 0x01, 0x00, 0x00, 0x00, 0x08], count: 8 },
+    {
+      name: 'Read Discrete Inputs (0x02)',
+      request: [0x01, 0x02, 0x00, 0x00, 0x00, 0x0c],
+      count: 12,
+    },
+    { name: 'Write Single Coil (0x05)', request: [0x01, 0x05, 0x00, 0x00, 0xff, 0x00], count: 1 },
+    {
+      name: 'Write Multiple Coils (0x0F)',
+      request: [0x01, 0x0f, 0x00, 0x00, 0x00, 0x0a, 0x02],
+      count: 10,
+    },
+  ])('should count the coils or discrete inputs of $name', ({ request, count }) => {
     const parseRegisterCount = (emulator as any).parseRegisterCount.bind(emulator)
 
-    // Read Coils - not yet implemented in emulator but valid Modbus
-    const request = Buffer.from([0x01, 0x01, 0x00, 0x00, 0x00, 0x08])
-    expect(parseRegisterCount(request)).toBe(0) // Returns 0 for unhandled codes
-  })
-
-  it('should handle Write Single Coil (0x05) - unsupported but valid', () => {
-    const parseRegisterCount = (emulator as any).parseRegisterCount.bind(emulator)
-
-    // Write Single Coil - not yet implemented
-    const request = Buffer.from([0x01, 0x05, 0x00, 0x00, 0xff, 0x00])
-    expect(parseRegisterCount(request)).toBe(0) // Returns 0 for unhandled codes
+    expect(parseRegisterCount(Buffer.from(request))).toBe(count)
   })
 })

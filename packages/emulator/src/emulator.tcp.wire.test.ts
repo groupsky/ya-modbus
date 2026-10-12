@@ -24,7 +24,14 @@ describe('ModbusEmulator over TCP with a real client', () => {
   beforeEach(async () => {
     const port = await getFreePort()
     emulator = new ModbusEmulator({ transport: 'tcp', host: HOST, port })
-    emulator.addDevice({ slaveId: KNOWN_SLAVE, registers: { holding: { 0: 230 } } })
+    emulator.addDevice({
+      slaveId: KNOWN_SLAVE,
+      registers: {
+        holding: { 0: 230 },
+        coils: { 0: true, 2: true, 8: true },
+        discreteInputs: { 1: true, 9: true },
+      },
+    })
     await emulator.start()
 
     client = new ModbusRTU()
@@ -53,7 +60,10 @@ describe('ModbusEmulator over TCP with a real client', () => {
       { name: 'read input registers', call: () => client.readInputRegisters(0, 1) },
       { name: 'write single register', call: () => client.writeRegister(0, 1) },
       { name: 'write multiple registers', call: () => client.writeRegisters(0, [1, 2]) },
+      { name: 'read coils', call: () => client.readCoils(0, 3) },
+      { name: 'read discrete inputs', call: () => client.readDiscreteInputs(0, 3) },
       { name: 'write single coil', call: () => client.writeCoil(0, true) },
+      { name: 'write multiple coils', call: () => client.writeCoils(0, [true, false, true]) },
     ])('answers $name with exception 0x0B', async ({ call }) => {
       client.setID(UNKNOWN_SLAVE)
 
@@ -61,15 +71,82 @@ describe('ModbusEmulator over TCP with a real client', () => {
     })
   })
 
-  it.each([
-    { name: 'read coils', call: () => client.readCoils(0, 3) },
-    { name: 'read discrete inputs', call: () => client.readDiscreteInputs(0, 3) },
-    { name: 'write single coil', call: () => client.writeCoil(0, true) },
-    { name: 'write multiple coils', call: () => client.writeCoils(0, [true, false, true]) },
-  ])('answers $name with exception 0x01', async ({ call }) => {
-    client.setID(KNOWN_SLAVE)
+  describe('coils and discrete inputs', () => {
+    // Issue #560: the coil function codes got exception 0x01 or 0x04, and writes were dropped.
+    // modbus-serial rounds the data of a read up to whole bytes.
+    beforeEach(() => {
+      client.setID(KNOWN_SLAVE)
+    })
 
-    await expect(call()).rejects.toMatchObject({ modbusCode: 0x01 })
+    it('reads the configured coils', async () => {
+      const { data } = await client.readCoils(0, 10)
+
+      expect(data.slice(0, 10)).toEqual([
+        true,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+      ])
+    })
+
+    it('reads the configured discrete inputs', async () => {
+      const { data } = await client.readDiscreteInputs(0, 10)
+
+      expect(data.slice(0, 10)).toEqual([
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+      ])
+    })
+
+    it('writes a single coil and reads it back', async () => {
+      await client.writeCoil(5, true)
+      await client.writeCoil(0, false)
+
+      const { data } = await client.readCoils(0, 6)
+
+      expect(data.slice(0, 6)).toEqual([false, false, true, false, false, true])
+    })
+
+    it('writes multiple coils and reads them back', async () => {
+      const written = [true, false, true, true, false, false, false, false, true, true]
+
+      await client.writeCoils(4, written)
+
+      const { data } = await client.readCoils(4, 10)
+      expect(data.slice(0, 10)).toEqual(written)
+      expect(emulator.getDevice(KNOWN_SLAVE)?.getCoil(13)).toBe(true)
+    })
+
+    // modbus-serial splits the request into single-coil requests, and the emulator rejects the
+    // one for address 65536 as a failure of the device, not as an illegal address
+    it.each([
+      { name: 'read coils', call: () => client.readCoils(0xffff, 2) },
+      { name: 'write multiple coils', call: () => client.writeCoils(0xffff, [true, true]) },
+    ])('answers $name past address 65535 with exception 0x04', async ({ call }) => {
+      await expect(call()).rejects.toMatchObject({ modbusCode: 0x04 })
+    })
+
+    it('does not write the discrete inputs when it writes coils', async () => {
+      await client.writeCoils(0, [true, true, true])
+
+      const { data } = await client.readDiscreteInputs(0, 3)
+
+      expect(data.slice(0, 3)).toEqual([false, true, false])
+    })
   })
 
   it('answers a read of more than 125 registers with exception 0x04', async () => {
@@ -119,6 +196,7 @@ describe('requests to a slave ID without a device when the vector is silent (RTU
     { name: 'read multiple registers', call: () => client.readHoldingRegisters(0, 2) },
     { name: 'write single register', call: () => client.writeRegister(0, 1) },
     { name: 'write multiple registers', call: () => client.writeRegisters(0, [1, 2]) },
+    { name: 'read coils', call: () => client.readCoils(0, 3) },
     { name: 'write multiple coils', call: () => client.writeCoils(0, [true, false, true]) },
   ])('sends no response to $name', async ({ call }) => {
     client.setID(UNKNOWN_SLAVE)

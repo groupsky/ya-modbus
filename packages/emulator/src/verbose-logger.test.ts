@@ -71,6 +71,56 @@ describe('VerboseLogger', () => {
       expect(output).toContain('values=[0xABCD, 0xEF01, 0x1234]')
     })
 
+    test.each([
+      { name: 'coils', functionCode: 0x01 },
+      { name: 'discrete inputs', functionCode: 0x02 },
+    ])('logs read $name operation with one value per bit', ({ functionCode }) => {
+      const logger = new VerboseLogger(true)
+
+      // 10 bits: 1,0,1,0,0,0,0,0 | 1,0
+      logger.logRead(
+        1,
+        functionCode,
+        0x0004,
+        10,
+        Buffer.from([0x01, functionCode, 0x02, 0b00000101, 0b00000001])
+      )
+
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1)
+      const output = consoleLogSpy.mock.calls[0]?.[0] as string
+      expect(output).toContain('READ')
+      expect(output).toContain(`func=0x0${functionCode}`)
+      expect(output).toContain('addr=0x0004')
+      expect(output).toContain('count=10')
+      expect(output).toContain(
+        'values=[0x0001, 0x0000, 0x0001, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0001, 0x0000]'
+      )
+    })
+
+    test('logs only the bits that a short coil response contains', () => {
+      const logger = new VerboseLogger(true)
+
+      // The response claims 10 bits but carries one byte
+      logger.logRead(1, 0x01, 0x0000, 10, Buffer.from([0x01, 0x01, 0x02, 0b00000011]))
+
+      const output = consoleLogSpy.mock.calls[0]?.[0] as string
+      expect(output).toContain(
+        'values=[0x0001, 0x0001, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000]'
+      )
+    })
+
+    test('logs write multiple coils operation with one value per coil', () => {
+      const logger = new VerboseLogger(true)
+
+      logger.logWrite(1, 0x0f, 0x0004, 3, [1, 0, 1])
+
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1)
+      const output = consoleLogSpy.mock.calls[0]?.[0] as string
+      expect(output).toContain('WRITE')
+      expect(output).toContain('func=0x0F')
+      expect(output).toContain('values=[0x0001, 0x0000, 0x0001]')
+    })
+
     test('logs write single register operation', () => {
       const logger = new VerboseLogger(true)
 

@@ -117,7 +117,7 @@ The `Transport` interface (`packages/driver-types/src/transport.ts`) provides on
 
 Other function codes, such as file records (0x14, 0x15), are not part of the interface.
 
-The emulator serves only 0x03, 0x04, 0x06 and 0x10. See `packages/emulator/README.md` (Supported Function Codes).
+The emulator serves 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0F and 0x10. See `packages/emulator/README.md` (Supported Function Codes).
 
 ## Key Architectural Decisions
 
@@ -463,8 +463,8 @@ For 10 devices @ 9600 baud:
 **Capabilities**:
 
 - Emulate Modbus devices over RTU, TCP or an in-memory transport
-- Configurable holding and input register values
-- Function codes 0x03, 0x04, 0x06 and 0x10 (see `packages/emulator/README.md`, Supported Function Codes)
+- Configurable holding register, input register, coil and discrete input values
+- Function codes 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0F and 0x10 (see `packages/emulator/README.md`, Supported Function Codes)
 - Simulated response timing (command detection, processing and per-register delays)
 
 **Usage**: See `packages/emulator/src/` for usage examples and tests.

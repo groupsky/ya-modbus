@@ -8,7 +8,7 @@ Software Modbus device emulator for testing device drivers without physical hard
 - **Test acceleration**: Enable fast, deterministic testing without hardware
 - **Edge case coverage**: Exception responses for unsupported function codes and, except on RTU, unknown slave IDs
 - **Multiple transports**: TCP, RTU (virtual/real serial ports), and in-memory
-- **Register function codes**: Read holding and input registers, write holding registers (see [Supported Function Codes](#supported-function-codes))
+- **Function codes**: Read and write holding registers and coils, read input registers and discrete inputs (see [Supported Function Codes](#supported-function-codes))
 
 ## Installation
 
@@ -194,10 +194,10 @@ Each log entry includes:
 
 - **Operation type**: READ or WRITE
 - **Slave ID**: Which device handled the request
-- **Function code**: Modbus function (0x03=Read Holding, 0x04=Read Input, 0x06=Write Single, 0x10=Write Multiple)
-- **Starting address**: Register address in hexadecimal
-- **Register count**: Number of registers accessed
-- **Values**: Register values in hexadecimal
+- **Function code**: Modbus function (0x01=Read Coils, 0x02=Read Discrete Inputs, 0x03=Read Holding, 0x04=Read Input, 0x05=Write Single Coil, 0x06=Write Single, 0x0F=Write Multiple Coils, 0x10=Write Multiple)
+- **Starting address**: Register or coil address in hexadecimal
+- **Register count**: Number of registers or coils accessed
+- **Values**: Register values in hexadecimal. A coil or discrete input is 0x0001 (on) or 0x0000 (off)
 
 Verbose logging is useful for:
 
@@ -328,21 +328,25 @@ See `examples/virtual-serial-test.md` for detailed virtual serial port testing g
 
 The emulator answers these function codes on every transport (memory, TCP and RTU):
 
-| Code | Function                 |
-| ---- | ------------------------ |
-| 0x03 | Read Holding Registers   |
-| 0x04 | Read Input Registers     |
-| 0x06 | Write Single Register    |
-| 0x10 | Write Multiple Registers |
+| Code | Function                 | Reads or writes                           |
+| ---- | ------------------------ | ----------------------------------------- |
+| 0x01 | Read Coils               | `coils` (up to 2000 per request)          |
+| 0x02 | Read Discrete Inputs     | `discreteInputs` (up to 2000 per request) |
+| 0x03 | Read Holding Registers   | `holding`                                 |
+| 0x04 | Read Input Registers     | `input`                                   |
+| 0x05 | Write Single Coil        | `coils`                                   |
+| 0x06 | Write Single Register    | `holding`                                 |
+| 0x0F | Write Multiple Coils     | `coils` (up to 1968 per request)          |
+| 0x10 | Write Multiple Registers | `holding`                                 |
 
-All other function codes are not supported. This includes the coil functions (0x01, 0x02, 0x05, 0x0F) and Read Device Identification (0x2B). The `coils` and `discreteInputs` values of a device configuration are stored, but no supported function code reads them.
+A coil or discrete input that is not configured reads as off. Discrete inputs are read-only. All other function codes are not supported, for example Read Device Identification (0x2B).
+
+Only the memory transport checks the limits of the coil requests (see the exception codes below). On the TCP and RTU transports `modbus-serial` splits the request into single-coil requests (see [Known Limitations](#known-limitations)) and does not check them. For example, a Write Single Coil with a value other than 0xFF00 switches the coil off.
 
 The emulator cannot serve some requests. The response depends on the transport:
 
 | Request                                                | Memory transport | TCP transport  | RTU transport                     |
 | ------------------------------------------------------ | ---------------- | -------------- | --------------------------------- |
-| Read Coils (0x01), Read Discrete Inputs (0x02)         | Exception 0x01   | Exception 0x01 | Exception 0x01                    |
-| Write Single Coil (0x05), Write Multiple Coils (0x0F)  | Exception 0x01   | Exception 0x01 | Exception 0x01                    |
 | Any other function code, for example 0x2B              | Exception 0x01   | Exception 0x01 | Exception 0x01                    |
 | Read or write request to a slave ID that has no device | Exception 0x0B   | Exception 0x0B | No response, the client times out |
 
@@ -352,13 +356,15 @@ On the TCP and RTU transports, `modbus-serial` answers some requests itself, for
 
 ### Exception Codes
 
-| Code | Name                                    | Returned when                                                                                                                                                          |
-| ---- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0x01 | Illegal Function                        | The function code is not supported                                                                                                                                     |
-| 0x02 | Illegal Data Address                    | TCP and RTU: modbus-serial rejects a read request with a quantity of 0                                                                                                 |
-| 0x03 | Illegal Data Value                      | All transports: a write goes past address 65535. Memory transport: the request is too short for its function code, or the write data is shorter than its quantity says |
-| 0x04 | Slave Device Failure                    | TCP and RTU: a read of more than 125 registers                                                                                                                         |
-| 0x0B | Gateway Target Device Failed to Respond | Memory and TCP transports: the request is for a slave ID that has no device                                                                                            |
+| Code | Name                                    | Returned when                                                                                                                                                                   |
+| ---- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0x01 | Illegal Function                        | The function code is not supported                                                                                                                                              |
+| 0x02 | Illegal Data Address                    | TCP and RTU: modbus-serial rejects a read request with a quantity of 0. Memory transport: a coil request goes past address 65535                                                |
+| 0x03 | Illegal Data Value                      | All transports: a register write goes past address 65535. Memory transport: the request is too short for its function code, or the write data is shorter than its quantity says |
+| 0x04 | Slave Device Failure                    | TCP and RTU: a read of more than 125 registers, or a coil request that goes past address 65535                                                                                  |
+| 0x0B | Gateway Target Device Failed to Respond | Memory and TCP transports: the request is for a slave ID that has no device                                                                                                     |
+
+The memory transport also answers with exception 0x03 for a coil request outside the limits in the table of function codes, and for a Write Single Coil with a value other than 0xFF00 or 0x0000.
 
 ## Configuration
 
@@ -399,6 +405,12 @@ For this reason all read functions of the service vector in `src/transports/serv
 **Impact:** This is an internal detail. It does not change the public API. Keep the callback style when you change these read functions.
 
 See also: [#303](https://github.com/groupsky/ya-modbus/issues/303) and the related upstream report [yaacov/node-modbus-serial#548](https://github.com/yaacov/node-modbus-serial/issues/548).
+
+### modbus-serial reads and writes coils one by one
+
+`modbus-serial` handles a request for several coils or discrete inputs bit by bit. For Read Coils, Read Discrete Inputs and Write Multiple Coils it calls the service vector once per coil, and the service vector sends one single-coil request to the emulator for each of them. Write Multiple Coils is a series of Write Single Coil requests.
+
+**Impact:** On the TCP and RTU transports a request for N coils is handled as N requests. Each of them gets the timing delays of a device (see [Timing Behaviors](#timing-behaviors)), but they start together, so the delay of the whole request is about the delay of one request. `perRegisterDelay` is charged once for each coil request, not N times for the whole request as on the memory transport. Verbose logging prints one line for each coil. A Write Multiple Coils request that fails for some of its coils, for example one that goes past address 65535, still writes the other coils.
 
 ## License
 
