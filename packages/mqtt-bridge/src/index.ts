@@ -175,7 +175,7 @@ export function createBridge(
             const message: MqttMessage = {
               topic,
               payload,
-              qos: packet.qos as 0 | 1 | 2,
+              qos: packet.qos,
               retain: packet.retain,
             }
             try {

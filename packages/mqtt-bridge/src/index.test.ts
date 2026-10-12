@@ -1190,7 +1190,7 @@ describe('createBridge', () => {
       MockedDeviceManager.mockReturnValue(mockDeviceManager as any)
 
       MockedPollingScheduler.mockImplementation((onData) => {
-        dataCallback = onData as (deviceId: string, data: Record<string, unknown>) => void
+        dataCallback = onData
         return {
           scheduleDevice: jest.fn(),
           unscheduleDevice: jest.fn(),
@@ -1250,7 +1250,7 @@ describe('createBridge', () => {
       MockedDeviceManager.mockReturnValue(mockDeviceManager as any)
 
       MockedPollingScheduler.mockImplementation((onData, onError) => {
-        errorCallback = onError as (deviceId: string, error: Error, failureCount: number) => void
+        errorCallback = onError
         return {
           scheduleDevice: jest.fn(),
           unscheduleDevice: jest.fn(),
@@ -1289,7 +1289,7 @@ describe('createBridge', () => {
       let dataCallback: ((deviceId: string, data: Record<string, unknown>) => void) | undefined
 
       MockedPollingScheduler.mockImplementation((onData) => {
-        dataCallback = onData as (deviceId: string, data: Record<string, unknown>) => void
+        dataCallback = onData
         return {
           scheduleDevice: jest.fn(),
           unscheduleDevice: jest.fn(),
@@ -1454,7 +1454,7 @@ describe('createBridge', () => {
 
       // Capture the data callback when scheduler is created
       MockedPollingScheduler.mockImplementation((onData) => {
-        dataCallback = onData as (deviceId: string, data: Record<string, unknown>) => void
+        dataCallback = onData
         return {
           scheduleDevice: jest.fn(),
           unscheduleDevice: jest.fn(),

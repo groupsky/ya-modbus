@@ -117,7 +117,7 @@ describe('Validation', () => {
         createDriver: jest.fn(),
         supportedConfig: {
           validParity: ['even'],
-        } as SupportedSerialConfig,
+        },
       }
 
       expect(() => {
@@ -409,7 +409,7 @@ describe('Validation', () => {
         createDriver: jest.fn(),
         supportedConfig: {
           validBaudRates: [2400, 4800, 9600],
-        } as SupportedSerialConfig,
+        },
       }
 
       expect(() => {
@@ -428,7 +428,7 @@ describe('Validation', () => {
         createDriver: jest.fn(),
         supportedConfig: {
           validBaudRates: [9600, 19200],
-        } as SupportedSerialConfig,
+        },
         // No defaultConfig
       }
 
@@ -456,7 +456,7 @@ describe('Validation', () => {
         supportedConfig: {
           validBaudRates: [9600],
           validParity: ['even', 'none'],
-        } as SupportedSerialConfig,
+        },
         // No defaultConfig
       }
 
@@ -475,7 +475,7 @@ describe('Validation', () => {
         supportedConfig: {
           validBaudRates: [9600],
           validDataBits: [8],
-        } as SupportedSerialConfig,
+        },
         // No defaultConfig
       }
 
@@ -494,7 +494,7 @@ describe('Validation', () => {
         supportedConfig: {
           validBaudRates: [9600],
           validStopBits: [1],
-        } as SupportedSerialConfig,
+        },
         // No defaultConfig
       }
 
@@ -513,7 +513,7 @@ describe('Validation', () => {
         supportedConfig: {
           validBaudRates: [9600],
           validAddressRange: [1, 247],
-        } as SupportedSerialConfig,
+        },
         // No defaultConfig
       }
 

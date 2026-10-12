@@ -31,7 +31,7 @@ jest.mock('modbus-serial', () => {
 
       // Simulate ServerTCP emitting initialized event
       setImmediate(() => {
-        const listeners = (mockInstance.on as jest.Mock).mock.calls
+        const listeners = mockInstance.on.mock.calls
           .filter((call) => call[0] === 'initialized')
           .map((call) => call[1])
         listeners.forEach((listener) => listener())

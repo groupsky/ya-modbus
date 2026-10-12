@@ -76,7 +76,7 @@ describe('TransportManager', () => {
       mockClient1.readHoldingRegisters.mockResolvedValue({
         data: [0x1234],
         buffer: Buffer.from([0x12, 0x34]),
-      } as never)
+      })
 
       await transport1.readHoldingRegisters(0, 1)
       await transport2.readHoldingRegisters(0, 1)
@@ -116,7 +116,7 @@ describe('TransportManager', () => {
       mockClient1.readHoldingRegisters.mockResolvedValue({
         data: [0x1234],
         buffer: Buffer.from([0x12, 0x34]),
-      } as never)
+      })
 
       await transport1.readHoldingRegisters(0, 1)
       await transport2.readHoldingRegisters(0, 1)
@@ -159,12 +159,12 @@ describe('TransportManager', () => {
       mockClient1.readHoldingRegisters.mockResolvedValue({
         data: [0x1111],
         buffer: Buffer.from([0x11, 0x11]),
-      } as never)
+      })
 
       mockClient2.readHoldingRegisters.mockResolvedValue({
         data: [0x2222],
         buffer: Buffer.from([0x22, 0x22]),
-      } as never)
+      })
 
       const result1 = await transport1.readHoldingRegisters(0, 1)
       const result2 = await transport2.readHoldingRegisters(0, 1)
@@ -227,7 +227,7 @@ describe('TransportManager', () => {
       mockClient1.readHoldingRegisters.mockResolvedValue({
         data: [0x1234],
         buffer: Buffer.from([0x12, 0x34]),
-      } as never)
+      })
 
       await transport1.readHoldingRegisters(0, 1)
       await transport2.readHoldingRegisters(0, 1)
@@ -258,7 +258,7 @@ describe('TransportManager', () => {
         return {
           data: [0x1234],
           buffer: Buffer.from([0x12, 0x34]),
-        } as never
+        }
       })
 
       mockClient1.readInputRegisters.mockImplementation(async () => {
@@ -268,7 +268,7 @@ describe('TransportManager', () => {
         return {
           data: [0x5678],
           buffer: Buffer.from([0x56, 0x78]),
-        } as never
+        }
       })
 
       const transport = await manager.getTransport(config)
@@ -306,7 +306,7 @@ describe('TransportManager', () => {
         return {
           data: [0x1111],
           buffer: Buffer.from([0x11, 0x11]),
-        } as never
+        }
       })
 
       mockClient2.readHoldingRegisters.mockImplementation(async () => {
@@ -316,7 +316,7 @@ describe('TransportManager', () => {
         return {
           data: [0x2222],
           buffer: Buffer.from([0x22, 0x22]),
-        } as never
+        }
       })
 
       const transport1 = await manager.getTransport(config1)
@@ -349,7 +349,7 @@ describe('TransportManager', () => {
         return {
           data: [0x1234],
           buffer: Buffer.from([0x12, 0x34]),
-        } as never
+        }
       })
 
       mockClient1.readInputRegisters.mockImplementation(async () => {
@@ -359,7 +359,7 @@ describe('TransportManager', () => {
         return {
           data: [0x5678],
           buffer: Buffer.from([0x56, 0x78]),
-        } as never
+        }
       })
 
       const transport = await manager.getTransport(config)
@@ -420,7 +420,7 @@ describe('TransportManager', () => {
         return {
           data: [0x0000],
           buffer: Buffer.from([0x00, 0x00]),
-        } as never
+        }
       })
 
       const transport1 = await manager.getTransport(config1)

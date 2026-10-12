@@ -1,5 +1,5 @@
 import type { LoadedDriver } from '@ya-modbus/driver-loader'
-import type { DefaultSerialConfig, DefaultTCPConfig } from '@ya-modbus/driver-types'
+import type { DefaultSerialConfig } from '@ya-modbus/driver-types'
 
 import {
   applyDriverDefaults,
@@ -27,7 +27,7 @@ describe('applyDriverDefaults', () => {
           dataBits: 8,
           stopBits: 1,
           defaultAddress: 1,
-        } as DefaultSerialConfig,
+        },
       }
 
       const result = applyDriverDefaults(options, driverMetadata)
@@ -96,7 +96,7 @@ describe('applyDriverDefaults', () => {
         defaultConfig: {
           defaultAddress: 1,
           defaultPort: 502,
-        } as DefaultTCPConfig,
+        },
       }
 
       const result = applyDriverDefaults(options, driverMetadata)
@@ -259,7 +259,7 @@ describe('applyDriverDefaults', () => {
           dataBits: 8,
           stopBits: 1,
           defaultAddress: 1,
-        } as DefaultSerialConfig,
+        },
       }
 
       const result = applyDriverDefaults(options, driverMetadata)
@@ -283,7 +283,7 @@ describe('applyDriverDefaults', () => {
           dataBits: 8,
           stopBits: 1,
           defaultAddress: 1,
-        } as DefaultSerialConfig,
+        },
       }
 
       const result = applyDriverDefaults(options, driverMetadata)
@@ -428,7 +428,7 @@ describe('applyDriverDefaults', () => {
             defaultConfig: {
               defaultPort: 502,
               defaultAddress: 1,
-            } as DefaultTCPConfig,
+            },
           },
         },
       }
@@ -517,7 +517,7 @@ describe('getEffectiveDefaultConfig', () => {
           defaultConfig: {
             defaultPort: 502,
             defaultAddress: 1,
-          } as DefaultTCPConfig,
+          },
         },
       },
     }
