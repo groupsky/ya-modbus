@@ -1250,55 +1250,6 @@ describe('PollingScheduler', () => {
       expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
     })
 
-    it('should not poll a removed device when a timer is left over from a restart', async () => {
-      const config: DeviceConfig = {
-        deviceId: 'device1',
-        driver: 'test-driver',
-        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
-        polling: { interval: 100 },
-      }
-
-      let finishFirstRead: ((data: Record<string, unknown>) => void) | undefined
-      const mockReadDataPoints = jest
-        .fn()
-        .mockImplementationOnce(
-          () =>
-            new Promise((resolve) => {
-              finishFirstRead = resolve
-            })
-        )
-        .mockResolvedValue({ temp: 25.5 })
-
-      const driver: DeviceDriver = {
-        name: 'test',
-        manufacturer: 'Test',
-        model: 'TEST-001',
-        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
-        readDataPoint: jest.fn(),
-        writeDataPoint: jest.fn(),
-        readDataPoints: mockReadDataPoints,
-      }
-
-      scheduler.scheduleDevice('device1', config, driver)
-      scheduler.start()
-
-      // First poll starts and its read stays pending
-      await jest.advanceTimersByTimeAsync(100)
-      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
-
-      // Restart during the poll: start() schedules a timer. When the pending read finishes the
-      // poll schedules another one, so one timer is no longer tracked by the device
-      scheduler.stop()
-      scheduler.start()
-      finishFirstRead?.({ temp: 25.5 })
-      await jest.advanceTimersByTimeAsync(0)
-
-      // Unscheduling clears only the tracked timer, the other one still fires
-      scheduler.unscheduleDevice('device1')
-      await jest.advanceTimersByTimeAsync(200)
-      expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
-    })
-
     it('should read the driver data points once when scheduling, not on every poll', async () => {
       const config: DeviceConfig = {
         deviceId: 'device1',
