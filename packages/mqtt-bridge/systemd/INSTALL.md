@@ -61,7 +61,7 @@ if [ ! -d "$SYSTEMD_FILES" ]; then
   if [ -n "$BRIDGE_BIN" ]; then
     # Follow symlink to actual package location
     BRIDGE_BIN=$(readlink -f "$BRIDGE_BIN")
-    SYSTEMD_FILES="$(dirname $(dirname "$BRIDGE_BIN"))/systemd"
+    SYSTEMD_FILES="$(dirname "$(dirname "$(dirname "$(dirname "$BRIDGE_BIN")")")")/systemd"
     echo "Found via binary location: $SYSTEMD_FILES"
   fi
 fi
@@ -133,7 +133,9 @@ sudo cp "$SYSTEMD_FILES/ya-modbus-bridge.service" /etc/systemd/system/
 which ya-modbus-bridge
 ```
 
-If the binary is not in `/usr/bin`, you have two options:
+**Note:** The service sets `ProtectHome=yes` and `NoExecPaths=/`, and `ExecPaths` allows only `/usr/bin`, `/usr/local/bin`, `/usr/lib`, `/usr/local/lib`, `/lib` and `/lib64`. Node.js and the global package must be installed in these paths. A user-level install such as nvm under `/home` will fail to start.
+
+If the binary is not in `/usr/bin` (for example it is in `/usr/local/bin`), you have two options:
 
 **Option A:** Create a symlink (recommended):
 

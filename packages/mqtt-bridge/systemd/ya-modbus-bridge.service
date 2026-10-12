@@ -7,14 +7,14 @@ Description=Ya-Modbus MQTT Bridge Service
 Documentation=https://github.com/groupsky/ya-modbus/tree/main/packages/mqtt-bridge#readme
 After=network-online.target
 Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 # Process Configuration
 Type=simple
 Restart=on-failure
 RestartSec=5
-StartLimitBurst=5
-StartLimitIntervalSec=300
 TimeoutStopSec=30
 
 # User/Group
