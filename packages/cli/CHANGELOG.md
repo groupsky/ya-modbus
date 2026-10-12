@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.10.2...@ya-modbus/cli@0.10.3) (2026-10-12)
+
+### Bug Fixes
+
+- **cli:** reject --port together with --host ([#543](https://github.com/groupsky/ya-modbus/issues/543)) ([7ff8419](https://github.com/groupsky/ya-modbus/commit/7ff841950104a27eb19c58e8fdd484cb92e84e6d)), closes [#288](https://github.com/groupsky/ya-modbus/issues/288) [#291](https://github.com/groupsky/ya-modbus/issues/291)
+
 ## [0.10.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.10.1...@ya-modbus/cli@0.10.2) (2026-10-12)
 
 ### Bug Fixes
