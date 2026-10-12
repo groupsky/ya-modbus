@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.10.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.9.4...@ya-modbus/device-profiler@0.10.0) (2026-10-12)
+
+### Features
+
+- **device-profiler:** export formatJSON from the public API ([#571](https://github.com/groupsky/ya-modbus/issues/571)) ([f95738d](https://github.com/groupsky/ya-modbus/commit/f95738dac00b0e098b21aaf159690e59e62d5d8f)), closes [#373](https://github.com/groupsky/ya-modbus/issues/373) [#375](https://github.com/groupsky/ya-modbus/issues/375) [#376](https://github.com/groupsky/ya-modbus/issues/376)
+
 ## [0.9.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.9.3...@ya-modbus/device-profiler@0.9.4) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/device-profiler
