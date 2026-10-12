@@ -216,6 +216,7 @@ npm install -g @ya-modbus/cli ya-modbus-driver-solar
 - **[AGENTS.md](./AGENTS.md)** - Quick guide for AI assistants and developers
 - **[API Reference](./docs/api/)** - Package APIs and interfaces
 - **[Device Drivers](./docs/devices/)** - Adding and converting device drivers
+- **[systemd Service](./packages/mqtt-bridge/systemd/INSTALL.md)** - Run the MQTT bridge as a Linux service
 - **[Troubleshooting](./docs/troubleshooting.md)** - Common issues and solutions
 - **[FAQ](./docs/faq.md)** - Frequently asked questions
 
@@ -337,41 +338,6 @@ mosquitto_sub -t "modbus/+/errors/#"
   token = "$INFLUX_TOKEN"
   organization = "my-org"
   bucket = "modbus"
-```
-
-## Docker Deployment
-
-```bash
-# Build image
-docker build -t ya-modbus .
-
-# Run with configuration
-docker run -d \
-  --name modbus-bridge \
-  -v $(pwd)/config.json:/app/config.json \
-  -v $(pwd)/data:/data \
-  --device /dev/ttyUSB0:/dev/ttyUSB0 \
-  -e MQTT_BROKER=mqtt://mosquitto:1883 \
-  ya-modbus
-```
-
-### Docker Compose
-
-```yaml
-version: '3.8'
-services:
-  modbus-bridge:
-    image: ya-modbus
-    volumes:
-      - ./config.json:/app/config.json
-      - ./data:/data
-      - /dev/ttyUSB0:/dev/ttyUSB0
-    devices:
-      - /dev/ttyUSB0
-    environment:
-      MQTT_BROKER: mqtt://mosquitto:1883
-      STATE_FILE: /data/bridge-state.json
-    restart: unless-stopped
 ```
 
 ## Performance

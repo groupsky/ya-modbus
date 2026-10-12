@@ -463,17 +463,6 @@ For 10 devices @ 9600 baud:
 
 ## Deployment Patterns
 
-### Docker Deployment
-
-**Container approach**:
-
-- Node.js Alpine base image
-- Production dependencies only
-- Volume mount for state persistence
-- Device passthrough for serial ports
-
-**Configuration**: See `docker/` directory for Dockerfile and Docker Compose examples.
-
 ### Systemd Service
 
 **Service configuration**: Simple service type, automatic restart, runs as dedicated user, configurable state file location.
