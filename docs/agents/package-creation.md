@@ -50,6 +50,7 @@ ALL packages MUST use consistent tsconfig structure:
 - `bin` (if present): `"./dist/esm/bin/<name>.js"`
 - Bin files MUST include shebang (`#!/usr/bin/env node` as first line)
 - Build script MUST set executable permissions on bin files (ESM and CJS)
+- CLI `--version` MUST come from `getCallerPackageInfo()` of `@ya-modbus/driver-loader` (works in ESM and CJS builds), NEVER a hardcoded string. See: packages/cli/src/index.ts
 
 CRITICAL: Using `rootDir: "."` for all packages ensures consistent output structure and prevents configuration errors when adding bin executables.
 
@@ -110,7 +111,7 @@ Before committing:
 4. Coverage meets 95% thresholds
 5. Package added to root jest.config.js
 6. `npm run validate:packages` passes (for publishable packages)
-7. `npm run validate:bins` passes (for packages with `bin`; each bin MUST exit 0 on `--help`)
+7. `npm run validate:bins` passes (for packages with `bin`; each bin MUST exit 0 on `--help` and print its package.json version on `--version`)
 
 Before merging to main (for publishable packages):
 

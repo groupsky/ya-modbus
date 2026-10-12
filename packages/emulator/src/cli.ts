@@ -3,6 +3,7 @@
  * CLI interface for Modbus emulator
  */
 
+import { getCallerPackageInfo } from '@ya-modbus/driver-loader'
 import { Command } from 'commander'
 
 import { ModbusEmulator } from './emulator.js'
@@ -27,7 +28,7 @@ const program = new Command()
 program
   .name('ya-modbus-emulator')
   .description('Modbus device emulator for testing drivers without physical hardware')
-  .version('0.1.0')
+  .version(getCallerPackageInfo().version)
 
 program
   .option('-c, --config <file>', 'Configuration file (YAML or JSON)')

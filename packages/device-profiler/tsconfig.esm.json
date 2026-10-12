@@ -7,6 +7,7 @@
   "include": ["src", "bin"],
   "references": [
     { "path": "../driver-types/tsconfig.esm.json" },
+    { "path": "../driver-loader/tsconfig.esm.json" },
     { "path": "../transport/tsconfig.esm.json" }
   ]
 }

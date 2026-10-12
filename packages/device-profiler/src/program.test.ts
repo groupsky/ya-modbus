@@ -1,3 +1,5 @@
+import packageJson from '../package.json'
+
 import * as cliModule from './cli.js'
 import { program } from './program.js'
 
@@ -70,8 +72,8 @@ describe('CLI Program - Integration Tests', () => {
       expect(program.description()).toBe('Profile Modbus devices by scanning register ranges')
     })
 
-    it('should have correct version', () => {
-      expect(program.version()).toBe('0.1.0')
+    it('should have the version from package.json', () => {
+      expect(program.version()).toBe(packageJson.version)
     })
 
     it('should display help information with --help', async () => {

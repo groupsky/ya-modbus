@@ -13,3 +13,5 @@ export {
   crossValidateConfigs,
 } from './config-validator.js'
 export { ValidationError, DriverNotFoundError, PackageJsonError } from './errors.js'
+export { getCallerPackageInfo } from './package-info.js'
+export type { PackageInfo } from './package-info.js'

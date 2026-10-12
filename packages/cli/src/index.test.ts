@@ -1,3 +1,5 @@
+import packageJson from '../package.json'
+
 import * as discoverModule from './commands/discover.js'
 import * as listDevicesModule from './commands/list-devices.js'
 import * as readModule from './commands/read.js'
@@ -83,8 +85,8 @@ describe('CLI Entry Point - Integration Tests', () => {
       )
     })
 
-    it('should have correct version', () => {
-      expect(program.version()).toBe('0.0.0')
+    it('should have the version from package.json', () => {
+      expect(program.version()).toBe(packageJson.version)
     })
 
     it('should display help information with --help', async () => {
