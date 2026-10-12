@@ -22,7 +22,7 @@ function addConnectionOptions(command: Command): Command {
       .optionsGroup('Driver Options:')
       .option(
         '-d, --driver <package>',
-        'Driver package name (e.g., ya-modbus-driver-xymd1) or short name (e.g., xymd1). Use "show-defaults" to see driver config'
+        'Driver package name (e.g., @ya-modbus/driver-xymd1) or short name (e.g., xymd1). Use "show-defaults" to see driver config'
       )
       .option(
         '--device <key>',
@@ -78,10 +78,10 @@ program
     'after',
     `
 Examples:
-  $ ya-modbus read --port /dev/ttyUSB0 --slave-id 1 --driver ya-modbus-driver-xymd1 --all
+  $ ya-modbus read --port /dev/ttyUSB0 --slave-id 1 --driver @ya-modbus/driver-xymd1 --all
   $ ya-modbus write --host 192.168.1.100 --slave-id 1 --data-point voltage --value 220
   $ ya-modbus discover --port /dev/ttyUSB0 --strategy quick
-  $ ya-modbus show-defaults --driver ya-modbus-driver-xymd1
+  $ ya-modbus show-defaults --driver @ya-modbus/driver-xymd1
     `
   )
 
