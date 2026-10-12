@@ -90,7 +90,7 @@ main() {
   # Port pair 1: For single device test (ex9em)
   create_port_pair "port1" "/tmp/ttyV0" "/tmp/ttyV1"
 
-  # Port pair 2: For multiple devices test (xymd1 + or-we-516)
+  # Port pair 2: For multiple devices test (xymd1 + ex9em)
   create_port_pair "port2" "/tmp/ttyV2" "/tmp/ttyV3"
 
   log_info "All virtual port pairs created successfully"
