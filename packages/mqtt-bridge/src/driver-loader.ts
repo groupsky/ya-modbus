@@ -2,7 +2,7 @@ import {
   assertValidDriverPackageName,
   loadDriver as loadDriverPackage,
 } from '@ya-modbus/driver-loader'
-import type { DeviceDriver } from '@ya-modbus/driver-types'
+import type { DeviceDriver, Transport } from '@ya-modbus/driver-types'
 import { TransportManager, type ModbusError, type TransportConfig } from '@ya-modbus/transport'
 
 import type { DeviceConnection } from './types.js'
@@ -16,10 +16,14 @@ type LoadDriverFunction = typeof loadDriverPackage
  * A port that cannot be opened (for example a USB adapter that is not plugged in) does not
  * stop a driver from loading, unless the driver uses the port while it loads. The connection
  * starts lost, and a later poll opens the port (see getConnectionError).
+ *
+ * A device that is unloaded releases its transport, so the port closes when no other device
+ * uses it.
  */
 export class DriverLoader {
   private readonly driverInstances = new Map<string, DeviceDriver>()
   private readonly devicePackages = new Map<string, string>()
+  private readonly deviceTransports = new Map<string, Transport>()
   private readonly loadDriverFn: LoadDriverFunction
   private readonly transportManager: TransportManager
 
@@ -34,7 +38,9 @@ export class DriverLoader {
    * @param packageName - NPM package name (e.g., '@ya-modbus/driver-xymd1', 'ya-modbus-driver-test'
    *   or '@org/ya-modbus-driver-test')
    * @param connection - Device connection configuration
-   * @param deviceId - Unique device identifier for tracking the instance
+   * @param deviceId - Unique device identifier for tracking the instance. Without it,
+   *   unloadDriver() cannot release the transport, and its port stays open until
+   *   closeAllTransports().
    * @returns Driver instance
    */
   async loadDriver(
@@ -53,49 +59,55 @@ export class DriverLoader {
     const config = this.connectionToTransportConfig(connection)
     const transport = await this.transportManager.getTransport(config)
 
-    // Create driver instance
-    const driver = await loadedDriver.createDriver({
-      transport,
-      slaveId: connection.slaveId,
-    })
+    let driver: DeviceDriver
+    try {
+      // Create driver instance
+      driver = await loadedDriver.createDriver({
+        transport,
+        slaveId: connection.slaveId,
+      })
 
-    // Call initialize if available
-    if (driver.initialize) {
-      await driver.initialize()
+      // Call initialize if available
+      if (driver.initialize) {
+        await driver.initialize()
+      }
+    } catch (error) {
+      // The port closes unless other devices use it
+      await this.transportManager.releaseTransport(transport)
+      throw error
     }
 
     // Cache instance if deviceId provided
     if (deviceId) {
       this.driverInstances.set(deviceId, driver)
       this.devicePackages.set(deviceId, packageName)
+      this.deviceTransports.set(deviceId, transport)
     }
 
-    // Note: Don't close transport on failure - it may be shared by other devices
-    // The transport manager will handle cleanup when closeAll() is called
     return driver
   }
 
   /**
-   * Unload a driver instance and clean up resources
-   * Note: Transport is managed by TransportManager and not closed here
+   * Unload a driver instance and release its transport. The port closes when no other device
+   * uses it.
    *
    * @param deviceId - Device identifier
    */
   async unloadDriver(deviceId: string): Promise<void> {
     const driver = this.driverInstances.get(deviceId)
+    const transport = this.deviceTransports.get(deviceId)
 
     try {
       if (driver?.destroy) {
         await driver.destroy()
       }
     } finally {
-      // Always remove from cache, even if destroy fails
+      // Always remove from cache and release the transport, even if destroy fails
       this.driverInstances.delete(deviceId)
       this.devicePackages.delete(deviceId)
+      this.deviceTransports.delete(deviceId)
+      if (transport) await this.transportManager.releaseTransport(transport)
     }
-
-    // Note: Transport is managed by TransportManager and shared across devices
-    // It will be closed when the entire bridge shuts down via closeAll()
   }
 
   /**

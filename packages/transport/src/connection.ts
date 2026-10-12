@@ -176,10 +176,13 @@ export class ModbusConnection {
   }
 
   /**
-   * Close the client and stop reopening it
+   * Close the client and stop reopening it. Resolves when the port is closed, also when a
+   * request was opening it again.
    */
   async close(): Promise<void> {
     this.closed = true
+    // A client that opens now is closed at once (see openClient)
+    if (this.reopening) await this.reopening.catch(() => undefined)
     const { state } = this
     // A lost client or a client that is not open needs no close. modbus-serial never
     // calls back when it closes a TCP client whose socket is closed.
@@ -253,8 +256,10 @@ export class ModbusConnection {
       throw openError
     }
     if (this.closed) {
-      // close() was called while the client was opening
-      closeClient(client, () => undefined)
+      // close() was called while the client was opening, and waits until the port is closed
+      await new Promise<void>((resolve) => {
+        closeClient(client, () => resolve())
+      })
       throw lostError
     }
 

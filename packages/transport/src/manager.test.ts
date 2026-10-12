@@ -1028,7 +1028,8 @@ describe('TransportManager', () => {
       expect(ModbusRTUMock).toHaveBeenCalledTimes(1)
     })
 
-    test('closes a client that finishes opening after closeAll', async () => {
+    // So that the port is free when closeAll resolves
+    test('closeAll waits for a client that is opening again and closes it', async () => {
       const transport = await manager.getTransport(rtuConfig)
       let finishOpening: () => void = () => undefined
       mockClient2.connectRTUBuffered.mockReturnValue(
@@ -1042,8 +1043,14 @@ describe('TransportManager', () => {
       const request = transport.readHoldingRegisters(0, 1)
       await new Promise((resolve) => setImmediate(resolve))
       expect(mockClient2.connectRTUBuffered).toHaveBeenCalled()
-      await manager.closeAll()
+      let closed = false
+      const closeAll = manager.closeAll().then(() => {
+        closed = true
+      })
+      await new Promise((resolve) => setImmediate(resolve))
+      expect(closed).toBe(false)
       finishOpening()
+      await closeAll
 
       await expect(request).rejects.toMatchObject({ name: 'ConnectionLostError' })
       expect(mockClient2.close).toHaveBeenCalled()

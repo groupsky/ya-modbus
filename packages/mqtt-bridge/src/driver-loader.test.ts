@@ -24,6 +24,7 @@ const createMockTransportManager = (): jest.Mocked<TransportManager> => {
   const mockTransport = createMockTransport()
   return {
     getTransport: jest.fn().mockResolvedValue(mockTransport),
+    releaseTransport: jest.fn().mockResolvedValue(undefined),
     getStats: jest.fn().mockReturnValue({ totalTransports: 0, rtuTransports: 0, tcpTransports: 0 }),
     closeAll: jest.fn().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<TransportManager>
@@ -372,7 +373,8 @@ describe('DriverLoader', () => {
         .mockRejectedValue(new Error('Driver creation failed'))
       const mockLoadDriver = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
 
-      const loader = new DriverLoader(mockLoadDriver, createMockTransportManager())
+      const transportManager = createMockTransportManager()
+      const loader = new DriverLoader(mockLoadDriver, transportManager)
 
       const connection: DeviceConnection = {
         type: 'rtu',
@@ -388,8 +390,9 @@ describe('DriverLoader', () => {
         loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
       ).rejects.toThrow('Driver creation failed')
 
-      // Note: Transport is NOT closed on failure since it may be shared by other devices
-      // TransportManager handles cleanup via closeAllTransports()
+      // The device is not added, so its port closes unless other devices use it
+      const transport = await transportManager.getTransport.mock.results[0]?.value
+      expect(transportManager.releaseTransport).toHaveBeenCalledWith(transport)
     })
 
     it('should propagate errors when driver initialization fails', async () => {
@@ -408,7 +411,8 @@ describe('DriverLoader', () => {
       const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
       const mockLoadDriver = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
 
-      const loader = new DriverLoader(mockLoadDriver, createMockTransportManager())
+      const transportManager = createMockTransportManager()
+      const loader = new DriverLoader(mockLoadDriver, transportManager)
 
       const connection: DeviceConnection = {
         type: 'rtu',
@@ -424,8 +428,9 @@ describe('DriverLoader', () => {
         loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
       ).rejects.toThrow('Initialization failed')
 
-      // Note: Transport is NOT closed on failure since it may be shared by other devices
-      // TransportManager handles cleanup via closeAllTransports()
+      // The device is not added, so its port closes unless other devices use it
+      const transport = await transportManager.getTransport.mock.results[0]?.value
+      expect(transportManager.releaseTransport).toHaveBeenCalledWith(transport)
     })
   })
 
@@ -501,7 +506,7 @@ describe('DriverLoader', () => {
       await expect(loader.unloadDriver('nonexistent')).resolves.not.toThrow()
     })
 
-    it('should remove driver but not close shared transport', async () => {
+    it('should remove driver and release its transport', async () => {
       const mockDriver: DeviceDriver = {
         name: 'test-device',
         manufacturer: 'Test Manufacturer',
@@ -515,7 +520,8 @@ describe('DriverLoader', () => {
       const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
       const mockLoadDriver = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
 
-      const loader = new DriverLoader(mockLoadDriver, createMockTransportManager())
+      const transportManager = createMockTransportManager()
+      const loader = new DriverLoader(mockLoadDriver, transportManager)
 
       const connection: DeviceConnection = {
         type: 'rtu',
@@ -528,11 +534,18 @@ describe('DriverLoader', () => {
       }
 
       await loader.loadDriver('ya-modbus-driver-test', connection, 'device1')
+      expect(transportManager.releaseTransport).not.toHaveBeenCalled()
       await loader.unloadDriver('device1')
 
       expect(loader.getDriver('device1')).toBeUndefined()
-      // Note: Transport is NOT closed on unload - it's managed by TransportManager
-      // and may be shared by other devices
+      // TransportManager closes the shared connection when no other device uses it
+      const transport = await transportManager.getTransport.mock.results[0]?.value
+      expect(transportManager.releaseTransport).toHaveBeenCalledTimes(1)
+      expect(transportManager.releaseTransport).toHaveBeenCalledWith(transport)
+
+      // A second unload has nothing to release
+      await loader.unloadDriver('device1')
+      expect(transportManager.releaseTransport).toHaveBeenCalledTimes(1)
     })
 
     it('should handle driver without destroy method on unload', async () => {
@@ -567,7 +580,7 @@ describe('DriverLoader', () => {
       expect(loader.getDriver('device1')).toBeUndefined()
     })
 
-    it('should propagate driver destroy errors but still remove driver', async () => {
+    it('should propagate driver destroy errors but still remove driver and release its transport', async () => {
       const mockDestroy = jest.fn().mockRejectedValue(new Error('Destroy failed'))
       const mockDriver: DeviceDriver = {
         name: 'test-device',
@@ -583,7 +596,8 @@ describe('DriverLoader', () => {
       const mockCreateDriver: CreateDriverFunction = jest.fn().mockResolvedValue(mockDriver)
       const mockLoadDriver = jest.fn().mockResolvedValue({ createDriver: mockCreateDriver })
 
-      const loader = new DriverLoader(mockLoadDriver, createMockTransportManager())
+      const transportManager = createMockTransportManager()
+      const loader = new DriverLoader(mockLoadDriver, transportManager)
 
       const connection: DeviceConnection = {
         type: 'rtu',
@@ -599,7 +613,8 @@ describe('DriverLoader', () => {
 
       await expect(loader.unloadDriver('device1')).rejects.toThrow('Destroy failed')
       expect(loader.getDriver('device1')).toBeUndefined()
-      // Note: Transport is NOT closed on unload - it's managed by TransportManager
+      const transport = await transportManager.getTransport.mock.results[0]?.value
+      expect(transportManager.releaseTransport).toHaveBeenCalledWith(transport)
     })
   })
 

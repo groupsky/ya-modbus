@@ -16,6 +16,7 @@ interface ConnectionEntry {
   mutex: Mutex // Shared mutex for serializing operations
   config: TransportConfig
   isRTU: boolean
+  transports: Set<Transport> // Transports that use the connection and are not released
 }
 
 /**
@@ -57,6 +58,8 @@ export interface TransportStats {
  *   connection (see ModbusConnection)
  * - With the `startLost` option, a port that cannot be opened (USB adapter missing at
  *   start) gives a lost connection instead of an error
+ * - A connection stays open while a transport on it is not released. releaseTransport()
+ *   closes it when its last transport is released, so the port is free again
  *
  * This architecture solves the multi-device problem:
  * - Each device gets its own SlaveTransport with its own slave ID
@@ -69,12 +72,15 @@ export interface TransportStats {
  * intentional and correct:
  * - Shared client: Avoids port contention (can't open serial port twice)
  * - Shared mutex: Ensures serialized access to the bus
- * - SlaveTransport.close(): Does not close shared client (use closeAll() for cleanup)
+ * - SlaveTransport.close() closes the shared client for all devices on the connection. Use
+ *   releaseTransport() when a device is removed, and closeAll() at shutdown.
  */
 export class TransportManager {
   private readonly connections = new Map<string, ConnectionEntry>()
   // Connections that are opening, so that devices added at the same time share one client
   private readonly opening = new Map<string, Promise<ConnectionEntry>>()
+  // Connections that close because their last transport was released
+  private readonly closing = new Set<Promise<void>>()
 
   constructor(private readonly options: TransportManagerOptions = {}) {}
 
@@ -102,13 +108,41 @@ export class TransportManager {
     }
 
     // Return a new SlaveTransport for this specific slave
-    return new SlaveTransport(
+    const transport = new SlaveTransport(
       config.slaveId,
       entry.connection,
       entry.mutex,
       config.maxRetries ?? 3,
       config.logger
     )
+    entry.transports.add(transport)
+    return transport
+  }
+
+  /**
+   * Release the transport of a device that does not use it any more, for example a device
+   * that is removed. When no other transport uses the connection, the connection is closed
+   * and removed from the pool. A later getTransport() waits until the port is closed, and
+   * opens it again, also with other serial settings.
+   *
+   * Releasing a transport again, or a transport whose connection closeAll() closes, does
+   * nothing and does not wait.
+   *
+   * @param transport - Transport that getTransport() returned
+   * @returns Resolves when the connection is closed, or at once while other transports use it
+   */
+  async releaseTransport(transport: Transport): Promise<void> {
+    for (const [key, entry] of this.connections) {
+      if (!entry.transports.delete(transport)) continue
+      if (entry.transports.size > 0) return
+
+      this.connections.delete(key)
+      const closed = this.closeConnection(entry)
+      this.closing.add(closed)
+      await closed
+      this.closing.delete(closed)
+      return
+    }
   }
 
   /**
@@ -119,6 +153,9 @@ export class TransportManager {
    * @returns The pool entry
    */
   private async openConnection(key: string, config: TransportConfig): Promise<ConnectionEntry> {
+    // A serial port is locked until its close finishes, also with other serial settings
+    if (this.closing.size > 0) await Promise.all(this.closing)
+
     const isRTU = this.isRTUConfig(config)
     const open = isRTU ? () => this.createRTUClient(config) : () => this.createTCPClient(config)
     const target = this.getTarget(config)
@@ -131,7 +168,13 @@ export class TransportManager {
       connection = new ModbusConnection(normalizeModbusError(error), target, open)
     }
 
-    const entry = { connection, mutex: new Mutex(), config, isRTU }
+    const entry = {
+      connection,
+      mutex: new Mutex(),
+      config,
+      isRTU,
+      transports: new Set<Transport>(),
+    }
     this.connections.set(key, entry)
     return entry
   }
@@ -163,6 +206,7 @@ export class TransportManager {
 
   /**
    * Close all managed connections and clear the pool.
+   * Waits for connections that are opening or closing.
    * Errors during close are logged but do not stop the process.
    */
   async closeAll(): Promise<void> {
@@ -175,16 +219,22 @@ export class TransportManager {
     const entries = Array.from(this.connections.values())
     this.connections.clear()
 
-    const closePromises = entries.map(async (entry) => {
-      try {
-        await entry.connection.close()
-      } catch (error) {
-        // Log but don't throw - we want to close all connections
-        console.error('Error closing connection:', error)
-      }
-    })
+    // Also wait for connections that close because their last transport was released
+    await Promise.all([...entries.map((entry) => this.closeConnection(entry)), ...this.closing])
+  }
 
-    await Promise.all(closePromises)
+  /**
+   * Close a connection that is no longer in the pool. Errors are logged, so that the other
+   * connections close too.
+   *
+   * @param entry - Pool entry of the connection
+   */
+  private async closeConnection(entry: ConnectionEntry): Promise<void> {
+    try {
+      await entry.connection.close()
+    } catch (error) {
+      console.error('Error closing connection:', error)
+    }
   }
 
   /**
