@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.14.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.13.12...@ya-modbus/emulator@0.14.0) (2026-10-12)
+
+### Features
+
+- **emulator:** serve coils and discrete inputs (FC 0x01, 0x02, 0x05, 0x0F) ([#589](https://github.com/groupsky/ya-modbus/issues/589)) ([bd4ce5d](https://github.com/groupsky/ya-modbus/commit/bd4ce5d2861e70aaea889e865ffd39e490b39067)), closes [#560](https://github.com/groupsky/ya-modbus/issues/560)
+
 ## [0.13.12](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.13.11...@ya-modbus/emulator@0.13.12) (2026-10-12)
 
 ### Bug Fixes
