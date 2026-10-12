@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.13.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.13.3...@ya-modbus/cli@0.13.4) (2026-10-12)
+
+### Bug Fixes
+
+- **cli:** do not count gateway exceptions as devices in discover ([#591](https://github.com/groupsky/ya-modbus/issues/591)) ([af1a97a](https://github.com/groupsky/ya-modbus/commit/af1a97a58dc08807d2a68a015e3916841112931f)), closes [#583](https://github.com/groupsky/ya-modbus/issues/583)
+
 ## [0.13.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.13.2...@ya-modbus/cli@0.13.3) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/cli
