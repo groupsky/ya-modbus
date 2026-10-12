@@ -116,10 +116,10 @@ describe('CLI Entry Point - Integration Tests', () => {
           help [command]           display help for command
 
         Examples:
-          $ ya-modbus read --port /dev/ttyUSB0 --slave-id 1 --driver ya-modbus-driver-xymd1 --all
+          $ ya-modbus read --port /dev/ttyUSB0 --slave-id 1 --driver @ya-modbus/driver-xymd1 --all
           $ ya-modbus write --host 192.168.1.100 --slave-id 1 --data-point voltage --value 220
           $ ya-modbus discover --port /dev/ttyUSB0 --strategy quick
-          $ ya-modbus show-defaults --driver ya-modbus-driver-xymd1
+          $ ya-modbus show-defaults --driver @ya-modbus/driver-xymd1
             
         "
       `)
@@ -135,7 +135,7 @@ describe('CLI Entry Point - Integration Tests', () => {
         Read data points from device
 
         Driver Options:
-          -d, --driver <package>  Driver package name (e.g., ya-modbus-driver-xymd1) or
+          -d, --driver <package>  Driver package name (e.g., @ya-modbus/driver-xymd1) or
                                   short name (e.g., xymd1). Use "show-defaults" to see
                                   driver config
           --device <key>          Device key for multi-device drivers. Use
@@ -422,7 +422,7 @@ describe('CLI Entry Point - Integration Tests', () => {
         Write data point to device
 
         Driver Options:
-          -d, --driver <package>  Driver package name (e.g., ya-modbus-driver-xymd1) or
+          -d, --driver <package>  Driver package name (e.g., @ya-modbus/driver-xymd1) or
                                   short name (e.g., xymd1). Use "show-defaults" to see
                                   driver config
           --device <key>          Device key for multi-device drivers. Use
@@ -685,14 +685,14 @@ describe('CLI Entry Point - Integration Tests', () => {
         'ya-modbus',
         'show-defaults',
         '--driver',
-        'ya-modbus-driver-xymd1',
+        '@ya-modbus/driver-xymd1',
         '--format',
         'json',
       ])
 
       expect(mockShowDefaultsCommand).toHaveBeenCalledWith(
         expect.objectContaining({
-          driver: 'ya-modbus-driver-xymd1',
+          driver: '@ya-modbus/driver-xymd1',
           format: 'json',
         })
       )
@@ -812,14 +812,14 @@ describe('CLI Entry Point - Integration Tests', () => {
         'ya-modbus',
         'list-devices',
         '--driver',
-        'ya-modbus-driver-xymd1',
+        '@ya-modbus/driver-xymd1',
         '--format',
         'json',
       ])
 
       expect(mockListDevicesCommand).toHaveBeenCalledWith(
         expect.objectContaining({
-          driver: 'ya-modbus-driver-xymd1',
+          driver: '@ya-modbus/driver-xymd1',
           format: 'json',
         })
       )
