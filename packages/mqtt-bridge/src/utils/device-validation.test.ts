@@ -209,6 +209,51 @@ describe('validateDeviceConfig', () => {
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
   })
 
+  describe('boundary values', () => {
+    const device = (connection: object, polling?: object): Record<string, unknown> => ({
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection,
+      ...(polling && { polling }),
+    })
+    const rtu = { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600 }
+    const tcp = { type: 'tcp', host: 'localhost' }
+
+    it.each([0, 1, 247])('should accept slaveId %p', (slaveId) => {
+      expect(() => validateDeviceConfig(device({ ...rtu, slaveId }))).not.toThrow()
+      expect(() => validateDeviceConfig(device({ ...tcp, slaveId }))).not.toThrow()
+    })
+
+    it.each([-1, 248, 1.5])('should reject slaveId %p', (slaveId) => {
+      expect(() => validateDeviceConfig(device({ ...rtu, slaveId }))).toThrow(
+        'Invalid device configuration'
+      )
+      expect(() => validateDeviceConfig(device({ ...tcp, slaveId }))).toThrow(
+        'Invalid device configuration'
+      )
+    })
+
+    it.each([1, 502, 65535])('should accept TCP port %p', (port) => {
+      expect(() => validateDeviceConfig(device({ ...tcp, slaveId: 1, port }))).not.toThrow()
+    })
+
+    it.each([0, -1, 65536, 1.5])('should reject TCP port %p', (port) => {
+      expect(() => validateDeviceConfig(device({ ...tcp, slaveId: 1, port }))).toThrow(
+        'Invalid device configuration'
+      )
+    })
+
+    it.each([100, 86400000])('should accept polling interval %p ms', (interval) => {
+      expect(() => validateDeviceConfig(device({ ...tcp, slaveId: 1 }, { interval }))).not.toThrow()
+    })
+
+    it.each([99, 86400001])('should reject polling interval %p ms', (interval) => {
+      expect(() => validateDeviceConfig(device({ ...tcp, slaveId: 1 }, { interval }))).toThrow(
+        'Invalid device configuration'
+      )
+    })
+  })
+
   it('should accept valid polling config', () => {
     const config = {
       deviceId: 'device1',

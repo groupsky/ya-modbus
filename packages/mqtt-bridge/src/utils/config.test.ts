@@ -139,4 +139,84 @@ describe('loadConfig', () => {
     expect(config.devices?.[0].deviceId).toBe('test-device')
     expect(config.devices?.[0].driver).toBe('@ya-modbus/driver-ex9em')
   })
+
+  it.each(['a/b', 'a+', 'a#', '$SYS', 'a\u0000b'])(
+    'should throw error for topicPrefix with MQTT special characters: %j',
+    async (topicPrefix) => {
+      mockedReadFile.mockResolvedValue(
+        JSON.stringify({ mqtt: { url: 'mqtt://localhost:1883' }, topicPrefix })
+      )
+
+      await expect(loadConfig('/path/to/config.json')).rejects.toThrow(
+        'Topic prefix must not contain MQTT special'
+      )
+    }
+  )
+
+  it('should apply the serial port defaults of RTU devices', async () => {
+    mockedReadFile.mockResolvedValue(
+      JSON.stringify({
+        devices: [
+          {
+            deviceId: 'rtu-device',
+            driver: '@ya-modbus/driver-ex9em',
+            connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+          },
+        ],
+      })
+    )
+
+    const config = await loadConfig('/path/to/config.json')
+
+    expect(config.devices?.[0].connection).toEqual({
+      type: 'rtu',
+      port: '/dev/ttyUSB0',
+      baudRate: 9600,
+      slaveId: 1,
+      parity: 'none',
+      dataBits: 8,
+      stopBits: 1,
+    })
+  })
+
+  it('should keep optional device fields out of the config when they are not set', async () => {
+    mockedReadFile.mockResolvedValue(
+      JSON.stringify({
+        devices: [
+          {
+            deviceId: 'tcp-device',
+            driver: '@ya-modbus/driver-xymd1',
+            connection: { type: 'tcp', host: 'localhost', slaveId: 2 },
+          },
+        ],
+      })
+    )
+
+    const config = await loadConfig('/path/to/config.json')
+
+    expect(config.devices).toStrictEqual([
+      {
+        deviceId: 'tcp-device',
+        driver: '@ya-modbus/driver-xymd1',
+        connection: { type: 'tcp', host: 'localhost', slaveId: 2 },
+      },
+    ])
+  })
+
+  it('should name the invalid device when only one of several devices is invalid', async () => {
+    const rtuDevice = (
+      deviceId: string
+    ): { deviceId: string; driver: string; connection: object } => ({
+      deviceId,
+      driver: '@ya-modbus/driver-ex9em',
+      connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+    })
+    mockedReadFile.mockResolvedValue(
+      JSON.stringify({ devices: [rtuDevice('device1'), rtuDevice(''), rtuDevice('device3')] })
+    )
+
+    await expect(loadConfig('/path/to/config.json')).rejects.toThrow(
+      'Invalid configuration: devices.1.deviceId: Device ID must not be empty'
+    )
+  })
 })
