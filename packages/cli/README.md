@@ -4,7 +4,7 @@ CLI tool for testing and developing Modbus device drivers.
 
 ## Requirements
 
-- Node.js >= 18.0.0
+- Node.js >= 22.0.0
 
 ## Features
 

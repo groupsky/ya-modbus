@@ -25,7 +25,7 @@ A clear and concise description of what you expected to happen.
 ## Environment
 
 - OS: [e.g., Ubuntu 22.04, macOS 14]
-- Node.js version: [e.g., 20.10.0]
+- Node.js version: [e.g., 22.22.0]
 - Package version: [e.g., @ya-modbus/mqtt-bridge@0.5.0]
 
 ## Logs/Error output

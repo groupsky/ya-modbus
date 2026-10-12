@@ -463,7 +463,7 @@ Document in driver implementation, enforce via function composition.
     "@ya-modbus/driver-sdk": "^1.0.0"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   }
 }
 ```
@@ -478,7 +478,7 @@ Document in driver implementation, enforce via function composition.
 
 - `keywords` must include `"ya-modbus-driver"` for discovery
 - `peerDependencies` declares SDK compatibility
-- `engines` field with Node.js version requirement (e.g., `"node": ">=20.0.0"`)
+- `engines` field with Node.js version requirement (e.g., `"node": ">=22.0.0"`)
 - `description` should list supported device types if multiple
 
 **Benefits of single factory approach**:

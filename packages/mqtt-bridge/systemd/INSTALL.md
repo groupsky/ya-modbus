@@ -5,7 +5,7 @@ This guide covers installing and running ya-modbus-bridge as a systemd service o
 ## Prerequisites
 
 - Linux system with systemd v235 or higher (v247+ recommended for full security features)
-- Node.js 20 or higher
+- Node.js 22 or higher
 - Root or sudo access
 - ya-modbus-bridge installed globally via npm
 

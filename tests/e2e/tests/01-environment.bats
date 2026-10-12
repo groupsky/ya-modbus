@@ -31,7 +31,7 @@ load helpers
     const nodeVersion = process.version.slice(1).split('.')[0];
     const engines = pkg.engines.node;
 
-    // Parse engines.node (e.g., '20 || 22 || 24')
+    // Parse engines.node (e.g., '22 || 24')
     const allowed = engines.split('||').map(v => v.trim());
     const matches = allowed.some(v => nodeVersion === v || nodeVersion.startsWith(v + '.'));
 

@@ -6,7 +6,7 @@ set -euo pipefail
 #
 # Uses --profile node16 which corresponds to TypeScript's "moduleResolution: node16".
 # This is the correct profile for modern Node.js (16+) module resolution behavior.
-# Despite the name, it's appropriate for Node.js 20+ projects.
+# Despite the name, it's appropriate for Node.js 22+ projects.
 #
 # See: https://arethetypeswrong.github.io/
 

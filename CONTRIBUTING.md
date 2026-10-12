@@ -528,7 +528,7 @@ Brief description of changes
 
 ### Prerequisites
 
-- Node.js 24+ (see `.nvmrc`)
+- Node.js 22 or 24 (see `.nvmrc`)
 - npm 10+
 - Git
 

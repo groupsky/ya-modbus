@@ -24,7 +24,7 @@ jobs:
         id: generate-matrix
         run: |
           # Extract all Node.js major versions from package.json engines field
-          # Supports format like "20 || 22 || 24"
+          # Supports format like "22 || 24"
           NODE_VERSIONS=$(node -p "
             const engines = require('./package.json').engines.node;
             engines.match(/\d+/g).map(v => v + '.x').join(' ');
@@ -94,10 +94,6 @@ jobs:
           # Disable cache for matrix builds to avoid conflicts between Node versions
           # Cache is still used in the build job
           # cache: 'npm'
-
-      - name: Update npm (Node.js 20.x compatibility)
-        if: matrix.node-version == '20.x'
-        run: npm install -g npm@11
 
       - name: Clean packages
         run: npm run clean

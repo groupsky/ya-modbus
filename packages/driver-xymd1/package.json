@@ -50,7 +50,7 @@
     "@ya-modbus/cli": "^0.9.6"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "module": "./dist/esm/src/index.js",
   "exports": {
