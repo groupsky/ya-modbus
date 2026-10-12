@@ -36,6 +36,15 @@ ya-modbus is a TypeScript monorepo that bridges Modbus devices (RTU/TCP) to MQTT
 
 **Why modbus-serial**: Mature, well-tested library with active maintenance and broad device compatibility.
 
+**Version**: `^8.0.25` in `@ya-modbus/transport` and `@ya-modbus/emulator`.
+
+**Where it is used**:
+
+- Client side: `ModbusRTU` in `@ya-modbus/transport` (RTU and TCP) and in the discovery scanner of `@ya-modbus/cli`
+- Server side: `ServerTCP` and `ServerSerial` in `@ya-modbus/emulator`
+
+**Known constraint (emulator)**: `modbus-serial` does not await a Promise returned by the multi-register read functions of a server service vector (`getMultipleHoldingRegisters`, `getMultipleInputRegisters`), although its types allow it. The emulator uses the callback style for all read functions of its service vector (`src/transports/service-vector.ts`, shared by the TCP and RTU transports). This is an internal detail and does not change the public API. The workaround is limited to these read functions, so the emulator keeps `modbus-serial`. See `packages/emulator/README.md` (Known Limitations).
+
 ### Layered Architecture
 
 ```
@@ -90,6 +99,25 @@ ya-modbus is a TypeScript monorepo that bridges Modbus devices (RTU/TCP) to MQTT
 - Connection management and recovery
 - Error normalization and retry logic
 - Integration with mutex layer for RTU operations
+
+### Function Codes of the Transport Interface
+
+The `Transport` interface (`packages/driver-types/src/transport.ts`) provides one method for each of these function codes:
+
+| Code | Function                 | `Transport` method       |
+| ---- | ------------------------ | ------------------------ |
+| 0x01 | Read Coils               | `readCoils`              |
+| 0x02 | Read Discrete Inputs     | `readDiscreteInputs`     |
+| 0x03 | Read Holding Registers   | `readHoldingRegisters`   |
+| 0x04 | Read Input Registers     | `readInputRegisters`     |
+| 0x05 | Write Single Coil        | `writeSingleCoil`        |
+| 0x06 | Write Single Register    | `writeSingleRegister`    |
+| 0x0F | Write Multiple Coils     | `writeMultipleCoils`     |
+| 0x10 | Write Multiple Registers | `writeMultipleRegisters` |
+
+Other function codes, such as file records (0x14, 0x15), are not part of the interface.
+
+The emulator serves only 0x03, 0x04, 0x06 and 0x10. See `packages/emulator/README.md` (Supported Function Codes).
 
 ## Key Architectural Decisions
 
@@ -434,10 +462,10 @@ For 10 devices @ 9600 baud:
 
 **Capabilities**:
 
-- Emulate any Modbus device (RTU/TCP)
-- Configurable register values
-- Simulate errors (timeouts, CRC failures, exceptions)
-- Test scenarios (disconnection, slow responses)
+- Emulate Modbus devices over RTU, TCP or an in-memory transport
+- Configurable holding and input register values
+- Function codes 0x03, 0x04, 0x06 and 0x10 (see `packages/emulator/README.md`, Supported Function Codes)
+- Simulated response timing (command detection, processing and per-register delays)
 
 **Usage**: See `packages/emulator/src/` for usage examples and tests.
 
