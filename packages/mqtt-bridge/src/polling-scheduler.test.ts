@@ -654,6 +654,37 @@ describe('PollingScheduler', () => {
       expect(mockReadDataPoints).toHaveBeenCalledTimes(1) // No additional calls
     })
 
+    it('should leave no pending timers after stop and schedule them again on restart', () => {
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      for (const deviceId of ['device1', 'device2']) {
+        const config: DeviceConfig = {
+          deviceId,
+          driver: 'test-driver',
+          connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+          polling: { interval: 1000 },
+        }
+        scheduler.scheduleDevice(deviceId, config, driver)
+      }
+
+      scheduler.start()
+      expect(jest.getTimerCount()).toBe(2)
+
+      scheduler.stop()
+      expect(jest.getTimerCount()).toBe(0)
+
+      scheduler.start()
+      expect(jest.getTimerCount()).toBe(2)
+    })
+
     it('should allow restart after stop', async () => {
       const config: DeviceConfig = {
         deviceId: 'device1',

@@ -5,7 +5,7 @@ import type { DeviceConfig } from './types.js'
 interface ScheduledDevice {
   config: DeviceConfig
   driver: DeviceDriver
-  timer?: NodeJS.Timeout
+  timer?: NodeJS.Timeout | undefined
   interval: number
   lastFailureCount: number
 }
@@ -84,7 +84,7 @@ export class PollingScheduler {
     for (const device of this.devices.values()) {
       if (device.timer) {
         clearTimeout(device.timer)
-        delete device.timer
+        device.timer = undefined
       }
     }
   }
