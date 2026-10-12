@@ -1,5 +1,4 @@
 import { readFile } from 'fs/promises'
-import { join } from 'path'
 
 import type {
   CreateDriverFunction,
@@ -15,9 +14,15 @@ import {
   validateDevices,
   validateSupportedConfig,
 } from './config-validator.js'
-import { importDriverPackage } from './driver-import.js'
+import { importDriverPackage, importLocalDriver } from './driver-import.js'
 import { getDriverPackageCandidates } from './driver-name.js'
-import { DriverNotFoundError, PackageJsonError, ValidationError } from './errors.js'
+import {
+  DriverNotBuiltError,
+  DriverNotFoundError,
+  PackageJsonError,
+  ValidationError,
+} from './errors.js'
+import { detectLocalPackage } from './local-package.js'
 
 /**
  * Loaded driver module with configuration metadata
@@ -103,8 +108,22 @@ export interface LoadDriverOptions {
  */
 export interface SystemDependencies {
   readFile: (path: string, encoding: 'utf-8') => Promise<string>
-  importModule: (modulePath: string) => Promise<unknown>
+  /** Import a module by package name, or by `file:` URL for the entry file of a local package */
+  importModule: (specifier: string) => Promise<unknown>
   getCwd: () => string
+}
+
+/**
+ * Native `import()`, in the CommonJS build as well
+ *
+ * The CommonJS build compiles `import()` to `require()`, which cannot load a `file:` URL.
+ * Going through `Function` keeps the native `import()`, which also loads ES modules.
+ */
+/* istanbul ignore next */
+const nativeImport = (specifier: string): Promise<unknown> => {
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval -- keeps `import()` out of the CommonJS transform
+  const importFn = new Function('specifier', 'return import(specifier)') as typeof nativeImport
+  return importFn(specifier)
 }
 
 /**
@@ -115,7 +134,8 @@ const defaultDeps: SystemDependencies = {
   /* istanbul ignore next */
   readFile: (path: string, encoding: 'utf-8') => readFile(path, encoding),
   /* istanbul ignore next */
-  importModule: (modulePath: string) => import(modulePath),
+  importModule: (specifier: string) =>
+    specifier.startsWith('file:') ? nativeImport(specifier) : import(specifier),
   /* istanbul ignore next */
   getCwd: () => process.cwd(),
 }
@@ -168,83 +188,16 @@ export function getDriverCacheStats(): DriverCacheStats {
 }
 
 /**
- * Auto-detect local driver package from package.json
- *
- * @param deps - System dependencies
- * @returns Package name if valid driver package
- * @throws Error if not a valid driver package
- */
-async function detectLocalPackage(deps: SystemDependencies): Promise<string> {
-  try {
-    const packageJsonPath = join(deps.getCwd(), 'package.json')
-    const packageJsonContent = await deps.readFile(packageJsonPath, 'utf-8')
-    const packageJson = JSON.parse(packageJsonContent) as {
-      name?: string
-      keywords?: string[]
-    }
-
-    const keywords = packageJson.keywords ?? []
-    if (!keywords.includes('ya-modbus-driver')) {
-      throw new PackageJsonError(
-        'Current package is not a ya-modbus driver. ' +
-          'Add "ya-modbus-driver" to keywords in package.json'
-      )
-    }
-
-    const name = packageJson.name
-    if (!name) {
-      throw new PackageJsonError('package.json must have a "name" field')
-    }
-
-    return name
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      throw new PackageJsonError(
-        'package.json not found in current directory. ' +
-          'Run this command from a driver package directory or specify --driver'
-      )
-    }
-    if (error instanceof SyntaxError) {
-      throw new PackageJsonError('Failed to parse package.json: invalid JSON')
-    }
-    throw error
-  }
-}
-
-/**
- * Try to import a module with multiple path attempts
- *
- * @param paths - Array of module paths to try
- * @param deps - System dependencies
- * @returns Imported module
- * @throws Error if all paths fail
- */
-async function tryImport(paths: string[], deps: SystemDependencies): Promise<unknown> {
-  const errors: Error[] = []
-
-  for (const path of paths) {
-    try {
-      return await deps.importModule(path)
-    } catch (error) {
-      errors.push(error as Error)
-    }
-  }
-
-  const lastError = errors[errors.length - 1]
-  throw new Error(
-    `Failed to import module from any path. Tried: ${paths.join(', ')}\nLast error: ${lastError?.message}`,
-    { cause: lastError }
-  )
-}
-
-/**
  * Load a driver package dynamically
  *
  * Supports two modes:
  * 1. Explicit package: `loadDriver({ driverPackage: 'ya-modbus-driver-xymd1' })`
  * 2. Auto-detect from cwd: `loadDriver({})` - reads package.json from current directory
  *
- * Auto-detection checks for `ya-modbus-driver` keyword in package.json keywords.
+ * Auto-detection checks for `ya-modbus-driver` keyword in package.json keywords and loads
+ * the entry file that `import` of the package resolves to (`exports["."]`, else `main`,
+ * else `index.js`). The driver must be built: the entry file is JavaScript, or TypeScript
+ * that Node can run itself.
  *
  * @example
  * // Auto-detect from current directory
@@ -285,7 +238,8 @@ export async function loadDriver(
       packageName = imported.packageName
       driverModule = imported.driverModule
     } else {
-      packageName = await detectLocalPackage(deps)
+      const localPackage = await detectLocalPackage(deps)
+      packageName = localPackage.name
 
       const cached = driverCache.get(packageName)
       if (cached) {
@@ -295,16 +249,7 @@ export async function loadDriver(
 
       cacheStats.misses++
 
-      const cwd = deps.getCwd()
-
-      const importPaths = [
-        join(cwd, 'src', 'index.js'),
-        join(cwd, 'src', 'index.ts'),
-        join(cwd, 'dist', 'index.js'),
-        packageName,
-      ]
-
-      driverModule = await tryImport(importPaths, deps)
+      driverModule = await importLocalDriver(packageName, localPackage.entryPoint, deps)
     }
 
     if (!driverModule || typeof driverModule !== 'object') {
@@ -365,6 +310,7 @@ export async function loadDriver(
     if (
       error instanceof ValidationError ||
       error instanceof DriverNotFoundError ||
+      error instanceof DriverNotBuiltError ||
       error instanceof PackageJsonError
     ) {
       throw error

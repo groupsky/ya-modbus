@@ -7,13 +7,17 @@
  * with native import statements.
  */
 
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { program } from '@ya-modbus/cli'
 import { scanRegisters } from '@ya-modbus/device-profiler'
 import {
   createDriver as createEx9emDriver,
   DEFAULT_CONFIG as EX9EM_CONFIG,
 } from '@ya-modbus/driver-ex9em'
-import { loadDriver } from '@ya-modbus/driver-loader'
+import { clearDriverCache, DriverNotBuiltError, loadDriver } from '@ya-modbus/driver-loader'
 import { createDriver as createOrWe516Driver } from '@ya-modbus/driver-or-we-516'
 import { readScaledUInt16BE, createEnumValidator } from '@ya-modbus/driver-sdk'
 import { createDriver as createXYMD1Driver, DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
@@ -137,6 +141,41 @@ async function main() {
     process.exit(1)
   }
   console.log('✓ Driver factory function works correctly')
+
+  // Load a driver from the current directory: the loader imports the file that package.json names
+  const localDir = mkdtempSync(join(tmpdir(), 'ya-modbus-local-driver-'))
+  const originalCwd = process.cwd()
+  const writePackageJson = (main) =>
+    writeFileSync(
+      join(localDir, 'package.json'),
+      JSON.stringify({ name: 'local-driver', keywords: ['ya-modbus-driver'], main })
+    )
+
+  try {
+    mkdirSync(join(localDir, 'built'))
+    writeFileSync(join(localDir, 'built', 'driver.mjs'), 'export const createDriver = () => ({})\n')
+    process.chdir(localDir)
+
+    writePackageJson('built/driver.mjs')
+    const localDriver = await loadDriver({})
+    if (typeof localDriver.createDriver !== 'function') {
+      console.error('❌ Failed: local driver createDriver is not a function')
+      process.exit(1)
+    }
+    console.log('✓ Driver loader loads the driver from the current directory')
+
+    clearDriverCache()
+    writePackageJson('dist/index.js')
+    const notBuilt = await loadDriver({}).catch((error) => error)
+    if (!(notBuilt instanceof DriverNotBuiltError)) {
+      console.error('❌ Failed: a driver without its entry file is not reported as not built')
+      process.exit(1)
+    }
+    console.log('✓ Driver loader reports a driver that is not built')
+  } finally {
+    process.chdir(originalCwd)
+    rmSync(localDir, { recursive: true, force: true })
+  }
 
   // Test function values
   console.log('\nPackage exports summary:')

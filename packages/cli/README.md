@@ -368,6 +368,8 @@ cd packages/driver-xymd1
 npx ya-modbus read --port /dev/ttyUSB0 --slave-id 1 --data-point temperature
 ```
 
+The CLI loads the built JavaScript file that `exports` (or `main`) in package.json names, so build the driver first (`npm run build`) and build it again after each change. If the driver is not built, the command fails with a message that says so (`discover` falls back to generic parameters and shows the message with `--verbose`). If `exports` or `main` names a TypeScript file, Node 22.18+ and 24 can load it without a build.
+
 **Explicit driver (production mode):**
 
 ```bash

@@ -69,6 +69,37 @@ export class DriverNotFoundError extends Error {
 }
 
 /**
+ * Error thrown when a driver package is installed but cannot be loaded because it is not built
+ *
+ * Drivers are loaded as built JavaScript. This covers a missing entry file (for example
+ * no `dist` directory) and TypeScript source that Node cannot run.
+ *
+ * @example
+ * ```typescript
+ * import { loadDriver, DriverNotBuiltError } from '@ya-modbus/driver-loader'
+ *
+ * try {
+ *   await loadDriver({}) // Auto-detect from current directory
+ * } catch (error) {
+ *   if (error instanceof DriverNotBuiltError) {
+ *     console.error(`Build ${error.packageName} first: npm run build`)
+ *   }
+ * }
+ * ```
+ */
+export class DriverNotBuiltError extends Error {
+  constructor(
+    message: string,
+    public readonly packageName: string,
+    options?: ErrorOptions
+  ) {
+    super(message, options)
+    this.name = 'DriverNotBuiltError'
+    Object.setPrototypeOf(this, DriverNotBuiltError.prototype)
+  }
+}
+
+/**
  * Error thrown when package.json is not found or invalid
  *
  * @example

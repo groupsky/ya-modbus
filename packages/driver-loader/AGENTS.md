@@ -32,6 +32,8 @@ This package provides runtime driver loading and validation functionality for ya
 
 - **loader.ts**: Core driver loading functionality with caching
 - **driver-name.ts**: Expands short driver names into the packages to try
+- **local-package.ts**: Reads package.json of the current directory and finds the driver entry file
+- **entry-point.ts**: Finds the file `import` of a package loads (`exports`, `main`)
 - **driver-import.ts**: Imports the candidates in order and turns import failures into errors
 - **module-errors.ts**: Tells Node import errors apart (package missing, driver not built)
 - **config-validator.ts**: Validation of driver configuration exports
