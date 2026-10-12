@@ -7,6 +7,9 @@ Description=Ya-Modbus MQTT Bridge Service
 Documentation=https://github.com/groupsky/ya-modbus/tree/main/packages/mqtt-bridge#readme
 After=network-online.target
 Wants=network-online.target
+# Load serial drivers first, so DeviceAllow=char-ttyUSB/char-ttyACM resolve at start
+Wants=modprobe@usbserial.service modprobe@cdc_acm.service
+After=modprobe@usbserial.service modprobe@cdc_acm.service
 StartLimitIntervalSec=300
 StartLimitBurst=5
 
@@ -46,9 +49,18 @@ StateDirectoryMode=0750
 ProtectSystem=strict
 PrivateTmp=yes
 ProtectHome=yes
-PrivateDevices=yes
 NoExecPaths=/
 ExecPaths=/usr/bin /usr/local/bin /usr/lib /usr/local/lib /lib /lib64
+
+# Security: Device Access
+# PrivateDevices= hides serial ports, so allow only pseudo devices and serial adapters
+# Add a DeviceAllow= line for other serial drivers (group names in /proc/devices)
+DevicePolicy=closed
+DeviceAllow=char-ttyS rw
+DeviceAllow=char-ttyUSB rw
+DeviceAllow=char-ttyACM rw
+DeviceAllow=char-ttyAMA rw
+DeviceAllow=char-ttySC rw
 
 # Security: Kernel Protection
 ProtectKernelLogs=yes

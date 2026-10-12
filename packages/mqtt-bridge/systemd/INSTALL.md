@@ -37,6 +37,10 @@ If you're using serial Modbus connections (RS-485/RS-232 via USB adapters like `
 sudo usermod -a -G dialout ya-modbus-bridge
 ```
 
+On Arch Linux, serial ports belong to the `uucp` group instead of `dialout`.
+
+The service can only open serial devices from the drivers listed in `DeviceAllow=` in the unit file (`ttyS`, `ttyUSB`, `ttyACM`, `ttyAMA`, `ttySC`). For another driver, add a `DeviceAllow=char-<name> rw` line with the name from `/proc/devices`.
+
 **Note:** Skip this step if you're only using Modbus TCP.
 
 ### 4. Create configuration directory
@@ -315,6 +319,12 @@ sudo chown -R ya-modbus-bridge:ya-modbus-bridge /etc/ya-modbus-bridge
 ```
 
 Note: The state directory `/var/lib/ya-modbus-bridge` is automatically managed by systemd's `StateDirectory` directive with correct ownership.
+
+If the serial port fails with `EPERM` or `Operation not permitted`, the serial driver was not loaded when the service started (for example, the adapter was plugged in later). Restart the service:
+
+```bash
+sudo systemctl restart ya-modbus-bridge
+```
 
 ### MQTT connection issues
 
