@@ -4,19 +4,21 @@ MQTT bridge for ya-modbus - orchestrates device management, polling, and MQTT pu
 
 ## Overview
 
-The MQTT bridge provides the foundational layer for connecting Modbus devices to MQTT:
+The MQTT bridge connects Modbus devices to MQTT:
 
-### Current Features (Phase 1)
+### Features
 
 - **MQTT Connection Management** - Connect to MQTT brokers with authentication
 - **Topic Publish/Subscribe** - Publish and subscribe to MQTT topics with QoS support
 - **Device Registry** - Add, remove, and track devices
 - **Graceful Lifecycle** - Start, stop, and status reporting
+- **Driver Integration** - Load device drivers dynamically and connect devices over RTU and TCP
+- **Polling** - Poll devices at an interval or continuously, with backoff after failed reads, and publish the data
+- **Devices from Config** - Load the devices of a config file on startup
 
-### Future Features
+### Planned Features
 
-- Driver integration and polling coordination (Phase 2)
-- State persistence and MQTT configuration topics (Phase 3)
+- State persistence, MQTT configuration topics and bridge status publishing (Phase 3)
 
 See [Architecture documentation](./docs/ARCHITECTURE.md) for complete details and roadmap.
 
