@@ -1,10 +1,16 @@
 import {
   BYTES_PER_REGISTER,
   DEFAULT_BATCH_SIZE,
+  MAX_BATCH_SIZE,
   MAX_PORT,
+  MAX_REGISTER_ADDRESS,
   MAX_SLAVE_ID,
+  MAX_TIMEOUT_MS,
+  MIN_BATCH_SIZE,
   MIN_PORT,
+  MIN_REGISTER_ADDRESS,
   MIN_SLAVE_ID,
+  MIN_TIMEOUT_MS,
   PROGRESS_UPDATE_INTERVAL_MS,
 } from './constants.js'
 
@@ -48,7 +54,30 @@ describe('constants', () => {
     })
   })
 
+  describe('register address range', () => {
+    it('should start at address 0', () => {
+      expect(MIN_REGISTER_ADDRESS).toBe(0)
+    })
+
+    it('should end at the maximum 16-bit unsigned integer', () => {
+      expect(MAX_REGISTER_ADDRESS).toBe(65535)
+    })
+  })
+
   describe('batch size', () => {
+    it('should allow reading a single register', () => {
+      expect(MIN_BATCH_SIZE).toBe(1)
+    })
+
+    it('should match the Modbus limit of 125 registers per FC03/FC04 read', () => {
+      expect(MAX_BATCH_SIZE).toBe(125)
+    })
+
+    it('should have default batch size within the allowed range', () => {
+      expect(DEFAULT_BATCH_SIZE).toBeGreaterThanOrEqual(MIN_BATCH_SIZE)
+      expect(DEFAULT_BATCH_SIZE).toBeLessThanOrEqual(MAX_BATCH_SIZE)
+    })
+
     it('should have positive default batch size', () => {
       expect(DEFAULT_BATCH_SIZE).toBeGreaterThan(0)
     })
@@ -61,6 +90,16 @@ describe('constants', () => {
     it('should have batch size suitable for quick responses', () => {
       // Small batch sizes reduce latency for first results
       expect(DEFAULT_BATCH_SIZE).toBeLessThan(50)
+    })
+  })
+
+  describe('timeout range', () => {
+    it('should allow a timeout of 1 millisecond', () => {
+      expect(MIN_TIMEOUT_MS).toBe(1)
+    })
+
+    it('should match the largest delay Node.js setTimeout accepts', () => {
+      expect(MAX_TIMEOUT_MS).toBe(2 ** 31 - 1)
     })
   })
 

@@ -4,7 +4,7 @@
 
 import type { Transport } from '@ya-modbus/driver-types'
 
-import { BYTES_PER_REGISTER, DEFAULT_BATCH_SIZE } from './constants.js'
+import { BYTES_PER_REGISTER, DEFAULT_BATCH_SIZE, MIN_BATCH_SIZE } from './constants.js'
 import type { ErrorType } from './error-classifier.js'
 import { testRead, RegisterType } from './read-tester.js'
 
@@ -52,6 +52,7 @@ export interface ScanOptions {
  * Scan a range of registers with batch reads and automatic fallback
  *
  * @param options - Scan configuration
+ * @throws Error if the batch size is not a whole number of 1 or more
  */
 export async function scanRegisters(options: ScanOptions): Promise<void> {
   const {
@@ -63,6 +64,13 @@ export async function scanRegisters(options: ScanOptions): Promise<void> {
     onProgress,
     onResult,
   } = options
+
+  // The loop advances by batchSize, so a value below 1 would never end
+  if (!Number.isInteger(batchSize) || batchSize < MIN_BATCH_SIZE) {
+    throw new Error(
+      `Invalid batch size: ${batchSize}. Must be a whole number of ${MIN_BATCH_SIZE} or more`
+    )
+  }
 
   const totalRegisters = endAddress - startAddress + 1
   let scannedCount = 0
