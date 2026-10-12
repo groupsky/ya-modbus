@@ -111,6 +111,9 @@ jobs:
       - name: Build packages
         run: npm run build
 
+      - name: Smoke-test bin files
+        run: npm run validate:bins
+
       - name: Run tests
         run: npm run test:ci
 

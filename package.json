@@ -49,6 +49,7 @@
     "prepare": "husky",
     "validate:publint": "./scripts/validate-publint.sh",
     "validate:attw": "./scripts/validate-attw.sh",
+    "validate:bins": "node scripts/validate-bins.js",
     "validate:packages": "npm run validate:publint && npm run validate:attw"
   },
   "devDependencies": {
