@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.8.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/transport@0.7.3...@ya-modbus/transport@0.8.0) (2026-10-12)
+
+### Features
+
+- **transport:** keep details of modbus-serial errors instead of "[object Object]" ([#512](https://github.com/groupsky/ya-modbus/issues/512)) ([343dd50](https://github.com/groupsky/ya-modbus/commit/343dd50d011c7e06e86e31701e25a8d5b9e861dc)), closes [#177](https://github.com/groupsky/ya-modbus/issues/177)
+
 ## [0.7.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/transport@0.7.2...@ya-modbus/transport@0.7.3) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/transport

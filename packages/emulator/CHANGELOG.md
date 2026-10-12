@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.12.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.12.2...@ya-modbus/emulator@0.12.3) (2026-10-12)
+
+### Bug Fixes
+
+- **emulator:** start the emulator once, not on import and again from the bin ([#511](https://github.com/groupsky/ya-modbus/issues/511)) ([9475ad1](https://github.com/groupsky/ya-modbus/commit/9475ad172e8fc008898a85d4f2c0f67df827f535))
+
 ## [0.12.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.12.1...@ya-modbus/emulator@0.12.2) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/emulator
