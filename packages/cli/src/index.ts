@@ -95,12 +95,9 @@ addConnectionOptions(program.command('read').description('Read data points from 
   .option('--all', 'Read all readable data points')
   .optionsGroup('Output Options:')
   .option('-f, --format <type>', 'Output format: table or json (default: table)', 'table')
-  .action(async (options: ReadOptions & { tcpPort?: number }) => {
+  .action(async (options: ReadOptions) => {
     try {
-      // tcpPort is parsed by Commander but not used by readCommand (transport layer handles it).
-      // Destructure it out to avoid passing undefined (exactOptionalPropertyTypes requirement).
-      const { tcpPort: _tcpPort, ...commandOptions } = options
-      await readCommand(commandOptions)
+      await readCommand(options)
     } catch (error) {
       console.error(`Error: ${(error as Error).message}`)
       process.exit(1)
@@ -115,12 +112,9 @@ addConnectionOptions(program.command('write').description('Write data point to d
   .optionsGroup('Write Options:')
   .option('-y, --yes', 'Skip confirmation prompt')
   .option('--verify', 'Read back and verify written value')
-  .action(async (options: WriteOptions & { tcpPort?: number }) => {
+  .action(async (options: WriteOptions) => {
     try {
-      // tcpPort is parsed by Commander but not used by writeCommand (transport layer handles it).
-      // Destructure it out to avoid passing undefined (exactOptionalPropertyTypes requirement).
-      const { tcpPort: _tcpPort, ...commandOptions } = options
-      await writeCommand(commandOptions)
+      await writeCommand(options)
     } catch (error) {
       console.error(`Error: ${(error as Error).message}`)
       process.exit(1)

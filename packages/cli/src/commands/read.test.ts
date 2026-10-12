@@ -225,10 +225,11 @@ describe('Read Command', () => {
     expect(parsed.dataPoints[0].value).toBe(24.5)
   })
 
-  test('should use TCP connection when host is provided', async () => {
+  test('should use TCP connection with the --tcp-port number when host is provided', async () => {
+    // The TCP port comes from tcpPort (--tcp-port), not from the serial port option
     const options = {
       host: '192.168.1.100',
-      port: 502,
+      tcpPort: 5020,
       slaveId: 1,
       dataPoint: ['temperature'],
       format: 'table',
@@ -241,7 +242,7 @@ describe('Read Command', () => {
     // Verify TCP transport was created
     expect(transportFactory.createTransport).toHaveBeenCalledWith({
       host: '192.168.1.100',
-      port: 502,
+      port: 5020,
       slaveId: 1,
     })
   })

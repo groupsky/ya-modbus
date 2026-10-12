@@ -242,14 +242,9 @@ describe('CLI Entry Point - Integration Tests', () => {
       expect(mockReadCommand).toHaveBeenCalledWith(
         expect.objectContaining({
           host: '192.168.1.100',
+          tcpPort: 502,
           slaveId: 1,
           all: true,
-        })
-      )
-      // Should not include tcpPort in options (handled internally)
-      expect(mockReadCommand).toHaveBeenCalledWith(
-        expect.not.objectContaining({
-          tcpPort: expect.anything(),
         })
       )
     })
@@ -554,6 +549,38 @@ describe('CLI Entry Point - Integration Tests', () => {
       expect(mockWriteCommand).toHaveBeenCalledWith(
         expect.not.objectContaining({
           yes: expect.anything(),
+        })
+      )
+    })
+
+    it('should execute write command with TCP connection parameters', async () => {
+      const mockWriteCommand = jest.mocked(writeModule.writeCommand)
+      mockWriteCommand.mockResolvedValue()
+
+      await program.parseAsync([
+        'node',
+        'ya-modbus',
+        'write',
+        '--host',
+        '192.168.1.100',
+        '--tcp-port',
+        '5020',
+        '--slave-id',
+        '1',
+        '--data-point',
+        'setpoint',
+        '--value',
+        '25.5',
+        '--yes',
+      ])
+
+      expect(mockWriteCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          host: '192.168.1.100',
+          tcpPort: 5020,
+          slaveId: 1,
+          dataPoint: 'setpoint',
+          value: '25.5',
         })
       )
     })

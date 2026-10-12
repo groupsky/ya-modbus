@@ -23,6 +23,7 @@ export interface WriteOptions {
 
   // Connection options (TCP)
   host?: string
+  tcpPort?: number
 
   // Common options
   slaveId: number

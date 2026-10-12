@@ -14,7 +14,7 @@ describe('applyDriverDefaults', () => {
     test('should return options unchanged when host is present (TCP connection)', () => {
       const options: TransportOptions = {
         host: '192.168.1.100',
-        port: 502,
+        tcpPort: 502,
         slaveId: 5,
         timeout: 1000,
       }
@@ -268,10 +268,10 @@ describe('applyDriverDefaults', () => {
       expect(result.baudRate).toBe(9600)
     })
 
-    test('should handle numeric port value for TCP', () => {
+    test('should keep the TCP port number for TCP', () => {
       const options: TransportOptions = {
         host: '192.168.1.100',
-        port: 5020, // Numeric port
+        tcpPort: 5020,
         slaveId: 1,
       }
 
@@ -289,7 +289,7 @@ describe('applyDriverDefaults', () => {
       const result = applyDriverDefaults(options, driverMetadata)
 
       // Should pass through unchanged (TCP)
-      expect(result.port).toBe(5020)
+      expect(result.tcpPort).toBe(5020)
       expect(result.baudRate).toBeUndefined()
     })
 
