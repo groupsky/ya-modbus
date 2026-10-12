@@ -458,7 +458,7 @@ Error: Invalid baud rate 115200. This driver supports: 9600, 14400, 19200 (defau
 
 The CLI supports loading drivers from:
 
-- **First-party drivers** (official `ya-modbus-driver-*` packages)
+- **First-party drivers** (official `@ya-modbus/driver-*` packages)
 - **Third-party drivers** (community/vendor packages)
 - **Development drivers** (local packages under development)
 

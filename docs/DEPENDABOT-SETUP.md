@@ -20,7 +20,7 @@ Main Dependabot configuration with:
   - `npm-types`: All @types/\* packages
   - Security updates: Not grouped (immediate individual PRs)
 
-All workspace packages (`driver-sdk`, `driver-types`, `ya-modbus-driver-xymd1`) are monitored separately.
+The `npm` entry for `/` covers the root and all workspace packages.
 
 **Schedule**: Weekly on Mondays at 03:00 UTC
 
@@ -70,46 +70,6 @@ Patch and minor production updates are both approved and flagged for manual revi
 - Adds labels: `dependabot-approved`, `dependabot-manual-review`
 - Comments on PRs requiring manual review with checklist
 - Requests review from the repository owner on PRs requiring manual review
-
-## Dependency Optimization
-
-The repository uses npm workspaces with optimized dependency management:
-
-### Changes Made
-
-1. **Hoisted common devDependencies to root**:
-   - @types/jest, @types/node, jest, ts-jest
-   - These are now available to all workspace packages
-
-2. **Standardized TypeScript version**:
-   - All packages now use TypeScript ^5.7.2
-
-3. **Removed duplicates**:
-   - Removed devDependencies from workspace packages that are in root
-   - Removed redundant peerDependencies
-
-### Benefits
-
-- **Reduced package count**: From ~26 to ~16 unique packages
-- **Single source of truth**: Manage versions in one place
-- **Faster installs**: Less duplication in node_modules
-- **Smaller lockfile**: Fewer duplicate entries
-- **Consistent versions**: All packages use same tooling
-
-### Package Structure
-
-```
-Root (15 devDependencies):
-  - Testing: @types/jest, jest, ts-jest
-  - TypeScript: typescript, @typescript-eslint/*, ts-node
-  - Linting: eslint, eslint-*, prettier
-  - Tooling: husky, lint-staged, semantic-release
-
-Workspaces (dependencies only):
-  - driver-sdk: @ya-modbus/driver-types
-  - driver-types: (no dependencies)
-  - ya-modbus-driver-xymd1: @ya-modbus/driver-types
-```
 
 ## Usage
 

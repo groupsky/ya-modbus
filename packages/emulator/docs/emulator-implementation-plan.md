@@ -1640,9 +1640,7 @@ None - emulator is standalone
 
 ### Enables
 
-- `@ya-modbus/driver-dev-tools` - Uses emulator for testing
-- `@ya-modbus/driver-*` - All drivers use emulator for tests
-- `@ya-modbus/core` - Integration tests use emulator
+- `tests/e2e` - End-to-end tests run the emulator as the Modbus device for the CLI, the MQTT bridge and the device profiler
 
 ## File Naming Convention
 

@@ -207,7 +207,7 @@ Reference other workspace packages:
 ```json
 {
   "dependencies": {
-    "@ya-modbus/driver-types": "^0.0.0"
+    "@ya-modbus/driver-types": "^0.8.0"
   }
 }
 ```
@@ -363,7 +363,7 @@ See `docs/agents/package-creation.md` for technical details on CLI package struc
 
 Utility packages should use scoped naming: `@ya-modbus/<name>`
 
-Examples: `@ya-modbus/driver-types`, `@ya-modbus/core`
+Examples: `@ya-modbus/driver-types`, `@ya-modbus/transport`
 
 ## Getting Help
 
