@@ -120,6 +120,68 @@ describe('PollingScheduler', () => {
       expect(scheduler.isScheduled('device1')).toBe(false)
     })
 
+    // The same applies to the retry backoff: a backoff above 2^31-1 would make a failing device
+    // retry after 1ms instead of backing off
+    it.each([0, -1000, NaN, Infinity, 2 ** 31])(
+      'should reject retry backoff %p',
+      (retryBackoff) => {
+        const config: DeviceConfig = {
+          deviceId: 'device1',
+          driver: 'test-driver',
+          connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+          polling: { interval: 1000, retryBackoff },
+        }
+
+        const driver: DeviceDriver = {
+          name: 'test',
+          manufacturer: 'Test',
+          model: 'TEST-001',
+          dataPoints: [],
+          readDataPoint: jest.fn(),
+          writeDataPoint: jest.fn(),
+          readDataPoints: jest.fn(),
+        }
+
+        expect(() => scheduler.scheduleDevice('device1', config, driver)).toThrow(
+          `Invalid retry backoff for device device1: ${retryBackoff}`
+        )
+        expect(scheduler.isScheduled('device1')).toBe(false)
+      }
+    )
+
+    it('should keep the default retry backoff within the timer limit for a long interval', async () => {
+      const interval = 2 ** 30 + 1 // twice the interval would be above 2^31-1
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval, maxRetries: 1 },
+      }
+
+      const readDataPoints = jest.fn().mockRejectedValue(new Error('Read timeout'))
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints,
+      }
+
+      scheduler.scheduleDevice('device1', config, driver)
+      scheduler.start()
+
+      await jest.advanceTimersByTimeAsync(interval)
+      expect(readDataPoints).toHaveBeenCalledTimes(1)
+
+      // The longest delay setTimeout supports. Without the limit the delay would be 1ms.
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(readDataPoints).toHaveBeenCalledTimes(1)
+      await jest.advanceTimersByTimeAsync(2 ** 31 - 1)
+      expect(readDataPoints).toHaveBeenCalledTimes(2)
+    })
+
     it('should start polling immediately if scheduler is already running', async () => {
       scheduler.start()
 

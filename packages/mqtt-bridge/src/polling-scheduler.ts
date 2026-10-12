@@ -10,6 +10,7 @@ interface ScheduledDevice {
   // True from the start of a read until its poll chain continues or ends
   readInFlight: boolean
   interval: number
+  retryBackoff: number
   dataPointIds: string[]
   lastFailureCount: number
 }
@@ -23,6 +24,9 @@ const DEFAULT_POLLING_INTERVAL = 5000 // 5 seconds
 
 // Longest delay setTimeout supports; it runs longer delays after 1ms
 const MAX_TIMER_DELAY = 2 ** 31 - 1
+
+// NaN compares false with everything, so it is rejected too
+const isValidTimerDelay = (ms: number): boolean => ms > 0 && ms <= MAX_TIMER_DELAY
 
 /**
  * Coordinates polling across multiple devices
@@ -42,9 +46,13 @@ export class PollingScheduler {
   scheduleDevice(deviceId: string, config: DeviceConfig, driver: DeviceDriver): void {
     const interval = config.polling?.interval ?? DEFAULT_POLLING_INTERVAL
 
-    // Written as a negation so that NaN is rejected too
-    if (!(interval > 0 && interval <= MAX_TIMER_DELAY)) {
+    if (!isValidTimerDelay(interval)) {
       throw new Error(`Invalid polling interval for device ${deviceId}: ${interval}`)
+    }
+
+    const retryBackoff = config.polling?.retryBackoff ?? Math.min(interval * 2, MAX_TIMER_DELAY)
+    if (!isValidTimerDelay(retryBackoff)) {
+      throw new Error(`Invalid retry backoff for device ${deviceId}: ${retryBackoff}`)
     }
 
     // A device scheduled again must not keep the timer of its previous schedule
@@ -55,6 +63,7 @@ export class PollingScheduler {
       driver,
       dataPointIds: driver.dataPoints.map((dp) => dp.id),
       interval,
+      retryBackoff,
       lastFailureCount: 0,
       readInFlight: false,
     })
@@ -130,7 +139,6 @@ export class PollingScheduler {
     if (!this.running) return
 
     const maxRetries = device.config.polling?.maxRetries ?? DEFAULT_MAX_RETRIES
-    const retryBackoff = device.config.polling?.retryBackoff ?? device.interval * 2
     const mode = device.config.polling?.mode ?? 'interval'
 
     // Determine delay based on mode and failure count
@@ -138,7 +146,7 @@ export class PollingScheduler {
     if (device.lastFailureCount > 0 && device.lastFailureCount >= maxRetries) {
       // Use backoff once maxRetries failures happened in a row. It takes at least one failure,
       // so maxRetries 0 backs off after the first failure and not after a successful read.
-      delay = retryBackoff
+      delay = device.retryBackoff
     } else if (mode === 'continuous' && device.lastFailureCount === 0) {
       // Continuous mode: poll on next event loop tick (effectively immediate)
       delay = 1
