@@ -110,11 +110,12 @@ Before committing:
 4. Coverage meets 95% thresholds
 5. Package added to root jest.config.js
 6. `npm run validate:packages` passes (for publishable packages)
+7. `npm run validate:bins` passes (for packages with `bin`; each bin MUST exit 0 on `--help`)
 
 Before merging to main (for publishable packages):
 
-7. First-time npm publish completed manually (see `docs/PUBLISHING-SETUP.md`)
-8. Trusted publisher configured on npm.com
+8. First-time npm publish completed manually (see `docs/PUBLISHING-SETUP.md`)
+9. Trusted publisher configured on npm.com
 
 ## References
 
