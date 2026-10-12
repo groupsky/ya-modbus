@@ -120,8 +120,9 @@ export class PollingScheduler {
 
     // Determine delay based on mode and failure count
     let delay: number
-    if (device.lastFailureCount >= maxRetries) {
-      // Use backoff if we've exceeded max retries
+    if (device.lastFailureCount > 0 && device.lastFailureCount >= maxRetries) {
+      // Use backoff once maxRetries failures happened in a row. It takes at least one failure,
+      // so maxRetries 0 backs off after the first failure and not after a successful read.
       delay = retryBackoff
     } else if (mode === 'continuous' && device.lastFailureCount === 0) {
       // Continuous mode: poll on next event loop tick (effectively immediate)
