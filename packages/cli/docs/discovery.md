@@ -36,7 +36,7 @@ src/
 ### Device Identifier
 
 - Uses FC43 (Read Device Identification) to probe for device presence and gather vendor/product info
-- Distinguishes timeout (no device) vs exception (device present but unsupported function) vs CRC error (wrong serial params)
+- Distinguishes timeout (no device) vs exception (device present but unsupported function) vs CRC error (wrong serial params). Gateway exceptions 0x0A and 0x0B mean no device
 - Measures response time for each device
 
 ### Scanner

@@ -542,18 +542,20 @@ The discover command sends one Modbus function code to each parameter combinatio
 
 - MEI (Modbus Encapsulated Interface)
 - Reads vendor name, product code, revision
-- Not supported by all devices. A device that answers with an exception is still reported as present.
+- Not supported by all devices. A device that answers with an exception is still reported as present, except for the gateway exceptions 0x0A and 0x0B (see Response Classification).
 - A device that does not answer at all (timeout) is reported as not found, even if it supports other function codes such as FC03
 
 ### Response Classification
 
 The command distinguishes between:
 
-- **Device present** - Received response or exception code
-- **Device absent** - Timeout (no response)
+- **Device present** - Received response or device exception code
+- **Device absent** - Timeout (no response), or a gateway exception
 - **Wrong parameters** - CRC error (indicates serial params mismatch)
 
-**Exception codes indicate device presence** - Even if the function code isn't supported, receiving an exception means a device is there.
+**Device exception codes indicate device presence** - Even if the function code isn't supported, receiving an exception means a device is there.
+
+**Gateway exceptions indicate no device** - A gateway answers a request that it cannot pass on to a device with exception 0x0A (Gateway Path Unavailable) or 0x0B (Gateway Target Device Failed to Respond). That is the answer for a slave ID with no device behind the gateway, so the slave ID is reported as not found.
 
 ## See Also
 
