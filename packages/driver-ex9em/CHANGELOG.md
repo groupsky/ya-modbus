@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.6.9](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-ex9em@0.6.8...@ya-modbus/driver-ex9em@0.6.9) (2026-10-12)
+
+### Bug Fixes
+
+- **cli:** use current @ya-modbus/driver-* names in help and docs ([#577](https://github.com/groupsky/ya-modbus/issues/577)) ([6367875](https://github.com/groupsky/ya-modbus/commit/6367875ee3a19540624bd3130d18c1787c1b7921)), closes [#566](https://github.com/groupsky/ya-modbus/issues/566)
+
 ## [0.6.8](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-ex9em@0.6.7...@ya-modbus/driver-ex9em@0.6.8) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/driver-ex9em
