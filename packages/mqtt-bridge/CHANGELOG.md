@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.6](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.10.5...@ya-modbus/mqtt-bridge@0.10.6) (2026-10-12)
+
+### Performance Improvements
+
+- **mqtt-bridge:** compute data point ids once per device when polling ([#515](https://github.com/groupsky/ya-modbus/issues/515)) ([0484171](https://github.com/groupsky/ya-modbus/commit/0484171b89d336d6a2cf0bc5ee1f7e507ef04c03)), closes [#97](https://github.com/groupsky/ya-modbus/issues/97)
+
 ## [0.10.5](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.10.4...@ya-modbus/mqtt-bridge@0.10.5) (2026-10-12)
 
 ### Bug Fixes
