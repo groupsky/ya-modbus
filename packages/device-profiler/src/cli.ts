@@ -2,6 +2,8 @@
  * CLI orchestrator for register scanning
  */
 
+import { writeFile } from 'node:fs/promises'
+
 import type { Transport } from '@ya-modbus/driver-types'
 
 import { formatProgress, formatSummary } from './console-formatter.js'
@@ -30,6 +32,8 @@ export interface ProfileScanOptions {
   batchSize?: number
   /** Output format: table, json or yaml (default: table) */
   format?: OutputFormat
+  /** File to write the result to instead of printing it (json and yaml formats only) */
+  outputFile?: string
   /** Connection port (for JSON and YAML metadata) */
   port?: string
 }
@@ -37,10 +41,23 @@ export interface ProfileScanOptions {
 /**
  * Run a register profile scan with console output
  *
+ * The json and yaml formats print only the document, so stdout can be piped.
+ * With an output file nothing is printed to stdout: the document goes to the
+ * file and a one-line summary goes to stderr.
+ *
  * @param options - Scan configuration
  */
 export async function runProfileScan(options: ProfileScanOptions): Promise<void> {
-  const { transport, type, startAddress, endAddress, batchSize, format = 'table', port } = options
+  const {
+    transport,
+    type,
+    startAddress,
+    endAddress,
+    batchSize,
+    format = 'table',
+    outputFile,
+    port,
+  } = options
   const results: ScanResult[] = []
   const isTable = format === 'table'
 
@@ -77,15 +94,23 @@ export async function runProfileScan(options: ProfileScanOptions): Promise<void>
       console.log()
       console.log(formatSummary(results))
     } else {
-      console.log(
-        REPORT_FORMATTERS[format](results, {
-          type,
-          startAddress,
-          endAddress,
-          batchSize: batchSize ?? DEFAULT_BATCH_SIZE,
-          port: port ?? '',
-        })
-      )
+      const report = REPORT_FORMATTERS[format](results, {
+        type,
+        startAddress,
+        endAddress,
+        batchSize: batchSize ?? DEFAULT_BATCH_SIZE,
+        port: port ?? '',
+      })
+
+      if (outputFile === undefined) {
+        console.log(report)
+      } else {
+        await writeFile(outputFile, `${report}\n`)
+        const failed = results.filter((result) => !result.success).length
+        console.error(
+          `Wrote ${results.length} registers (${results.length - failed} ok, ${failed} failed) to ${outputFile}`
+        )
+      }
     }
   } finally {
     await transport.close()

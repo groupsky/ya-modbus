@@ -11,6 +11,7 @@ Device profiler for discovering Modbus register maps through automated scanning.
 - Error classification (timeout, CRC, Modbus exceptions)
 - Summary table of discovered registers
 - **JSON and YAML output formats** for automation and integration
+- Writes the result to a JSON or YAML file with `--output`
 
 ## Installation
 
@@ -31,6 +32,10 @@ ya-modbus-profile --port /dev/ttyUSB0 --slave-id 1 --format json
 
 # YAML output
 ya-modbus-profile --port /dev/ttyUSB0 --slave-id 1 --format yaml
+
+# Write the result to a file (the format comes from the file extension)
+ya-modbus-profile --port /dev/ttyUSB0 --slave-id 1 --output scan.json
+ya-modbus-profile --port /dev/ttyUSB0 --slave-id 1 --output scan.yaml
 ```
 
 Options:
@@ -46,7 +51,8 @@ Options:
 - `--data-bits` - Data bits for RTU (default: `8`)
 - `--stop-bits` - Stop bits for RTU (default: `1`)
 - `--timeout` - Response timeout in milliseconds, 1-2147483647 (default: `1000`)
-- `-f, --format` - Output format: `table`, `json` or `yaml` (default: `table`)
+- `-f, --format` - Output format: `table`, `json` or `yaml` (default: `table`, or the format named by the `--output` file extension)
+- `--output` - Write the result to a `json` or `yaml` file instead of printing it, see [Output File](#output-file)
 
 ### Programmatic
 
@@ -282,6 +288,28 @@ summary:
 - **Progress messages** are suppressed in YAML mode, like in JSON mode
 - **Long error messages** stay on one line
 - **`timestamp`** is quoted so YAML parsers read it as text, the same as in JSON
+
+### Output File
+
+`--output <file>` writes the result to a file instead of printing it:
+
+```bash
+# JSON, because of the .json extension
+ya-modbus-profile --port /dev/ttyUSB0 --slave-id 1 --output scan.json
+
+# YAML, because of the .yaml or .yml extension
+ya-modbus-profile --port /dev/ttyUSB0 --slave-id 1 --output scan.yml
+
+# --format sets the format and overrides the extension
+ya-modbus-profile --port /dev/ttyUSB0 --slave-id 1 --format yaml --output scan.txt
+```
+
+- **Format**: `--format json` or `--format yaml`. Without `--format`, the extension decides: `.json` is JSON, `.yaml` and `.yml` are YAML, in any letter case. Any other file name without `--format` is an error. The `table` format cannot be written to a file.
+- **File content**: the same document that `--format json` or `--format yaml` prints, with a newline at the end. An existing file is overwritten.
+- **Progress messages** are never written to the file.
+- **Standard output stays empty**, so it is safe to use in scripts and pipes. When the file is written, one summary line goes to standard error, for example `Wrote 101 registers (98 ok, 3 failed) to scan.json`. Use `2>/dev/null` to hide it.
+- **The file must be writable.** This is checked before the device is contacted, so a wrong path (a missing directory, a directory instead of a file) does not cost a long scan.
+- **Exit code** is `0` when the file was written and `1` on any error.
 
 ## License
 
