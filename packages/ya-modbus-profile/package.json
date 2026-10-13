@@ -1,6 +1,6 @@
 {
   "name": "ya-modbus-profile",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Short name for @ya-modbus/device-profiler so that `npx ya-modbus-profile` works",
   "keywords": [
     "modbus",

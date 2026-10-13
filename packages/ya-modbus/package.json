@@ -1,6 +1,6 @@
 {
   "name": "ya-modbus",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Short name for @ya-modbus/cli so that `npx ya-modbus` works",
   "keywords": [
     "modbus",

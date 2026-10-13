@@ -1,6 +1,6 @@
 {
   "name": "ya-modbus-emulator",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Short name for @ya-modbus/emulator so that `npx ya-modbus-emulator` works",
   "keywords": [
     "modbus",

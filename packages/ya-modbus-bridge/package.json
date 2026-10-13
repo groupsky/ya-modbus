@@ -1,6 +1,6 @@
 {
   "name": "ya-modbus-bridge",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Short name for @ya-modbus/mqtt-bridge so that `npx ya-modbus-bridge` works",
   "keywords": [
     "modbus",
