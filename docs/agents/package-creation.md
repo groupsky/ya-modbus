@@ -107,7 +107,7 @@ Unscoped packages that only exist so `npx <name>` works (`ya-modbus`, `ya-modbus
 - `bin` command name MUST equal the package name and the command of the target package
 - Dependency on the target package uses a caret range of its current version, like other internal dependencies: lerna keeps it current and publishes the wrapper with every target release
 - `files`: `bin`, `README.md`, `CHANGELOG.md`
-- Behavior is verified by `npm run validate:bins` (every `bin` runs `--help` and exits 0), not by jest
+- Behavior is verified by `npm run validate:bins`, not by jest: the bin MUST exit 0 on `--help` and print the version of the target package (not its own) on `--version`
 - `examples/verify-coverage.js` skips them, see docs/agents/examples.md
 
 See: packages/ya-modbus for reference
