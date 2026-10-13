@@ -11,7 +11,8 @@
  * - starts: `<bin> --help` exits 0 and prints help (catches module load errors
  *   that unit tests miss, because Jest runs the sources as CommonJS)
  * - reports its version: `<bin> --version` prints the version from the package's
- *   package.json (catches hardcoded versions)
+ *   package.json (catches hardcoded versions). A bin-only wrapper prints the
+ *   version of the package it runs
  *
  * Both the ESM bin and its CommonJS twin (dist/cjs/bin/...) get all checks. npm
  * links only the ESM `bin` entry, but starting the twin runs the CommonJS build of
@@ -35,27 +36,39 @@ const START_TIMEOUT_MS = 10000
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'))
 
 // lerna lists the publishable (non-private) packages
-function discoverPackageDirs() {
+function discoverPackages() {
   const output = execFileSync('npx', ['lerna', 'ls', '--json', '--loglevel', 'silent'], {
     cwd: ROOT,
     encoding: 'utf8',
   })
-  return JSON.parse(output).map((pkg) => pkg.location)
+  return JSON.parse(output)
+}
+
+// A bin-only wrapper (no `main` or `exports`, such as the unscoped npx packages)
+// runs the bin of the one package it depends on, so it reports that version
+function expectedVersion(pkg, versions) {
+  const deps = Object.keys(pkg.dependencies ?? {})
+  const isWrapper = !pkg.main && !pkg.exports && deps.length === 1 && versions.has(deps[0])
+  return isWrapper ? versions.get(deps[0]) : pkg.version
 }
 
 function discoverBins() {
+  const packages = discoverPackages()
+  const versions = new Map(packages.map((pkg) => [pkg.name, pkg.version]))
+
   const bins = []
-  for (const dir of discoverPackageDirs()) {
+  for (const { location: dir } of packages) {
     const pkg = readJson(path.join(dir, 'package.json'))
     if (!pkg.bin) continue
 
+    const version = expectedVersion(pkg, versions)
     const entries = typeof pkg.bin === 'string' ? { [pkg.name.split('/').pop()]: pkg.bin } : pkg.bin
     for (const [name, file] of Object.entries(entries)) {
-      bins.push({ pkg: pkg.name, version: pkg.version, name, file: path.join(dir, file) })
+      bins.push({ pkg: pkg.name, version, name, file: path.join(dir, file) })
 
       const cjsTwin = path.join(dir, file.replace('dist/esm/', 'dist/cjs/'))
       if (cjsTwin !== path.join(dir, file) && fs.existsSync(cjsTwin)) {
-        bins.push({ pkg: pkg.name, version: pkg.version, name, file: cjsTwin })
+        bins.push({ pkg: pkg.name, version, name, file: cjsTwin })
       }
     }
   }

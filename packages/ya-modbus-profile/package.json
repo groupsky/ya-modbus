@@ -1,0 +1,39 @@
+{
+  "name": "ya-modbus-profile",
+  "version": "0.0.0",
+  "description": "Short name for @ya-modbus/device-profiler so that `npx ya-modbus-profile` works",
+  "keywords": [
+    "modbus",
+    "profiler",
+    "npx"
+  ],
+  "license": "GPL-3.0-or-later",
+  "author": "Geno Roupsky <185580+groupsky@users.noreply.github.com>",
+  "type": "module",
+  "bin": {
+    "ya-modbus-profile": "./bin/ya-modbus-profile.js"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/groupsky/ya-modbus.git",
+    "directory": "packages/ya-modbus-profile"
+  },
+  "homepage": "https://github.com/groupsky/ya-modbus/tree/main/packages/ya-modbus-profile#readme",
+  "bugs": {
+    "url": "https://github.com/groupsky/ya-modbus/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@ya-modbus/device-profiler": "^0.11.7"
+  }
+}

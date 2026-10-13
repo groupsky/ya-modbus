@@ -148,13 +148,14 @@ When publishing a new package to npm for the first time, you MUST publish manual
 
    ```bash
    npm login
-   npm run build
+   npm run build  # skip for bin-only wrappers, they have no build script
    npm publish --access public
    ```
 
 2. **Configure trusted publisher** on npm:
    - Go to package settings on npm.com
    - Add trusted publisher with: owner=`<github-owner>`, repo=`<repo-name>`, workflow=`release.yml`, environment=`npm`
+   - Allow direct publishing (`npm publish`), see [PUBLISHING-SETUP.md](PUBLISHING-SETUP.md#step-2-configure-trusted-publisher)
 
 3. **Verify** by opening a PR to trigger preview packages via pkg.pr.new, then merging to trigger production release (see [Release Process](RELEASE-PROCESS.md) for details)
 
@@ -359,6 +360,12 @@ CLI packages expose executable commands via the npm `bin` field.
 - `packages/mqtt-bridge` - Bridge CLI
 
 See `docs/agents/package-creation.md` for technical details on CLI package structure.
+
+### npx Wrapper Package
+
+Unscoped packages that contain only a launcher, so `npx ya-modbus` works for a scoped CLI package. They need no tsconfig, jest config or build step.
+
+See `docs/agents/package-creation.md` (Bin-only Wrapper Packages) and `packages/ya-modbus` for the structure.
 
 ### Utility Package
 

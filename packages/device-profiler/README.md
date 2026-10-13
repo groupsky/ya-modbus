@@ -19,6 +19,12 @@ Device profiler for discovering Modbus register maps through automated scanning.
 npm install @ya-modbus/device-profiler
 ```
 
+Or run it without installing:
+
+```bash
+npx ya-modbus-profile --help
+```
+
 ## Usage
 
 ### CLI

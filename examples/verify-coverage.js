@@ -9,6 +9,9 @@
  * 3. Both default and named imports are tested where applicable
  *
  * This ensures examples stay in sync as packages are added/removed.
+ *
+ * Bin-only packages (an executable but no `main`/`exports`, e.g. the unscoped `npx` wrappers)
+ * are skipped because they have nothing to import. `npm run validate:bins` covers them.
  */
 
 const fs = require('fs')
@@ -38,10 +41,19 @@ const TYPE_ONLY_PACKAGES = ['@ya-modbus/driver-types']
 const TYPESCRIPT_CONSUMERS = ['typescript-cjs-consumer', 'typescript-esm-consumer']
 
 /**
- * Discover all publishable packages in the monorepo
+ * A package that only ships an executable: nothing can be imported from it
+ */
+function isBinOnly(pkg) {
+  return Boolean(pkg.bin) && !pkg.main && !pkg.exports
+}
+
+/**
+ * Discover all publishable packages in the monorepo, split into packages that consumers
+ * can import and bin-only packages
  */
 function discoverPublishablePackages() {
   const packages = []
+  const binOnly = []
   const packageDirs = fs.readdirSync(PACKAGES_DIR)
 
   for (const dir of packageDirs) {
@@ -53,15 +65,22 @@ function discoverPublishablePackages() {
     // Skip private packages (not published to npm)
     if (pkg.private) continue
 
-    packages.push({
+    const entry = {
       name: pkg.name,
       version: pkg.version,
       dir,
       path: pkgPath,
-    })
+    }
+
+    if (isBinOnly(pkg)) {
+      binOnly.push(entry)
+    } else {
+      packages.push(entry)
+    }
   }
 
-  return packages.sort((a, b) => a.name.localeCompare(b.name))
+  const byName = (a, b) => a.name.localeCompare(b.name)
+  return { packages: packages.sort(byName), binOnly: binOnly.sort(byName) }
 }
 
 /**
@@ -214,12 +233,20 @@ function main() {
   console.log(`================================${COLORS.NC}\n`)
 
   // Discover all publishable packages
-  const packages = discoverPublishablePackages()
+  const { packages, binOnly } = discoverPublishablePackages()
   console.log(`Found ${packages.length} publishable packages:`)
   packages.forEach((pkg) => {
     console.log(`  - ${pkg.name}`)
   })
   console.log()
+
+  if (binOnly.length > 0) {
+    console.log(`Skipping ${binOnly.length} bin-only packages (nothing to import):`)
+    binOnly.forEach((pkg) => {
+      console.log(`  - ${pkg.name}`)
+    })
+    console.log()
+  }
 
   let hasErrors = false
 

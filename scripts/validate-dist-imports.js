@@ -11,7 +11,7 @@
  * installs the package from npm would see the error.
  *
  * Checks the dist folders of all publishable packages (via lerna, like
- * validate-bins.js). Lines in comments are skipped, so code examples in JSDoc
+ * validate-bins.js), and the bin folder of bin-only packages. Lines in comments are skipped, so code examples in JSDoc
  * do not count. Node.js built-in modules do not need to be declared. The files
  * that ESLint does not check for this either (see eslint.config.mjs) are skipped.
  *
@@ -89,7 +89,12 @@ function main() {
       ...Object.keys(pkg.peerDependencies ?? {}),
       ...Object.keys(pkg.optionalDependencies ?? {}),
     ])
-    const files = listJsFiles(path.join(dir, 'dist'))
+    // Bin-only packages (no `main` or `exports`, such as the unscoped npx
+    // wrappers) have no build and publish their plain JavaScript `bin` folder.
+    // Their target is loaded via `createRequire().resolve()`, which this check
+    // does not see; validate-bins starts it instead
+    const isBinOnly = pkg.bin && !pkg.main && !pkg.exports
+    const files = listJsFiles(path.join(dir, isBinOnly ? 'bin' : 'dist'))
     if (files.length === 0) {
       problems.push(`${pkg.name}: no built files (run \`npm run build\` first)`)
     }

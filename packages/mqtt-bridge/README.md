@@ -28,6 +28,12 @@ See [Architecture documentation](./docs/ARCHITECTURE.md) for complete details an
 npm install @ya-modbus/mqtt-bridge
 ```
 
+Or run the CLI without installing:
+
+```bash
+npx ya-modbus-bridge --help
+```
+
 ### Running as a systemd service
 
 For production deployments on Linux systems, you can run the MQTT bridge as a systemd service. See [systemd/INSTALL.md](./systemd/INSTALL.md) for complete installation and configuration instructions.

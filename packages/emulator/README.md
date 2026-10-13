@@ -16,6 +16,12 @@ Software Modbus device emulator for testing device drivers without physical hard
 npm install @ya-modbus/emulator
 ```
 
+Or run the CLI without installing:
+
+```bash
+npx ya-modbus-emulator --help
+```
+
 ## Quick Start
 
 ### Memory Transport (fastest for unit tests)

@@ -177,6 +177,8 @@ All examples test **all 10 publishable packages** from the monorepo:
 
 Package coverage is **verified dynamically** - when you add a new package, `verify-coverage.js` will detect it and require it to be tested.
 
+Bin-only packages (an executable but no `main` or `exports`, such as the unscoped `npx` wrappers `ya-modbus`, `ya-modbus-bridge`, `ya-modbus-emulator` and `ya-modbus-profile`) have nothing to import and are skipped. `npm run validate:bins` runs their executables instead.
+
 ### Type Safety (TypeScript only)
 
 - ✅ Type definitions resolve correctly

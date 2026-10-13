@@ -31,6 +31,12 @@ npm install -g @ya-modbus/cli
 npm install --save-dev @ya-modbus/cli
 ```
 
+### Without Installing
+
+```bash
+npx ya-modbus --help
+```
+
 ## Usage
 
 ### Read Data Points

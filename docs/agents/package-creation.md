@@ -87,7 +87,7 @@ NOTE: No longer need to update root tsconfig.json - packages handle their own bu
 
 ### Naming Patterns
 
-- All packages: `@ya-modbus/<name>` (scoped naming)
+- All packages except bin-only wrappers: `@ya-modbus/<name>` (scoped naming)
 - Driver folders: `packages/driver-<device>`
 - Driver package names: `@ya-modbus/driver-<device>`
 
@@ -96,6 +96,21 @@ NOTE: No longer need to update root tsconfig.json - packages handle their own bu
 All packages MUST include engines field specifying minimum Node.js version.
 
 See: packages/driver-xymd1/package.json (engines section) for configuration.
+
+## Bin-only Wrapper Packages
+
+Unscoped packages that only exist so `npx <name>` works (`ya-modbus`, `ya-modbus-bridge`, `ya-modbus-emulator`, `ya-modbus-profile`). They have no API and nothing to compile, so the dual-package, tsconfig, jest and coverage requirements above do NOT apply.
+
+- Folder name = npm name (`packages/ya-modbus`)
+- `bin/<name>.js`: plain ESM JavaScript with shebang, executable bit set, no build step
+- NO `main`, `exports`, tsconfig files, jest.config.cjs, AGENTS.md or build script
+- `bin` command name MUST equal the package name and the command of the target package
+- Dependency on the target package uses a caret range of its current version, like other internal dependencies: lerna keeps it current and publishes the wrapper with every target release
+- `files`: `bin`, `README.md`, `CHANGELOG.md`
+- Behavior is verified by `npm run validate:bins`, not by jest: the bin MUST exit 0 on `--help` and print the version of the target package (not its own) on `--version`
+- `examples/verify-coverage.js` skips them, see docs/agents/examples.md
+
+See: packages/ya-modbus for reference
 
 ## Driver Packages
 
@@ -113,6 +128,8 @@ Before committing:
 6. `npm run validate:packages` passes (for publishable packages)
 7. `npm run validate:bins` passes (for packages with `bin`; each bin MUST exit 0 on `--help` and print its package.json version on `--version`)
 8. `npm run validate:dist-imports` passes (built files import only declared packages; when the build imports `tslib`, it MUST be in `dependencies`)
+
+Bin-only wrappers skip steps 2-5. For them step 7 expects the version of the target package and step 8 checks the `bin` folder.
 
 Before merging to main (for publishable packages):
 

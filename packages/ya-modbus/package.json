@@ -1,0 +1,39 @@
+{
+  "name": "ya-modbus",
+  "version": "0.0.0",
+  "description": "Short name for @ya-modbus/cli so that `npx ya-modbus` works",
+  "keywords": [
+    "modbus",
+    "cli",
+    "npx"
+  ],
+  "license": "GPL-3.0-or-later",
+  "author": "Geno Roupsky <185580+groupsky@users.noreply.github.com>",
+  "type": "module",
+  "bin": {
+    "ya-modbus": "./bin/ya-modbus.js"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/groupsky/ya-modbus.git",
+    "directory": "packages/ya-modbus"
+  },
+  "homepage": "https://github.com/groupsky/ya-modbus/tree/main/packages/ya-modbus#readme",
+  "bugs": {
+    "url": "https://github.com/groupsky/ya-modbus/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@ya-modbus/cli": "^0.13.7"
+  }
+}
