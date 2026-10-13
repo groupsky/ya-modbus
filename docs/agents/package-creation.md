@@ -129,7 +129,7 @@ Before committing:
 7. `npm run validate:bins` passes (for packages with `bin`; each bin MUST exit 0 on `--help` and print its package.json version on `--version`)
 8. `npm run validate:dist-imports` passes (built files import only declared packages; when the build imports `tslib`, it MUST be in `dependencies`)
 
-Bin-only wrappers skip steps 2-5.
+Bin-only wrappers skip steps 2-5. For them step 7 expects the version of the target package and step 8 checks the `bin` folder.
 
 Before merging to main (for publishable packages):
 
