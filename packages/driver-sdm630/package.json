@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/driver-sdm630",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Eastron SDM630 3-phase energy meter driver for ya-modbus",
   "keywords": [
     "modbus",
