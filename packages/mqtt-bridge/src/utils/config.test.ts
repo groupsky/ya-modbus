@@ -178,14 +178,15 @@ describe('loadConfig', () => {
     }
   )
 
-  it('should apply the serial port defaults of RTU devices', async () => {
+  // The driver defaults apply when the device is added; ex9em needs even parity, not none
+  it('should leave the serial settings that an RTU device does not set to the driver', async () => {
     mockedReadFile.mockResolvedValue(
       JSON.stringify({
         devices: [
           {
             deviceId: 'rtu-device',
             driver: '@ya-modbus/driver-ex9em',
-            connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+            connection: { type: 'rtu', port: '/dev/ttyUSB0', slaveId: 1 },
           },
         ],
       })
@@ -193,14 +194,10 @@ describe('loadConfig', () => {
 
     const config = await loadConfig('/path/to/config.json')
 
-    expect(config.devices?.[0].connection).toEqual({
+    expect(config.devices?.[0].connection).toStrictEqual({
       type: 'rtu',
       port: '/dev/ttyUSB0',
-      baudRate: 9600,
       slaveId: 1,
-      parity: 'none',
-      dataBits: 8,
-      stopBits: 1,
     })
   })
 

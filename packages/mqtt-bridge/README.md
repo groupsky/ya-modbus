@@ -119,7 +119,6 @@ The smallest useful config has an MQTT broker and one device:
       "connection": {
         "type": "rtu",
         "port": "/dev/ttyUSB0",
-        "baudRate": 9600,
         "slaveId": 1
       }
     }
@@ -149,7 +148,7 @@ This config sets every option that the bridge uses. If an option has a default, 
         "port": "/dev/ttyUSB0",
         "baudRate": 9600,
         "slaveId": 1,
-        "parity": "none",
+        "parity": "even",
         "dataBits": 8,
         "stopBits": 1,
         "timeout": 1000
@@ -207,12 +206,20 @@ The fields depend on `type`. A field that does not belong to the type is ignored
 
 - `type: "rtu"` (required)
 - `port` (required) - Serial port path, for example `/dev/ttyUSB0` (Linux) or `COM3` (Windows). Prefer a stable path, see [Unplugging a Serial Adapter](#unplugging-a-serial-adapter)
-- `baudRate` (required) - Baud rate (e.g., 9600, 19200)
+- `baudRate` (optional) - Baud rate (e.g., 9600, 19200). Default: from the driver
 - `slaveId` (required) - Modbus slave ID (0-247)
-- `parity` (optional) - Parity: "none", "even", "odd" (default: "none")
-- `dataBits` (optional) - Data bits: 7 or 8 (default: 8)
-- `stopBits` (optional) - Stop bits: 1 or 2 (default: 1)
+- `parity` (optional) - Parity: "none", "even", "odd". Default: from the driver
+- `dataBits` (optional) - Data bits: 7 or 8. Default: from the driver
+- `stopBits` (optional) - Stop bits: 1 or 2. Default: from the driver
 - `timeout` (optional) - Time to wait for a response in milliseconds (1-86400000, default: 1000)
+
+The defaults of `baudRate`, `parity`, `dataBits` and `stopBits` are the factory settings of the device, from the `DEFAULT_CONFIG` of the driver. `ya-modbus show-defaults --driver <package>` shows them. If the driver has no `DEFAULT_CONFIG`, `baudRate` is required, and the bridge uses parity "none", 8 data bits and 1 stop bit.
+
+When the bridge adds the device, it checks these settings and `slaveId` against the values that the driver supports (its `SUPPORTED_CONFIG`). If the driver does not support a value, the device does not load (see [Common Configuration Errors](#common-configuration-errors)). For each RTU device that loads, the bridge prints the settings that it uses:
+
+```
+Device meter1 uses /dev/ttyUSB0: baud rate 9600, data bits 8, parity odd, stop bits 1
+```
 
 **TCP connection:**
 
@@ -271,7 +278,7 @@ After the bridge has connected to the broker, it loads the devices one after ano
 
 - Devices share one connection when they use the same serial port with the same `baudRate`, `dataBits`, `parity` and `stopBits`, or the same TCP `host` and `port`. The first of them opens the connection and its `timeout` is used for all of them. Devices that share a connection are read one at a time.
 - A device ID can be used only once. If it is used twice, loading the second device fails with `Device <deviceId> already exists`.
-- If a device fails to load, for example because the driver is not installed, the CLI prints the error and exits with code 1. The devices after it are not loaded.
+- If a device fails to load, for example because the driver is not installed or does not support a serial setting, the CLI prints the error and exits with code 1. The devices after it are not loaded.
 - A port that cannot be opened does not stop the bridge, for example a USB serial adapter that is not plugged in, or a TCP device that refuses the connection. The bridge prints a warning, the device starts in the `error` state, and the other devices start normally. A later poll opens the port (see [Unplugging a Serial Adapter](#unplugging-a-serial-adapter)). This does not work for a driver that reads from the device while it loads: that device fails to load.
 
 ### Common Configuration Errors
@@ -287,11 +294,19 @@ Error: Invalid configuration: devices.0.connection: Invalid input
 This message does not say which field is wrong. Compare the connection with the RTU and TCP lists above. The usual causes are:
 
 - `slaveId` outside 0-247, or TCP `port` outside 1-65535
-- `port`, `baudRate`, `host` or `slaveId` is missing, or `port` or `host` is empty
+- `port`, `host` or `slaveId` is missing, or `port` or `host` is empty
 - `baudRate` is not a positive number
 - `parity`, `dataBits` or `stopBits` has a value that is not in the list
 - `timeout` is not a whole number from 1 to 86400000
 - `type` is not `"rtu"` or `"tcp"`, or `connection` is missing
+
+**Setting that the driver does not support**
+
+```
+Error: Invalid parity 'none'. This driver supports: odd (default: odd)
+```
+
+The message does not name the device. It is the next device after the last `✓ Loaded device` line. Use one of the listed values, or leave the setting out to use the default of the driver. The same check covers `baudRate`, `dataBits`, `stopBits` and `slaveId`.
 
 **Wrong driver name**
 

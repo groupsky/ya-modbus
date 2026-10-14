@@ -34,20 +34,28 @@ const timeoutSchema = z
   .max(MAX_DURATION_MS, 'Connection timeout must not exceed 24 hours')
   .optional()
 
+// Serial settings that are not set come from the driver when the device is added
 const rtuConnectionSchema = z
   .object({
     type: z.literal('rtu'),
     port: z.string().min(1),
-    baudRate: z.number().positive(),
+    baudRate: z.number().positive().optional(),
     slaveId: z.number().int().min(0).max(247),
-    parity: z.enum(['none', 'even', 'odd']).default('none'),
-    dataBits: z.union([z.literal(7), z.literal(8)]).default(8),
-    stopBits: z.union([z.literal(1), z.literal(2)]).default(1),
+    parity: z.enum(['none', 'even', 'odd']).optional(),
+    dataBits: z.union([z.literal(7), z.literal(8)]).optional(),
+    stopBits: z.union([z.literal(1), z.literal(2)]).optional(),
     timeout: timeoutSchema,
   })
   .transform((data) => {
-    const { timeout, ...rest } = data
-    return timeout !== undefined ? { ...rest, timeout } : rest
+    const { baudRate, parity, dataBits, stopBits, timeout, ...rest } = data
+    return {
+      ...rest,
+      ...(baudRate !== undefined ? { baudRate } : {}),
+      ...(parity !== undefined ? { parity } : {}),
+      ...(dataBits !== undefined ? { dataBits } : {}),
+      ...(stopBits !== undefined ? { stopBits } : {}),
+      ...(timeout !== undefined ? { timeout } : {}),
+    }
   })
 
 const tcpConnectionSchema = z

@@ -77,14 +77,19 @@ export interface DeviceConfig {
 
 export type DeviceConnection = RTUConnection | TCPConnection
 
+/**
+ * Serial settings that are not set come from the driver's DEFAULT_CONFIG. Without one, the bridge
+ * uses 8 data bits, no parity and 1 stop bit, and `baudRate` is required. The settings and
+ * `slaveId` must be in the driver's SUPPORTED_CONFIG.
+ */
 export interface RTUConnection {
   type: 'rtu'
   port: string
-  baudRate: number
+  baudRate?: number
   slaveId: number
-  parity: 'none' | 'even' | 'odd'
-  dataBits: 7 | 8
-  stopBits: 1 | 2
+  parity?: 'none' | 'even' | 'odd'
+  dataBits?: 7 | 8
+  stopBits?: 1 | 2
   timeout?: number
 }
 
