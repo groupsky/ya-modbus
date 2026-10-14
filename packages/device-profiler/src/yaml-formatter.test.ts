@@ -2,7 +2,7 @@
  * Tests for YAML formatter
  */
 
-import yaml from 'js-yaml'
+import { load } from 'js-yaml'
 
 import { ErrorType } from './error-classifier.js'
 import { formatJSON } from './json-formatter.js'
@@ -53,7 +53,7 @@ describe('formatYAML', () => {
   })
 
   it('should describe the scan with the same data as the JSON output', () => {
-    const parsed = yaml.load(formatYAML(mixedResults, options))
+    const parsed = load(formatYAML(mixedResults, options))
 
     expect(parsed).toEqual(JSON.parse(formatJSON(mixedResults, options)))
     expect(parsed).toMatchObject({
@@ -65,7 +65,7 @@ describe('formatYAML', () => {
   })
 
   it('should format empty results', () => {
-    const parsed = yaml.load(formatYAML([], options))
+    const parsed = load(formatYAML([], options))
 
     expect(parsed).toMatchObject({
       results: [],
@@ -120,7 +120,7 @@ describe('formatYAML', () => {
       },
     ]
 
-    const parsed = yaml.load(formatYAML(results, options)) as { results: Array<{ error: string }> }
+    const parsed = load(formatYAML(results, options)) as { results: Array<{ error: string }> }
 
     expect(parsed.results[0]?.error).toBe(error)
   })
@@ -146,7 +146,7 @@ describe('formatYAML', () => {
   it.each(['', '/dev/ttyUSB0', 'localhost:502', '192.168.1.10:502', 'COM3'])(
     'should keep the port "%s" as text',
     (port) => {
-      const parsed = yaml.load(formatYAML([], { ...options, port })) as {
+      const parsed = load(formatYAML([], { ...options, port })) as {
         connection: { port: string }
       }
 

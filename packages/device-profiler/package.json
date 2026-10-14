@@ -56,11 +56,10 @@
     "chalk": "^5.3.0",
     "cli-table3": "^0.6.3",
     "commander": "^14.0.2",
-    "js-yaml": "^4.3.2",
+    "js-yaml": "^5.4.3",
     "tslib": "^2.8.1"
   },
   "devDependencies": {
-    "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.20.5",
     "jest": "^30.2.0",
     "ts-jest": "^29.1.1",

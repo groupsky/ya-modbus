@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import type { Transport } from '@ya-modbus/driver-types'
-import yaml from 'js-yaml'
+import { load } from 'js-yaml'
 
 import { runProfileScan } from './cli.js'
 import { RegisterType } from './read-tester.js'
@@ -342,7 +342,7 @@ describe('runProfileScan', () => {
     /** Parse the single YAML document that the scan printed */
     function printedYAML(): unknown {
       expect(mockConsoleLog).toHaveBeenCalledTimes(1)
-      return yaml.load(mockConsoleLog.mock.calls[0][0] as string)
+      return load(mockConsoleLog.mock.calls[0][0] as string)
     }
 
     it('should print the scan as one YAML document when format is yaml', async () => {
@@ -497,7 +497,7 @@ describe('runProfileScan', () => {
 
       const content = await readFile(file, 'utf8')
       expect(content).toMatch(/[^\n]\n$/)
-      expect(yaml.load(content)).toMatchObject({
+      expect(load(content)).toMatchObject({
         scan: { type: 'holding', startAddress: 0, endAddress: 1 },
         results: [
           { address: 0, success: true, value: 0x1212 },
@@ -598,7 +598,7 @@ describe('runProfileScan', () => {
       // The scan can take minutes, so its result must not be lost with the file
       it.each([
         { format: 'json' as const, parse: JSON.parse },
-        { format: 'yaml' as const, parse: yaml.load },
+        { format: 'yaml' as const, parse: load },
       ])('should print the $format report to stdout', async ({ format, parse }) => {
         await expect(scan(createTransport(readsWithByte(0x12)), format)).rejects.toThrow()
 

@@ -4,7 +4,7 @@
 
 import { readFile } from 'fs/promises'
 
-import yaml from 'js-yaml'
+import { load } from 'js-yaml'
 
 import type { DeviceConfig } from '../types/config.js'
 
@@ -33,7 +33,7 @@ export async function loadConfig(filePath: string): Promise<ConfigFile> {
   let config: unknown
 
   if (filePath.endsWith('.yaml') || filePath.endsWith('.yml')) {
-    config = yaml.load(content)
+    config = load(content)
   } else if (filePath.endsWith('.json')) {
     config = JSON.parse(content)
   } else {
