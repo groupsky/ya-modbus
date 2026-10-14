@@ -153,7 +153,8 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     id: 'combined_code',
     name: 'Combined Code',
     type: 'integer',
-    access: 'rw',
+    // Write-only: firmware 1.02 (hardware 1) does not answer a read of 0x0042
+    access: 'w',
     pollType: 'on-demand',
     description: 'Synthesis code for bidirectional energy calculation mode',
   },
@@ -672,23 +673,9 @@ const ENERGY_REGISTER_MAP: Record<string, number> = {
 }
 
 /**
- * Register mapping for config registers outside bulk read range
- * These registers are read/written individually
- */
-const CONFIG_REGISTER_MAP: Record<string, number> = {
-  combined_code: 0x0042,
-}
-
-/**
  * Data points that are single 16-bit registers (not floats)
  */
-const SINGLE_REGISTER_POINTS = new Set([
-  'device_address',
-  'baud_rate',
-  'ct_rate',
-  'cycle_time',
-  'combined_code',
-])
+const SINGLE_REGISTER_POINTS = new Set(['device_address', 'baud_rate', 'ct_rate', 'cycle_time'])
 
 /**
  * Data points that are 32-bit integers (2 registers)
@@ -751,11 +738,8 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         return decodeEnergyDataPoint(id, buffer)
       }
 
-      // Check if it's a config register (read individually)
-      const configRegister = CONFIG_REGISTER_MAP[id]
-      if (configRegister !== undefined) {
-        const buffer = await transport.readHoldingRegisters(configRegister, 1)
-        return buffer.readUInt16BE(0)
+      if (id === 'combined_code') {
+        throw new Error(`Data point ${id} is write-only`)
       }
 
       throw new Error(`Unknown data point: ${id}`)
@@ -813,7 +797,6 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
       // Separate data points by register type
       const realtimePoints = ids.filter((id) => id in REALTIME_REGISTER_MAP)
       const energyPoints = ids.filter((id) => id in ENERGY_REGISTER_MAP)
-      const configPoints = ids.filter((id) => id in CONFIG_REGISTER_MAP)
 
       // Read realtime registers if needed
       if (realtimePoints.length > 0) {
@@ -831,21 +814,9 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         }
       }
 
-      // Read config registers individually
-      for (const id of configPoints) {
-        const register = CONFIG_REGISTER_MAP[id]
-        if (register !== undefined) {
-          const buffer = await transport.readHoldingRegisters(register, 1)
-          result[id] = buffer.readUInt16BE(0)
-        }
-      }
-
       // Check for unknown data points
       const unknownPoints = ids.filter(
-        (id) =>
-          !(id in REALTIME_REGISTER_MAP) &&
-          !(id in ENERGY_REGISTER_MAP) &&
-          !(id in CONFIG_REGISTER_MAP)
+        (id) => !(id in REALTIME_REGISTER_MAP) && !(id in ENERGY_REGISTER_MAP)
       )
       if (unknownPoints.length > 0) {
         throw new Error(`Unknown data points: ${unknownPoints.join(', ')}`)

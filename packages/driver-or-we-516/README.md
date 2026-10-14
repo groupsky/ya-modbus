@@ -97,7 +97,9 @@ const driver = await createDriver({
 | `ct_rate`          | CT Rate          | integer | Read-only  | Current transformer ratio             |
 | `s0_output_rate`   | S0 Output Rate   | float   | Read-write | S0 pulse output rate (imp/kWh)        |
 | `cycle_time`       | Cycle Time       | integer | Read-write | Measurement cycle time (0-65535)      |
-| `combined_code`    | Combined Code    | integer | Read-write | Bidirectional energy calculation mode |
+| `combined_code`    | Combined Code    | integer | Write-only | Bidirectional energy calculation mode |
+
+A meter with software version 1.02 (hardware version 1) does not answer a read of `combined_code` (register 0x0042): it gives no reply and no Modbus error. So the driver treats `combined_code` as write-only, and `ya-modbus read --all` leaves it out. Writes to `combined_code` were not tested on a real meter.
 
 ### Real-time Measurements
 
@@ -161,7 +163,7 @@ const driver = await createDriver({
 | Range         | Registers  | Type    | Description                    |
 | ------------- | ---------- | ------- | ------------------------------ |
 | 0x0000-0x003B | 60 (120 B) | Holding | Device info + real-time values |
-| 0x0042        | 1 (2 B)    | Holding | Combined code (config)         |
+| 0x0042        | 1 (2 B)    | Holding | Combined code (write-only)     |
 | 0x0100-0x012F | 48 (96 B)  | Holding | Energy counters                |
 
 All float values are IEEE 754 single-precision (32-bit) big-endian.
@@ -192,10 +194,7 @@ await driver.writeDataPoint('s0_output_rate', 1000.0)
 ### Configure Combined Code (Bidirectional Mode)
 
 ```typescript
-// Read current combined code setting
-const mode = await driver.readDataPoint('combined_code')
-
-// Set combined code for bidirectional energy calculation
+// Set combined code for bidirectional energy calculation (write-only)
 await driver.writeDataPoint('combined_code', 5)
 ```
 
