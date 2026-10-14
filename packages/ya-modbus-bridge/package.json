@@ -1,6 +1,6 @@
 {
   "name": "ya-modbus-bridge",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Short name for @ya-modbus/mqtt-bridge so that `npx ya-modbus-bridge` works",
   "keywords": [
     "modbus",
@@ -35,6 +35,6 @@
     "node": ">=22.0.0 <26.4.0"
   },
   "dependencies": {
-    "@ya-modbus/mqtt-bridge": "^0.17.1"
+    "@ya-modbus/mqtt-bridge": "^0.18.0"
   }
 }

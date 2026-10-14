@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.18.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.17.1...@ya-modbus/mqtt-bridge@0.18.0) (2026-10-14)
+
+### Bug Fixes
+
+- **mqtt-bridge:** reject unknown keys in the config file ([#639](https://github.com/groupsky/ya-modbus/issues/639)) ([](https://github.com/groupsky/ya-modbus/commit/)), closes [#612](https://github.com/groupsky/ya-modbus/issues/612)
+
+### BREAKING CHANGES
+
+- **mqtt-bridge:** in mqtt-bridge, a config with an unknown or misspelled key now fails at startup, and addDevice() rejects such a device config. Remove the key or fix its spelling.
+
 ## [0.17.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.17.0...@ya-modbus/mqtt-bridge@0.17.1) (2026-10-14)
 
 ### Bug Fixes
