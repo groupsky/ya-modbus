@@ -549,6 +549,28 @@ describe('validateDeviceConfig', () => {
     })
   })
 
+  it.each([
+    {
+      config: { connection: { type: 'rtu', port: '/dev/ttyUSB0', slaveId: 1, paritty: 'odd' } },
+      error: 'connection: Unrecognized key: "paritty"',
+    },
+    {
+      config: {
+        connection: { type: 'tcp', host: 'localhost', slaveId: 1 },
+        polling: { interval: 1000, maxretries: 5 },
+      },
+      error: 'polling: Unrecognized key: "maxretries"',
+    },
+    {
+      config: { connection: { type: 'tcp', host: 'localhost', slaveId: 1 }, enable: false },
+      error: 'Unrecognized key: "enable"',
+    },
+  ])('should reject an unknown key: $error', ({ config, error }) => {
+    const device = { deviceId: 'device1', driver: 'ya-modbus-driver-test', ...config }
+
+    expect(() => validateDeviceConfig(device)).toThrow(`Invalid device configuration: ${error}`)
+  })
+
   describe('TCP connection optional port', () => {
     it('should accept TCP connection without port (defaults to 502)', () => {
       const config = {

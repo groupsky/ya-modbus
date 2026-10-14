@@ -225,6 +225,70 @@ describe('loadConfig', () => {
     ])
   })
 
+  // A misspelled key must not be dropped: with `paritty: 'odd'` the device would run with the
+  // driver's parity, and every read would time out without a hint
+  describe('unknown keys', () => {
+    const rtu = { type: 'rtu', port: '/dev/ttyUSB0', slaveId: 1 }
+    const tcp = { type: 'tcp', host: 'localhost', slaveId: 1 }
+    const withDevice = (device: object): object => ({
+      devices: [
+        { deviceId: 'meter1', driver: '@ya-modbus/driver-ex9em', connection: rtu, ...device },
+      ],
+    })
+
+    it.each([
+      {
+        name: 'top-level key',
+        config: { topicprefix: 'x' },
+        error: 'Unrecognized key: "topicprefix"',
+      },
+      {
+        name: 'mqtt key',
+        config: { mqtt: { url: 'mqtt://localhost:1883', clientid: 'x' } },
+        error: 'mqtt: Unrecognized key: "clientid"',
+      },
+      {
+        name: 'device key',
+        config: withDevice({ enable: false }),
+        error: 'devices.0: Unrecognized key: "enable"',
+      },
+      {
+        name: 'RTU connection key',
+        config: withDevice({ connection: { ...rtu, paritty: 'odd' } }),
+        error: 'devices.0.connection: Unrecognized key: "paritty"',
+      },
+      {
+        name: 'TCP connection key',
+        config: withDevice({ connection: { ...tcp, timout: 1000 } }),
+        error: 'devices.0.connection: Unrecognized key: "timout"',
+      },
+      {
+        name: 'polling key',
+        config: withDevice({ polling: { interval: 1000, maxretries: 5 } }),
+        error: 'devices.0.polling: Unrecognized key: "maxretries"',
+      },
+    ])('should reject an unknown $name with its path', async ({ config, error }) => {
+      mockedReadFile.mockResolvedValue(JSON.stringify(config))
+
+      await expect(loadConfig('/path/to/config.json')).rejects.toThrow(
+        `Invalid configuration: ${error}`
+      )
+    })
+
+    // `type` decides which keys a connection can have
+    it.each([
+      { connection: { ...rtu, host: 'localhost' }, key: 'host' },
+      { connection: { ...tcp, parity: 'odd' }, key: 'parity' },
+      { connection: { ...tcp, baudRate: 9600 }, key: 'baudRate' },
+    ])('should reject $key in a $connection.type connection', async ({ connection, key }) => {
+      mockedReadFile.mockResolvedValue(JSON.stringify(withDevice({ connection })))
+
+      await expect(loadConfig('/path/to/config.json')).rejects.toThrow(
+        `Invalid configuration: devices.0.connection: Unrecognized key: "${key}"`
+      )
+    })
+  })
+
   it('should name the invalid device when only one of several devices is invalid', async () => {
     const rtuDevice = (
       deviceId: string

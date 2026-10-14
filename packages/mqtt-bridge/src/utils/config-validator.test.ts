@@ -213,6 +213,19 @@ describe('validateConfig', () => {
     expect(() => validateConfig(config)).not.toThrow(/devices\.[02]\./)
   })
 
+  it.each([
+    {
+      config: { mqtt: { url: 'mqtt://localhost:1883' }, topicprefix: 'x' },
+      error: 'Invalid configuration: Unrecognized key: "topicprefix"',
+    },
+    {
+      config: { mqtt: { url: 'mqtt://localhost:1883', clientid: 'x' } },
+      error: 'Invalid configuration: mqtt: Unrecognized key: "clientid"',
+    },
+  ])('should reject an unknown key: $error', ({ config, error }) => {
+    expect(() => validateConfig(config)).toThrow(error)
+  })
+
   // Unlike loadConfig, validateConfig checks the merged config as it is and fills in nothing
   it('should throw error when mqtt.url is missing', () => {
     expect(() => validateConfig({ mqtt: {} })).toThrow('mqtt.url')

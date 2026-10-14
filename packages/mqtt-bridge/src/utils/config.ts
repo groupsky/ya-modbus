@@ -22,7 +22,9 @@ export async function loadConfig(configPath: string): Promise<MqttBridgeConfig> 
   const result = configFileSchema.safeParse(json === null ? {} : json)
 
   if (!result.success) {
-    const errors = result.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')
+    const errors = result.error.issues
+      .map((e) => (e.path.length ? `${e.path.join('.')}: ${e.message}` : e.message))
+      .join(', ')
     throw new Error(`Invalid configuration: ${errors}`)
   }
 
