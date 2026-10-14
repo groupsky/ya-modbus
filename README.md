@@ -4,7 +4,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
-[![Node](https://img.shields.io/badge/Node-22+-green.svg)](https://nodejs.org/)
+[![Node](https://img.shields.io/badge/Node-22%20%7C%2024-green.svg)](https://nodejs.org/)
 [![codecov](https://codecov.io/gh/groupsky/ya-modbus/graph/badge.svg)](https://codecov.io/gh/groupsky/ya-modbus)
 
 ## Features

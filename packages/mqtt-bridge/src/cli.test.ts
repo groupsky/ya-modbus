@@ -717,6 +717,49 @@ describe('CLI - ya-modbus-bridge', () => {
       )
       expect(processUtils.exit).toHaveBeenCalledWith(1)
     })
+
+    // On Node.js 26.4+ serial requests time out (#507), so the bridge says why its serial
+    // devices fail: once, also for several serial devices, and not for TCP devices
+    it.each([
+      {
+        devices: 'serial devices',
+        config: [rtuDevice('device1'), rtuDevice('device2', 2)],
+        warnings: [[expect.stringContaining('issues/507')]],
+      },
+      {
+        devices: 'only TCP devices',
+        config: [
+          {
+            deviceId: 'device1',
+            driver: '@ya-modbus/driver-ex9em',
+            connection: { type: 'tcp', host: 'localhost', slaveId: 1 },
+          },
+        ],
+        warnings: [],
+      },
+    ])(
+      'should warn about Node.js 26.4+ on stderr at startup as needed with $devices',
+      async ({ config, warnings }) => {
+        mockBridge.addDevice = jest.fn().mockResolvedValue(undefined)
+        jest.mocked(configModule.loadConfig).mockResolvedValue({
+          mqtt: { url: 'mqtt://localhost:1883' },
+          devices: config,
+        } as any)
+        const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
+        const realVersion = process.version
+        Object.defineProperty(process, 'version', { value: 'v26.4.0' })
+
+        try {
+          await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+          expect(consoleWarnSpy.mock.calls).toEqual(warnings)
+          expect(mockBridge.addDevice).toHaveBeenCalledTimes(config.length)
+        } finally {
+          Object.defineProperty(process, 'version', { value: realVersion })
+          consoleWarnSpy.mockRestore()
+        }
+      }
+    )
   })
 
   describe('Signal Handlers', () => {

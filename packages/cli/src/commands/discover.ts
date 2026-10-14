@@ -1,4 +1,5 @@
 import { loadDriver } from '@ya-modbus/driver-loader'
+import { getSerialNodeWarning } from '@ya-modbus/transport'
 
 import type { DiscoveryStrategy } from '../discovery/parameter-generator.js'
 import { ProgressTracker } from '../discovery/progress.js'
@@ -55,6 +56,10 @@ export async function discoverCommand(options: DiscoverOptions): Promise<void> {
   const baudRates = mergeSpecs(options.baudRate, parseBaudRate, (items) =>
     items.sort((a, b) => a - b)
   )
+
+  // On stderr also in silent mode: it is why a scan finds nothing
+  const serialWarning = getSerialNodeWarning(process.version)
+  if (serialWarning) console.warn(serialWarning)
 
   if (!silent) {
     console.log(`Starting Modbus device discovery on ${options.port}...`)

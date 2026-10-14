@@ -1081,6 +1081,24 @@ describe('Discover Command', () => {
       const jsonCalls = consoleLogSpy.mock.calls.filter((call) => call[0]?.includes('['))
       expect(jsonCalls).toHaveLength(0)
     })
+
+    // On Node.js 26.4+ serial requests time out (#507), so the scan finds nothing: say why
+    test('should warn on stderr, also in silent mode, when serial requests time out on this Node.js version', async () => {
+      jest.spyOn(scanner, 'scanForDevices').mockResolvedValue([])
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
+      const realVersion = process.version
+      Object.defineProperty(process, 'version', { value: 'v26.4.0' })
+
+      try {
+        await discoverCommand({ port: '/dev/ttyUSB0', silent: true, format: 'json' })
+
+        expect(consoleWarnSpy).toHaveBeenCalledTimes(1)
+        expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('issues/507'))
+      } finally {
+        Object.defineProperty(process, 'version', { value: realVersion })
+        consoleWarnSpy.mockRestore()
+      }
+    })
   })
 
   describe('onDeviceFound in verbose mode', () => {

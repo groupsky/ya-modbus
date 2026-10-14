@@ -187,10 +187,12 @@ All packages MUST specify the Node.js engine requirement:
 ```json
 {
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.0.0 <26.4.0"
   }
 }
 ```
+
+The upper bound excludes Node.js 26.4 and newer, on which serial (RTU) requests time out ([#507](https://github.com/groupsky/ya-modbus/issues/507)).
 
 ### Module Resolution
 

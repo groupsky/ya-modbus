@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { getCallerPackageInfo } from '@ya-modbus/driver-loader'
+import { getSerialNodeWarning } from '@ya-modbus/transport'
 import chalk from 'chalk'
 import { Command, CommanderError } from 'commander'
 
@@ -89,6 +90,11 @@ async function runCommand(options: RunCommandOptions): Promise<void> {
 
   // Validate configuration after merging CLI options
   validateConfig(config)
+
+  if (config.devices?.some((device) => device.connection.type === 'rtu')) {
+    const serialWarning = getSerialNodeWarning(process.version)
+    if (serialWarning) console.warn(chalk.yellow(serialWarning))
+  }
 
   // Sanitize URL to hide credentials
   const sanitizedUrl = config.mqtt.url.replace(/:\/\/([^:]+):([^@]+)@/, '://$1:****@')
