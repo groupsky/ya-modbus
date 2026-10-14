@@ -36,7 +36,7 @@ const timeoutSchema = z
 
 // Serial settings that are not set come from the driver when the device is added
 const rtuConnectionSchema = z
-  .object({
+  .strictObject({
     type: z.literal('rtu'),
     port: z.string().min(1),
     baudRate: z.number().positive().optional(),
@@ -59,7 +59,7 @@ const rtuConnectionSchema = z
   })
 
 const tcpConnectionSchema = z
-  .object({
+  .strictObject({
     type: z.literal('tcp'),
     host: z.string().min(1),
     port: z.number().int().positive().max(65535).optional(),
@@ -76,7 +76,7 @@ const tcpConnectionSchema = z
   })
 
 const pollingConfigSchema = z
-  .object({
+  .strictObject({
     interval: z
       .number()
       .int()
@@ -109,7 +109,7 @@ const pollingConfigSchema = z
   .optional()
 
 export const deviceConfigSchema = z
-  .object({
+  .strictObject({
     deviceId: deviceIdSchema,
     driver: driverNameSchema,
     connection: z.union([rtuConnectionSchema, tcpConnectionSchema]),
@@ -129,7 +129,9 @@ export function validateDeviceConfig(config: unknown): void {
   const result = deviceConfigSchema.safeParse(config)
 
   if (!result.success) {
-    const errors = result.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')
+    const errors = result.error.issues
+      .map((e) => (e.path.length ? `${e.path.join('.')}: ${e.message}` : e.message))
+      .join(', ')
     throw new Error(`Invalid device configuration: ${errors}`)
   }
 }

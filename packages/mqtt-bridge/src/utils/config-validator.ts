@@ -6,7 +6,9 @@ export function validateConfig(config: unknown): asserts config is MqttBridgeCon
   const result = mqttBridgeConfigSchema.safeParse(config)
 
   if (!result.success) {
-    const errors = result.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')
+    const errors = result.error.issues
+      .map((e) => (e.path.length ? `${e.path.join('.')}: ${e.message}` : e.message))
+      .join(', ')
     throw new Error(`Invalid configuration: ${errors}`)
   }
 }

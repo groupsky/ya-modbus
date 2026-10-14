@@ -13,7 +13,7 @@ export const mqttUrlSchema = z
 // reconnect period would make the MQTT client reconnect in a tight loop.
 const MAX_RECONNECT_PERIOD_MS = 86400000
 
-export const mqttConfigSchema = z.object({
+export const mqttConfigSchema = z.strictObject({
   url: mqttUrlSchema,
   clientId: z.string().optional(),
   username: z.string().optional(),
@@ -26,7 +26,7 @@ export const mqttConfigSchema = z.object({
     .optional(),
 })
 
-export const mqttBridgeConfigSchema = z.object({
+export const mqttBridgeConfigSchema = z.strictObject({
   mqtt: mqttConfigSchema,
   stateDir: z.string().optional(),
   topicPrefix: z

@@ -179,6 +179,8 @@ The options from the command line replace the same options from the file. The br
 
 Times, counts and ports are whole numbers.
 
+Each key must be one of the options below. A key that is not an option there is an error, for example a misspelled key such as `paritty`. This is true at the top level and in `mqtt`, in a device, in `connection` and in `polling`. Keys are case-sensitive.
+
 **Configuration options:**
 
 - `mqtt.url` (optional) - MQTT broker URL (mqtt://, mqtts://, ws://, wss://). Default: `mqtt://localhost:1883`, also when the `mqtt` section is missing. Without a config file, `--mqtt-url` is required.
@@ -200,7 +202,7 @@ Times, counts and ports are whole numbers.
 
 **Connection:**
 
-The fields depend on `type`. A field that does not belong to the type is ignored, for example `host` in an RTU connection. A missing required field or an unknown `type` is an error.
+The fields depend on `type`. A field that does not belong to the type is an error, for example `host` in an RTU connection, or `parity` or `baudRate` in a TCP connection. A missing required field or an unknown `type` is an error too.
 
 **RTU connection:**
 
@@ -283,7 +285,15 @@ After the bridge has connected to the broker, it loads the devices one after ano
 
 ### Common Configuration Errors
 
-The CLI prints a config error as `Error: Invalid configuration: <path>: <message>`. The path shows where the problem is. In `devices.1.polling.interval`, `1` is the second device, because counting starts at 0. If there are several problems, they are all in the message, separated by commas.
+The CLI prints a config error as `Error: Invalid configuration: <path>: <message>`. The path shows where the problem is. A problem at the top level of the file has no path: `Error: Invalid configuration: <message>`. In `devices.1.polling.interval`, `1` is the second device, because counting starts at 0. If there are several problems, they are all in the message, separated by commas.
+
+**Unknown key**
+
+```
+Error: Invalid configuration: devices.0.connection: Unrecognized key: "paritty"
+```
+
+The key is not an option in that place. It is misspelled, or it belongs to the other connection type, for example `host` in an RTU connection. Fix the spelling or remove the key. A key at the top level of the file has no path: `Invalid configuration: Unrecognized key: "topicprefix"`.
 
 **Wrong connection field**
 
@@ -299,6 +309,7 @@ This message does not say which field is wrong. Compare the connection with the 
 - `parity`, `dataBits` or `stopBits` has a value that is not in the list
 - `timeout` is not a whole number from 1 to 86400000
 - `type` is not `"rtu"` or `"tcp"`, or `connection` is missing
+- an unknown key, together with another problem in the same connection (an unknown key alone gives `Unrecognized key`)
 
 **Setting that the driver does not support**
 
