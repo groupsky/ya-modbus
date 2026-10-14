@@ -21,6 +21,7 @@ import { clearDriverCache, DriverNotBuiltError, loadDriver } from '@ya-modbus/dr
 import { createDriver as createDds024mrDriver } from '@ya-modbus/driver-dds024mr'
 import { createDriver as createOrWe516Driver } from '@ya-modbus/driver-or-we-516'
 import { readScaledUInt16BE, createEnumValidator } from '@ya-modbus/driver-sdk'
+import { createDriver as createSdm630Driver } from '@ya-modbus/driver-sdm630'
 import { createDriver as createXYMD1Driver, DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
 import { ModbusEmulator } from '@ya-modbus/emulator'
 import { createBridge } from '@ya-modbus/mqtt-bridge'
@@ -36,6 +37,7 @@ async function main() {
     createEx9emDriver,
     loadDriver,
     createDds024mrDriver,
+    createSdm630Driver,
     createOrWe516Driver,
     readScaledUInt16BE,
     createXYMD1Driver,

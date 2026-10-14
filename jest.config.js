@@ -12,6 +12,7 @@ module.exports = {
     '<rootDir>/packages/driver-xymd1',
     '<rootDir>/packages/driver-or-we-516',
     '<rootDir>/packages/driver-dds024mr',
+    '<rootDir>/packages/driver-sdm630',
   ],
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
