@@ -500,16 +500,14 @@ describe('validateDeviceConfig', () => {
   })
 
   describe('RTU connection defaults', () => {
-    it('should apply defaults for omitted RTU serial parameters', () => {
+    it('should accept an RTU connection without serial settings (the driver defaults apply)', () => {
       const config = {
         deviceId: 'device1',
         driver: 'ya-modbus-driver-test',
         connection: {
           type: 'rtu',
           port: '/dev/ttyUSB0',
-          baudRate: 9600,
           slaveId: 1,
-          // parity, dataBits, stopBits omitted - should get defaults
         },
       }
 

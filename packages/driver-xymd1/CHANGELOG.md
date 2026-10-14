@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.7.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-xymd1@0.7.0...@ya-modbus/driver-xymd1@0.7.1) (2026-10-14)
+
+**Note:** Version bump only for package @ya-modbus/driver-xymd1
+
+# [0.7.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-xymd1@0.6.15...@ya-modbus/driver-xymd1@0.7.0) (2026-10-14)
+
+### Bug Fixes
+
+- **driver-xymd1:** read temperature as signed and default to 8N1 ([#635](https://github.com/groupsky/ya-modbus/issues/635)) ([](https://github.com/groupsky/ya-modbus/commit/)), closes [#609](https://github.com/groupsky/ya-modbus/issues/609) [#628](https://github.com/groupsky/ya-modbus/issues/628)
+
+### BREAKING CHANGES
+
+- **driver-xymd1:** DEFAULT_CONFIG.parity of @ya-modbus/driver-xymd1 is now 'none' (9600 8N1) instead of 'even'. If you relied on the old even default, set parity even yourself.
+
 ## [0.6.15](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-xymd1@0.6.14...@ya-modbus/driver-xymd1@0.6.15) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/driver-xymd1

@@ -6,7 +6,11 @@
  */
 
 /**
- * Error thrown when driver configuration validation fails
+ * Error thrown when driver configuration validation fails, or when a connection option is not
+ * in the driver's SUPPORTED_CONFIG
+ *
+ * `value` is the rejected value and `validValues` the values that the driver supports, when
+ * they are known.
  *
  * @example
  * ```typescript
@@ -25,7 +29,9 @@
 export class ValidationError extends Error {
   constructor(
     message: string,
-    public readonly field?: string
+    public readonly field?: string,
+    public readonly value?: unknown,
+    public readonly validValues?: readonly unknown[]
   ) {
     super(message)
     this.name = 'ValidationError'

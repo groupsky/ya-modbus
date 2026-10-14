@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.12.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-loader@0.11.2...@ya-modbus/driver-loader@0.12.0) (2026-10-14)
+
+### Bug Fixes
+
+- **mqtt-bridge:** use the driver's default serial settings and reject unsupported ones ([#627](https://github.com/groupsky/ya-modbus/issues/627)) ([](https://github.com/groupsky/ya-modbus/commit/)), closes [#609](https://github.com/groupsky/ya-modbus/issues/609)
+
+### BREAKING CHANGES
+
+- **mqtt-bridge:** in mqtt-bridge, a device config without parity used to get "none" and now gets the driver default. Set "parity": "none" to keep the old behavior. A serial setting the driver does not support now stops startup.
+
 ## [0.11.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-loader@0.11.1...@ya-modbus/driver-loader@0.11.2) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/driver-loader

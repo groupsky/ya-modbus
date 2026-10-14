@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.15.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.14.2...@ya-modbus/emulator@0.15.0) (2026-10-14)
+
+### Features
+
+- add unscoped npx wrapper packages ([#536](https://github.com/groupsky/ya-modbus/issues/536)) ([ab299d0](https://github.com/groupsky/ya-modbus/commit/ab299d0f36d9288c1c124f1cf8993d4e27101494)), closes [#153](https://github.com/groupsky/ya-modbus/issues/153)
+
 ## [0.14.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.14.1...@ya-modbus/emulator@0.14.2) (2026-10-12)
 
 ### Bug Fixes

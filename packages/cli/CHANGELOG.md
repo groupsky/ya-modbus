@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.14.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.13.7...@ya-modbus/cli@0.14.0) (2026-10-14)
+
+### Bug Fixes
+
+- **driver-xymd1:** read temperature as signed and default to 8N1 ([#635](https://github.com/groupsky/ya-modbus/issues/635)) ([](https://github.com/groupsky/ya-modbus/commit/)), closes [#609](https://github.com/groupsky/ya-modbus/issues/609) [#628](https://github.com/groupsky/ya-modbus/issues/628)
+- **mqtt-bridge:** use the driver's default serial settings and reject unsupported ones ([#627](https://github.com/groupsky/ya-modbus/issues/627)) ([](https://github.com/groupsky/ya-modbus/commit/)), closes [#609](https://github.com/groupsky/ya-modbus/issues/609)
+
+### Features
+
+- add unscoped npx wrapper packages ([#536](https://github.com/groupsky/ya-modbus/issues/536)) ([ab299d0](https://github.com/groupsky/ya-modbus/commit/ab299d0f36d9288c1c124f1cf8993d4e27101494)), closes [#153](https://github.com/groupsky/ya-modbus/issues/153)
+
+### BREAKING CHANGES
+
+- **mqtt-bridge:** in mqtt-bridge, a device config without parity used to get "none" and now gets the driver default. Set "parity": "none" to keep the old behavior. A serial setting the driver does not support now stops startup.
+- **driver-xymd1:** DEFAULT_CONFIG.parity of @ya-modbus/driver-xymd1 is now 'none' (9600 8N1) instead of 'even'. If you relied on the old even default, set parity even yourself.
+
 ## [0.13.7](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.13.6...@ya-modbus/cli@0.13.7) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/cli

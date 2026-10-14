@@ -47,9 +47,11 @@ See existing: `src/commands/read.ts`, `src/commands/write.ts`
 ### What Does NOT Belong Here
 
 - ❌ Utils/helpers → `src/utils/commands.ts`
-  - `withDriver()`, `withTransport()`, `applyDriverDefaults()`
+  - `withDriver()`, `withTransport()`
 - ❌ Validation → `src/utils/validation.ts`
-  - `validateBaudRate()`, `validateParity()`, `ValidationError`
+  - `validateConnectionOptions()`
+- ❌ Driver defaults and SUPPORTED_CONFIG checks shared with the bridge → `@ya-modbus/driver-loader`
+  - `applyDriverDefaults()`, `validateSerialOptions()`, `ValidationError`
 - ❌ Types → `src/types/` or `@ya-modbus/driver-types`
 - ❌ Constants → relevant module (e.g., `src/utils/commands.ts`)
 - ❌ Never: `utils.ts`, `helpers.ts`, `validation.ts` in commands/

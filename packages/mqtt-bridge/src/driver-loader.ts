@@ -1,13 +1,53 @@
 import {
+  applyDriverDefaults,
   assertValidDriverPackageName,
   loadDriver as loadDriverPackage,
+  validateSerialOptions,
+  type LoadedDriver,
 } from '@ya-modbus/driver-loader'
 import type { DeviceDriver, Transport } from '@ya-modbus/driver-types'
-import { TransportManager, type ModbusError, type TransportConfig } from '@ya-modbus/transport'
+import {
+  TransportManager,
+  type ModbusError,
+  type RTUConfig,
+  type TransportConfig,
+} from '@ya-modbus/transport'
 
-import type { DeviceConnection } from './types.js'
+import type { DeviceConnection, RTUConnection } from './types.js'
 
 type LoadDriverFunction = typeof loadDriverPackage
+
+/**
+ * Transport config of an RTU connection. Serial settings that are not set come from the driver's
+ * DEFAULT_CONFIG. A driver without one gets 8 data bits, no parity and 1 stop bit, and needs
+ * `baudRate`. The final settings are checked against the driver's SUPPORTED_CONFIG.
+ *
+ * @throws ValidationError if the driver does not support a setting
+ */
+function toRTUConfig(
+  connection: RTUConnection,
+  driver: LoadedDriver,
+  packageName: string
+): RTUConfig {
+  const merged = applyDriverDefaults(connection, driver)
+
+  if (merged.baudRate === undefined) {
+    throw new Error(`baudRate is required: ${packageName} has no DEFAULT_CONFIG`)
+  }
+
+  const config: RTUConfig = {
+    port: merged.port,
+    baudRate: merged.baudRate,
+    dataBits: merged.dataBits ?? 8,
+    parity: merged.parity ?? 'none',
+    stopBits: merged.stopBits ?? 1,
+    slaveId: merged.slaveId,
+    timeout: merged.timeout,
+  }
+  validateSerialOptions(config, driver)
+
+  return config
+}
 
 /**
  * Manages dynamic loading and lifecycle of device drivers
@@ -24,6 +64,7 @@ export class DriverLoader {
   private readonly driverInstances = new Map<string, DeviceDriver>()
   private readonly devicePackages = new Map<string, string>()
   private readonly deviceTransports = new Map<string, Transport>()
+  private readonly deviceTransportConfigs = new Map<string, TransportConfig>()
   private readonly loadDriverFn: LoadDriverFunction
   private readonly transportManager: TransportManager
 
@@ -37,11 +78,13 @@ export class DriverLoader {
    *
    * @param packageName - NPM package name (e.g., '@ya-modbus/driver-xymd1', 'ya-modbus-driver-test'
    *   or '@org/ya-modbus-driver-test')
-   * @param connection - Device connection configuration
+   * @param connection - Device connection configuration. Serial settings that it does not set
+   *   come from the driver (see toRTUConfig). The settings used are logged.
    * @param deviceId - Unique device identifier for tracking the instance. Without it,
    *   unloadDriver() cannot release the transport, and its port stays open until
    *   closeAllTransports().
    * @returns Driver instance
+   * @throws ValidationError if the driver does not support a serial setting or the slave ID
    */
   async loadDriver(
     packageName: string,
@@ -55,8 +98,23 @@ export class DriverLoader {
     // Load driver package using driver-loader
     const loadedDriver = await this.loadDriverFn({ driverPackage: packageName })
 
+    let config: TransportConfig
+    if (connection.type === 'rtu') {
+      config = toRTUConfig(connection, loadedDriver, packageName)
+      console.log(
+        `Device ${deviceId ?? packageName} uses ${config.port}: baud rate ${config.baudRate}, ` +
+          `data bits ${config.dataBits}, parity ${config.parity}, stop bits ${config.stopBits}`
+      )
+    } else {
+      config = {
+        host: connection.host,
+        port: connection.port,
+        slaveId: connection.slaveId,
+        timeout: connection.timeout,
+      }
+    }
+
     // Get transport from manager (shared for RTU, unique for TCP)
-    const config = this.connectionToTransportConfig(connection)
     const transport = await this.transportManager.getTransport(config)
 
     let driver: DeviceDriver
@@ -82,6 +140,7 @@ export class DriverLoader {
       this.driverInstances.set(deviceId, driver)
       this.devicePackages.set(deviceId, packageName)
       this.deviceTransports.set(deviceId, transport)
+      this.deviceTransportConfigs.set(deviceId, config)
     }
 
     return driver
@@ -106,6 +165,7 @@ export class DriverLoader {
       this.driverInstances.delete(deviceId)
       this.devicePackages.delete(deviceId)
       this.deviceTransports.delete(deviceId)
+      this.deviceTransportConfigs.delete(deviceId)
       if (transport) await this.transportManager.releaseTransport(transport)
     }
   }
@@ -121,14 +181,16 @@ export class DriverLoader {
   }
 
   /**
-   * Get the error of a connection that is lost, for example because its port could not be
-   * opened when the driver was loaded
+   * Get the error of the connection of a device that is lost, for example because its port could
+   * not be opened when the driver was loaded
    *
-   * @param connection - Device connection configuration
+   * @param deviceId - Device identifier
    * @returns The error that requests on the connection reject with, or undefined while it works
+   *   or when the device is not loaded
    */
-  getConnectionError(connection: DeviceConnection): ModbusError | undefined {
-    return this.transportManager.getConnectionError(this.connectionToTransportConfig(connection))
+  getConnectionError(deviceId: string): ModbusError | undefined {
+    const config = this.deviceTransportConfigs.get(deviceId)
+    return config && this.transportManager.getConnectionError(config)
   }
 
   /**
@@ -137,30 +199,5 @@ export class DriverLoader {
    */
   async closeAllTransports(): Promise<void> {
     await this.transportManager.closeAll()
-  }
-
-  /**
-   * Convert DeviceConnection to TransportConfig
-   *
-   * @param connection - Device connection configuration
-   * @returns Transport configuration
-   */
-  private connectionToTransportConfig(connection: DeviceConnection): TransportConfig {
-    return connection.type === 'rtu'
-      ? {
-          port: connection.port,
-          baudRate: connection.baudRate,
-          dataBits: connection.dataBits,
-          parity: connection.parity,
-          stopBits: connection.stopBits,
-          slaveId: connection.slaveId,
-          timeout: connection.timeout,
-        }
-      : {
-          host: connection.host,
-          port: connection.port,
-          slaveId: connection.slaveId,
-          timeout: connection.timeout,
-        }
   }
 }
