@@ -9,7 +9,7 @@ import { createDriver, DEFAULT_CONFIG, SUPPORTED_CONFIG } from './index'
 /**
  * Single register integer data points (register offsets)
  */
-const SINGLE_REGISTER_OFFSETS = new Set([2, 3, 8, 13]) // device_address, baud_rate, ct_rate, cycle_time
+const SINGLE_REGISTER_OFFSETS = new Set([2, 3, 8, 11, 13]) // device_address, baud_rate, ct_rate, a3, cycle_time
 
 /**
  * Double register (32-bit) integer data points (register offsets)
@@ -145,6 +145,33 @@ describe('OR-WE-516 Driver', () => {
       expect(deviceAddress).toBeDefined()
       expect(deviceAddress?.access).toBe('rw')
     })
+
+    // The old reader publishes these on every read. They are in the realtime block that is
+    // read on every poll anyway, so polling them costs no extra bus time.
+    it.each(['device_address', 'baud_rate', 's0_output_rate', 'cycle_time', 'a3'])(
+      'should poll %s on every poll',
+      async (id) => {
+        const driver = await createDriver({
+          transport: mockTransport,
+          slaveId: 1,
+        })
+
+        const dataPoint = driver.dataPoints.find((dp) => dp.id === id)
+        expect(dataPoint).toBeDefined()
+        expect(dataPoint?.pollType ?? 'dynamic').toBe('dynamic')
+      }
+    )
+
+    it('should expose a3 as read-only', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      const a3 = driver.dataPoints.find((dp) => dp.id === 'a3')
+      expect(a3?.type).toBe('integer')
+      expect(a3?.access).toBe('r')
+    })
   })
 
   describe('readDataPoint', () => {
@@ -154,6 +181,7 @@ describe('OR-WE-516 Driver', () => {
         { id: 'device_address', registerOffset: 2, value: 5 },
         { id: 'baud_rate', registerOffset: 3, value: 9600 },
         { id: 'ct_rate', registerOffset: 8, value: 1 },
+        { id: 'a3', registerOffset: 11, value: 5 },
         { id: 'cycle_time', registerOffset: 13, value: 100 },
       ])('should read integer $id', async ({ id, registerOffset, value }) => {
         const driver = await createDriver({
@@ -256,20 +284,16 @@ describe('OR-WE-516 Driver', () => {
     })
 
     describe('config data points', () => {
-      it('should read combined_code from register 0x0042', async () => {
+      it('should not read write-only combined_code', async () => {
         const driver = await createDriver({
           transport: mockTransport,
           slaveId: 1,
         })
 
-        const buffer = Buffer.alloc(2)
-        buffer.writeUInt16BE(5, 0) // combined_code = 5
-        mockTransport.readHoldingRegisters.mockResolvedValue(buffer)
-
-        const result = await driver.readDataPoint('combined_code')
-
-        expect(result).toBe(5)
-        expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x0042, 1)
+        await expect(driver.readDataPoint('combined_code')).rejects.toThrow(
+          'Data point combined_code is write-only'
+        )
+        expect(mockTransport.readHoldingRegisters).not.toHaveBeenCalled()
       })
     })
 
@@ -412,20 +436,32 @@ describe('OR-WE-516 Driver', () => {
       expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x100, 48)
     })
 
-    it('should read config data points individually', async () => {
+    it('should read all readable data points from a meter that does not answer 0x0042', async () => {
+      // A real meter (software 1.02, hardware 1) stays silent on a read of
+      // 0x0042 (combined_code). When combined_code was readable, reading all
+      // readable points (like `ya-modbus read --all`) timed out every time.
       const driver = await createDriver({
         transport: mockTransport,
         slaveId: 1,
       })
 
-      const configBuffer = Buffer.alloc(2)
-      configBuffer.writeUInt16BE(5, 0)
-      mockTransport.readHoldingRegisters.mockResolvedValue(configBuffer)
+      mockTransport.readHoldingRegisters.mockImplementation((address: number) => {
+        if (address === 0x0042) {
+          return Promise.reject(new Error('Timed out'))
+        }
+        return Promise.resolve(
+          address === 0x100
+            ? createEnergyBuffer({ 0: 12345.67 })
+            : createRealtimeBuffer({ 14: 230.5 })
+        )
+      })
 
-      const result = await driver.readDataPoints(['combined_code'])
+      const readableIds = driver.dataPoints.filter((dp) => dp.access !== 'w').map((dp) => dp.id)
+      const result = await driver.readDataPoints(readableIds)
 
-      expect(result['combined_code']).toBe(5)
-      expect(mockTransport.readHoldingRegisters).toHaveBeenCalledWith(0x0042, 1)
+      expect(result['voltage_l1']).toBeCloseTo(230.5, 1)
+      expect(result['active_energy_total']).toBeCloseTo(12345.67, 1)
+      expect(mockTransport.readHoldingRegisters).not.toHaveBeenCalledWith(0x0042, expect.anything())
     })
 
     it('should throw on unknown data points', async () => {

@@ -11,7 +11,7 @@ ORNO OR-WE-516 3-Phase Energy Meter driver implementation.
 
 ## Testing
 
-Mock transport interface. Test all 56 data points and validation edge cases.
+Mock transport interface. Test all 57 data points and validation edge cases.
 
 ## Interfaces
 

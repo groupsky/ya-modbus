@@ -90,7 +90,6 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     name: 'Device Address',
     type: 'integer',
     access: 'rw',
-    pollType: 'on-demand',
     description: 'Modbus device address (1-247)',
     min: 1,
     max: 247,
@@ -100,7 +99,6 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     name: 'Baud Rate',
     type: 'enum',
     access: 'rw',
-    pollType: 'on-demand',
     description: 'Serial communication baud rate',
     enumValues: {
       1200: '1200 bps',
@@ -138,22 +136,28 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     name: 'S0 Output Rate',
     type: 'float',
     access: 'rw',
-    pollType: 'on-demand',
     description: 'S0 pulse output rate',
+  },
+  {
+    id: 'a3',
+    name: 'A3',
+    type: 'integer',
+    access: 'r',
+    description: 'Register 0x000B, named "A3" in a public register list; meaning not documented',
   },
   {
     id: 'cycle_time',
     name: 'Cycle Time',
     type: 'integer',
     access: 'rw',
-    pollType: 'on-demand',
     description: 'Measurement cycle time',
   },
   {
     id: 'combined_code',
     name: 'Combined Code',
     type: 'integer',
-    access: 'rw',
+    // Write-only: firmware 1.02 (hardware 1) does not answer a read of 0x0042
+    access: 'w',
     pollType: 'on-demand',
     description: 'Synthesis code for bidirectional energy calculation mode',
   },
@@ -615,6 +619,7 @@ const REALTIME_REGISTER_MAP: Record<string, number> = {
   hardware_version: 6,
   ct_rate: 8,
   s0_output_rate: 9,
+  a3: 11,
   cycle_time: 13,
   voltage_l1: 14,
   voltage_l2: 16,
@@ -672,22 +677,14 @@ const ENERGY_REGISTER_MAP: Record<string, number> = {
 }
 
 /**
- * Register mapping for config registers outside bulk read range
- * These registers are read/written individually
- */
-const CONFIG_REGISTER_MAP: Record<string, number> = {
-  combined_code: 0x0042,
-}
-
-/**
  * Data points that are single 16-bit registers (not floats)
  */
 const SINGLE_REGISTER_POINTS = new Set([
   'device_address',
   'baud_rate',
   'ct_rate',
+  'a3',
   'cycle_time',
-  'combined_code',
 ])
 
 /**
@@ -751,11 +748,8 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         return decodeEnergyDataPoint(id, buffer)
       }
 
-      // Check if it's a config register (read individually)
-      const configRegister = CONFIG_REGISTER_MAP[id]
-      if (configRegister !== undefined) {
-        const buffer = await transport.readHoldingRegisters(configRegister, 1)
-        return buffer.readUInt16BE(0)
+      if (id === 'combined_code') {
+        throw new Error(`Data point ${id} is write-only`)
       }
 
       throw new Error(`Unknown data point: ${id}`)
@@ -813,7 +807,6 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
       // Separate data points by register type
       const realtimePoints = ids.filter((id) => id in REALTIME_REGISTER_MAP)
       const energyPoints = ids.filter((id) => id in ENERGY_REGISTER_MAP)
-      const configPoints = ids.filter((id) => id in CONFIG_REGISTER_MAP)
 
       // Read realtime registers if needed
       if (realtimePoints.length > 0) {
@@ -831,21 +824,9 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         }
       }
 
-      // Read config registers individually
-      for (const id of configPoints) {
-        const register = CONFIG_REGISTER_MAP[id]
-        if (register !== undefined) {
-          const buffer = await transport.readHoldingRegisters(register, 1)
-          result[id] = buffer.readUInt16BE(0)
-        }
-      }
-
       // Check for unknown data points
       const unknownPoints = ids.filter(
-        (id) =>
-          !(id in REALTIME_REGISTER_MAP) &&
-          !(id in ENERGY_REGISTER_MAP) &&
-          !(id in CONFIG_REGISTER_MAP)
+        (id) => !(id in REALTIME_REGISTER_MAP) && !(id in ENERGY_REGISTER_MAP)
       )
       if (unknownPoints.length > 0) {
         throw new Error(`Unknown data points: ${unknownPoints.join(', ')}`)
