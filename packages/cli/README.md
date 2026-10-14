@@ -429,7 +429,7 @@ ya-modbus read \
   --driver @ya-modbus/driver-xymd1 \
   --port /dev/ttyUSB0 \
   --baud-rate 9600 \
-  --parity even \
+  --parity none \
   --data-bits 8 \
   --stop-bits 1 \
   --slave-id 1 \
@@ -531,7 +531,7 @@ Driver Defaults
 
 DEFAULT_CONFIG:
   baudRate: 9600
-  parity: "even"
+  parity: "none"
   dataBits: 8
   stopBits: 1
   defaultAddress: 1

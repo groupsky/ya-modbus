@@ -186,9 +186,11 @@ teardown() {
   assert_success
   EMULATOR_PID="$output"
 
+  # The bus runs at even parity, not at the XYMD1 factory default 8N1
   run node "$CLI_BIN" read \
     --port /tmp/ttyV3 \
     --slave-id 1 \
+    --parity even \
     --driver @ya-modbus/driver-xymd1 \
     --all \
     --format json

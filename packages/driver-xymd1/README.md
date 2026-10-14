@@ -7,10 +7,10 @@ XYMD1 Temperature and Humidity Sensor driver for ya-modbus.
 - **Model**: XY-MD1
 - **Type**: Temperature and Humidity Sensor
 - **Communication**: Modbus RTU
-- **Default Settings**:
+- **Default Settings** (9600 8N1):
   - Address: 1
   - Baud rate: 9600
-  - Parity: Even
+  - Parity: None
   - Stop bits: 1
   - Data bits: 8
 
@@ -30,7 +30,7 @@ import { createRTUTransport } from '@ya-modbus/transport'
 const transport = await createRTUTransport({
   port: '/dev/ttyUSB0',
   baudRate: 9600,
-  parity: 'even',
+  parity: 'none',
   dataBits: 8,
   stopBits: 1,
   slaveId: 1,
@@ -75,7 +75,7 @@ import { createRTUTransport } from '@ya-modbus/transport'
 const transport = await createRTUTransport({
   port: '/dev/ttyUSB0',
   baudRate: DEFAULT_CONFIG.baudRate, // 9600
-  parity: DEFAULT_CONFIG.parity, // 'even'
+  parity: DEFAULT_CONFIG.parity, // 'none'
   dataBits: DEFAULT_CONFIG.dataBits, // 8
   stopBits: DEFAULT_CONFIG.stopBits, // 1
   slaveId: DEFAULT_CONFIG.defaultAddress, // 1
@@ -102,13 +102,13 @@ This ensures your code always uses the correct factory defaults and makes it eas
 
 ## Register Mapping
 
-| Function      | Register | Type    | Format          | Description                                |
-| ------------- | -------- | ------- | --------------- | ------------------------------------------ |
-| Read          | 1-2      | Input   | 16-bit × 2      | Temperature and humidity (×10)             |
-| Configuration | 0x101    | Holding | 16-bit unsigned | Device address (1-247)                     |
-| Configuration | 0x102    | Holding | 16-bit unsigned | Baud rate setting                          |
-| Calibration   | 0x103    | Holding | 16-bit signed   | Temperature correction (×10, -100 to +100) |
-| Calibration   | 0x104    | Holding | 16-bit signed   | Humidity correction (×10, -100 to +100)    |
+| Function      | Register | Type    | Format          | Description                                            |
+| ------------- | -------- | ------- | --------------- | ------------------------------------------------------ |
+| Read          | 1-2      | Input   | 16-bit × 2      | Temperature (signed, ×10) and humidity (unsigned, ×10) |
+| Configuration | 0x101    | Holding | 16-bit unsigned | Device address (1-247)                                 |
+| Configuration | 0x102    | Holding | 16-bit unsigned | Baud rate setting                                      |
+| Calibration   | 0x103    | Holding | 16-bit signed   | Temperature correction (×10, -100 to +100)             |
+| Calibration   | 0x104    | Holding | 16-bit signed   | Humidity correction (×10, -100 to +100)                |
 
 ## Calibration
 
