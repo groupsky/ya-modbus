@@ -16,12 +16,14 @@ describe('Read Command', () => {
   let mockDriver: jest.Mocked<DeviceDriver>
   let mockCreateDriver: jest.MockedFunction<any>
   let consoleLogSpy: jest.SpyInstance
+  let consoleWarnSpy: jest.SpyInstance
 
   beforeEach(() => {
     jest.clearAllMocks()
 
     // Mock console.log to capture output
     consoleLogSpy = jest.spyOn(console, 'log').mockImplementation()
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
 
     // Mock transport
     mockTransport = {
@@ -68,6 +70,7 @@ describe('Read Command', () => {
 
     // Mock factory functions
     jest.spyOn(transportFactory, 'createTransport').mockResolvedValue(mockTransport)
+    jest.spyOn(transportFactory, 'getSerialNodeWarning').mockReturnValue(undefined)
     jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue({
       createDriver: mockCreateDriver,
       defaultConfig: undefined,
@@ -77,6 +80,7 @@ describe('Read Command', () => {
 
   afterEach(() => {
     consoleLogSpy.mockRestore()
+    consoleWarnSpy.mockRestore()
   })
 
   test('should read single data point with RTU connection', async () => {
@@ -249,6 +253,37 @@ describe('Read Command', () => {
       port: 5020,
       slaveId: 1,
     })
+  })
+
+  // On Node.js 26.4+ serial requests time out (#507), so the user sees why reads fail
+  test('should warn on stderr when serial requests time out on this Node.js version', async () => {
+    jest.mocked(transportFactory.getSerialNodeWarning).mockReturnValue('serial warning')
+    mockDriver.readDataPoint.mockResolvedValue(24.5)
+
+    await readCommand({
+      port: '/dev/ttyUSB0',
+      slaveId: 1,
+      dataPoint: ['temperature'],
+      format: 'json',
+    })
+
+    expect(transportFactory.getSerialNodeWarning).toHaveBeenCalledWith(process.version)
+    expect(consoleWarnSpy).toHaveBeenCalledTimes(1)
+    expect(consoleWarnSpy).toHaveBeenCalledWith('serial warning')
+  })
+
+  test('should not warn about the Node.js version over TCP', async () => {
+    jest.mocked(transportFactory.getSerialNodeWarning).mockReturnValue('serial warning')
+    mockDriver.readDataPoint.mockResolvedValue(24.5)
+
+    await readCommand({
+      host: '192.168.1.100',
+      slaveId: 1,
+      dataPoint: ['temperature'],
+      format: 'json',
+    })
+
+    expect(consoleWarnSpy).not.toHaveBeenCalled()
   })
 
   test('should load driver from explicit package', async () => {

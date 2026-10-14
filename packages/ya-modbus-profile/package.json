@@ -31,7 +31,7 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.0.0 <26.4.0"
   },
   "dependencies": {
     "@ya-modbus/device-profiler": "^0.12.0"

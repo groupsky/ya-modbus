@@ -16,7 +16,7 @@ import type {
   StopBits,
   Transport,
 } from '@ya-modbus/driver-types'
-import { createTransport, type TransportConfig } from '@ya-modbus/transport'
+import { createTransport, getSerialNodeWarning, type TransportConfig } from '@ya-modbus/transport'
 
 import { omitUndefined } from './object-utils.js'
 import { validateConnectionOptions } from './validation.js'
@@ -273,6 +273,11 @@ export async function withTransport<T>(
         slaveId: options.slaveId,
         timeout: options.timeout,
       }
+
+  if (!options.host) {
+    const serialWarning = getSerialNodeWarning(process.version)
+    if (serialWarning) console.warn(serialWarning)
+  }
 
   // Create transport
   const transport: Transport = await createTransport(transportConfig)
