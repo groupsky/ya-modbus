@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/cli",
-  "version": "0.14.1",
+  "version": "0.14.2",
   "description": "CLI tool for testing and developing Modbus device drivers",
   "type": "module",
   "keywords": [
