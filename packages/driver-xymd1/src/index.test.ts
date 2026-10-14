@@ -143,19 +143,21 @@ describe('XYMD1 Driver', () => {
   })
 
   describe('readDataPoint', () => {
-    it('should read temperature value', async () => {
+    // The sensor sends temperature as signed 16-bit × 10.
+    // The datasheet example 0xFF33 is -20.5°C, not 6533.1°C.
+    it.each([
+      { rawValue: [0x00, 0xf5], value: 24.5, description: '24.5°C (value 245 = 0x00F5)' },
+      { rawValue: [0xff, 0x33], value: -20.5, description: '-20.5°C (value -205 = 0xFF33)' },
+    ])('should read temperature: $description', async ({ rawValue, value }) => {
       const driver = await createDriver({
         transport: mockTransport,
         slaveId: 1,
       })
 
-      // Mock response: temperature = 245 (24.5°C)
-      mockTransport.readInputRegisters.mockResolvedValue(
-        Buffer.from([0x00, 0xf5, 0x00, 0x00]) // 245 in first register
-      )
+      mockTransport.readInputRegisters.mockResolvedValue(Buffer.from([...rawValue, 0x00, 0x00]))
 
       const temp = await driver.readDataPoint('temperature')
-      expect(temp).toBe(24.5)
+      expect(temp).toBe(value)
       expect(mockTransport.readInputRegisters).toHaveBeenCalledWith(1, 2)
     })
 
@@ -296,6 +298,22 @@ describe('XYMD1 Driver', () => {
         humidity: 65.2,
       })
       expect(mockTransport.readInputRegisters).toHaveBeenCalledTimes(1)
+    })
+
+    it('should read negative temperature together with humidity', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      // Mock response: temp=-205 (0xFF33, -20.5°C), humidity=652 (65.2%)
+      mockTransport.readInputRegisters.mockResolvedValue(Buffer.from([0xff, 0x33, 0x02, 0x8c]))
+
+      const values = await driver.readDataPoints(['temperature', 'humidity'])
+      expect(values).toEqual({
+        temperature: -20.5,
+        humidity: 65.2,
+      })
     })
 
     it('should read single value efficiently', async () => {

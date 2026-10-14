@@ -5,7 +5,7 @@
  * See DEFAULT_CONFIG for baud rate, parity, data bits, stop bits, and default address.
  *
  * Register mapping:
- * - Input registers 1-2: Temperature (×10) and Humidity (×10)
+ * - Input registers 1-2: Temperature (signed, ×10) and Humidity (unsigned, ×10)
  * - Holding register 0x101: Device address configuration
  * - Holding register 0x102: Baud rate configuration
  * - Holding register 0x103: Temperature correction (signed, ×10, -100 to +100)
@@ -156,8 +156,9 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
  * Decode raw Modbus value to data point value
  */
 function decodeDataPoint(id: string, rawValue: Buffer): unknown {
+  // Temperature can be negative (signed); humidity cannot (unsigned)
   if (id === 'temperature') {
-    return readScaledUInt16BE(rawValue, 0, 10)
+    return readScaledInt16BE(rawValue, 0, 10)
   }
   if (id === 'humidity') {
     return readScaledUInt16BE(rawValue, 2, 10)

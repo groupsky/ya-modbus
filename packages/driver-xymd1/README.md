@@ -102,13 +102,13 @@ This ensures your code always uses the correct factory defaults and makes it eas
 
 ## Register Mapping
 
-| Function      | Register | Type    | Format          | Description                                |
-| ------------- | -------- | ------- | --------------- | ------------------------------------------ |
-| Read          | 1-2      | Input   | 16-bit × 2      | Temperature and humidity (×10)             |
-| Configuration | 0x101    | Holding | 16-bit unsigned | Device address (1-247)                     |
-| Configuration | 0x102    | Holding | 16-bit unsigned | Baud rate setting                          |
-| Calibration   | 0x103    | Holding | 16-bit signed   | Temperature correction (×10, -100 to +100) |
-| Calibration   | 0x104    | Holding | 16-bit signed   | Humidity correction (×10, -100 to +100)    |
+| Function      | Register | Type    | Format          | Description                                            |
+| ------------- | -------- | ------- | --------------- | ------------------------------------------------------ |
+| Read          | 1-2      | Input   | 16-bit × 2      | Temperature (signed, ×10) and humidity (unsigned, ×10) |
+| Configuration | 0x101    | Holding | 16-bit unsigned | Device address (1-247)                                 |
+| Configuration | 0x102    | Holding | 16-bit unsigned | Baud rate setting                                      |
+| Calibration   | 0x103    | Holding | 16-bit signed   | Temperature correction (×10, -100 to +100)             |
+| Calibration   | 0x104    | Holding | 16-bit signed   | Humidity correction (×10, -100 to +100)                |
 
 ## Calibration
 
