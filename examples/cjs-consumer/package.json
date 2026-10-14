@@ -15,6 +15,7 @@
     "@ya-modbus/driver-loader": "file:../../packages/driver-loader",
     "@ya-modbus/driver-or-we-516": "file:../../packages/driver-or-we-516",
     "@ya-modbus/driver-sdk": "file:../../packages/driver-sdk",
+    "@ya-modbus/driver-sdm630": "file:../../packages/driver-sdm630",
     "@ya-modbus/driver-types": "file:../../packages/driver-types",
     "@ya-modbus/driver-xymd1": "file:../../packages/driver-xymd1",
     "@ya-modbus/emulator": "file:../../packages/emulator",

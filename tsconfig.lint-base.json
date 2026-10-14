@@ -28,7 +28,8 @@
       "@ya-modbus/driver-ex9em": ["packages/driver-ex9em/src"],
       "@ya-modbus/driver-xymd1": ["packages/driver-xymd1/src"],
       "@ya-modbus/driver-or-we-516": ["packages/driver-or-we-516/src"],
-      "@ya-modbus/driver-dds024mr": ["packages/driver-dds024mr/src"]
+      "@ya-modbus/driver-dds024mr": ["packages/driver-dds024mr/src"],
+      "@ya-modbus/driver-sdm630": ["packages/driver-sdm630/src"]
     }
   },
   // Note: Packages must specify their own "include" paths
