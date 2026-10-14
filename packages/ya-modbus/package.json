@@ -1,6 +1,6 @@
 {
   "name": "ya-modbus",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Short name for @ya-modbus/cli so that `npx ya-modbus` works",
   "keywords": [
     "modbus",
@@ -34,6 +34,6 @@
     "node": ">=22.0.0"
   },
   "dependencies": {
-    "@ya-modbus/cli": "^0.13.7"
+    "@ya-modbus/cli": "^0.14.0"
   }
 }

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.12.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.11.7...@ya-modbus/device-profiler@0.12.0) (2026-10-14)
+
+### Features
+
+- add unscoped npx wrapper packages ([#536](https://github.com/groupsky/ya-modbus/issues/536)) ([ab299d0](https://github.com/groupsky/ya-modbus/commit/ab299d0f36d9288c1c124f1cf8993d4e27101494)), closes [#153](https://github.com/groupsky/ya-modbus/issues/153)
+
 ## [0.11.7](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.11.6...@ya-modbus/device-profiler@0.11.7) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/device-profiler
