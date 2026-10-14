@@ -52,7 +52,7 @@
     "@ya-modbus/driver-loader": "^0.12.1",
     "@ya-modbus/driver-types": "^0.8.2",
     "@ya-modbus/transport": "^0.12.1",
-    "chalk": "^5.6.2",
+    "chalk": "^6.0.1",
     "commander": "^14.0.2",
     "mqtt": "^5.16.0",
     "tslib": "^2.8.1",
