@@ -25,6 +25,7 @@
     { "path": "./packages/device-profiler" },
     { "path": "./packages/driver-ex9em" },
     { "path": "./packages/driver-xymd1" },
-    { "path": "./packages/driver-or-we-516" }
+    { "path": "./packages/driver-or-we-516" },
+    { "path": "./packages/driver-dds024mr" }
   ]
 }

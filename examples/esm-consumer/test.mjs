@@ -18,6 +18,7 @@ import {
   DEFAULT_CONFIG as EX9EM_CONFIG,
 } from '@ya-modbus/driver-ex9em'
 import { clearDriverCache, DriverNotBuiltError, loadDriver } from '@ya-modbus/driver-loader'
+import { createDriver as createDds024mrDriver } from '@ya-modbus/driver-dds024mr'
 import { createDriver as createOrWe516Driver } from '@ya-modbus/driver-or-we-516'
 import { readScaledUInt16BE, createEnumValidator } from '@ya-modbus/driver-sdk'
 import { createDriver as createXYMD1Driver, DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
@@ -34,6 +35,7 @@ async function main() {
     scanRegisters,
     createEx9emDriver,
     loadDriver,
+    createDds024mrDriver,
     createOrWe516Driver,
     readScaledUInt16BE,
     createXYMD1Driver,

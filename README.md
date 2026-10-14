@@ -165,6 +165,7 @@ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for details.
 
 - **SDM630** - Eastron 3-phase energy meter
 - **DDS519MR** - Single-phase energy meter
+- **DDS024MR** - Sinotimer 3-phase energy meter
 - **EX9EM** - ABB energy meter
 
 #### Solar Inverters
