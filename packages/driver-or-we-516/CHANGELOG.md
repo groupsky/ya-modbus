@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.2.18](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.17...@ya-modbus/driver-or-we-516@0.2.18) (2026-10-14)
+
+### Bug Fixes
+
+- exclude Node.js 26.4+ in engines and warn about it for serial devices ([#636](https://github.com/groupsky/ya-modbus/issues/636)) ([8c46664](https://github.com/groupsky/ya-modbus/commit/8c46664bdffd90181e6dad4fb6a7fc31ef9fdcc0)), closes [#622](https://github.com/groupsky/ya-modbus/issues/622)
+
 ## [0.2.17](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.16...@ya-modbus/driver-or-we-516@0.2.17) (2026-10-14)
 
 **Note:** Version bump only for package @ya-modbus/driver-or-we-516

@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/driver-xymd1",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "XYMD1 Temperature and Humidity Sensor driver for ya-modbus",
   "keywords": [
     "modbus",
@@ -43,11 +43,11 @@
     "typecheck": "../../node_modules/.bin/tsc --noEmit"
   },
   "dependencies": {
-    "@ya-modbus/driver-sdk": "^0.8.1",
-    "@ya-modbus/driver-types": "^0.8.1"
+    "@ya-modbus/driver-sdk": "^0.8.2",
+    "@ya-modbus/driver-types": "^0.8.2"
   },
   "devDependencies": {
-    "@ya-modbus/cli": "^0.14.0"
+    "@ya-modbus/cli": "^0.14.1"
   },
   "engines": {
     "node": ">=22.0.0 <26.4.0"

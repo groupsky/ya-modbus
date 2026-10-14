@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/device-profiler",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "Device profiler for discovering Modbus register maps",
   "license": "GPL-3.0-or-later",
   "type": "module",
@@ -50,9 +50,9 @@
     "node": ">=22.0.0 <26.4.0"
   },
   "dependencies": {
-    "@ya-modbus/driver-loader": "^0.12.0",
-    "@ya-modbus/driver-types": "^0.8.1",
-    "@ya-modbus/transport": "^0.12.0",
+    "@ya-modbus/driver-loader": "^0.12.1",
+    "@ya-modbus/driver-types": "^0.8.2",
+    "@ya-modbus/transport": "^0.12.1",
     "chalk": "^5.3.0",
     "cli-table3": "^0.6.3",
     "commander": "^14.0.2",

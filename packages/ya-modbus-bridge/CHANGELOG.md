@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.3](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.2...ya-modbus-bridge@0.1.3) (2026-10-14)
+
+### Bug Fixes
+
+- exclude Node.js 26.4+ in engines and warn about it for serial devices ([#636](https://github.com/groupsky/ya-modbus/issues/636)) ([8c46664](https://github.com/groupsky/ya-modbus/commit/8c46664bdffd90181e6dad4fb6a7fc31ef9fdcc0)), closes [#622](https://github.com/groupsky/ya-modbus/issues/622)
+
 ## [0.1.2](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.1...ya-modbus-bridge@0.1.2) (2026-10-14)
 
 **Note:** Version bump only for package ya-modbus-bridge
