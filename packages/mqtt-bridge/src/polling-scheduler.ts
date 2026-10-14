@@ -11,7 +11,11 @@ interface ScheduledDevice {
   readInFlight: boolean
   interval: number
   retryBackoff: number
-  dataPointIds: string[]
+  // Read on every poll: readable points with pollType 'dynamic' (the default)
+  dynamicIds: string[]
+  // Read until one read works, then sent from staticValues in every data message
+  staticIds: string[]
+  staticValues?: Record<string, unknown> | undefined
   lastFailureCount: number
 }
 
@@ -58,10 +62,16 @@ export class PollingScheduler {
     // A device scheduled again must not keep the timer of its previous schedule
     this.unscheduleDevice(deviceId)
 
+    // Write-only and on-demand points are never polled
+    const polled = driver.dataPoints.filter(
+      (dp) => dp.access !== 'w' && dp.pollType !== 'on-demand'
+    )
+
     this.devices.set(deviceId, {
       config,
       driver,
-      dataPointIds: driver.dataPoints.map((dp) => dp.id),
+      dynamicIds: polled.filter((dp) => dp.pollType !== 'static').map((dp) => dp.id),
+      staticIds: polled.filter((dp) => dp.pollType === 'static').map((dp) => dp.id),
       interval,
       retryBackoff,
       lastFailureCount: 0,
@@ -165,19 +175,40 @@ export class PollingScheduler {
   }
 
   /**
+   * Read the static points of a device. A failed read is not a poll failure: the dynamic data
+   * is still published, and the next poll tries the static points again.
+   */
+  private async readStaticPoints(deviceId: string, device: ScheduledDevice): Promise<void> {
+    try {
+      device.staticValues = await device.driver.readDataPoints(device.staticIds)
+    } catch (error) {
+      console.warn(
+        `Failed to read static data points of device ${deviceId} (${device.staticIds.join(', ')}), trying again on the next poll:`,
+        error
+      )
+    }
+  }
+
+  /**
    * Poll a device once
    */
   private async pollDevice(deviceId: string, device: ScheduledDevice): Promise<void> {
     device.readInFlight = true
 
     try {
-      const data = await device.driver.readDataPoints(device.dataPointIds)
+      const data =
+        device.dynamicIds.length > 0 ? await device.driver.readDataPoints(device.dynamicIds) : {}
 
       // Reset failure count BEFORE callback - polling succeeded regardless of callback result
       device.lastFailureCount = 0
 
+      // Only after a dynamic read worked, so a device that does not answer costs one timeout
+      if (device.staticIds.length > 0 && !device.staticValues) {
+        await this.readStaticPoints(deviceId, device)
+      }
+
       try {
-        this.onData(deviceId, data)
+        this.onData(deviceId, { ...device.staticValues, ...data })
       } catch (callbackError) {
         // Data callback threw - log but don't count as polling failure
         console.error(

@@ -232,6 +232,19 @@ The fields depend on `type`. A field that does not belong to the type is ignored
 - `maxRetries` (optional) - Number of consecutive failed reads after which the device goes to the `error` state (0-100, default: 3). From then on, the bridge waits `retryBackoff` ms between reads instead of `interval` ms. It is not a limit: the bridge never stops polling. See [Failed Reads and Backoff](#failed-reads-and-backoff).
 - `retryBackoff` (optional) - Time to wait between reads in milliseconds while the device is in the `error` state (1-86400000, default: 2 × `interval`)
 
+### Which Data Points Are Polled
+
+The driver gives each data point a `pollType` and an `access`. The bridge uses them like this:
+
+| Data point                               | When the bridge reads it                                     |
+| ---------------------------------------- | ------------------------------------------------------------ |
+| `pollType: 'dynamic'` (or no `pollType`) | On every poll                                                |
+| `pollType: 'static'`                     | Once. Its values are kept and added to every `data` message. |
+| `pollType: 'on-demand'`                  | Never                                                        |
+| `access: 'w'` (write-only)               | Never                                                        |
+
+Static points are read in a separate request, after the dynamic points, and only in a poll where the dynamic read worked. If the static read fails, the bridge logs a warning with the device ID and the static data point IDs, still publishes the dynamic points, and tries the static points again on the next poll. A failed static read does not count as a failed read (see below). When a device is removed and added again, the bridge reads its static points again.
+
 ### Failed Reads and Backoff
 
 The bridge counts the consecutive failed reads of a device:

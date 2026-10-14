@@ -163,7 +163,7 @@ describe('PollingScheduler', () => {
         name: 'test',
         manufacturer: 'Test',
         model: 'TEST-001',
-        dataPoints: [],
+        dataPoints: [{ id: 'temp', name: 'Temperature', type: 'number', unit: '°C' }],
         readDataPoint: jest.fn(),
         writeDataPoint: jest.fn(),
         readDataPoints,
