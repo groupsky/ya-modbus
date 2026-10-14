@@ -90,7 +90,6 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     name: 'Device Address',
     type: 'integer',
     access: 'rw',
-    pollType: 'on-demand',
     description: 'Modbus device address (1-247)',
     min: 1,
     max: 247,
@@ -100,7 +99,6 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     name: 'Baud Rate',
     type: 'enum',
     access: 'rw',
-    pollType: 'on-demand',
     description: 'Serial communication baud rate',
     enumValues: {
       1200: '1200 bps',
@@ -138,15 +136,20 @@ const DATA_POINTS: ReadonlyArray<DataPoint> = [
     name: 'S0 Output Rate',
     type: 'float',
     access: 'rw',
-    pollType: 'on-demand',
     description: 'S0 pulse output rate',
+  },
+  {
+    id: 'a3',
+    name: 'A3',
+    type: 'integer',
+    access: 'r',
+    description: 'Register 0x000B, named "A3" in a public register list; meaning not documented',
   },
   {
     id: 'cycle_time',
     name: 'Cycle Time',
     type: 'integer',
     access: 'rw',
-    pollType: 'on-demand',
     description: 'Measurement cycle time',
   },
   {
@@ -616,6 +619,7 @@ const REALTIME_REGISTER_MAP: Record<string, number> = {
   hardware_version: 6,
   ct_rate: 8,
   s0_output_rate: 9,
+  a3: 11,
   cycle_time: 13,
   voltage_l1: 14,
   voltage_l2: 16,
@@ -675,7 +679,13 @@ const ENERGY_REGISTER_MAP: Record<string, number> = {
 /**
  * Data points that are single 16-bit registers (not floats)
  */
-const SINGLE_REGISTER_POINTS = new Set(['device_address', 'baud_rate', 'ct_rate', 'cycle_time'])
+const SINGLE_REGISTER_POINTS = new Set([
+  'device_address',
+  'baud_rate',
+  'ct_rate',
+  'a3',
+  'cycle_time',
+])
 
 /**
  * Data points that are 32-bit integers (2 registers)

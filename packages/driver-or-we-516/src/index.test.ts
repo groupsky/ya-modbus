@@ -9,7 +9,7 @@ import { createDriver, DEFAULT_CONFIG, SUPPORTED_CONFIG } from './index'
 /**
  * Single register integer data points (register offsets)
  */
-const SINGLE_REGISTER_OFFSETS = new Set([2, 3, 8, 13]) // device_address, baud_rate, ct_rate, cycle_time
+const SINGLE_REGISTER_OFFSETS = new Set([2, 3, 8, 11, 13]) // device_address, baud_rate, ct_rate, a3, cycle_time
 
 /**
  * Double register (32-bit) integer data points (register offsets)
@@ -145,6 +145,33 @@ describe('OR-WE-516 Driver', () => {
       expect(deviceAddress).toBeDefined()
       expect(deviceAddress?.access).toBe('rw')
     })
+
+    // The old reader publishes these on every read. They are in the realtime block that is
+    // read on every poll anyway, so polling them costs no extra bus time.
+    it.each(['device_address', 'baud_rate', 's0_output_rate', 'cycle_time', 'a3'])(
+      'should poll %s on every poll',
+      async (id) => {
+        const driver = await createDriver({
+          transport: mockTransport,
+          slaveId: 1,
+        })
+
+        const dataPoint = driver.dataPoints.find((dp) => dp.id === id)
+        expect(dataPoint).toBeDefined()
+        expect(dataPoint?.pollType ?? 'dynamic').toBe('dynamic')
+      }
+    )
+
+    it('should expose a3 as read-only', async () => {
+      const driver = await createDriver({
+        transport: mockTransport,
+        slaveId: 1,
+      })
+
+      const a3 = driver.dataPoints.find((dp) => dp.id === 'a3')
+      expect(a3?.type).toBe('integer')
+      expect(a3?.access).toBe('r')
+    })
   })
 
   describe('readDataPoint', () => {
@@ -154,6 +181,7 @@ describe('OR-WE-516 Driver', () => {
         { id: 'device_address', registerOffset: 2, value: 5 },
         { id: 'baud_rate', registerOffset: 3, value: 9600 },
         { id: 'ct_rate', registerOffset: 8, value: 1 },
+        { id: 'a3', registerOffset: 11, value: 5 },
         { id: 'cycle_time', registerOffset: 13, value: 100 },
       ])('should read integer $id', async ({ id, registerOffset, value }) => {
         const driver = await createDriver({
