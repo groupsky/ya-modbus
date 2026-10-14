@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.2.16](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.15...@ya-modbus/driver-or-we-516@0.2.16) (2026-10-14)
+
+### Bug Fixes
+
+- **driver-or-we-516:** treat combined_code as write-only, poll config values and 0x000B ([#603](https://github.com/groupsky/ya-modbus/issues/603)) ([4befa05](https://github.com/groupsky/ya-modbus/commit/4befa052b819fd706eee8c183985d80e93957f31)), closes [#598](https://github.com/groupsky/ya-modbus/issues/598) [#600](https://github.com/groupsky/ya-modbus/issues/600)
+
 ## [0.2.15](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.14...@ya-modbus/driver-or-we-516@0.2.15) (2026-10-12)
 
 **Note:** Version bump only for package @ya-modbus/driver-or-we-516
