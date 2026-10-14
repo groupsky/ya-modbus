@@ -370,7 +370,7 @@ export function createBridge(
 
         // A port that cannot be opened (USB adapter not plugged in) does not stop the bridge.
         // The device is in error state until a poll opens the port and reads it.
-        const connectionError = driverLoader.getConnectionError(deviceConfig.connection)
+        const connectionError = driverLoader.getConnectionError(deviceConfig.deviceId)
         if (connectionError) {
           console.warn(
             `Device ${deviceConfig.deviceId} is not connected, the bridge keeps trying to open ` +
