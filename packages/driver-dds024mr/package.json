@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/driver-dds024mr",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Sinotimer DDS024MR 3-phase energy meter driver for ya-modbus",
   "keywords": [
     "modbus",
