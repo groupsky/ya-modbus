@@ -1,4 +1,3 @@
-import type { LoadedDriver } from '@ya-modbus/driver-loader'
 import type { DefaultSerialConfig } from '@ya-modbus/driver-types'
 
 import {
@@ -6,8 +5,12 @@ import {
   getEffectiveDefaultConfig,
   getEffectiveDriverMetadata,
   getEffectiveSupportedConfig,
-  type TransportOptions,
-} from './commands.js'
+  type SerialOptions,
+} from './driver-defaults.js'
+import type { LoadedDriver } from './loader.js'
+
+// Connection options as the CLI passes them
+type TransportOptions = SerialOptions & { port?: string; tcpPort?: number; timeout?: number }
 
 describe('applyDriverDefaults', () => {
   describe('TCP connections', () => {
@@ -674,7 +677,7 @@ describe('getEffectiveDriverMetadata', () => {
       createDriver: jest.fn(),
     }
 
-    const result = getEffectiveDriverMetadata(driverMetadata, undefined)
+    const result = getEffectiveDriverMetadata(driverMetadata)
 
     expect(result).not.toHaveProperty('defaultConfig')
     expect(result).not.toHaveProperty('supportedConfig')

@@ -7,7 +7,11 @@ import * as transportFactory from '@ya-modbus/transport'
 import { writeCommand } from './write.js'
 
 jest.mock('@ya-modbus/transport')
-jest.mock('@ya-modbus/driver-loader')
+// Only loading a driver package is mocked; the option validation and driver defaults are real
+jest.mock('@ya-modbus/driver-loader', () => ({
+  ...jest.requireActual<object>('@ya-modbus/driver-loader'),
+  loadDriver: jest.fn(),
+}))
 jest.mock('readline/promises')
 
 describe('Write Command', () => {

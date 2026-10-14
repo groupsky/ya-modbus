@@ -85,9 +85,11 @@ try {
 
 **Error Types:**
 
-- **`ValidationError`**: Driver configuration validation failed
+- **`ValidationError`**: Driver configuration validation failed, or a connection option is not in the driver's `SUPPORTED_CONFIG`
   - `field?: string` - The configuration field that failed validation
-  - Example: Invalid DEFAULT_CONFIG, missing createDriver function
+  - `value?: unknown` - The rejected value, when it is known
+  - `validValues?: readonly unknown[]` - The values that the driver supports, when they are known
+  - Example: Invalid DEFAULT_CONFIG, missing createDriver function, parity `none` for a driver that supports only `odd`
 
 - **`DriverNotFoundError`**: Driver package not found or cannot be loaded
   - `packageName: string` - The package that could not be found or loaded. For a package that is not installed this is the package to install
@@ -247,6 +249,34 @@ import { assertValidDriverPackageName, loadDriver } from '@ya-modbus/driver-load
 
 assertValidDriverPackageName(config.driver)
 await loadDriver({ driverPackage: config.driver })
+```
+
+### `validateSerialOptions(options, driver?: LoadedDriver): void`
+
+Checks `baudRate`, `parity`, `dataBits`, `stopBits` and `slaveId` against the driver's `SUPPORTED_CONFIG`. An option that is not set, or that the driver does not limit, passes. A value that the driver does not support throws a `ValidationError` with `field`, `value`, `validValues` and a message such as `Invalid parity 'none'. This driver supports: odd (default: odd)`.
+
+### `applyDriverDefaults(options, driver?: LoadedDriver, device?: string)`
+
+Returns a copy of `options` where each missing `baudRate`, `parity`, `dataBits`, `stopBits` and `slaveId` is taken from the driver's serial `DEFAULT_CONFIG` (`slaveId` from `defaultAddress`). With `device`, the device's `defaultConfig` from `DEVICES` is used when it has one. Options with a `host` (TCP), and options for a driver without a serial `DEFAULT_CONFIG`, are returned unchanged.
+
+### `getEffectiveDriverMetadata(driver: LoadedDriver, device?: string): LoadedDriver`
+
+Returns the driver with `defaultConfig` and `supportedConfig` of the selected device from `DEVICES`, or of the driver when the device has none. Pass the result to `validateSerialOptions` to check the options of a device.
+
+```typescript
+import {
+  applyDriverDefaults,
+  getEffectiveDriverMetadata,
+  loadDriver,
+  validateSerialOptions,
+} from '@ya-modbus/driver-loader'
+
+const driver = await loadDriver({ driverPackage: '@ya-modbus/driver-or-we-516' })
+const effective = getEffectiveDriverMetadata(driver, device)
+
+validateSerialOptions(options, effective) // the options the user set
+const merged = applyDriverDefaults(options, driver, device)
+validateSerialOptions(merged, effective) // catches defaults that the driver does not support
 ```
 
 ## Testing Utilities

@@ -12,6 +12,9 @@ export {
   validateDevices,
   crossValidateConfigs,
 } from './config-validator.js'
+export { applyDriverDefaults, getEffectiveDriverMetadata } from './driver-defaults.js'
+export type { SerialOptions } from './driver-defaults.js'
+export { validateSerialOptions } from './serial-validation.js'
 export {
   DRIVER_PACKAGE_NAME_RULE,
   assertValidDriverPackageName,
