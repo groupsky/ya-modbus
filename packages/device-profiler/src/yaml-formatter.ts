@@ -2,7 +2,7 @@
  * YAML output formatter for device profiler
  */
 
-import yaml from 'js-yaml'
+import { dump } from 'js-yaml'
 
 import type { ScanResult } from './register-scanner.js'
 import { buildReport, type ReportOptions } from './report.js'
@@ -26,5 +26,5 @@ export function formatYAML(
   options: YAMLFormatterOptions
 ): string {
   // lineWidth -1 keeps long error messages on one line
-  return yaml.dump(buildReport(results, options), { lineWidth: -1 }).trimEnd()
+  return dump(buildReport(results, options), { lineWidth: -1 }).trimEnd()
 }

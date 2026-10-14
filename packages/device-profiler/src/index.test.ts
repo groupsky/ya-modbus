@@ -1,4 +1,4 @@
-import yaml from 'js-yaml'
+import { load } from 'js-yaml'
 
 import {
   BYTES_PER_REGISTER,
@@ -74,7 +74,7 @@ describe('index exports', () => {
       port: 'localhost:502',
     }
 
-    const parsed = yaml.load(formatYAML([], options))
+    const parsed = load(formatYAML([], options))
 
     expect(parsed).toMatchObject({
       scan: { type: 'input', startAddress: 5, endAddress: 6, batchSize: 2 },

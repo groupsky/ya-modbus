@@ -49,9 +49,6 @@
     "modbus-serial": "^8.0.25",
     "tslib": "^2.8.1"
   },
-  "devDependencies": {
-    "@types/js-yaml": "^4.0.9"
-  },
   "engines": {
     "node": ">=22.0.0 <26.4.0"
   },
