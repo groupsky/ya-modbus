@@ -55,7 +55,8 @@ export const SUPPORTED_CONFIG = {
  * Default XYMD1 device configuration
  *
  * Use these values when connecting to a factory-default XYMD1 device.
- * These are the settings the device ships with from the manufacturer.
+ * These are the settings the device ships with from the manufacturer:
+ * 9600 baud, 8N1 (8 data bits, no parity, 1 stop bit), address 1.
  *
  * @example
  * ```typescript
@@ -73,7 +74,7 @@ export const SUPPORTED_CONFIG = {
  */
 export const DEFAULT_CONFIG = {
   baudRate: 9600,
-  parity: 'even',
+  parity: 'none',
   dataBits: 8,
   stopBits: 1,
   defaultAddress: 1,

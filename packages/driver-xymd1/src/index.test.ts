@@ -11,7 +11,7 @@ describe('Configuration Constants', () => {
     it('should export default device configuration', () => {
       expect(DEFAULT_CONFIG).toBeDefined()
       expect(DEFAULT_CONFIG.baudRate).toBe(9600)
-      expect(DEFAULT_CONFIG.parity).toBe('even')
+      expect(DEFAULT_CONFIG.parity).toBe('none')
       expect(DEFAULT_CONFIG.dataBits).toBe(8)
       expect(DEFAULT_CONFIG.stopBits).toBe(1)
       expect(DEFAULT_CONFIG.defaultAddress).toBe(1)

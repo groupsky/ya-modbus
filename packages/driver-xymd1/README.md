@@ -7,10 +7,10 @@ XYMD1 Temperature and Humidity Sensor driver for ya-modbus.
 - **Model**: XY-MD1
 - **Type**: Temperature and Humidity Sensor
 - **Communication**: Modbus RTU
-- **Default Settings**:
+- **Default Settings** (9600 8N1):
   - Address: 1
   - Baud rate: 9600
-  - Parity: Even
+  - Parity: None
   - Stop bits: 1
   - Data bits: 8
 
@@ -30,7 +30,7 @@ import { createRTUTransport } from '@ya-modbus/transport'
 const transport = await createRTUTransport({
   port: '/dev/ttyUSB0',
   baudRate: 9600,
-  parity: 'even',
+  parity: 'none',
   dataBits: 8,
   stopBits: 1,
   slaveId: 1,
@@ -75,7 +75,7 @@ import { createRTUTransport } from '@ya-modbus/transport'
 const transport = await createRTUTransport({
   port: '/dev/ttyUSB0',
   baudRate: DEFAULT_CONFIG.baudRate, // 9600
-  parity: DEFAULT_CONFIG.parity, // 'even'
+  parity: DEFAULT_CONFIG.parity, // 'none'
   dataBits: DEFAULT_CONFIG.dataBits, // 8
   stopBits: DEFAULT_CONFIG.stopBits, // 1
   slaveId: DEFAULT_CONFIG.defaultAddress, // 1
