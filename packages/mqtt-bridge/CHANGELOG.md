@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.20.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.19.0...@ya-modbus/mqtt-bridge@0.20.0) (2026-10-15)
+
+### Features
+
+- **mqtt-bridge:** add Dockerfile and publish a container image on release ([#649](https://github.com/groupsky/ya-modbus/issues/649)) ([aef9b65](https://github.com/groupsky/ya-modbus/commit/aef9b65ebcf30f4378e23d502a9af0730259cf8a)), closes [#623](https://github.com/groupsky/ya-modbus/issues/623)
+
 # [0.19.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.18.4...@ya-modbus/mqtt-bridge@0.19.0) (2026-10-15)
 
 ### Features
