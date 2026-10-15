@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.16.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.15.3...@ya-modbus/emulator@0.16.0) (2026-10-15)
+
+### Features
+
+- **mqtt-bridge:** pause between devices on one serial port and poll them in turn ([#657](https://github.com/groupsky/ya-modbus/issues/657)) ([52725e6](https://github.com/groupsky/ya-modbus/commit/52725e61a9860bf118162c3b1faba0ef9a9c8db6)), closes [#655](https://github.com/groupsky/ya-modbus/issues/655)
+
 ## [0.15.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.15.2...@ya-modbus/emulator@0.15.3) (2026-10-15)
 
 ### Bug Fixes
