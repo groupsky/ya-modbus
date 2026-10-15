@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.14.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.14.3...@ya-modbus/cli@0.14.4) (2026-10-15)
+
+### Bug Fixes
+
+- **cli:** use the driver default slave ID when --slave-id is not given ([#644](https://github.com/groupsky/ya-modbus/issues/644)) ([513040d](https://github.com/groupsky/ya-modbus/commit/513040d1690b4530c6581bd7f06b825fccdc2cda)), closes [#632](https://github.com/groupsky/ya-modbus/issues/632)
+
 ## [0.14.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.14.2...@ya-modbus/cli@0.14.3) (2026-10-15)
 
 ### Bug Fixes
