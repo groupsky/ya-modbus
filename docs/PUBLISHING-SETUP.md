@@ -87,6 +87,8 @@ After the package exists on npm:
 
 Unscoped packages (for example the `npx` wrappers described in `docs/agents/package-creation.md`) follow the same steps.
 
+The first image push creates the `ghcr.io/groupsky/ya-modbus-bridge` package as private. The owner must set it to Public once in the package settings.
+
 ### Step 3: Verify Automated Publishing
 
 Trigger a test release to confirm the trusted publisher is working:

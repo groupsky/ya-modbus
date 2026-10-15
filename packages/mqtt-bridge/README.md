@@ -38,6 +38,47 @@ npx ya-modbus-bridge --help
 
 For production deployments on Linux systems, you can run the MQTT bridge as a systemd service. See [systemd/INSTALL.md](./systemd/INSTALL.md) for complete installation and configuration instructions.
 
+### Running in Docker
+
+The image `ghcr.io/groupsky/ya-modbus-bridge` (linux/amd64 and linux/arm64) holds the bridge and the device drivers of this repository. Its tags are the package versions and `latest`. It runs as the user `node`, with the Node version that its [Dockerfile](./docker/Dockerfile) pins, which is inside `engines` of the package. The image starts `ya-modbus-bridge run --config /config/config.json`.
+
+```bash
+docker run -d --name ya-modbus-bridge --restart unless-stopped \
+  -v "$PWD/config.json:/config/config.json:ro" \
+  --device "$(readlink -f /dev/serial/by-path/pci-0000:00:14.0-usb-0:1.3:1.0-port0):/dev/ttyUSB0" \
+  --group-add "$(stat -c %g /dev/serial/by-path/pci-0000:00:14.0-usb-0:1.3:1.0-port0)" \
+  ghcr.io/groupsky/ya-modbus-bridge:latest
+```
+
+- **Config:** mount the file at `/config/config.json`. Arguments after the image name replace the default command, for example `run --config /config/other.json`. Put the broker in `mqtt.url` or in `--mqtt-url`. `localhost` in the container is the container itself, so use the host name or IP address of the broker, or `--network host`.
+- **Serial device:** `--device <path on the host>:<path in the container>`. Use the path in the container as `port` in the config (`/dev/ttyUSB0` above). The by-path names contain colons, which `--device` cannot take, so `readlink -f` turns the name into the `/dev/ttyUSB*` path. This happens when the container is created: after a reboot or a replug, when identical adapters may get other numbers, recreate the container. On the host use a `/dev/serial/by-path/...` name for adapters without a serial number, because identical adapters can get the same `by-id` name. Use `by-id` for adapters with a unique serial number. See [Unplugging a Serial Adapter](#unplugging-a-serial-adapter). Plug the adapter in before the container starts. When it is unplugged, recreate the container, because the device node in the container does not follow the new one.
+- **Group:** the device node keeps the numeric group ID of the host (`dialout` on Debian and Ubuntu, `uucp` on Arch Linux), and the user `node` is not in that group. `--group-add` with the host ID, which `stat -c %g` prints, lets the user open the port. Without it, opening the port fails with `Permission denied`.
+- **Debug:** add `-e YA_MODBUS_DEBUG=1` to `docker run` to log the full error of failed polls.
+
+Docker Compose:
+
+```yaml
+services:
+  ya-modbus-bridge:
+    image: ghcr.io/groupsky/ya-modbus-bridge:latest
+    restart: unless-stopped
+    volumes:
+      - ./config.json:/config/config.json:ro
+    devices:
+      - source: /dev/serial/by-path/pci-0000:00:14.0-usb-0:1.3:1.0-port0
+        target: /dev/ttyUSB0
+        permissions: rwm
+    group_add:
+      - '20' # numeric group ID of the device on the host: stat -c %g <device>
+```
+
+To add another driver package, build your own image:
+
+```dockerfile
+FROM ghcr.io/groupsky/ya-modbus-bridge:latest
+RUN npm install --no-audit --no-fund --no-package-lock @example/ya-modbus-driver-foo
+```
+
 ## CLI Reference
 
 The `ya-modbus-bridge` command-line tool provides the following commands:
