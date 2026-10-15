@@ -1285,6 +1285,84 @@ describe('createBridge', () => {
       )
     })
 
+    describe('polling logs', () => {
+      let errorCallback: (deviceId: string, error: Error, failureCount: number) => void
+      let mockDeviceManager: any
+      let errorSpy: jest.SpyInstance
+      const originalDebug = process.env['YA_MODBUS_DEBUG']
+
+      beforeEach(async () => {
+        delete process.env['YA_MODBUS_DEBUG']
+        errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+        mockDeviceManager = new MockedDeviceManager()
+        MockedDeviceManager.mockReturnValue(mockDeviceManager)
+        MockedPollingScheduler.mockImplementation((_onData, onError) => {
+          errorCallback = onError
+          return {
+            scheduleDevice: jest.fn(),
+            unscheduleDevice: jest.fn(),
+            start: jest.fn(),
+            stop: jest.fn(),
+            isScheduled: jest.fn(),
+          } as any
+        })
+        const bridge = createBridge({ mqtt: { url: 'mqtt://localhost:1883' } })
+        const startPromise = bridge.start()
+        emitEvent('connect')
+        await startPromise
+      })
+
+      afterEach(() => {
+        errorSpy.mockRestore()
+        if (originalDebug === undefined) {
+          delete process.env['YA_MODBUS_DEBUG']
+        } else {
+          process.env['YA_MODBUS_DEBUG'] = originalDebug
+        }
+      })
+
+      it('should log one line with device, failure count and message, without the stack', () => {
+        const error = new Error('Timed out', { cause: new Error('socket closed') })
+
+        errorCallback('device1', error, 2)
+
+        expect(errorSpy).toHaveBeenCalledTimes(1)
+        expect(errorSpy).toHaveBeenCalledWith(
+          'Polling error for device device1 (failure 2): Timed out'
+        )
+      })
+
+      it('should not print the full error when YA_MODBUS_DEBUG is not 1', () => {
+        process.env['YA_MODBUS_DEBUG'] = '0'
+
+        errorCallback('device1', new Error('Timed out'), 1)
+
+        expect(errorSpy).toHaveBeenCalledTimes(1)
+      })
+
+      it('should log the full error and its cause when YA_MODBUS_DEBUG is set', () => {
+        process.env['YA_MODBUS_DEBUG'] = '1'
+        const error = new Error('Timed out', { cause: new Error('socket closed') })
+
+        errorCallback('device1', error, 2)
+
+        expect(errorSpy).toHaveBeenCalledWith(
+          'Polling error for device device1 (failure 2): Timed out'
+        )
+        expect(errorSpy).toHaveBeenCalledWith(error)
+      })
+
+      it('should put the same text in the status errors as in the log line', () => {
+        errorCallback('device1', new Error('Timed out on /dev/ttyUSB0'), 1)
+
+        expect(errorSpy.mock.calls[0][0]).toContain('Timed out on /dev/ttyUSB0')
+        expect(mockDeviceManager.updateDeviceState).toHaveBeenCalledWith(
+          'device1',
+          expect.objectContaining({ errors: ['Timed out on /dev/ttyUSB0'] })
+        )
+      })
+    })
+
     it('should handle publish error in data callback', async () => {
       let dataCallback: ((deviceId: string, data: Record<string, unknown>) => void) | undefined
 

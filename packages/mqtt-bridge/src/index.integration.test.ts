@@ -558,6 +558,7 @@ describe('MQTT Bridge Integration Tests', () => {
     )
 
     test('should go back to connected state on the next successful read', async () => {
+      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined)
       await withBridgeAndMockDriver(broker, async (bridge, mocks) => {
         // Record the state of every status message the broker gets, in order
         const states: unknown[] = []
@@ -593,8 +594,11 @@ describe('MQTT Bridge Integration Tests', () => {
           await waitForPublish(broker, 'modbus/device1/data', 2000)
           await waitForPublish(broker, 'modbus/device1/data', 2000)
           expect(states).toEqual(['error', 'connected'])
+          // One line, with the failures counted before the successful read reset them
+          expect(logSpy.mock.calls).toEqual([['Device device1 recovered after 1 failed poll']])
         } finally {
           broker.broker.off('publish', onPublish)
+          logSpy.mockRestore()
         }
       })
     })

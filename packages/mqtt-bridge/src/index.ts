@@ -102,6 +102,19 @@ export function createBridge(
   const handlePollingData = (deviceId: string, data: Record<string, unknown>): void => {
     publishDeviceMessage(deviceId, 'data', { data })
 
+    // Read before the reset below. A device whose port could not be opened is in error state
+    // without failed polls.
+    const previous = deviceManager.getDevice(deviceId)
+    const failedPolls = previous?.consecutiveFailures ?? 0
+    if (failedPolls > 0 || previous?.state === 'error') {
+      console.log(
+        `Device ${deviceId} recovered` +
+          (failedPolls > 0
+            ? ` after ${failedPolls} failed ${failedPolls === 1 ? 'poll' : 'polls'}`
+            : '')
+      )
+    }
+
     // A successful read resets the failure count and recovers a device in error state
     updateDeviceStatus(deviceId, {
       state: 'connected',
@@ -113,7 +126,14 @@ export function createBridge(
 
   // Handle polling errors
   const handlePollingError = (deviceId: string, error: Error, failureCount: number): void => {
-    console.error(`Polling error for device ${deviceId}:`, error)
+    // One line per failed poll; stack and cause only on request, so a device that stays down
+    // does not fill the log with the same trace
+    console.error(
+      `Polling error for device ${deviceId} (failure ${failureCount}): ${error.message}`
+    )
+    if (process.env['YA_MODBUS_DEBUG'] === '1') {
+      console.error(error)
+    }
 
     // Same limit after which the polling scheduler switches to retryBackoff
     const maxRetries =

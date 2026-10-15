@@ -101,6 +101,7 @@ describe('serial adapter that is gone', () => {
     jest.spyOn(performance, 'now').mockImplementation(() => now)
     jest.spyOn(console, 'error').mockImplementation(() => undefined)
     jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+    jest.spyOn(console, 'log').mockImplementation(() => undefined)
     unplugged = new Set()
     clients = []
 
@@ -239,6 +240,11 @@ describe('serial adapter that is gone', () => {
         state: 'connected',
       })
       expect(bridge.getDevice('missing2')).toMatchObject({ state: 'connected' })
+      // Logged once per device, not on every later successful read
+      const recoveries = (console.log as jest.Mock).mock.calls
+        .map(([line]) => String(line))
+        .filter((line) => line.startsWith('Device missing1 recovered'))
+      expect(recoveries).toHaveLength(1)
     } finally {
       await bridge.stop()
     }
