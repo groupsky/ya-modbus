@@ -1,6 +1,7 @@
 import { Mutex } from 'async-mutex'
 import type ModbusRTU from 'modbus-serial'
 
+import { LastRequest } from './last-request.js'
 import { SlaveTransport } from './slave-transport.js'
 
 describe('SlaveTransport', () => {
@@ -413,6 +414,158 @@ describe('SlaveTransport', () => {
       // setID should be called before each attempt (3 times total)
       expect(mockClient.setID).toHaveBeenCalledTimes(3)
       expect(mockClient.setID).toHaveBeenCalledWith(7)
+    })
+  })
+
+  // Some meters ignore a request that comes too soon after another meter's reply (#655)
+  describe('inter-device delay', () => {
+    let lastRequest: LastRequest
+    // Slave ID and time of each read that reached the client
+    let reads: Array<[slaveId: number, at: number]>
+    let slaveId: number
+    let start: number
+
+    // A read that takes `ms` milliseconds on the bus
+    const readTaking = (ms: number) => () => {
+      reads.push([slaveId, performance.now() - start])
+      return new Promise<{ data: number[]; buffer: Buffer }>((resolve) =>
+        setTimeout(() => resolve({ data: [0], buffer: Buffer.from([0, 0]) }), ms)
+      )
+    }
+
+    const device = (id: number, interDeviceDelay: number): SlaveTransport =>
+      new SlaveTransport(id, mockClient, mutex, 1, undefined, interDeviceDelay, lastRequest)
+
+    beforeEach(() => {
+      jest.useFakeTimers()
+      start = performance.now()
+      lastRequest = new LastRequest()
+      reads = []
+      mockClient.setID.mockImplementation((id: number) => {
+        slaveId = id
+      })
+      mockClient.readHoldingRegisters.mockImplementation(readTaking(30))
+    })
+
+    afterEach(() => {
+      jest.useRealTimers()
+    })
+
+    // Run requests one after another, and let the fake time run until all have ended
+    const runInTurn = async (...requests: Array<() => Promise<unknown>>): Promise<void> => {
+      const done = requests.reduce<Promise<unknown>>(
+        (previous, request) => previous.then(request, request),
+        Promise.resolve()
+      )
+      await jest.runAllTimersAsync()
+      await done
+    }
+
+    it('waits the delay of the next slave after the end of a request to another slave', async () => {
+      const meter1 = device(1, 0)
+      const meter2 = device(2, 150)
+
+      await runInTurn(
+        () => meter1.readHoldingRegisters(0, 1),
+        () => meter2.readHoldingRegisters(0, 1),
+        () => meter1.readHoldingRegisters(0, 1)
+      )
+
+      // The read of slave 1 ends at 30 ms. Slave 1 itself needs no pause.
+      expect(reads).toEqual([
+        [1, 0],
+        [2, 180],
+        [1, 210],
+      ])
+    })
+
+    it('does not wait before the first request or before a request to the same slave', async () => {
+      const meter = device(2, 150)
+
+      await runInTurn(
+        () => meter.readHoldingRegisters(0, 1),
+        () => meter.readHoldingRegisters(1, 1)
+      )
+
+      expect(reads).toEqual([
+        [2, 0],
+        [2, 30],
+      ])
+    })
+
+    it('counts the delay from the end of a failed request', async () => {
+      mockClient.readHoldingRegisters.mockImplementationOnce(() => {
+        reads.push([slaveId, performance.now() - start])
+        return new Promise((_resolve, reject) =>
+          setTimeout(() => reject(new Error('Timed out')), 1000)
+        )
+      })
+      const meter1 = device(1, 0)
+      const meter2 = device(2, 150)
+
+      await runInTurn(
+        () => meter1.readHoldingRegisters(0, 1),
+        () => meter2.readHoldingRegisters(0, 1)
+      )
+
+      expect(reads).toEqual([
+        [1, 0],
+        [2, 1150],
+      ])
+    })
+
+    it('sends a retry after the retry delay, without another pause', async () => {
+      mockClient.readHoldingRegisters
+        .mockImplementationOnce(readTaking(30))
+        .mockImplementationOnce(() => {
+          reads.push([slaveId, performance.now() - start])
+          return new Promise((_resolve, reject) =>
+            setTimeout(() => reject(new Error('Timed out')), 1000)
+          )
+        })
+      const meter1 = device(1, 0)
+      const meter2 = new SlaveTransport(2, mockClient, mutex, 2, undefined, 150, lastRequest)
+
+      await runInTurn(
+        () => meter1.readHoldingRegisters(0, 1),
+        () => meter2.readHoldingRegisters(0, 1)
+      )
+
+      // The first try to slave 2 times out at 1180 ms, and the retry follows 100 ms later
+      expect(reads).toEqual([
+        [1, 0],
+        [2, 180],
+        [2, 1280],
+      ])
+    })
+
+    it('does not wait when the request to another slave ended long enough ago', async () => {
+      const meter1 = device(1, 0)
+      const meter2 = device(2, 150)
+
+      await runInTurn(() => meter1.readHoldingRegisters(0, 1))
+      await jest.advanceTimersByTimeAsync(200)
+      await runInTurn(() => meter2.readHoldingRegisters(0, 1))
+
+      expect(reads).toEqual([
+        [1, 0],
+        [2, 230],
+      ])
+    })
+
+    it('does not wait without a delay', async () => {
+      const meter1 = new SlaveTransport(1, mockClient, mutex)
+      const meter2 = new SlaveTransport(2, mockClient, mutex)
+
+      await runInTurn(
+        () => meter1.readHoldingRegisters(0, 1),
+        () => meter2.readHoldingRegisters(0, 1)
+      )
+
+      expect(reads).toEqual([
+        [1, 0],
+        [2, 30],
+      ])
     })
   })
 })

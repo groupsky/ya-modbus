@@ -392,6 +392,21 @@ emulator.addDevice({
 })
 ```
 
+#### Pause after another slave
+
+Some meters on a shared RS-485 bus do not answer a request that comes too soon after another meter answered. With `minGapAfterOtherSlave` an emulated device behaves like this:
+
+```typescript
+emulator.addDevice({
+  slaveId: 2,
+  timing: {
+    minGapAfterOtherSlave: 50, // ignore a request that comes less than 50 ms after another slave answered
+  },
+})
+```
+
+The pause is counted from the moment the emulator answered another slave on the same emulator. The device does not answer a request that comes sooner, and the client runs into its timeout. A request right after the device's own answer, or the first request, is answered as usual. On the memory transport, `sendRequest()` never resolves for an ignored request.
+
 ### Register Constraints
 
 - Register addresses and register values are 16-bit unsigned numbers (0-65535). A device configuration with a holding or input register outside this range throws an error when the device is added.
@@ -400,7 +415,7 @@ emulator.addDevice({
 
 ### Error Simulation
 
-The emulator has no option to inject timeouts, CRC errors or exceptions. Exceptions are the responses to requests that it cannot serve (see [Supported Function Codes](#supported-function-codes)).
+The emulator has no option to inject CRC errors or exceptions. Exceptions are the responses to requests that it cannot serve (see [Supported Function Codes](#supported-function-codes)). A client times out on a request that the device ignores (see [Pause after another slave](#pause-after-another-slave)), and on RTU on a request to a slave ID that has no device.
 
 ## Known Limitations
 

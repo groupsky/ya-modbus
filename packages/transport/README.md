@@ -91,6 +91,22 @@ The life of a pooled connection:
 - `closeAll()` closes all connections and stops opening lost ports again. It waits for
   connections that are opening or closing. Use it at shutdown.
 
+### Pause between devices on a serial port
+
+Some meters do not answer a request that comes too soon after another meter's reply. Set
+`interDeviceDelay` (milliseconds) in the RTU config of such a device. Before a request to this
+device, when the previous request on the port went to another slave, the transport waits until
+`interDeviceDelay` ms have passed since that request ended (also when it failed). A request to the
+same slave as the previous one, or the first request on the port, does not wait. Default: 0, no
+pause.
+
+```typescript
+const meter = await manager.getTransport({ ...bus, slaveId: 3, interDeviceDelay: 150 })
+```
+
+`SlaveTransport` takes the delay and a `LastRequest` that all transports on the connection share
+as its last two arguments.
+
 ## Error handling
 
 Some `modbus-serial` failures (response timeouts, closed port) are plain objects instead of `Error`

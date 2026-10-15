@@ -29,6 +29,10 @@ jest.mock('modbus-serial')
 /** Test signals: 'client' when a modbus-serial client is created, 'failed' after a failed poll */
 const events = new EventEmitter()
 
+// Polls that are reading. A poll that waits for the pause between devices when the bridge stops
+// goes on after the stop, so the tests wait for them.
+const polls = new Set<Promise<unknown>>()
+
 /** Wait until an event was emitted `count` times */
 function waitForEvents(event: string, count: number): Promise<void> {
   let seen = 0
@@ -59,13 +63,18 @@ function createDriver({ transport }: DriverConfig): Promise<DeviceDriver> {
     dataPoints: [{ id: 'value', name: 'Value', type: 'integer' }],
     readDataPoint: readValue,
     writeDataPoint: () => Promise.reject(new Error('read only')),
-    readDataPoints: async () => {
-      try {
-        return { value: await readValue() }
-      } catch (error) {
-        events.emit('failed')
-        throw error
-      }
+    readDataPoints: () => {
+      const poll = (async () => {
+        try {
+          return { value: await readValue() }
+        } catch (error) {
+          events.emit('failed')
+          throw error
+        }
+      })()
+      polls.add(poll)
+      void poll.catch(() => undefined).finally(() => polls.delete(poll))
+      return poll
     },
   })
 }
@@ -184,6 +193,7 @@ describe('serial adapter that is gone', () => {
       expect(clients).toHaveLength(3)
     } finally {
       await bridge.stop()
+      await Promise.allSettled(polls)
     }
   })
 
@@ -249,6 +259,7 @@ describe('serial adapter that is gone', () => {
       expect(recoveries).toHaveLength(1)
     } finally {
       await bridge.stop()
+      await Promise.allSettled(polls)
     }
   })
 })

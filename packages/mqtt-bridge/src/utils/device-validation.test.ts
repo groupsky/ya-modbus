@@ -549,6 +549,35 @@ describe('validateDeviceConfig', () => {
     })
   })
 
+  // Pause before a request to a device after a request to another slave on the same port (#655)
+  describe('connection.interDeviceDelay', () => {
+    const device = { deviceId: 'device1', driver: 'ya-modbus-driver-test' }
+    const rtu = { type: 'rtu', port: '/dev/ttyUSB0', slaveId: 1 }
+
+    it.each([0, 150, 60000])('should accept %p ms for an RTU connection', (ms) => {
+      const config = { ...device, connection: { ...rtu, interDeviceDelay: ms } }
+
+      expect(() => validateDeviceConfig(config)).not.toThrow()
+    })
+
+    it.each([-1, 60001, 1.5, '150', null])('should reject %p for an RTU connection', (value) => {
+      const config = { ...device, connection: { ...rtu, interDeviceDelay: value } }
+
+      expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration: connection')
+    })
+
+    it('should reject it for a TCP connection', () => {
+      const config = {
+        ...device,
+        connection: { type: 'tcp', host: 'localhost', slaveId: 1, interDeviceDelay: 150 },
+      }
+
+      expect(() => validateDeviceConfig(config)).toThrow(
+        'Invalid device configuration: connection: Unrecognized key: "interDeviceDelay"'
+      )
+    })
+  })
+
   it.each([
     {
       config: { connection: { type: 'rtu', port: '/dev/ttyUSB0', slaveId: 1, paritty: 'odd' } },

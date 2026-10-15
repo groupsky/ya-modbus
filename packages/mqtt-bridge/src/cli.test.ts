@@ -104,7 +104,7 @@ describe('CLI - ya-modbus-bridge', () => {
           --state-dir <path>            Directory path for state persistence
           -h, --help                    display help for command
 
-        Set YA_MODBUS_DEBUG=1 to log the full error (stack and cause) of failed polls.
+        Set YA_MODBUS_DEBUG=1 to log the full error (stack and cause) of failed polls and each request that is sent again.
         "
       `)
     })

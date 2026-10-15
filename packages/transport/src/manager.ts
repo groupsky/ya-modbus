@@ -5,6 +5,7 @@ import ModbusRTU from 'modbus-serial'
 import { connectTCP, DEFAULT_TIMEOUT_MS } from './client-config.js'
 import { ModbusConnection } from './connection.js'
 import type { RTUConfig, TCPConfig, TransportConfig } from './factory.js'
+import { LastRequest } from './last-request.js'
 import { normalizeModbusError, type ModbusError } from './normalize-error.js'
 import { formatSerialSettings, withRequestContext } from './request-context.js'
 import { SlaveTransport } from './slave-transport.js'
@@ -15,6 +16,7 @@ import { SlaveTransport } from './slave-transport.js'
 interface ConnectionEntry {
   connection: ModbusConnection // Shared modbus-serial client, reopened when lost
   mutex: Mutex // Shared mutex for serializing operations
+  lastRequest: LastRequest // Slave and end of the last request, for the pause between devices
   config: TransportConfig
   isRTU: boolean
   transports: Set<Transport> // Transports that use the connection and are not released
@@ -54,6 +56,8 @@ export interface TransportStats {
  * - Returns Transport objects (SlaveTransport wrapped with request details in errors) that set the slave ID before each operation
  * - Multiple devices on the same connection share a single client and mutex
  * - All operations are serialized using async-mutex to prevent race conditions
+ * - On a serial port, a request waits `interDeviceDelay` ms (RTU config of its device) after
+ *   a request to another slave
  * - A lost connection (USB adapter unplugged, TCP connection closed) drops the client.
  *   The first request after a backoff opens a new client for all devices on the
  *   connection (see ModbusConnection)
@@ -115,7 +119,9 @@ export class TransportManager {
       entry.connection,
       entry.mutex,
       config.maxRetries ?? 3,
-      config.logger
+      config.logger,
+      this.isRTUConfig(config) ? config.interDeviceDelay : undefined,
+      entry.lastRequest
     )
     const target = this.getTarget(config)
     const where = this.isRTUConfig(config) ? `${target} ${formatSerialSettings(config)}` : target
@@ -176,6 +182,7 @@ export class TransportManager {
     const entry = {
       connection,
       mutex: new Mutex(),
+      lastRequest: new LastRequest(),
       config,
       isRTU,
       transports: new Set<Transport>(),

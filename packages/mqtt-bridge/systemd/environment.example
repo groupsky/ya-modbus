@@ -8,7 +8,8 @@ NODE_ENV=production
 # Uncomment and adjust if you need to limit Node.js heap size
 #NODE_OPTIONS=--max-old-space-size=384
 
-# Optional: print the full error with stack and cause on every failed poll
+# Optional: print the full error with stack and cause on every failed poll, and each request that
+# is sent again
 #YA_MODBUS_DEBUG=1
 
 # Optional: Additional Environment Variables

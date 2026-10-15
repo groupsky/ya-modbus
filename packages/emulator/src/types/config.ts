@@ -49,6 +49,12 @@ export interface TimingBehavior {
   baudRate?: number
   /** Auto-calculate transmission delay based on frame size */
   autoCalculateTransmissionDelay?: boolean
+  /**
+   * Shortest pause (ms) after the emulator answered another slave before this device answers
+   * a request. The device does not answer a request that comes sooner, and the client runs into
+   * its timeout. A request to the same slave as the last answer is not affected.
+   */
+  minGapAfterOtherSlave?: number
 }
 
 export interface DeviceConfig {

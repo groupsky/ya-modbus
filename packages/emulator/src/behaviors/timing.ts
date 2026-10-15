@@ -99,6 +99,17 @@ export class TimingSimulator {
   }
 
   /**
+   * Check whether the device ignores a request because it comes too soon after the emulator
+   * answered another slave (see TimingBehavior.minGapAfterOtherSlave)
+   * @param sinceOtherSlave - Time in milliseconds since the emulator answered another slave
+   * @returns True when the device does not answer the request
+   */
+  ignoresRequest(sinceOtherSlave: number): boolean {
+    const gap = this.config.minGapAfterOtherSlave
+    return gap !== undefined && sinceOtherSlave < gap
+  }
+
+  /**
    * Apply timing delay for a request
    * @param request - The Modbus request buffer
    * @param registerCount - Number of registers being accessed

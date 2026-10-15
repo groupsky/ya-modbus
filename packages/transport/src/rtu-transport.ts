@@ -29,6 +29,13 @@ export interface RTUConfig {
   maxRetries?: number | undefined
   /** Optional callback to log retry attempts for debugging */
   logger?: RetryLogger | undefined
+  /**
+   * Pause in milliseconds before a request to this slave when the previous request on the port
+   * went to another slave, counted from the end of that request (default: 0, no pause). Some
+   * meters do not answer a request that comes too soon after another meter's reply. Only for
+   * devices that share a port through TransportManager.
+   */
+  interDeviceDelay?: number | undefined
 }
 
 /**
