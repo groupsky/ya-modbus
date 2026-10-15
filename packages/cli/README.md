@@ -4,7 +4,7 @@ CLI tool for testing and developing Modbus device drivers.
 
 ## Requirements
 
-- Node.js 22 or 24. On Node.js 26.4 and newer, serial (RTU) requests time out ([#507](https://github.com/groupsky/ya-modbus/issues/507)).
+- Node.js 22.12+ or 24. On Node.js 26.4 and newer, serial (RTU) requests time out ([#507](https://github.com/groupsky/ya-modbus/issues/507)).
 
 ## Features
 

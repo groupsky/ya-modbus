@@ -14,7 +14,7 @@ test.each(['v26.4.0', 'v26.8.2', 'v27.0.0', '26.4.0', 'v26.4.0-nightly20260601a1
   (nodeVersion) => {
     expect(getSerialNodeWarning(nodeVersion)).toBe(
       `Warning: on Node.js 26.4 and newer, serial (RTU) requests time out (this is Node.js ${nodeVersion}). ` +
-        'Use Node.js 22 or 24. See https://github.com/groupsky/ya-modbus/issues/507'
+        'Use Node.js 22.12+ or 24. See https://github.com/groupsky/ya-modbus/issues/507'
     )
   }
 )

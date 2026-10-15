@@ -187,7 +187,7 @@ All packages MUST specify the Node.js engine requirement:
 ```json
 {
   "engines": {
-    "node": ">=22.0.0 <26.4.0"
+    "node": ">=22.12.0 <26.4.0"
   }
 }
 ```

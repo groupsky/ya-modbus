@@ -16,6 +16,6 @@ export function getSerialNodeWarning(nodeVersion: string): string | undefined {
 
   return (
     `Warning: on Node.js 26.4 and newer, serial (RTU) requests time out (this is Node.js ${nodeVersion}). ` +
-    'Use Node.js 22 or 24. See https://github.com/groupsky/ya-modbus/issues/507'
+    'Use Node.js 22.12+ or 24. See https://github.com/groupsky/ya-modbus/issues/507'
   )
 }

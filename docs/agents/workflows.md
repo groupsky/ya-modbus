@@ -8,7 +8,7 @@ paths: /.github/workflows/*.yml
 
 **Default rule**: Always use `.nvmrc` for Node.js version in workflows.
 
-**Exception**: When verifying runtime compatibility across multiple Node.js versions, generate matrix from `package.json` engines field.
+**Exception**: When verifying runtime compatibility across multiple Node.js versions, generate matrix from `package.json` engines field (the floor), plus the latest 22.x and the `.nvmrc` major.
 
 See: `.github/workflows/ci.yml` for matrix generation implementation
 

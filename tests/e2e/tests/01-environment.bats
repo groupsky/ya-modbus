@@ -28,18 +28,18 @@ load helpers
   # Read engines.node from package.json and check if current version matches
   run node -e "
     const pkg = require('$project_root/package.json');
-    const nodeVersion = process.version.slice(1).split('.')[0];
+    const [major, minor] = process.versions.node.split('.').map(Number);
     const engines = pkg.engines.node;
 
-    // Parse engines.node (e.g., '22 || 24')
-    const allowed = engines.split('||').map(v => v.trim());
-    const matches = allowed.some(v => nodeVersion === v || nodeVersion.startsWith(v + '.'));
+    // Parse engines.node (e.g., '>=22.12.0 <26.4.0')
+    const [min, max] = engines.match(/\\d+\\.\\d+\\.\\d+/g).map(v => v.split('.').map(Number));
+    const atLeast = (v) => major > v[0] || (major === v[0] && minor >= v[1]);
 
-    if (!matches) {
-      console.error(\`Node.js v\${nodeVersion} does not match engines requirement: \${engines}\`);
+    if (!atLeast(min) || atLeast(max)) {
+      console.error(\`Node.js v\${process.versions.node} does not match engines requirement: \${engines}\`);
       process.exit(1);
     }
-    console.log(\`✓ Node.js v\${nodeVersion} matches engines: \${engines}\`);
+    console.log(\`✓ Node.js v\${process.versions.node} matches engines: \${engines}\`);
   "
   assert_success
 }
