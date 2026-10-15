@@ -358,7 +358,7 @@ Use either `--port` (RTU) or `--host` (TCP), not both. The command fails with an
 
 **Common:**
 
-- `--slave-id <id>` - Modbus slave ID (1-247) **(required)**
+- `--slave-id <id>` - Modbus slave ID (1-247). `read` and `write` use the driver's default address (`DEFAULT_CONFIG.defaultAddress`) when it is not given, and print `Using slave ID N (driver default)` on stderr. With `--host` (driver defaults apply only to serial/RTU), or when the driver has no default address, the option is required.
 - `--timeout <ms>` - Response timeout in milliseconds (default: 1000). With `--host`, also the longest time to open the TCP connection
 - `--driver <package>` - Driver package name or short name (for example `xymd1`)
 - `--device <key>` - Device key for multi-device drivers (use `list-devices` to see available devices)
@@ -418,7 +418,7 @@ Drivers export `DEFAULT_CONFIG` and `SUPPORTED_CONFIG` constants that the CLI us
 1. **User-specified** - Command-line options (e.g., `--baud-rate 19200`)
 2. **Device-specific** - `DEVICES[key].defaultConfig` when `--device` is used
 3. **Driver-level** - `DEFAULT_CONFIG` export from driver package
-4. **CLI fallback** - Built-in defaults (9600 8E1, slave ID 1)
+4. **CLI fallback** - Built-in defaults (9600 8E1; no slave ID, `--slave-id` is required)
 
 The same priority applies to validation constraints (`supportedConfig`).
 

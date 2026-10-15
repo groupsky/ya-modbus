@@ -19,8 +19,10 @@ describe('Write Command', () => {
   let mockDriver: jest.Mocked<DeviceDriver>
   let mockCreateDriver: jest.MockedFunction<any>
   let consoleLogSpy: jest.SpyInstance
+  let consoleWarnSpy: jest.SpyInstance
 
   beforeEach(() => {
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
     jest.clearAllMocks()
 
     consoleLogSpy = jest.spyOn(console, 'log').mockImplementation()
@@ -90,6 +92,7 @@ describe('Write Command', () => {
   })
 
   afterEach(() => {
+    consoleWarnSpy.mockRestore()
     consoleLogSpy.mockRestore()
   })
 
@@ -868,5 +871,43 @@ describe('Write Command', () => {
     expect(driverLoader.loadDriver).not.toHaveBeenCalled()
     expect(transportFactory.createTransport).not.toHaveBeenCalled()
     expect(mockDriver.writeDataPoint).not.toHaveBeenCalled()
+  })
+
+  test('should use the driver default slave ID when --slave-id is missing', async () => {
+    jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue({
+      createDriver: mockCreateDriver,
+      defaultConfig: {
+        baudRate: 9600,
+        parity: 'even',
+        dataBits: 8,
+        stopBits: 1,
+        defaultAddress: 5,
+      },
+      supportedConfig: undefined,
+    } as any)
+    mockDriver.writeDataPoint.mockResolvedValue(undefined)
+
+    await writeCommand({ port: '/dev/ttyUSB0', dataPoint: 'setpoint', value: '25.0', yes: true })
+
+    expect(mockCreateDriver).toHaveBeenCalledWith({ transport: mockTransport, slaveId: 5 })
+    expect(consoleWarnSpy).toHaveBeenCalledWith('Using slave ID 5 (driver default)')
+  })
+
+  test('should fail naming --slave-id when the driver has no default', async () => {
+    await expect(
+      writeCommand({ port: '/dev/ttyUSB0', dataPoint: 'setpoint', value: '25.0', yes: true })
+    ).rejects.toThrow('--slave-id is required: the driver has no default slave ID')
+
+    expect(transportFactory.createTransport).not.toHaveBeenCalled()
+  })
+
+  test('should fail naming --host when --slave-id is missing, as serial defaults do not apply', async () => {
+    await expect(
+      writeCommand({ host: '192.168.1.100', dataPoint: 'setpoint', value: '25.0', yes: true })
+    ).rejects.toThrow(
+      '--slave-id is required with --host (driver defaults apply only to serial/RTU)'
+    )
+
+    expect(transportFactory.createTransport).not.toHaveBeenCalled()
   })
 })

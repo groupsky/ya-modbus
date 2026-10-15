@@ -26,7 +26,7 @@ export interface WriteOptions {
   tcpPort?: number
 
   // Common options
-  slaveId: number
+  slaveId?: number
   timeout?: number
 
   // Driver options

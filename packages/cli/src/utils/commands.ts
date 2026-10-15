@@ -5,6 +5,7 @@ import {
   getEffectiveDriverMetadata,
   loadDriver,
   validateSerialOptions,
+  ValidationError,
   type LoadedDriver,
 } from '@ya-modbus/driver-loader'
 import type {
@@ -357,11 +358,16 @@ export async function withDriverInstance<T>(
  * @param options - Combined transport and driver options
  * @param fn - Function to execute with the driver (and optionally merged config)
  * @returns Result of the function
- * @throws ValidationError if both a serial port and a TCP host are given, or if user options
- *   or driver defaults violate constraints
+ * @throws ValidationError if both a serial port and a TCP host are given, if neither
+ *   `slaveId` nor the driver gives a slave ID, or if user options or driver defaults violate
+ *   constraints
  */
 export async function withDriver<T>(
-  options: TransportOptions & { driver?: string; device?: string },
+  options: Omit<TransportOptions, 'slaveId'> & {
+    slaveId?: number
+    driver?: string
+    device?: string
+  },
   fn: (driver: DeviceDriver, mergedOptions: TransportOptions) => Promise<T>
 ): Promise<T> {
   // Reject conflicting RTU/TCP options before any I/O
@@ -389,6 +395,20 @@ export async function withDriver<T>(
   // Apply driver defaults to options (device-specific if selected)
   const mergedOptions = applyDriverDefaults(options, driverMetadata, options.device)
 
+  // The slave ID is the one given, or else the driver default
+  const slaveId = mergedOptions.slaveId
+  if (slaveId === undefined) {
+    throw new ValidationError(
+      options.host
+        ? '--slave-id is required with --host (driver defaults apply only to serial/RTU)'
+        : '--slave-id is required: the driver has no default slave ID',
+      'slaveId'
+    )
+  }
+  if (options.slaveId === undefined) {
+    console.warn(`Using slave ID ${slaveId} (driver default)`)
+  }
+
   // Validate merged options to catch invalid defaults from third-party drivers
   // This ensures driver DEFAULT_CONFIG values are valid according to SUPPORTED_CONFIG
   if (!mergedOptions.host) {
@@ -404,16 +424,17 @@ export async function withDriver<T>(
   }
 
   // Create transport with merged options
-  return await withTransport(mergedOptions, async (transport) => {
+  const resolvedOptions = { ...mergedOptions, slaveId }
+  return await withTransport(resolvedOptions, async (transport) => {
     // Create driver instance
     return await withDriverInstance(
       transport,
       driverMetadata,
-      mergedOptions.slaveId,
+      slaveId,
       options.device,
       async (driver) => {
         // Execute callback with driver and merged options
-        return await fn(driver, mergedOptions)
+        return await fn(driver, resolvedOptions)
       }
     )
   })

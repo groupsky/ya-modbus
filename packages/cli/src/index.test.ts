@@ -142,8 +142,8 @@ describe('CLI Entry Point - Integration Tests', () => {
                                   "list-devices" to see available devices
 
         Connection Options:
-          -s, --slave-id <id>     Modbus slave ID (1-247). May use driver default if
-                                  available
+          -s, --slave-id <id>     Modbus slave ID (1-247). Uses driver default if not
+                                  specified (RTU only)
           --timeout <ms>          Response timeout in milliseconds (default: 1000)
 
         RTU Connection (choose this OR TCP):
@@ -277,12 +277,15 @@ describe('CLI Entry Point - Integration Tests', () => {
       expect(processExitSpy).toHaveBeenCalledWith(1)
     })
 
-    it('should fail when required slave-id is missing', async () => {
-      await expect(program.parseAsync(['node', 'ya-modbus', 'read', '--all'])).rejects.toThrow(
-        'process.exit called'
-      )
+    it('should leave slaveId unset when --slave-id is missing, so the driver default applies', async () => {
+      const mockReadCommand = jest.mocked(readModule.readCommand)
+      mockReadCommand.mockResolvedValue()
 
-      expect(processExitSpy).toHaveBeenCalledWith(1)
+      await program.parseAsync(['node', 'ya-modbus', 'read', '--all'])
+
+      expect(mockReadCommand).toHaveBeenCalledWith(
+        expect.not.objectContaining({ slaveId: expect.anything() })
+      )
     })
 
     it('should parse short option flags correctly', async () => {
@@ -429,8 +432,8 @@ describe('CLI Entry Point - Integration Tests', () => {
                                   "list-devices" to see available devices
 
         Connection Options:
-          -s, --slave-id <id>     Modbus slave ID (1-247). May use driver default if
-                                  available
+          -s, --slave-id <id>     Modbus slave ID (1-247). Uses driver default if not
+                                  specified (RTU only)
           --timeout <ms>          Response timeout in milliseconds (default: 1000)
 
         RTU Connection (choose this OR TCP):
