@@ -596,4 +596,62 @@ describe('Timing Behavior Integration', () => {
       expect(resolved).toBe(true)
     })
   })
+
+  // Some meters on a shared RS-485 bus do not answer a request that comes too soon after another
+  // meter answered (seen on DDS519MR, see #655)
+  describe('Pause after another slave', () => {
+    const readRequest = (slaveId: number): Buffer =>
+      Buffer.from([slaveId, 0x03, 0x00, 0x00, 0x00, 0x01])
+
+    // Sends a request and tells whether the device has answered it yet
+    const send = (slaveId: number): { answered: () => boolean; done: Promise<Buffer> } => {
+      const transport = emulator.getTransport() as MemoryTransport
+      let answered = false
+      // @ts-expect-error - accessing protected method for testing
+      const done: Promise<Buffer> = transport.sendRequest(slaveId, readRequest(slaveId))
+      void done.then(() => {
+        answered = true
+      })
+      return { answered: () => answered, done }
+    }
+
+    beforeEach(async () => {
+      emulator = new ModbusEmulator({ transport: 'memory' })
+      // Slave 1 takes 30 ms to answer, slave 2 needs a pause of 50 ms after another slave
+      emulator.addDevice({ slaveId: 1, timing: { processingDelay: 30 } })
+      emulator.addDevice({ slaveId: 2, timing: { minGapAfterOtherSlave: 50 } })
+      await emulator.start()
+    })
+
+    it('ignores requests until the pause after the answer of another slave has passed', async () => {
+      const first = send(1)
+      await jest.advanceTimersByTimeAsync(30)
+      await first.done
+
+      // 10 ms and 49 ms after slave 1 answered. An ignored request is not an answer.
+      await jest.advanceTimersByTimeAsync(10)
+      const ignored = [send(2)]
+      await jest.advanceTimersByTimeAsync(39)
+      ignored.push(send(2))
+      await jest.advanceTimersByTimeAsync(1)
+
+      const response = await send(2).done
+      expect(response.subarray(0, 2)).toEqual(Buffer.from([0x02, 0x03]))
+      await jest.advanceTimersByTimeAsync(10000)
+      expect(ignored.map((request) => request.answered())).toEqual([false, false])
+    })
+
+    it('answers the first request and a request after its own answer at once', async () => {
+      await send(2).done
+      await expect(send(2).done).resolves.toBeInstanceOf(Buffer)
+    })
+
+    it('does not delay a device without the option', async () => {
+      await send(2).done
+
+      const next = send(1)
+      await jest.advanceTimersByTimeAsync(30)
+      await expect(next.done).resolves.toBeInstanceOf(Buffer)
+    })
+  })
 })

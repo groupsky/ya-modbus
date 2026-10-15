@@ -16,6 +16,8 @@ export class ModbusEmulator {
   private transport: BaseTransport
   private started = false
   private verboseLogger?: VerboseLogger
+  // The slave that answered last, and when (performance.now())
+  private lastAnswer?: { slaveId: number; at: number }
 
   constructor(config: EmulatorConfig) {
     // Create verbose logger if enabled
@@ -99,8 +101,18 @@ export class ModbusEmulator {
       return response
     }
 
-    // Apply timing delay if configured
     const timingSimulator = device.getTimingSimulator()
+    const { lastAnswer } = this
+    if (
+      lastAnswer !== undefined &&
+      lastAnswer.slaveId !== slaveId &&
+      timingSimulator?.ignoresRequest(performance.now() - lastAnswer.at) === true
+    ) {
+      // No answer, so the client runs into its timeout
+      return new Promise<Buffer>(() => undefined)
+    }
+
+    // Apply timing delay if configured
     if (timingSimulator !== undefined) {
       // Parse register count from request
       const registerCount = this.parseRegisterCount(request)
@@ -109,7 +121,9 @@ export class ModbusEmulator {
 
     // Import dynamically to avoid circular dependency issues
     const { handleModbusRequest } = await import('./behaviors/function-codes.js')
-    return handleModbusRequest(device, request, this.verboseLogger)
+    const response = handleModbusRequest(device, request, this.verboseLogger)
+    this.lastAnswer = { slaveId, at: performance.now() }
+    return response
   }
 
   /**
