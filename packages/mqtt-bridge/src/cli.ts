@@ -103,14 +103,20 @@ async function runCommand(options: RunCommandOptions): Promise<void> {
   const bridge = createBridge(config)
   await bridge.start()
 
-  console.log(chalk.green('Bridge started successfully'))
-
   // Load devices from config if provided
   if (config.devices?.length) {
     console.log(chalk.blue(`Loading ${config.devices.length} device(s) from configuration...`))
     try {
-      for (const deviceConfig of config.devices) {
-        await bridge.addDevice(deviceConfig)
+      for (const [index, deviceConfig] of config.devices.entries()) {
+        try {
+          await bridge.addDevice(deviceConfig)
+        } catch (error) {
+          // With several devices on several buses the operator has to know which one is wrong
+          const reason = error instanceof Error ? error.message : String(error)
+          throw new Error(`devices[${index}] (${deviceConfig.deviceId}): ${reason}`, {
+            cause: error,
+          })
+        }
         console.log(chalk.green(`✓ Loaded device: ${deviceConfig.deviceId}`))
       }
     } catch (error) {
@@ -121,6 +127,8 @@ async function runCommand(options: RunCommandOptions): Promise<void> {
       throw error
     }
   }
+
+  console.log(chalk.green('Bridge started successfully'))
 
   let isShuttingDown = false
   const handleShutdown = async (signal: string): Promise<void> => {

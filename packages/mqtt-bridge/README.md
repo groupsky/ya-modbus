@@ -279,8 +279,8 @@ The bridge checks the whole config before it connects to the broker. If the conf
 After the bridge has connected to the broker, it loads the devices one after another, in the order of the `devices` array. For each device the CLI prints `✓ Loaded device: <deviceId>`.
 
 - Devices share one connection when they use the same serial port with the same `baudRate`, `dataBits`, `parity` and `stopBits`, or the same TCP `host` and `port`. The first of them opens the connection and its `timeout` is used for all of them. Devices that share a connection are read one at a time.
-- A device ID can be used only once. If it is used twice, loading the second device fails with `Device <deviceId> already exists`.
-- If a device fails to load, for example because the driver is not installed or does not support a serial setting, the CLI prints the error and exits with code 1. The devices after it are not loaded.
+- A device ID can be used only once. If it is used twice, loading the second device fails with `devices[<N>] (<deviceId>): Device <deviceId> already exists`.
+- If a device fails to load, for example because the driver is not installed or does not support a serial setting, the CLI prints the error with the position and ID of the device, as `devices[<N>] (<deviceId>): <message>`, and exits with code 1. `N` is the position of the device in `devices`, counting from 0. The devices after it are not loaded.
 - A port that cannot be opened does not stop the bridge, for example a USB serial adapter that is not plugged in, or a TCP device that refuses the connection. The bridge prints a warning, the device starts in the `error` state, and the other devices start normally. A later poll opens the port (see [Unplugging a Serial Adapter](#unplugging-a-serial-adapter)). This does not work for a driver that reads from the device while it loads: that device fails to load.
 
 ### Common Configuration Errors
@@ -314,10 +314,10 @@ This message does not say which field is wrong. Compare the connection with the 
 **Setting that the driver does not support**
 
 ```
-Error: Invalid parity 'none'. This driver supports: odd (default: odd)
+Error: devices[3] (xymd1): Invalid parity 'none'. This driver supports: odd (default: odd)
 ```
 
-The message does not name the device. It is the next device after the last `✓ Loaded device` line. Use one of the listed values, or leave the setting out to use the default of the driver. The same check covers `baudRate`, `dataBits`, `stopBits` and `slaveId`.
+The message starts with the device: `3` is the position in `devices`, counting from 0, and `xymd1` is its `deviceId`. Use one of the listed values, or leave the setting out to use the default of the driver. The same check covers `baudRate`, `dataBits`, `stopBits` and `slaveId`.
 
 **Wrong driver name**
 
