@@ -272,6 +272,22 @@ The bridge counts the consecutive failed reads of a device:
 
 The transport also retries every Modbus request by itself before a read counts as failed. This is separate from `maxRetries`.
 
+### Polling Logs
+
+Every failed read writes one line to stderr with the device ID, the failure count and the error message:
+
+```
+Polling error for device ex9em-1 (failure 2): Timed out
+```
+
+The same message is in the `errors` list of the device status. When a read works after failed reads, the bridge writes one line to stdout:
+
+```
+Device ex9em-1 recovered after 3 failed polls
+```
+
+To also see the full error with its stack and cause on every failed read, start the bridge with the environment variable `YA_MODBUS_DEBUG=1`.
+
 ### Loading Devices
 
 The bridge checks the whole config before it connects to the broker. If the config is not valid, the CLI prints the error and exits with code 1. No device is loaded.

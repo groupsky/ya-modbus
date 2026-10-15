@@ -35,6 +35,10 @@ program
   .option('--mqtt-reconnect-period <ms>', 'Reconnection interval in milliseconds', parseInt)
   .option('--topic-prefix <prefix>', 'Topic prefix for all MQTT topics (default: modbus)')
   .option('--state-dir <path>', 'Directory path for state persistence')
+  .addHelpText(
+    'after',
+    '\nSet YA_MODBUS_DEBUG=1 to log the full error (stack and cause) of failed polls.'
+  )
   .action(async (options: RunCommandOptions) => {
     try {
       await runCommand(options)
