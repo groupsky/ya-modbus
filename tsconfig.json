@@ -28,6 +28,7 @@
     { "path": "./packages/driver-or-we-516" },
     { "path": "./packages/driver-dds024mr" },
     { "path": "./packages/driver-or-we-514" },
+    { "path": "./packages/driver-dds519mr" },
     { "path": "./packages/driver-sdm630" }
   ]
 }
