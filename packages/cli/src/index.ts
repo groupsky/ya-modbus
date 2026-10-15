@@ -31,9 +31,9 @@ function addConnectionOptions(command: Command): Command {
 
       // Connection Options
       .optionsGroup('Connection Options:')
-      .requiredOption(
+      .option(
         '-s, --slave-id <id>',
-        'Modbus slave ID (1-247). May use driver default if available',
+        'Modbus slave ID (1-247). Uses driver default if not specified (RTU only)',
         parseInt
       )
       .option('--timeout <ms>', 'Response timeout in milliseconds (default: 1000)', parseInt)

@@ -19,7 +19,7 @@ export interface ReadOptions {
   tcpPort?: number
 
   // Common options
-  slaveId: number
+  slaveId?: number
   timeout?: number
 
   // Driver options

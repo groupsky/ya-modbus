@@ -585,4 +585,65 @@ describe('Read Command', () => {
     expect(driverLoader.loadDriver).not.toHaveBeenCalled()
     expect(transportFactory.createTransport).not.toHaveBeenCalled()
   })
+
+  describe('slave ID', () => {
+    const rtuOptions = {
+      port: '/dev/ttyUSB0',
+      dataPoint: ['temperature'],
+      format: 'table' as const,
+    }
+    const serialDefaults = {
+      baudRate: 9600,
+      parity: 'even',
+      dataBits: 8,
+      stopBits: 1,
+    }
+
+    test('should use the slave ID given and print no note', async () => {
+      jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue({
+        createDriver: mockCreateDriver,
+        defaultConfig: { ...serialDefaults, defaultAddress: 5 },
+        supportedConfig: undefined,
+      } as any)
+      mockDriver.readDataPoint.mockResolvedValue(24.5)
+
+      await readCommand({ ...rtuOptions, slaveId: 3 })
+
+      expect(mockCreateDriver).toHaveBeenCalledWith({ transport: mockTransport, slaveId: 3 })
+      expect(consoleWarnSpy).not.toHaveBeenCalled()
+    })
+
+    test('should use the driver default and say so on stderr when --slave-id is missing', async () => {
+      jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue({
+        createDriver: mockCreateDriver,
+        defaultConfig: { ...serialDefaults, defaultAddress: 5 },
+        supportedConfig: undefined,
+      } as any)
+      mockDriver.readDataPoint.mockResolvedValue(24.5)
+
+      await readCommand(rtuOptions)
+
+      expect(mockCreateDriver).toHaveBeenCalledWith({ transport: mockTransport, slaveId: 5 })
+      expect(consoleWarnSpy).toHaveBeenCalledWith('Using slave ID 5 (driver default)')
+      // stdout stays free of the note, so JSON and piped output keep working
+      expect(consoleLogSpy.mock.calls.flat().join('\n')).not.toContain('driver default')
+    })
+
+    test.each([
+      ['the driver has no DEFAULT_CONFIG', undefined],
+      ['DEFAULT_CONFIG has no defaultAddress', serialDefaults],
+    ])('should fail naming --slave-id when %s', async (_name, defaultConfig) => {
+      jest.spyOn(driverLoader, 'loadDriver').mockResolvedValue({
+        createDriver: mockCreateDriver,
+        defaultConfig,
+        supportedConfig: undefined,
+      } as any)
+
+      await expect(readCommand(rtuOptions)).rejects.toThrow(
+        '--slave-id is required: the driver has no default slave ID'
+      )
+
+      expect(transportFactory.createTransport).not.toHaveBeenCalled()
+    })
+  })
 })
