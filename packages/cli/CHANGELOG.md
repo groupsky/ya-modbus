@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.15.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.14.4...@ya-modbus/cli@0.15.0) (2026-10-15)
+
+### Features
+
+- **transport:** name port, slave, function and registers in request errors ([#648](https://github.com/groupsky/ya-modbus/issues/648)) ([48f185c](https://github.com/groupsky/ya-modbus/commit/48f185c0ab2a149f8611055882a101713f0be707)), closes [#605](https://github.com/groupsky/ya-modbus/issues/605)
+
 ## [0.14.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.14.3...@ya-modbus/cli@0.14.4) (2026-10-15)
 
 ### Bug Fixes
