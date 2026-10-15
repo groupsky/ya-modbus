@@ -20,6 +20,20 @@ describe('DeviceManager', () => {
   })
 
   describe('addDevice', () => {
+    it('should reject a maxRetryBackoff below retryBackoff before storing the device', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'ya-modbus-driver-test',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 1000, retryBackoff: 5000, maxRetryBackoff: 4000 },
+      }
+
+      await expect(manager.addDevice(config)).rejects.toThrow('Invalid device configuration')
+
+      expect(manager.getDevice('device1')).toBeUndefined()
+      expect(mockDriverLoader.loadDriver).not.toHaveBeenCalled()
+    })
+
     it('should add a new device', async () => {
       const config: DeviceConfig = {
         deviceId: 'device1',

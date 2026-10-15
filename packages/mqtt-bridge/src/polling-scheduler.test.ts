@@ -325,7 +325,7 @@ describe('PollingScheduler', () => {
         deviceId: 'device1',
         driver: 'test-driver',
         connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
-        polling: { interval: 1000, maxRetries: 3, retryBackoff: 2000 },
+        polling: { interval: 1000, maxRetries: 3, retryBackoff: 2000, maxRetryBackoff: 2000 },
       }
 
       const mockReadDataPoints = jest
@@ -653,7 +653,13 @@ describe('PollingScheduler', () => {
         deviceId: 'device1',
         driver: 'test-driver',
         connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
-        polling: { interval: 1000, mode: 'continuous', maxRetries: 2, retryBackoff: 3000 },
+        polling: {
+          interval: 1000,
+          mode: 'continuous',
+          maxRetries: 2,
+          retryBackoff: 3000,
+          maxRetryBackoff: 3000,
+        },
       }
 
       const mockReadDataPoints = jest
@@ -1112,7 +1118,7 @@ describe('PollingScheduler', () => {
         deviceId: 'device1',
         driver: 'test-driver',
         connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
-        polling: { interval: 1000, maxRetries: 3, retryBackoff: 3000 },
+        polling: { interval: 1000, maxRetries: 3, retryBackoff: 3000, maxRetryBackoff: 3000 },
       }
 
       const mockReadDataPoints = jest

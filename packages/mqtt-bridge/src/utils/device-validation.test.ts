@@ -235,6 +235,7 @@ describe('validateDeviceConfig', () => {
         interval: 5000,
         maxRetries: 3,
         retryBackoff: 10000,
+        maxRetryBackoff: 120000,
       },
     }
 
@@ -450,6 +451,58 @@ describe('validateDeviceConfig', () => {
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
   })
 
+  it.each([0, -1, 1.5])('should throw error for maxRetryBackoff %p', (maxRetryBackoff) => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: { type: 'tcp', host: 'localhost', port: 502, slaveId: 1 },
+      polling: { interval: 5000, maxRetryBackoff },
+    }
+
+    expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
+  })
+
+  it('should throw error for an unknown polling key', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: { type: 'tcp', host: 'localhost', port: 502, slaveId: 1 },
+      polling: { interval: 5000, maxRetryBackof: 60000 },
+    }
+
+    expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
+  })
+
+  describe('maxRetryBackoff below the retry backoff', () => {
+    const build = (polling: object): object => ({
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: { type: 'tcp', host: 'localhost', port: 502, slaveId: 1 },
+      polling,
+    })
+
+    it('should throw error when below the configured retryBackoff', () => {
+      expect(() =>
+        validateDeviceConfig(build({ interval: 1000, retryBackoff: 5000, maxRetryBackoff: 4999 }))
+      ).toThrow('maxRetryBackoff: Max retry backoff must not be below the retry backoff')
+    })
+
+    it('should throw error when below the default retryBackoff (2 x interval)', () => {
+      expect(() => validateDeviceConfig(build({ interval: 1000, maxRetryBackoff: 1999 }))).toThrow(
+        'Max retry backoff must not be below the retry backoff'
+      )
+    })
+
+    it('should accept a value equal to the retryBackoff', () => {
+      expect(() =>
+        validateDeviceConfig(build({ interval: 1000, retryBackoff: 5000, maxRetryBackoff: 5000 }))
+      ).not.toThrow()
+      expect(() =>
+        validateDeviceConfig(build({ interval: 1000, maxRetryBackoff: 2000 }))
+      ).not.toThrow()
+    })
+  })
+
   // setTimeout runs a delay above 2^31-1 ms after 1 ms. For retryBackoff that turns the backoff
   // of a failing device into a tight retry loop that floods the bus, and for timeouts it makes
   // every request time out at once. So every duration in a device config is capped at 24 hours.
@@ -472,6 +525,15 @@ describe('validateDeviceConfig', () => {
           polling: { interval: 5000, retryBackoff: ms },
         }),
         message: 'Retry backoff must not exceed 24 hours',
+      },
+      {
+        name: 'polling.maxRetryBackoff',
+        build: (ms: number) => ({
+          ...device,
+          connection: tcp,
+          polling: { interval: 5000, maxRetryBackoff: ms },
+        }),
+        message: 'Max retry backoff must not exceed 24 hours',
       },
       {
         name: 'RTU connection.timeout',

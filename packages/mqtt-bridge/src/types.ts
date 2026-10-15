@@ -51,20 +51,28 @@ export interface PollingConfig {
   mode?: 'interval' | 'continuous'
   /**
    * Number of consecutive failed reads after which the device goes to the `error` state. From
-   * then on the bridge waits `retryBackoff` ms between reads instead of `interval` ms (0-100,
-   * default: 3).
+   * then on the bridge polls less often: it waits `retryBackoff` ms, doubling with every
+   * further failed read up to `maxRetryBackoff`, instead of `interval` ms (0-100, default: 3).
    *
-   * It is not a limit on retries: polling goes on with `retryBackoff` until a read works. With
+   * It is not a limit on retries: polling goes on until a read works. With
    * `3`, the bridge waits `interval` ms after the 1st and the 2nd failed read, and the 3rd
    * failed read starts the backoff. `0` and `1` behave the same: the backoff starts after the
    * first failed read.
    */
   maxRetries?: number
   /**
-   * Time to wait between reads in milliseconds while the device is in the `error` state
-   * (1-86400000, default: 2 × `interval`).
+   * Time to wait between reads in milliseconds when the device enters the `error` state
+   * (1-86400000, default: 2 × `interval`). It doubles with every further failed read, up to
+   * `maxRetryBackoff`.
    */
   retryBackoff?: number
+  /**
+   * Longest wait between reads in milliseconds while the device is in the `error` state
+   * (1-86400000, default: 60000, or `retryBackoff` if that is longer). The wait starts at
+   * `retryBackoff` and doubles with every further failed read until it reaches this value. It
+   * must not be below `retryBackoff`.
+   */
+  maxRetryBackoff?: number
 }
 
 export interface DeviceConfig {
@@ -117,7 +125,8 @@ export interface DeviceStatus {
    * - `connecting` - driver is loading
    * - `connected` - driver is loaded and the device is not in the `error` state
    * - `error` - `polling.maxRetries` consecutive reads failed (at least 1, so `0` works like
-   *   `1`); the bridge waits `polling.retryBackoff` ms between reads. Also when the port is
+   *   `1`); the bridge waits `polling.retryBackoff` ms, doubling with every further failed
+   *   read up to `polling.maxRetryBackoff`. Also when the port is
    *   not open when the device is added; the bridge polls it until a read works.
    *
    * State changes:

@@ -103,14 +103,30 @@ const pollingConfigSchema = z
       .positive()
       .max(MAX_DURATION_MS, 'Retry backoff must not exceed 24 hours')
       .optional(),
+    maxRetryBackoff: z
+      .number()
+      .int()
+      .positive()
+      .max(MAX_DURATION_MS, 'Max retry backoff must not exceed 24 hours')
+      .optional(),
   })
+  // Same default as the polling scheduler: 2 x interval
+  .refine(
+    ({ interval, retryBackoff, maxRetryBackoff }) =>
+      maxRetryBackoff === undefined || maxRetryBackoff >= (retryBackoff ?? interval * 2),
+    {
+      message: 'Max retry backoff must not be below the retry backoff (default: 2 x interval)',
+      path: ['maxRetryBackoff'],
+    }
+  )
   .transform((data) => {
-    const { mode, maxRetries, retryBackoff, ...rest } = data
+    const { mode, maxRetries, retryBackoff, maxRetryBackoff, ...rest } = data
     return {
       ...rest,
       ...(mode !== undefined ? { mode } : {}),
       ...(maxRetries !== undefined ? { maxRetries } : {}),
       ...(retryBackoff !== undefined ? { retryBackoff } : {}),
+      ...(maxRetryBackoff !== undefined ? { maxRetryBackoff } : {}),
     }
   })
   .optional()
