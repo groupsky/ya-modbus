@@ -53,7 +53,7 @@ docker run -d --name ya-modbus-bridge --restart unless-stopped \
 - **Config:** mount the file at `/config/config.json`. Arguments after the image name replace the default command, for example `run --config /config/other.json`. Put the broker in `mqtt.url` or in `--mqtt-url`. `localhost` in the container is the container itself, so use the host name or IP address of the broker, or `--network host`.
 - **Serial device:** `--device <path on the host>:<path in the container>`. Use the path in the container as `port` in the config (`/dev/ttyUSB0` above). The by-path names contain colons, which `--device` cannot take, so `readlink -f` turns the name into the `/dev/ttyUSB*` path. This happens when the container is created: after a reboot or a replug, when identical adapters may get other numbers, recreate the container. On the host use a `/dev/serial/by-path/...` name for adapters without a serial number, because identical adapters can get the same `by-id` name. Use `by-id` for adapters with a unique serial number. See [Unplugging a Serial Adapter](#unplugging-a-serial-adapter). Plug the adapter in before the container starts. When it is unplugged, recreate the container, because the device node in the container does not follow the new one.
 - **Group:** the device node keeps the numeric group ID of the host (`dialout` on Debian and Ubuntu, `uucp` on Arch Linux), and the user `node` is not in that group. `--group-add` with the host ID, which `stat -c %g` prints, lets the user open the port. Without it, opening the port fails with `Permission denied`.
-- **Debug:** add `-e YA_MODBUS_DEBUG=1` to `docker run` to log the full error of failed polls.
+- **Debug:** add `-e YA_MODBUS_DEBUG=1` to `docker run` to log the full error of failed polls and the requests that are sent again.
 
 Docker Compose:
 
@@ -255,13 +255,14 @@ The fields depend on `type`. A field that does not belong to the type is an erro
 - `dataBits` (optional) - Data bits: 7 or 8. Default: from the driver
 - `stopBits` (optional) - Stop bits: 1 or 2. Default: from the driver
 - `timeout` (optional) - Time to wait for a response in milliseconds (1-86400000, default: 1000)
+- `interDeviceDelay` (optional) - Pause in milliseconds before a request to this device when the previous request on the port went to another device (0-60000, default: 150). Some meters do not answer a request that comes too soon after another meter's reply: a DDS519MR misses it after 50 ms and answers after 100 ms. The pause counts from the end of the previous request. The bridge waits only when the device changes, not between the requests of one device. `0` turns the pause off.
 
 The defaults of `baudRate`, `parity`, `dataBits` and `stopBits` are the factory settings of the device, from the `DEFAULT_CONFIG` of the driver. `ya-modbus show-defaults --driver <package>` shows them. If the driver has no `DEFAULT_CONFIG`, `baudRate` is required, and the bridge uses parity "none", 8 data bits and 1 stop bit.
 
 When the bridge adds the device, it checks these settings and `slaveId` against the values that the driver supports (its `SUPPORTED_CONFIG`). If the driver does not support a value, the device does not load (see [Common Configuration Errors](#common-configuration-errors)). For each RTU device that loads, the bridge prints the settings that it uses:
 
 ```
-Device meter1 uses /dev/ttyUSB0: baud rate 9600, data bits 8, parity odd, stop bits 1
+Device meter1 uses /dev/ttyUSB0: baud rate 9600, data bits 8, parity odd, stop bits 1, inter-device delay 150 ms
 ```
 
 **TCP connection:**
@@ -327,7 +328,13 @@ The message names the port (or host), serial settings, slave ID, function code, 
 Device ex9em-1 recovered after 3 failed polls
 ```
 
-To also see the full error with its stack and cause on every failed read, start the bridge with the environment variable `YA_MODBUS_DEBUG=1`.
+To also see the full error with its stack and cause on every failed read, start the bridge with the environment variable `YA_MODBUS_DEBUG=1`. Then the bridge also writes one line to stderr for each request that the transport sends again after it failed:
+
+```
+Device meter1: request failed (try 1), sending it again: Timed out
+```
+
+A read that works on a later try is not a failed read, but each failed try can wait the whole `timeout`. Many of these lines explain a slow bus.
 
 ### Loading Devices
 
@@ -335,7 +342,8 @@ The bridge checks the whole config before it connects to the broker. If the conf
 
 After the bridge has connected to the broker, it loads the devices one after another, in the order of the `devices` array. For each device the CLI prints `✓ Loaded device: <deviceId>`.
 
-- Devices share one connection when they use the same serial port with the same `baudRate`, `dataBits`, `parity` and `stopBits`, or the same TCP `host` and `port`. The first of them opens the connection and its `timeout` is used for all of them. Devices that share a connection are read one at a time.
+- Devices share one connection when they use the same serial port with the same `baudRate`, `dataBits`, `parity` and `stopBits`, or the same TCP `host` and `port`. The first of them opens the connection and its `timeout` is used for all of them.
+- Devices on the same serial port, or on the same TCP host and port, are read one at a time, in turn. The whole poll of a device (its dynamic and static points) runs before the poll of the next device. A device that is ready to poll again waits behind the devices that are already waiting, also in `continuous` mode.
 - A device ID can be used only once. If it is used twice, loading the second device fails with `devices[<N>] (<deviceId>): Device <deviceId> already exists`.
 - If a device fails to load, for example because the driver is not installed or does not support a serial setting, the CLI prints the error with the position and ID of the device, as `devices[<N>] (<deviceId>): <message>`, and exits with code 1. `N` is the position of the device in `devices`, counting from 0. The devices after it are not loaded.
 - A port that cannot be opened does not stop the bridge, for example a USB serial adapter that is not plugged in, or a TCP device that refuses the connection. The bridge prints a warning, the device starts in the `error` state, and the other devices start normally. A later poll opens the port (see [Unplugging a Serial Adapter](#unplugging-a-serial-adapter)). This does not work for a driver that reads from the device while it loads: that device fails to load.
@@ -365,6 +373,7 @@ This message does not say which field is wrong. Compare the connection with the 
 - `baudRate` is not a positive number
 - `parity`, `dataBits` or `stopBits` has a value that is not in the list
 - `timeout` is not a whole number from 1 to 86400000
+- `interDeviceDelay` is not a whole number from 0 to 60000
 - `type` is not `"rtu"` or `"tcp"`, or `connection` is missing
 - an unknown key, together with another problem in the same connection (an unknown key alone gives `Unrecognized key`)
 
@@ -408,7 +417,7 @@ Error: Invalid configuration: mqtt.url: URL must start with mqtt://, mqtts://, w
 
 ### Performance and Security Tips
 
-- Devices that share a connection are read one at a time, so a device can wait for the others. Use more serial adapters if you need shorter times between the reads of a device.
+- Devices that share a connection are read one at a time, so a device can wait for the others. On a serial port, each change to another device also costs its `interDeviceDelay`. Use more serial adapters if you need shorter times between the reads of a device.
 - A device that does not answer keeps its connection busy while the bridge waits for the response. The transport tries every request up to 3 times, and each try can take up to `timeout` ms. Use a larger `retryBackoff` for devices that are often offline.
 - The config file can contain the MQTT password. Make the file readable only by the user that runs the bridge, for example with `chmod 600 config.json`.
 - Other users of the machine can see command line options such as `--mqtt-password` in the process list. Put credentials in the config file instead.

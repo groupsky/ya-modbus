@@ -1,10 +1,12 @@
 import type { DeviceDriver } from '@ya-modbus/driver-types'
 
-import type { DeviceConfig } from './types.js'
+import type { DeviceConfig, DeviceConnection } from './types.js'
 
 interface ScheduledDevice {
   config: DeviceConfig
   driver: DeviceDriver
+  // Devices with the same key share a bus, and are polled one at a time
+  connectionKey: string
   // Pending timer of the poll chain, undefined while a read is in flight or polling is stopped
   timer?: NodeJS.Timeout | undefined
   // True from the start of a read until its poll chain continues or ends
@@ -32,12 +34,20 @@ const MAX_TIMER_DELAY = 2 ** 31 - 1
 // NaN compares false with everything, so it is rejected too
 const isValidTimerDelay = (ms: number): boolean => ms > 0 && ms <= MAX_TIMER_DELAY
 
+// The serial port, or the TCP host and port. Other serial settings do not make another bus.
+const connectionKey = (connection: DeviceConnection): string =>
+  connection.type === 'rtu'
+    ? `rtu:${connection.port}`
+    : `tcp:${connection.host}:${connection.port ?? 502}`
+
 /**
  * Coordinates polling across multiple devices
  */
 export class PollingScheduler {
   private devices = new Map<string, ScheduledDevice>()
   private running = false
+  // Per connection: settles when the last poll that waits for its turn has ended
+  private lastPolls = new Map<string, Promise<unknown>>()
 
   constructor(
     private onData: DataCallback,
@@ -70,6 +80,7 @@ export class PollingScheduler {
     this.devices.set(deviceId, {
       config,
       driver,
+      connectionKey: connectionKey(config.connection),
       dynamicIds: polled.filter((dp) => dp.pollType !== 'static').map((dp) => dp.id),
       staticIds: polled.filter((dp) => dp.pollType === 'static').map((dp) => dp.id),
       interval,
@@ -190,25 +201,65 @@ export class PollingScheduler {
   }
 
   /**
+   * Run the polls of the devices on one connection one at a time, in the order they come. A
+   * device that polls again waits behind the devices that are waiting already, so every device
+   * gets its turn, also in continuous mode.
+   */
+  private inTurn<T>(key: string, poll: () => Promise<T>): Promise<T> {
+    const previous = this.lastPolls.get(key)
+    // A poll on a free connection starts at once
+    const result = previous ? previous.then(poll) : poll()
+    const last = result.catch(() => undefined)
+    this.lastPolls.set(key, last)
+    void last.then(() => {
+      if (this.lastPolls.get(key) === last) this.lastPolls.delete(key)
+    })
+    return result
+  }
+
+  /**
+   * Read the dynamic points of a device, and its static points until one read of them works
+   */
+  private async readDevice(
+    deviceId: string,
+    device: ScheduledDevice
+  ): Promise<Record<string, unknown>> {
+    const data =
+      device.dynamicIds.length > 0 ? await device.driver.readDataPoints(device.dynamicIds) : {}
+
+    // Only after a dynamic read worked, so a device that does not answer costs one timeout
+    if (device.staticIds.length > 0 && !device.staticValues) {
+      await this.readStaticPoints(deviceId, device)
+    }
+
+    return { ...device.staticValues, ...data }
+  }
+
+  /**
    * Poll a device once
    */
   private async pollDevice(deviceId: string, device: ScheduledDevice): Promise<void> {
     device.readInFlight = true
 
     try {
-      const data =
-        device.dynamicIds.length > 0 ? await device.driver.readDataPoints(device.dynamicIds) : {}
+      // The whole poll of a device runs before the poll of the next device on its connection.
+      // When the device is unscheduled or polling stops while the poll waits for its turn, the
+      // device is not read.
+      const data = await this.inTurn(device.connectionKey, async () =>
+        this.running && this.devices.get(deviceId) === device
+          ? this.readDevice(deviceId, device)
+          : undefined
+      )
+      if (data === undefined) {
+        device.readInFlight = false
+        return
+      }
 
       // Reset failure count BEFORE callback - polling succeeded regardless of callback result
       device.lastFailureCount = 0
 
-      // Only after a dynamic read worked, so a device that does not answer costs one timeout
-      if (device.staticIds.length > 0 && !device.staticValues) {
-        await this.readStaticPoints(deviceId, device)
-      }
-
       try {
-        this.onData(deviceId, { ...device.staticValues, ...data })
+        this.onData(deviceId, data)
       } catch (callbackError) {
         // Data callback threw - log but don't count as polling failure
         console.error(

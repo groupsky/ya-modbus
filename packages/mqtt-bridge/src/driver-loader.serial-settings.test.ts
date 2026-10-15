@@ -121,15 +121,22 @@ describe('DriverLoader serial settings', () => {
     }
   )
 
-  it('should log the serial settings that the device uses', async () => {
-    useDriver(oddOnlyDriver)
+  it.each([
+    [{}, 150],
+    [{ interDeviceDelay: 0 }, 0],
+  ])(
+    'should log the serial settings and the inter-device delay that the device uses (%p)',
+    async (settings, delay) => {
+      useDriver(oddOnlyDriver)
 
-    await loader.loadDriver('ya-modbus-driver-test', rtu(), 'meter')
+      await loader.loadDriver('ya-modbus-driver-test', rtu(settings), 'meter')
 
-    expect(console.log).toHaveBeenCalledWith(
-      'Device meter uses /dev/ttyUSB0: baud rate 9600, data bits 8, parity odd, stop bits 1'
-    )
-  })
+      expect(console.log).toHaveBeenCalledWith(
+        'Device meter uses /dev/ttyUSB0: baud rate 9600, data bits 8, parity odd, stop bits 1, ' +
+          `inter-device delay ${delay} ms`
+      )
+    }
+  )
 
   it('should report the connection error of the port that the device uses', async () => {
     loader = new DriverLoader(

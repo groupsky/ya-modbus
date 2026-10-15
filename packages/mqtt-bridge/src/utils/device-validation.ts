@@ -45,9 +45,15 @@ const rtuConnectionSchema = z
     dataBits: z.union([z.literal(7), z.literal(8)]).optional(),
     stopBits: z.union([z.literal(1), z.literal(2)]).optional(),
     timeout: timeoutSchema,
+    interDeviceDelay: z
+      .number()
+      .int()
+      .min(0)
+      .max(60000, 'Inter-device delay must not exceed 60 seconds')
+      .optional(),
   })
   .transform((data) => {
-    const { baudRate, parity, dataBits, stopBits, timeout, ...rest } = data
+    const { baudRate, parity, dataBits, stopBits, timeout, interDeviceDelay, ...rest } = data
     return {
       ...rest,
       ...(baudRate !== undefined ? { baudRate } : {}),
@@ -55,6 +61,7 @@ const rtuConnectionSchema = z
       ...(dataBits !== undefined ? { dataBits } : {}),
       ...(stopBits !== undefined ? { stopBits } : {}),
       ...(timeout !== undefined ? { timeout } : {}),
+      ...(interDeviceDelay !== undefined ? { interDeviceDelay } : {}),
     }
   })
 

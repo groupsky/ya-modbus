@@ -9,6 +9,7 @@ import type { DeviceDriver, Transport } from '@ya-modbus/driver-types'
 import {
   TransportManager,
   type ModbusError,
+  type RetryLogger,
   type RTUConfig,
   type TransportConfig,
 } from '@ya-modbus/transport'
@@ -16,6 +17,25 @@ import {
 import type { DeviceConnection, RTUConnection } from './types.js'
 
 type LoadDriverFunction = typeof loadDriverPackage
+
+/**
+ * Pause in ms before a request to a device after a request to another device on its port. Some
+ * meters do not answer a request that comes sooner (DDS519MR: 50 ms fails, 100 ms works).
+ */
+const DEFAULT_INTER_DEVICE_DELAY_MS = 150
+
+/**
+ * Log of requests that the transport sends again, with YA_MODBUS_DEBUG=1. Without it, a request
+ * that works on a later try is not seen, even when every try waits for the timeout.
+ */
+function retryLogger(device: string): RetryLogger | undefined {
+  if (process.env['YA_MODBUS_DEBUG'] !== '1') return undefined
+  return (attempt, error) => {
+    console.warn(
+      `Device ${device}: request failed (try ${attempt}), sending it again: ${error.message}`
+    )
+  }
+}
 
 /**
  * Transport config of an RTU connection. Serial settings that are not set come from the driver's
@@ -43,6 +63,7 @@ function toRTUConfig(
     stopBits: merged.stopBits ?? 1,
     slaveId: merged.slaveId,
     timeout: merged.timeout,
+    interDeviceDelay: merged.interDeviceDelay ?? DEFAULT_INTER_DEVICE_DELAY_MS,
   }
   validateSerialOptions(config, driver)
 
@@ -98,12 +119,17 @@ export class DriverLoader {
     // Load driver package using driver-loader
     const loadedDriver = await this.loadDriverFn({ driverPackage: packageName })
 
+    const device = deviceId ?? packageName
     let config: TransportConfig
     if (connection.type === 'rtu') {
-      config = toRTUConfig(connection, loadedDriver, packageName)
+      config = {
+        ...toRTUConfig(connection, loadedDriver, packageName),
+        logger: retryLogger(device),
+      }
       console.log(
-        `Device ${deviceId ?? packageName} uses ${config.port}: baud rate ${config.baudRate}, ` +
-          `data bits ${config.dataBits}, parity ${config.parity}, stop bits ${config.stopBits}`
+        `Device ${device} uses ${config.port}: baud rate ${config.baudRate}, ` +
+          `data bits ${config.dataBits}, parity ${config.parity}, stop bits ${config.stopBits}, ` +
+          `inter-device delay ${config.interDeviceDelay} ms`
       )
     } else {
       config = {
@@ -111,6 +137,7 @@ export class DriverLoader {
         port: connection.port,
         slaveId: connection.slaveId,
         timeout: connection.timeout,
+        logger: retryLogger(device),
       }
     }
 

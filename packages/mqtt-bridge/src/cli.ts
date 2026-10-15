@@ -37,7 +37,7 @@ program
   .option('--state-dir <path>', 'Directory path for state persistence')
   .addHelpText(
     'after',
-    '\nSet YA_MODBUS_DEBUG=1 to log the full error (stack and cause) of failed polls.'
+    '\nSet YA_MODBUS_DEBUG=1 to log the full error (stack and cause) of failed polls and each request that is sent again.'
   )
   .action(async (options: RunCommandOptions) => {
     try {

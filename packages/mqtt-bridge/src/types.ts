@@ -91,6 +91,13 @@ export interface RTUConnection {
   dataBits?: 7 | 8
   stopBits?: 1 | 2
   timeout?: number
+  /**
+   * Pause in milliseconds before a request to this device when the previous request on the
+   * port went to another device, counted from the end of that request (0-60000, default: 150).
+   * Some meters do not answer a request that comes too soon after another meter's reply. A
+   * request to the same device as the previous one does not wait. `0` turns the pause off.
+   */
+  interDeviceDelay?: number
 }
 
 export interface TCPConnection {

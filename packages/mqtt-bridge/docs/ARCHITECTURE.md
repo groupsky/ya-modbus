@@ -6,7 +6,7 @@ The MQTT bridge orchestrates the following components:
 
 1. **MQTT Client** - Connects to MQTT broker and manages subscriptions (`src/index.ts`)
 2. **Device Manager** - Handles device lifecycle and driver loading (`src/device-manager.ts`, `src/driver-loader.ts`)
-3. **Polling Scheduler** - Coordinates polling across devices (`src/polling-scheduler.ts`)
+3. **Polling Scheduler** - Coordinates polling across devices. Devices on one serial port, or on one TCP host and port, are polled one at a time, in turn (`src/polling-scheduler.ts`)
 4. **State Manager** - Persists and recovers bridge state (future)
 5. **Transport Manager** - Manages Modbus connections (RTU/TCP) and shares one connection between the devices on a serial port or a TCP host and port, and closes it when the last device on it is removed (`TransportManager` in `@ya-modbus/transport`, used by `src/driver-loader.ts`)
 
