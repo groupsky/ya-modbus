@@ -118,6 +118,18 @@ try {
 
 `normalizeModbusError(error)` applies the same conversion to any caught value.
 
+### Errors of failed requests
+
+Only `TransportManager.getTransport()`, `createRTUTransport()` and `createTCPTransport()` add the
+details (not `SlaveTransport` or `createModbusTransport()` used directly) of the request to the message of a failed request, after all retries. The message ends with
+the port or host, serial settings, slave ID, function code, start address and count, for example
+`Timed out (/dev/ttyUSB0 9600 8E1, slave 1, FC03 read holding registers, address 16 (0x0010), count 2)`
+or `Timed out (192.168.1.10:502, slave 1, FC04 read input registers, address 0 (0x0000), count 10)`.
+The serial settings are baud rate, data bits, parity and stop bits. `name`, `code`, `errno`,
+`modbusCode` and `cause` are those of the original error. The retry logger gets the errors without
+details. A timeout can also mean wrong serial settings or a register that the device does not
+have, because many devices do not answer then.
+
 ### Lost connections
 
 When a USB serial adapter is unplugged or a TCP connection closes, `modbus-serial` emits a
@@ -128,7 +140,8 @@ so the process does not crash. The connection is then lost:
 - Later requests reject at once, without using the port.
 - The error has the name `ConnectionLostError` and a message like
   `Connection to /dev/ttyUSB0 lost: port closed`, or
-  `Connection to /dev/ttyUSB0 lost: EIO: i/o error, write` when a write failed. The underlying
+  `Connection to /dev/ttyUSB0 lost: EIO: i/o error, write` when a write failed (followed by the
+  details of the request, as above). The underlying
   error is in `cause`. `code` and `errno` are set only when the underlying error is a Node.js
   system error, for example `ECONNREFUSED` when a TCP connection cannot be opened again.
 

@@ -4,6 +4,7 @@ import ModbusRTU from 'modbus-serial'
 import { configureClient } from './client-config.js'
 import { ModbusConnection } from './connection.js'
 import { createModbusTransport } from './create-modbus-transport.js'
+import { formatSerialSettings, withRequestContext } from './request-context.js'
 import type { RetryLogger } from './retry.js'
 
 /**
@@ -57,5 +58,8 @@ export async function createRTUTransport(config: RTUConfig): Promise<Transport> 
   }
 
   const connection = new ModbusConnection(await open(), config.port, open)
-  return createModbusTransport(connection, config.maxRetries, config.logger)
+  return withRequestContext(
+    createModbusTransport(connection, config.maxRetries, config.logger),
+    `${config.port} ${formatSerialSettings(config)}, slave ${config.slaveId}`
+  )
 }

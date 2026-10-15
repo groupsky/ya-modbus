@@ -711,8 +711,23 @@ If the driver is found but rejected with an `Invalid DEFAULT_CONFIG`, `Invalid S
 
 ### Timeout Errors
 
+A failed request names the port (or host), serial settings, slave ID, function code, start address and count:
+
+```
+Error: Timed out (/dev/ttyUSB0 9600 8E1, slave 1, FC03 read holding registers, address 16 (0x0010), count 2)
+```
+
+A timeout does not always mean that the device is offline. The device gives no reply when:
+
+- the parity, baud rate, data bits or stop bits are wrong (the device cannot read the request)
+- the slave ID is wrong
+- the register does not exist. Many meters do not answer a request for a register they do not have, instead of returning an exception. Read a register that you know exists, to tell this from an offline device.
+
+What to check:
+
 - Check physical connection (RS-485 termination, wiring)
 - Verify slave ID is correct
+- Verify parity and baud rate against the settings in the message
 - Try slower baud rate (e.g., 4800)
 - Increase timeout: `--timeout 2000`
 

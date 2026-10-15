@@ -154,7 +154,9 @@ describe('serial adapter that is gone', () => {
 
       expect(bridge.getDevice('meter')).toMatchObject({
         consecutiveFailures: expect.any(Number),
-        errors: ['Connection to /dev/ttyUSB0 lost: EIO: i/o error, write'],
+        errors: [
+          'Connection to /dev/ttyUSB0 lost: EIO: i/o error, write (/dev/ttyUSB0 9600 8N1, slave 1, FC03 read holding registers, address 0 (0x0000), count 1)',
+        ],
       })
       expect(bridge.getDevice('meter')?.consecutiveFailures).toBeGreaterThanOrEqual(2)
       // Polling goes on, but the port is not reopened before the backoff
@@ -168,7 +170,7 @@ describe('serial adapter that is gone', () => {
       await reopenAttempt
       await failedAfterReopen
       expect(bridge.getDevice('meter')?.errors).toEqual([
-        'Connection to /dev/ttyUSB0 lost: Error: No such file or directory, cannot open /dev/ttyUSB0',
+        'Connection to /dev/ttyUSB0 lost: Error: No such file or directory, cannot open /dev/ttyUSB0 (/dev/ttyUSB0 9600 8N1, slave 1, FC03 read holding registers, address 0 (0x0000), count 1)',
       ])
 
       // Plug in again: after the doubled backoff the next poll reopens the port and reads

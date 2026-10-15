@@ -6,6 +6,7 @@ import { connectTCP, DEFAULT_TIMEOUT_MS } from './client-config.js'
 import { ModbusConnection } from './connection.js'
 import type { RTUConfig, TCPConfig, TransportConfig } from './factory.js'
 import { normalizeModbusError, type ModbusError } from './normalize-error.js'
+import { formatSerialSettings, withRequestContext } from './request-context.js'
 import { SlaveTransport } from './slave-transport.js'
 
 /**
@@ -50,7 +51,7 @@ export interface TransportStats {
  * - Pools modbus-serial clients by physical connection (excluding slave ID)
  * - RTU clients are pooled by bus configuration (port, baud rate, parity, etc.)
  * - TCP clients are pooled by host and port
- * - Returns SlaveTransport instances that set the slave ID before each operation
+ * - Returns Transport objects (SlaveTransport wrapped with request details in errors) that set the slave ID before each operation
  * - Multiple devices on the same connection share a single client and mutex
  * - All operations are serialized using async-mutex to prevent race conditions
  * - A lost connection (USB adapter unplugged, TCP connection closed) drops the client.
@@ -86,11 +87,12 @@ export class TransportManager {
 
   /**
    * Get or create a transport for the given configuration.
-   * Returns a new SlaveTransport instance bound to the slave ID in the config.
+   * Returns a new Transport bound to the slave ID in the config.
    * Multiple devices on the same physical connection share the same client and mutex.
    *
    * @param config - RTU or TCP transport configuration
-   * @returns SlaveTransport instance for the specific slave device
+   * @returns Transport for the specific slave device. It wraps a SlaveTransport, and the
+   *   message of a failed request ends with the port, slave, function and registers.
    * @throws When the port cannot be opened, unless the `startLost` option is set
    */
   async getTransport(config: TransportConfig): Promise<Transport> {
@@ -115,8 +117,11 @@ export class TransportManager {
       config.maxRetries ?? 3,
       config.logger
     )
-    entry.transports.add(transport)
-    return transport
+    const target = this.getTarget(config)
+    const where = this.isRTUConfig(config) ? `${target} ${formatSerialSettings(config)}` : target
+    const described = withRequestContext(transport, `${where}, slave ${config.slaveId}`)
+    entry.transports.add(described)
+    return described
   }
 
   /**
