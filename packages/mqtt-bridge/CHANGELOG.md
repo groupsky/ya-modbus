@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.22.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.21.0...@ya-modbus/mqtt-bridge@0.22.0) (2026-10-15)
+
+### Features
+
+- **mqtt-bridge:** poll a device that keeps failing less often ([#656](https://github.com/groupsky/ya-modbus/issues/656)) ([ba879dc](https://github.com/groupsky/ya-modbus/commit/ba879dcce3f16a6b2d648f88d660311fab8ee3fe)), closes [#650](https://github.com/groupsky/ya-modbus/issues/650)
+
 # [0.21.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.20.0...@ya-modbus/mqtt-bridge@0.21.0) (2026-10-15)
 
 ### Features
