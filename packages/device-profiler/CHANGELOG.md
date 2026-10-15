@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.12.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.12.3...@ya-modbus/device-profiler@0.12.4) (2026-10-15)
+
+### Bug Fixes
+
+- **deps:** require Node.js 22.12.0, the first version that can require() ESM ([#643](https://github.com/groupsky/ya-modbus/issues/643)) ([d3b0e4e](https://github.com/groupsky/ya-modbus/commit/d3b0e4e5137dda244d2e7fce47033992a6ef24d3)), closes [#641](https://github.com/groupsky/ya-modbus/issues/641)
+
 ## [0.12.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.12.2...@ya-modbus/device-profiler@0.12.3) (2026-10-14)
 
 **Note:** Version bump only for package @ya-modbus/device-profiler
