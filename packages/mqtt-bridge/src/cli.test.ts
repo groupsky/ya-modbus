@@ -546,7 +546,7 @@ describe('CLI - ya-modbus-bridge', () => {
       expect(mockBridge.addDevice).toHaveBeenCalled()
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('Error:'),
-        'Failed to load driver'
+        'devices[0] (device1): Failed to load driver'
       )
       expect(processUtils.exit).toHaveBeenCalledWith(1)
     })
@@ -605,6 +605,68 @@ describe('CLI - ya-modbus-bridge', () => {
       expect(mockBridge.stop).not.toHaveBeenCalled()
     })
 
+    it('should print the success message after all devices are loaded', async () => {
+      mockBridge.addDevice = jest.fn().mockResolvedValue(undefined)
+      jest.mocked(configModule.loadConfig).mockResolvedValue({
+        mqtt: { url: 'mqtt://localhost:1883' },
+        devices: [rtuDevice('device1'), rtuDevice('device2', 2)],
+      } as any)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(consoleLogSpy.mock.calls.map((call) => String(call[0]))).toEqual([
+        expect.stringContaining('Loading configuration...'),
+        expect.stringContaining('Starting MQTT bridge'),
+        expect.stringContaining('Loading 2 device(s) from configuration...'),
+        expect.stringContaining('✓ Loaded device: device1'),
+        expect.stringContaining('✓ Loaded device: device2'),
+        expect.stringContaining('Bridge started successfully'),
+      ])
+    })
+
+    it('should not print the success message when a device fails to load', async () => {
+      mockBridge.addDevice = jest.fn().mockRejectedValue(new Error('Failed to load driver'))
+      jest.mocked(configModule.loadConfig).mockResolvedValue({
+        mqtt: { url: 'mqtt://localhost:1883' },
+        devices: [rtuDevice('device1')],
+      } as any)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(consoleLogSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('Bridge started successfully')
+      )
+    })
+
+    // Bug: the error did not say which device was wrong, so with many devices the operator had
+    // to guess. A startup error now names the position in `devices` and the deviceId.
+    it.each([
+      [
+        'an unsupported serial setting',
+        2,
+        'xymd1',
+        "Invalid parity 'odd'. This driver supports: even, none (default: none)",
+      ],
+      ['a driver that cannot be loaded', 0, 'meter7', "Cannot find package '@ya-modbus/driver-x'"],
+    ])('should name the device and its index for %s', async (_name, index, deviceId, message) => {
+      const devices = Array.from({ length: index }, (_, i) => rtuDevice(`device${i}`, i + 1))
+      devices.push(rtuDevice(deviceId, index + 1))
+      mockBridge.addDevice = jest.fn((device: { deviceId: string }) =>
+        device.deviceId === deviceId ? Promise.reject(new Error(message)) : Promise.resolve()
+      )
+      jest
+        .mocked(configModule.loadConfig)
+        .mockResolvedValue({ mqtt: { url: 'mqtt://localhost:1883' }, devices } as any)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error:'),
+        `devices[${index}] (${deviceId}): ${message}`
+      )
+      expect(processUtils.exit).toHaveBeenCalledWith(1)
+    })
+
     it('should stop loading at the first device that fails and exit with 1', async () => {
       mockBridge.addDevice = jest
         .fn()
@@ -625,7 +687,7 @@ describe('CLI - ya-modbus-bridge', () => {
       ])
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('Error:'),
-        'Failed to load driver'
+        'devices[1] (device2): Failed to load driver'
       )
       expect(processUtils.exit).toHaveBeenCalledWith(1)
     })
@@ -652,7 +714,7 @@ describe('CLI - ya-modbus-bridge', () => {
       expect(events).toEqual(['stopped', 'exit 1'])
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('Error:'),
-        'Failed to load driver'
+        'devices[0] (device1): Failed to load driver'
       )
     })
 
@@ -672,7 +734,7 @@ describe('CLI - ya-modbus-bridge', () => {
       )
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('Error:'),
-        'Failed to load driver'
+        'devices[0] (device1): Failed to load driver'
       )
       expect(processUtils.exit).toHaveBeenCalledTimes(1)
       expect(processUtils.exit).toHaveBeenCalledWith(1)
