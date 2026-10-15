@@ -180,7 +180,7 @@ jobs:
           echo "🔍 Validating @types/node ignore configuration..."
 
           # Extract minimum Node.js major version (first number) from package.json
-          # Supports formats like "22 || 24" and ">=22.0.0"
+          # Supports formats like ">=22.12.0 <26.4.0" and "22 || 24"
           node_version=$(jq -r '.engines.node // empty' package.json | grep -oP '[0-9]+' | head -n 1 || echo "")
 
           if [ -z "$node_version" ]; then

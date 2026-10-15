@@ -28,6 +28,12 @@ paths: package.json
 - `npm audit` shows current vulnerabilities
 - Use `npm update` for safe updates, `npm install <pkg@latest>` for major versions
 
+## Node.js Floor
+
+- Production dependencies MUST load on the lowest supported Node.js, `22.12.0` (`engines.node` is `>=22.12.0 <26.4.0`)
+- 22.12.0 is the first version that can `require()` an ES module without a flag; the CommonJS builds rely on it for ESM-only dependencies (e.g. chalk)
+- Raise the floor in every package's `engines` together
+
 ## Dependency Review
 
 - Check package maintenance status before adopting

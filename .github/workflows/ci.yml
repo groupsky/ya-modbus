@@ -23,55 +23,17 @@ jobs:
       - name: Generate Node.js version matrix
         id: generate-matrix
         run: |
-          # Extract all Node.js major versions from package.json engines field
-          # Supports format like "22 || 24"
-          NODE_VERSIONS=$(node -p "
-            const engines = require('./package.json').engines.node;
-            engines.match(/\d+/g).map(v => v + '.x').join(' ');
-          ")
-
-          # Convert to array
-          VERSIONS=($NODE_VERSIONS)
-
-          # Convert to compact JSON array for matrix
-          MATRIX_JSON=$(printf '%s\n' "${VERSIONS[@]}" | jq -R . | jq -sc .)
+          # The floor (first x.y.z in package.json engines.node), the latest 22.x,
+          # and the latest version, which .nvmrc names.
+          FLOOR=$(node -p "require('./package.json').engines.node.match(/\\d+\\.\\d+\\.\\d+/)[0]")
+          NVMRC_VERSION=$(tr -d '[:space:]' < .nvmrc)
+          LATEST="${NVMRC_VERSION}.x"
+          MATRIX_JSON=$(jq -nc --arg floor "$FLOOR" --arg latest "$LATEST" '[$floor, "22.x", $latest]')
           echo "node-versions=$MATRIX_JSON" >> $GITHUB_OUTPUT
-
-          # Set latest version for build job
-          LATEST="${VERSIONS[-1]}"
           echo "latest-version=$LATEST" >> $GITHUB_OUTPUT
 
-          echo "Testing on Node.js versions: ${VERSIONS[*]}"
+          echo "Testing on Node.js versions: $MATRIX_JSON"
           echo "Latest version for build: $LATEST"
-
-      - name: Verify .nvmrc matches latest Node.js version
-        run: |
-          # Read .nvmrc
-          if [ ! -f .nvmrc ]; then
-            echo "❌ .nvmrc file not found!"
-            exit 1
-          fi
-
-          NVMRC_VERSION=$(cat .nvmrc | tr -d '[:space:]')
-          echo "📋 .nvmrc version: $NVMRC_VERSION"
-
-          # Get latest version from package.json (already extracted above)
-          LATEST_VERSION=$(node -p "
-            const engines = require('./package.json').engines.node;
-            const versions = engines.match(/\d+/g);
-            versions[versions.length - 1];
-          ")
-          echo "📦 Latest package.json version: $LATEST_VERSION"
-
-          # Compare versions
-          if [ "$NVMRC_VERSION" != "$LATEST_VERSION" ]; then
-            echo "❌ .nvmrc version ($NVMRC_VERSION) does not match latest package.json version ($LATEST_VERSION)!"
-            echo ""
-            echo "Please update .nvmrc to: $LATEST_VERSION"
-            exit 1
-          fi
-
-          echo "✅ .nvmrc matches latest package.json version ($LATEST_VERSION)"
 
   test:
     name: Test
