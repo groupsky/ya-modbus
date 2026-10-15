@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.18.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.18.2...@ya-modbus/mqtt-bridge@0.18.3) (2026-10-15)
+
+### Bug Fixes
+
+- **mqtt-bridge:** print success after devices load and name the failing device ([#646](https://github.com/groupsky/ya-modbus/issues/646)) ([f5361a6](https://github.com/groupsky/ya-modbus/commit/f5361a67d10b6902378449e67a468367115ed3d3)), closes [#637](https://github.com/groupsky/ya-modbus/issues/637)
+
 ## [0.18.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.18.1...@ya-modbus/mqtt-bridge@0.18.2) (2026-10-15)
 
 ### Bug Fixes
