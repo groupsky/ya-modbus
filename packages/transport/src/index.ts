@@ -15,6 +15,7 @@ export { isConnectionLostError, ModbusConnection, type OpenClient } from './conn
 export { TransportManager, type TransportManagerOptions, type TransportStats } from './manager.js'
 export { MutexTransport } from './mutex-transport.js'
 export { SlaveTransport } from './slave-transport.js'
+export { LastRequest } from './last-request.js'
 export { getSerialNodeWarning } from './serial-node-warning.js'
 export {
   listSerialPorts,

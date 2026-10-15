@@ -16,7 +16,7 @@ export const RETRY_DELAY_MS = 100
  * @param ms - Duration in milliseconds
  * @returns Promise that resolves after the specified duration
  */
-function sleep(ms: number): Promise<void> {
+export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
