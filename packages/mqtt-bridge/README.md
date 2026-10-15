@@ -198,7 +198,8 @@ This config sets every option that the bridge uses. If an option has a default, 
         "interval": 2000,
         "mode": "continuous",
         "maxRetries": 3,
-        "retryBackoff": 4000
+        "retryBackoff": 4000,
+        "maxRetryBackoff": 60000
       }
     },
     {
@@ -280,8 +281,9 @@ Device meter1 uses /dev/ttyUSB0: baud rate 9600, data bits 8, parity odd, stop b
   - `"interval"` - Poll at fixed intervals (normal behavior)
   - `"continuous"` - Poll immediately after receiving response (minimal 1ms delay)
     In this mode `interval` is not the poll period. It is the retry delay after a failed read, until `maxRetries` is reached (and the base for the default backoff).
-- `maxRetries` (optional) - Number of consecutive failed reads after which the device goes to the `error` state (0-100, default: 3). From then on, the bridge waits `retryBackoff` ms between reads instead of `interval` ms. It is not a limit: the bridge never stops polling. See [Failed Reads and Backoff](#failed-reads-and-backoff).
-- `retryBackoff` (optional) - Time to wait between reads in milliseconds while the device is in the `error` state (1-86400000, default: 2 × `interval`)
+- `maxRetries` (optional) - Number of consecutive failed reads after which the device goes to the `error` state (0-100, default: 3). From then on, the bridge polls the device less often: it waits `retryBackoff` ms, then more, instead of `interval` ms. It is not a limit: the bridge never stops polling. See [Failed Reads and Backoff](#failed-reads-and-backoff).
+- `retryBackoff` (optional) - Time to wait in milliseconds when the device enters the `error` state (1-86400000, default: 2 × `interval`). The wait doubles with every further failed read, up to `maxRetryBackoff`.
+- `maxRetryBackoff` (optional) - Longest wait between reads in milliseconds while the device is in the `error` state (1-86400000, default: 60000, or `retryBackoff` if that is longer). It must not be smaller than `retryBackoff`. The bridge refuses to add a device with a smaller value.
 
 ### Which Data Points Are Polled
 
@@ -301,8 +303,10 @@ Static points are read in a separate request, after the dynamic points, and only
 The bridge counts the consecutive failed reads of a device:
 
 - After a failed read, while the count is below `maxRetries`, the bridge waits `interval` ms before the next read.
-- When the count reaches `maxRetries`, the device goes to the `error` state. The bridge now waits `retryBackoff` ms between reads.
-- The bridge keeps polling with `retryBackoff` until a read works. Then the count goes back to 0, the device goes back to the `connected` state, and the bridge waits `interval` ms again.
+- When the count reaches `maxRetries`, the device goes to the `error` state. The bridge now polls the device less often (slow mode). It waits `retryBackoff` ms, and every further failed read doubles the wait, up to `maxRetryBackoff`. The bridge writes one log line when the device enters slow mode.
+- The bridge keeps polling until a read works. Then the count goes back to 0, the device goes back to the `connected` state, and the bridge waits `interval` ms again. The bridge writes a log line `Device ... recovered after N failed polls`.
+
+Example with `interval` 2000, `maxRetries` 3 and the default `retryBackoff` and `maxRetryBackoff`: after the 3rd failed read the waits are 4 s, 8 s, 16 s, 32 s, and then 60 s for every further failed read.
 
 `maxRetries` says which failed read starts the backoff. It is not the number of extra tries before the backoff:
 
@@ -326,6 +330,12 @@ The message names the port (or host), serial settings, slave ID, function code, 
 
 ```
 Device ex9em-1 recovered after 3 failed polls
+```
+
+When a device enters slow mode, the bridge writes one more line to stderr:
+
+```
+Device ex9em-1 failed 3 polls in a row and is now polled less often: the wait starts at polling.retryBackoff and doubles up to polling.maxRetryBackoff
 ```
 
 To also see the full error with its stack and cause on every failed read, start the bridge with the environment variable `YA_MODBUS_DEBUG=1`. Then the bridge also writes one line to stderr for each request that the transport sends again after it failed:
@@ -418,7 +428,7 @@ Error: Invalid configuration: mqtt.url: URL must start with mqtt://, mqtts://, w
 ### Performance and Security Tips
 
 - Devices that share a connection are read one at a time, so a device can wait for the others. On a serial port, each change to another device also costs its `interDeviceDelay`. Use more serial adapters if you need shorter times between the reads of a device.
-- A device that does not answer keeps its connection busy while the bridge waits for the response. The transport tries every request up to 3 times, and each try can take up to `timeout` ms. Use a larger `retryBackoff` for devices that are often offline.
+- A device that does not answer keeps its connection busy while the bridge waits for the response. The transport tries every request up to 3 times, and each try can take up to `timeout` ms. A device that never answers costs the other devices on the same connection about 5 % of their reads at the longest wait (3 s of bus time every 63 s, with the default `timeout` and `maxRetryBackoff`). Use a larger `maxRetryBackoff` for devices that are often offline.
 - The config file can contain the MQTT password. Make the file readable only by the user that runs the bridge, for example with `chmod 600 config.json`.
 - Other users of the machine can see command line options such as `--mqtt-password` in the process list. Put credentials in the config file instead.
 - `mqtt://` and `ws://` send the password without encryption. Use `mqtts://` or `wss://` when the broker is not on the same machine.
@@ -427,12 +437,12 @@ Error: Invalid configuration: mqtt.url: URL must start with mqtt://, mqtts://, w
 
 Each device has a `state`. `bridge.getDevice()` and `bridge.listDevices()` return it.
 
-| State          | Meaning                                                                                                            |
-| -------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `disconnected` | The device is disabled (`enabled: false`). The bridge does not poll it.                                            |
-| `connecting`   | The bridge is loading the driver.                                                                                  |
-| `connected`    | The driver is loaded. The device is not in the `error` state.                                                      |
-| `error`        | `maxRetries` consecutive reads failed, or the port was not open when the device was added. The bridge still polls. |
+| State          | Meaning                                                                                                                                                                                              |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `disconnected` | The device is disabled (`enabled: false`). The bridge does not poll it.                                                                                                                              |
+| `connecting`   | The bridge is loading the driver.                                                                                                                                                                    |
+| `connected`    | The driver is loaded. The device is not in the `error` state.                                                                                                                                        |
+| `error`        | `maxRetries` consecutive reads failed (slow mode: the bridge polls less often), or the port was not open when the device was added (the bridge polls at `interval` until `maxRetries` reads failed). |
 
 How the state changes:
 
@@ -465,8 +475,8 @@ The bridge keeps running when a USB serial adapter is unplugged:
 - Polls of the devices on that port fail with an error like
   `Connection to /dev/ttyUSB0 lost: port closed (/dev/ttyUSB0 9600 8N1, slave 1, FC03 read holding registers, address 0 (0x0000), count 2)` (or `... lost: EIO: i/o error, write ...` when a
   write failed). The device status shows the error (`errors`, `consecutiveFailures`). The device
-  is polled again on its normal schedule: after `interval`, and after `retryBackoff` once
-  `maxRetries` polls failed in a row.
+  is polled again on its normal schedule: after `interval`, and after `retryBackoff` (growing up to
+  `maxRetryBackoff`) once `maxRetries` polls failed in a row.
 - A later poll opens the port again: the first poll 1 second after the loss, then with a delay
   that doubles after each failed attempt, up to 60 seconds. All devices on the port share the
   new connection.

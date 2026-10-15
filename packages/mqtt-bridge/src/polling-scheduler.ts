@@ -13,6 +13,7 @@ interface ScheduledDevice {
   readInFlight: boolean
   interval: number
   retryBackoff: number
+  maxRetryBackoff: number
   // Read on every poll: readable points with pollType 'dynamic' (the default)
   dynamicIds: string[]
   // Read until one read works, then sent from staticValues in every data message
@@ -27,6 +28,8 @@ type ErrorCallback = (deviceId: string, error: Error, failureCount: number) => v
 /** Failed reads in a row before polling slows down to `retryBackoff` */
 export const DEFAULT_MAX_RETRIES = 3
 const DEFAULT_POLLING_INTERVAL = 5000 // 5 seconds
+/** Longest wait between polls of a failing device, unless `retryBackoff` is longer */
+const DEFAULT_MAX_RETRY_BACKOFF = 60000
 
 // Longest delay setTimeout supports; it runs longer delays after 1ms
 const MAX_TIMER_DELAY = 2 ** 31 - 1
@@ -69,6 +72,17 @@ export class PollingScheduler {
       throw new Error(`Invalid retry backoff for device ${deviceId}: ${retryBackoff}`)
     }
 
+    const maxRetryBackoff =
+      config.polling?.maxRetryBackoff ?? Math.max(DEFAULT_MAX_RETRY_BACKOFF, retryBackoff)
+    if (!isValidTimerDelay(maxRetryBackoff)) {
+      throw new Error(`Invalid max retry backoff for device ${deviceId}: ${maxRetryBackoff}`)
+    }
+    if (maxRetryBackoff < retryBackoff) {
+      throw new Error(
+        `Invalid max retry backoff for device ${deviceId}: ${maxRetryBackoff} is below the retry backoff ${retryBackoff}`
+      )
+    }
+
     // A device scheduled again must not keep the timer of its previous schedule
     this.unscheduleDevice(deviceId)
 
@@ -85,6 +99,7 @@ export class PollingScheduler {
       staticIds: polled.filter((dp) => dp.pollType === 'static').map((dp) => dp.id),
       interval,
       retryBackoff,
+      maxRetryBackoff,
       lastFailureCount: 0,
       readInFlight: false,
     })
@@ -165,9 +180,11 @@ export class PollingScheduler {
     // Determine delay based on mode and failure count
     let delay: number
     if (device.lastFailureCount > 0 && device.lastFailureCount >= maxRetries) {
-      // Use backoff once maxRetries failures happened in a row. It takes at least one failure,
+      // Slow mode, once maxRetries failures happened in a row. It takes at least one failure,
       // so maxRetries 0 backs off after the first failure and not after a successful read.
-      delay = device.retryBackoff
+      // Every further failure doubles the wait, up to maxRetryBackoff.
+      const slowFailures = device.lastFailureCount - Math.max(maxRetries, 1)
+      delay = Math.min(device.retryBackoff * 2 ** slowFailures, device.maxRetryBackoff)
     } else if (mode === 'continuous' && device.lastFailureCount === 0) {
       // Continuous mode: poll on next event loop tick (effectively immediate)
       delay = 1

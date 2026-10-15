@@ -139,6 +139,15 @@ export function createBridge(
     const maxRetries =
       deviceManager.getDeviceConfig(deviceId)?.polling?.maxRetries ?? DEFAULT_MAX_RETRIES
 
+    // The failure that starts slow mode. maxRetries 0 works like 1.
+    if (failureCount === Math.max(maxRetries, 1)) {
+      console.warn(
+        `Device ${deviceId} failed ${failureCount} ${failureCount === 1 ? 'poll' : 'polls'} in a row ` +
+          'and is now polled less often: the wait starts at polling.retryBackoff and doubles ' +
+          'up to polling.maxRetryBackoff'
+      )
+    }
+
     updateDeviceStatus(deviceId, {
       consecutiveFailures: failureCount,
       errors: [error.message],

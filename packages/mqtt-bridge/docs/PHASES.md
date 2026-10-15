@@ -29,7 +29,7 @@ This document lists the development phases of the MQTT bridge package and the st
 - ✅ Dynamic driver loading from npm packages, with validation of the package name (`src/driver-loader.ts`)
 - ✅ Device lifecycle: the driver is loaded on `addDevice()` and unloaded on `removeDevice()`. Device states: `disconnected`, `connecting`, `connected`, `error` (`src/device-manager.ts`, PR #537)
 - ✅ Shared transports, so devices on one serial port or TCP host and port do not collide (`TransportManager` in `@ya-modbus/transport`)
-- ✅ Polling of all devices with per-device intervals. A failed read does not stop the scheduler, and polling slows down to `retryBackoff` after repeated failures (`src/polling-scheduler.ts`)
+- ✅ Polling of all devices with per-device intervals. A failed read does not stop the scheduler, and polling slows down to `retryBackoff` after repeated failures, then doubles the wait up to `maxRetryBackoff` (`src/polling-scheduler.ts`)
 - ✅ Continuous polling mode (PR #383)
 - ✅ Data publishing to `{topicPrefix}/{deviceId}/data` and state publishing to `{topicPrefix}/{deviceId}/status` (`src/index.ts`)
 - ✅ Devices in the config file are loaded on startup (`src/cli.ts`, PR #341, PR #352)
