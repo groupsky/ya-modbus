@@ -381,4 +381,21 @@ describe('TCP Transport', () => {
     expect(logger).toHaveBeenNthCalledWith(1, 1, expect.objectContaining({ message: 'Error 1' }))
     expect(logger).toHaveBeenNthCalledWith(2, 2, expect.objectContaining({ message: 'Error 2' }))
   })
+
+  test('names host, slave and registers in the error of a failed request', async () => {
+    mockModbus.connectTCP.mockResolvedValue(undefined)
+    mockModbus.readCoils.mockRejectedValue({
+      name: 'TransactionTimedOutError',
+      message: 'Timed out',
+      errno: 'ETIMEDOUT',
+    })
+    const transport = await createTCPTransport({ host: '192.168.1.10', slaveId: 5, maxRetries: 1 })
+
+    await expect(transport.readCoils(1, 8)).rejects.toMatchObject({
+      name: 'TransactionTimedOutError',
+      errno: 'ETIMEDOUT',
+      message:
+        'Timed out (192.168.1.10:502, slave 5, FC01 read coils, address 1 (0x0001), count 8)',
+    })
+  })
 })

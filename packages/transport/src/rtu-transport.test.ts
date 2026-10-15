@@ -457,4 +457,29 @@ describe('RTU Transport', () => {
       clock.mockRestore()
     }
   })
+
+  test('names port, serial settings, slave and registers in the error of a failed request', async () => {
+    mockModbus.connectRTUBuffered.mockResolvedValue(undefined)
+    mockModbus.readHoldingRegisters.mockRejectedValue({
+      name: 'TransactionTimedOutError',
+      message: 'Timed out',
+      errno: 'ETIMEDOUT',
+    })
+    const transport = await createRTUTransport({
+      port: '/dev/ttyUSB0',
+      baudRate: 19200,
+      dataBits: 8,
+      parity: 'none',
+      stopBits: 2,
+      slaveId: 4,
+      maxRetries: 1,
+    })
+
+    await expect(transport.readHoldingRegisters(100, 3)).rejects.toMatchObject({
+      name: 'TransactionTimedOutError',
+      errno: 'ETIMEDOUT',
+      message:
+        'Timed out (/dev/ttyUSB0 19200 8N2, slave 4, FC03 read holding registers, address 100 (0x0064), count 3)',
+    })
+  })
 })

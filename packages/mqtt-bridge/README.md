@@ -277,10 +277,10 @@ The transport also retries every Modbus request by itself before a read counts a
 Every failed read writes one line to stderr with the device ID, the failure count and the error message:
 
 ```
-Polling error for device ex9em-1 (failure 2): Timed out
+Polling error for device ex9em-1 (failure 2): Timed out (/dev/ttyUSB0 9600 8N1, slave 1, FC03 read holding registers, address 0 (0x0000), count 2)
 ```
 
-The same message is in the `errors` list of the device status. When a read works after failed reads, the bridge writes one line to stdout:
+The message names the port (or host), serial settings, slave ID, function code, start address and count of the request. The same message is in the `errors` list of the device status. When a read works after failed reads, the bridge writes one line to stdout:
 
 ```
 Device ex9em-1 recovered after 3 failed polls
@@ -394,7 +394,14 @@ How the state changes:
 When the state changes between `connected` and `error`, the bridge publishes a message to `{topicPrefix}/{deviceId}/status`:
 
 ```json
-{ "deviceId": "sensor1", "timestamp": 1760000000000, "state": "error", "errors": ["Timed out"] }
+{
+  "deviceId": "sensor1",
+  "timestamp": 1760000000000,
+  "state": "error",
+  "errors": [
+    "Timed out (/dev/ttyUSB0 9600 8N1, slave 1, FC03 read holding registers, address 0 (0x0000), count 2)"
+  ]
+}
 ```
 
 The `errors` field is only there when the state is `error`. It has the message of the last failed read, or why the port could not be opened. Status messages use QoS 0 and are not retained, the same as the messages on `{topicPrefix}/{deviceId}/data`. If the bridge is not connected to the broker when the state changes, the message is lost. Use `bridge.getDevice()` to read the current state at any time.
@@ -406,7 +413,7 @@ The `connected` field of the device status is deprecated. Use `state` instead. `
 The bridge keeps running when a USB serial adapter is unplugged:
 
 - Polls of the devices on that port fail with an error like
-  `Connection to /dev/ttyUSB0 lost: port closed` (or `... lost: EIO: i/o error, write` when a
+  `Connection to /dev/ttyUSB0 lost: port closed (/dev/ttyUSB0 9600 8N1, slave 1, FC03 read holding registers, address 0 (0x0000), count 2)` (or `... lost: EIO: i/o error, write ...` when a
   write failed). The device status shows the error (`errors`, `consecutiveFailures`). The device
   is polled again on its normal schedule: after `interval`, and after `retryBackoff` once
   `maxRetries` polls failed in a row.

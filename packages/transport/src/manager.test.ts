@@ -802,10 +802,56 @@ describe('TransportManager', () => {
 
       await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject({
         name: 'ConnectionLostError',
-        message: 'Connection to /dev/ttyUSB0 lost: EIO: i/o error, write',
+        message: expect.stringContaining('Connection to /dev/ttyUSB0 lost: EIO: i/o error, write'),
       })
       expect(ModbusRTUMock).toHaveBeenCalledTimes(1)
       expect(mockClient1.readHoldingRegisters).not.toHaveBeenCalled()
+    })
+
+    test('names port, serial settings, slave and registers in the error of a failed request', async () => {
+      mockClient1.readHoldingRegisters.mockRejectedValue({
+        name: 'TransactionTimedOutError',
+        message: 'Timed out',
+        errno: 'ETIMEDOUT',
+      })
+      const transport = await manager.getTransport({ ...rtuConfig, slaveId: 3 })
+
+      await expect(transport.readHoldingRegisters(16, 2)).rejects.toMatchObject({
+        name: 'TransactionTimedOutError',
+        errno: 'ETIMEDOUT',
+        message:
+          'Timed out (/dev/ttyUSB0 9600 8E1, slave 3, FC03 read holding registers, address 16 (0x0010), count 2)',
+      })
+    })
+
+    test('names host and port in the error of a failed TCP request', async () => {
+      mockClient1.readInputRegisters.mockRejectedValue(new Error('Timed out'))
+      const transport = await manager.getTransport({
+        host: '192.168.1.100',
+        slaveId: 2,
+        maxRetries: 1,
+      })
+
+      await expect(transport.readInputRegisters(0, 4)).rejects.toThrow(
+        'Timed out (192.168.1.100:502, slave 2, FC04 read input registers, address 0 (0x0000), count 4)'
+      )
+    })
+
+    test('does not change the error of a lost connection, and adds the request to each rejection', async () => {
+      const transport = await manager.getTransport(rtuConfig)
+      mockClient1.emit('error', serialPortError)
+
+      const first = await transport.readHoldingRegisters(0, 1).catch((e: unknown) => e)
+      const second = await transport.readInputRegisters(1, 2).catch((e: unknown) => e)
+
+      expect(first).toMatchObject({
+        name: 'ConnectionLostError',
+        message:
+          'Connection to /dev/ttyUSB0 lost: EIO: i/o error, write (/dev/ttyUSB0 9600 8E1, slave 1, FC03 read holding registers, address 0 (0x0000), count 1)',
+      })
+      expect((second as Error).message).toBe(
+        'Connection to /dev/ttyUSB0 lost: EIO: i/o error, write (/dev/ttyUSB0 9600 8E1, slave 1, FC04 read input registers, address 1 (0x0001), count 2)'
+      )
     })
 
     test('rejects a request in flight at once and releases the bus', async () => {
@@ -821,7 +867,7 @@ describe('TransportManager', () => {
 
       await expect(inFlight).rejects.toMatchObject({
         name: 'ConnectionLostError',
-        message: 'Connection to /dev/ttyUSB0 lost: port closed',
+        message: expect.stringContaining('Connection to /dev/ttyUSB0 lost: port closed'),
       })
       await expect(queued).rejects.toMatchObject({ name: 'ConnectionLostError' })
     })
@@ -877,8 +923,9 @@ describe('TransportManager', () => {
         now += 1
         await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject({
           name: 'ConnectionLostError',
-          message:
-            'Connection to /dev/ttyUSB0 lost: Error: No such file or directory, cannot open /dev/ttyUSB0',
+          message: expect.stringContaining(
+            'Connection to /dev/ttyUSB0 lost: Error: No such file or directory, cannot open /dev/ttyUSB0'
+          ),
         })
         attempts++
         expect(ModbusRTUMock).toHaveBeenCalledTimes(1 + attempts)
@@ -963,10 +1010,13 @@ describe('TransportManager', () => {
       Object.assign(mockClient1, { isOpen: false })
       mockClient1.readHoldingRegisters.mockRejectedValue(portNotOpen)
 
-      await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject(portNotOpen)
+      await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject({
+        ...portNotOpen,
+        message: expect.stringContaining(portNotOpen.message),
+      })
       await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject({
         name: 'ConnectionLostError',
-        message: 'Connection to 192.168.1.100:502 lost: Port Not Open',
+        message: expect.stringContaining('Connection to 192.168.1.100:502 lost: Port Not Open'),
       })
       now += 1000
 
@@ -994,7 +1044,9 @@ describe('TransportManager', () => {
 
       await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject({
         name: 'ConnectionLostError',
-        message: 'Connection to 192.168.1.100:502 lost: connect ECONNREFUSED 192.168.1.100:502',
+        message: expect.stringContaining(
+          'Connection to 192.168.1.100:502 lost: connect ECONNREFUSED 192.168.1.100:502'
+        ),
         code: 'ECONNREFUSED',
         errno: -111,
       })
@@ -1072,8 +1124,9 @@ describe('TransportManager', () => {
     // The port was never open, so the message does not say that the connection was lost
     const missing = {
       name: 'ConnectionLostError',
-      message:
-        'Could not open /dev/ttyUSB0: Error: No such file or directory, cannot open /dev/ttyUSB0',
+      message: expect.stringContaining(
+        'Could not open /dev/ttyUSB0: Error: No such file or directory, cannot open /dev/ttyUSB0'
+      ),
     }
 
     let now: number
