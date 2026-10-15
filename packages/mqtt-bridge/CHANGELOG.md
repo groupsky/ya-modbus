@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.18.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.18.3...@ya-modbus/mqtt-bridge@0.18.4) (2026-10-15)
+
+### Bug Fixes
+
+- **mqtt-bridge:** log one line per failed poll and log recovery ([#647](https://github.com/groupsky/ya-modbus/issues/647)) ([661a5c7](https://github.com/groupsky/ya-modbus/commit/661a5c7b8ccdb8b815fe6b0035391b4e33fb18de)), closes [#607](https://github.com/groupsky/ya-modbus/issues/607)
+
 ## [0.18.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.18.2...@ya-modbus/mqtt-bridge@0.18.3) (2026-10-15)
 
 ### Bug Fixes
