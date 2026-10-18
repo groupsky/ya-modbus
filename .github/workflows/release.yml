@@ -181,7 +181,8 @@ jobs:
         if: steps.exists.outputs.exists == 'false'
         run: |
           for pkg in mqtt-bridge driver-loader transport driver-types driver-sdk \
-            driver-dds024mr driver-ex9em driver-or-we-516 driver-sdm630 driver-xymd1; do
+            driver-dds024mr driver-dds519mr driver-ex9em driver-or-we-514 driver-or-we-516 \
+            driver-sdm630 driver-xymd1; do
             spec="@ya-modbus/$pkg@$(jq -r .version packages/$pkg/package.json)"
             for attempt in $(seq 1 40); do
               npm view "$spec" version >/dev/null 2>&1 && continue 2

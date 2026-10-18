@@ -9,7 +9,7 @@ FROM node:24.22.0-bookworm-slim
 
 ARG BRIDGE_VERSION
 # Device drivers, space separated. The bridge loads a driver by package name from node_modules.
-ARG DRIVERS="@ya-modbus/driver-dds024mr @ya-modbus/driver-ex9em @ya-modbus/driver-or-we-516 @ya-modbus/driver-sdm630 @ya-modbus/driver-xymd1"
+ARG DRIVERS="@ya-modbus/driver-dds024mr @ya-modbus/driver-dds519mr @ya-modbus/driver-ex9em @ya-modbus/driver-or-we-514 @ya-modbus/driver-or-we-516 @ya-modbus/driver-sdm630 @ya-modbus/driver-xymd1"
 
 RUN test -n "$BRIDGE_VERSION" || (echo "Set --build-arg BRIDGE_VERSION=<version>" >&2; exit 1)
 
