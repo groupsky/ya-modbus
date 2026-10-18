@@ -30,6 +30,7 @@
       "@ya-modbus/driver-or-we-516": ["packages/driver-or-we-516/src"],
       "@ya-modbus/driver-dds024mr": ["packages/driver-dds024mr/src"],
       "@ya-modbus/driver-or-we-514": ["packages/driver-or-we-514/src"],
+      "@ya-modbus/driver-dds519mr": ["packages/driver-dds519mr/src"],
       "@ya-modbus/driver-sdm630": ["packages/driver-sdm630/src"]
     }
   },

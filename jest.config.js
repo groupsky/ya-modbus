@@ -13,6 +13,7 @@ module.exports = {
     '<rootDir>/packages/driver-or-we-516',
     '<rootDir>/packages/driver-dds024mr',
     '<rootDir>/packages/driver-or-we-514',
+    '<rootDir>/packages/driver-dds519mr',
     '<rootDir>/packages/driver-sdm630',
   ],
   coverageReporters: ['text', 'lcov', 'html'],
