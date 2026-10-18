@@ -53,10 +53,11 @@ describe('PollingScheduler slow mode', () => {
     const waits: number[] = []
     for (let i = 0; i < reads; i++) {
       const before = Date.now()
-      // Step 1 ms at a time to find when the next read starts
+      // Jump from timer to timer to find when the next read starts. Stepping 1 ms at a time
+      // takes hundreds of thousands of steps for the long waits and can time out on a busy runner.
       const calls = readDataPoints.mock.calls.length
       while (readDataPoints.mock.calls.length === calls) {
-        await jest.advanceTimersByTimeAsync(1)
+        await jest.advanceTimersToNextTimerAsync()
       }
       waits.push(Date.now() - before)
     }
