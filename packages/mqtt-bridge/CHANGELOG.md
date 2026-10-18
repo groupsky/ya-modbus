@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.23.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.22.0...@ya-modbus/mqtt-bridge@0.23.0) (2026-10-18)
+
+### Features
+
+- **mqtt-bridge:** add the DDS519MR and OR-WE-514 drivers to the container image ([#659](https://github.com/groupsky/ya-modbus/issues/659)) ([d9f6e6f](https://github.com/groupsky/ya-modbus/commit/d9f6e6f7a45e2d1c4c6e7d48ff83d347a9de041d)), closes [#651](https://github.com/groupsky/ya-modbus/issues/651) [#652](https://github.com/groupsky/ya-modbus/issues/652)
+
 # [0.22.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.21.0...@ya-modbus/mqtt-bridge@0.22.0) (2026-10-15)
 
 ### Features
