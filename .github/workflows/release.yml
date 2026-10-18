@@ -176,7 +176,8 @@ jobs:
           fi
 
       # The npm registry can answer 404 for minutes after a publish. The image
-      # installs the bridge and its dependencies from there.
+      # installs the bridge and its dependencies from there. `npm view` can show
+      # a version while its tarball still answers 404, so download the tarball.
       - name: Wait for the packages on npm
         if: steps.exists.outputs.exists == 'false'
         run: |
@@ -185,7 +186,8 @@ jobs:
             driver-sdm630 driver-xymd1; do
             spec="@ya-modbus/$pkg@$(jq -r .version packages/$pkg/package.json)"
             for attempt in $(seq 1 40); do
-              npm view "$spec" version >/dev/null 2>&1 && continue 2
+              tarball=$(npm view "$spec" dist.tarball 2>/dev/null) && [ -n "$tarball" ] &&
+                curl -fsSL --max-time 60 -o /dev/null "$tarball" && continue 2
               echo "Waiting for $spec (attempt $attempt)"
               sleep 30
             done
