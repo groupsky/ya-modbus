@@ -2,6 +2,7 @@ import type { Transport } from '@ya-modbus/driver-types'
 import type { Mutex } from 'async-mutex'
 import type ModbusRTU from 'modbus-serial'
 
+import { checkLength } from './answer-length.js'
 import { toConnection, type ModbusConnection } from './connection.js'
 import { LastRequest } from './last-request.js'
 import { withRetry, type RetryLogger } from './retry.js'
@@ -66,28 +67,28 @@ export class SlaveTransport implements Transport {
   async readHoldingRegisters(address: number, count: number): Promise<Buffer> {
     return this.request(async (client) => {
       const result = await client.readHoldingRegisters(address, count)
-      return result.buffer
+      return checkLength(result.buffer, count * 2)
     })
   }
 
   async readInputRegisters(address: number, count: number): Promise<Buffer> {
     return this.request(async (client) => {
       const result = await client.readInputRegisters(address, count)
-      return result.buffer
+      return checkLength(result.buffer, count * 2)
     })
   }
 
   async readCoils(address: number, count: number): Promise<Buffer> {
     return this.request(async (client) => {
       const result = await client.readCoils(address, count)
-      return result.buffer
+      return checkLength(result.buffer, Math.ceil(count / 8))
     })
   }
 
   async readDiscreteInputs(address: number, count: number): Promise<Buffer> {
     return this.request(async (client) => {
       const result = await client.readDiscreteInputs(address, count)
-      return result.buffer
+      return checkLength(result.buffer, Math.ceil(count / 8))
     })
   }
 

@@ -393,7 +393,7 @@ describe('SlaveTransport', () => {
         buffer: Buffer.from([0x00, 0x00]),
       })
 
-      await expect(transport.readHoldingRegisters(10, 2)).resolves.toEqual(
+      await expect(transport.readHoldingRegisters(10, 1)).resolves.toEqual(
         Buffer.from([0x00, 0x00])
       )
     })
@@ -567,5 +567,40 @@ describe('SlaveTransport', () => {
         [2, 30],
       ])
     })
+  })
+
+  describe('when the device answers with the wrong number of bytes', () => {
+    const reads = [
+      { method: 'readHoldingRegisters', count: 2, expectedBytes: 4 },
+      { method: 'readInputRegisters', count: 2, expectedBytes: 4 },
+      { method: 'readCoils', count: 9, expectedBytes: 2 },
+      { method: 'readDiscreteInputs', count: 9, expectedBytes: 2 },
+    ] as const
+
+    test.each(reads)(
+      '$method sends the request again and returns the good answer',
+      async ({ method, count, expectedBytes }) => {
+        const good = Buffer.alloc(expectedBytes, 1)
+        mockClient[method]
+          .mockResolvedValueOnce({ buffer: Buffer.alloc(1) } as never)
+          .mockResolvedValueOnce({ buffer: good } as never)
+        const transport = new SlaveTransport(1, mockClient, mutex, 2)
+
+        await expect(transport[method](0, count)).resolves.toBe(good)
+        expect(mockClient[method]).toHaveBeenCalledTimes(2)
+      }
+    )
+
+    test.each(reads)(
+      '$method rejects and says what was expected when every answer is wrong',
+      async ({ method, count, expectedBytes }) => {
+        mockClient[method].mockResolvedValue({ buffer: Buffer.alloc(expectedBytes + 1) } as never)
+        const transport = new SlaveTransport(1, mockClient, mutex, 2)
+
+        await expect(transport[method](0, count)).rejects.toThrow(
+          `Wrong answer length: expected ${expectedBytes} data bytes, got ${expectedBytes + 1}`
+        )
+      }
+    )
   })
 })

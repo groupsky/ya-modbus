@@ -118,3 +118,49 @@ describe('when the serial port fails', () => {
     expect(port.write).not.toHaveBeenCalled()
   })
 })
+
+// These tests use a fake client, because the real one never returns a short buffer
+describe('when the device answers with the wrong number of bytes', () => {
+  const reads = [
+    { method: 'readHoldingRegisters', count: 2, expectedBytes: 4 },
+    { method: 'readInputRegisters', count: 2, expectedBytes: 4 },
+    { method: 'readCoils', count: 9, expectedBytes: 2 },
+    { method: 'readDiscreteInputs', count: 9, expectedBytes: 2 },
+  ] as const
+
+  /** Client that answers each read with the next buffer, then repeats the last one */
+  function clientAnswering(
+    method: (typeof reads)[number]['method'],
+    ...answers: Buffer[]
+  ): { client: ModbusRTU; read: jest.Mock } {
+    const read = jest.fn()
+    for (const buffer of answers) read.mockResolvedValueOnce({ buffer })
+    read.mockResolvedValue({ buffer: answers[answers.length - 1] })
+    const client = Object.assign(new EventEmitter(), { isOpen: true, [method]: read })
+    return { client: client as unknown as ModbusRTU, read }
+  }
+
+  test.each(reads)(
+    '$method sends the request again and returns the good answer',
+    async ({ method, count, expectedBytes }) => {
+      const good = Buffer.alloc(expectedBytes, 1)
+      const { client, read } = clientAnswering(method, Buffer.alloc(1), good)
+      const transport = createModbusTransport(client, 2)
+
+      await expect(transport[method](0, count)).resolves.toBe(good)
+      expect(read).toHaveBeenCalledTimes(2)
+    }
+  )
+
+  test.each(reads)(
+    '$method rejects and says what was expected when every answer is wrong',
+    async ({ method, count, expectedBytes }) => {
+      const { client } = clientAnswering(method, Buffer.alloc(expectedBytes + 1))
+      const transport = createModbusTransport(client, 2)
+
+      await expect(transport[method](0, count)).rejects.toThrow(
+        `Wrong answer length: expected ${expectedBytes} data bytes, got ${expectedBytes + 1}`
+      )
+    }
+  )
+})
