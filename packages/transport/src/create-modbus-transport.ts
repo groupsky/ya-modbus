@@ -1,6 +1,7 @@
 import type { Transport } from '@ya-modbus/driver-types'
 import type ModbusRTU from 'modbus-serial'
 
+import { checkLength } from './answer-length.js'
 import { toConnection, type ModbusConnection } from './connection.js'
 import { withRetry, type RetryLogger } from './retry.js'
 
@@ -29,7 +30,7 @@ export function createModbusTransport(
         () =>
           connection.run(async (modbus) => {
             const result = await modbus.readHoldingRegisters(address, count)
-            return result.buffer
+            return checkLength(result.buffer, count * 2)
           }),
         maxRetries,
         logger
@@ -41,7 +42,7 @@ export function createModbusTransport(
         () =>
           connection.run(async (modbus) => {
             const result = await modbus.readInputRegisters(address, count)
-            return result.buffer
+            return checkLength(result.buffer, count * 2)
           }),
         maxRetries,
         logger
@@ -53,7 +54,7 @@ export function createModbusTransport(
         () =>
           connection.run(async (modbus) => {
             const result = await modbus.readCoils(address, count)
-            return result.buffer
+            return checkLength(result.buffer, Math.ceil(count / 8))
           }),
         maxRetries,
         logger
@@ -65,7 +66,7 @@ export function createModbusTransport(
         () =>
           connection.run(async (modbus) => {
             const result = await modbus.readDiscreteInputs(address, count)
-            return result.buffer
+            return checkLength(result.buffer, Math.ceil(count / 8))
           }),
         maxRetries,
         logger
