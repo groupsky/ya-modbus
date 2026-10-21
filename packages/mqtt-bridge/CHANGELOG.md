@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.24.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.23.1...@ya-modbus/mqtt-bridge@0.24.0) (2026-10-21)
+
+### Features
+
+- **mqtt-bridge:** write data points from MQTT, then read the device ([#676](https://github.com/groupsky/ya-modbus/issues/676)) ([eec51fb](https://github.com/groupsky/ya-modbus/commit/eec51fb50d35d78d2f85602d5240c3e442e2afd7)), closes [#675](https://github.com/groupsky/ya-modbus/issues/675)
+
 ## [0.23.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.23.0...@ya-modbus/mqtt-bridge@0.23.1) (2026-10-20)
 
 **Note:** Version bump only for package @ya-modbus/mqtt-bridge
