@@ -280,7 +280,26 @@ describe('createBridge writes', () => {
       expect.objectContaining({
         ok: false,
         error: 'Device thermostat does not allow writes (allowWrites is not true)',
+        written: [],
       }),
+    ])
+  })
+
+  it('writes nothing more after a driver error on the first point, and still reads the device', async () => {
+    await startWith()
+
+    await send({ setpoint: 99, mode: 2 })
+
+    expect(driver.writeDataPoint.mock.calls).toEqual([['setpoint', 99]])
+    expect(published('set/result')).toEqual([
+      expect.objectContaining({
+        ok: false,
+        error: 'Failed to write data point setpoint: Illegal data value',
+        written: [],
+      }),
+    ])
+    expect(published('data')).toEqual([
+      expect.objectContaining({ data: expect.objectContaining({ mode: 1, setpoint: 20 }) }),
     ])
   })
 
