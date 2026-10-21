@@ -138,13 +138,15 @@ export const deviceConfigSchema = z
     connection: z.union([rtuConnectionSchema, tcpConnectionSchema]),
     enabled: z.boolean().optional(),
     polling: pollingConfigSchema,
+    allowWrites: z.boolean().optional(),
   })
   .transform((data) => {
-    const { enabled, polling, ...rest } = data
+    const { enabled, polling, allowWrites, ...rest } = data
     return {
       ...rest,
       ...(enabled !== undefined ? { enabled } : {}),
       ...(polling !== undefined ? { polling } : {}),
+      ...(allowWrites !== undefined ? { allowWrites } : {}),
     }
   })
 

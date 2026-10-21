@@ -40,6 +40,7 @@ describe('createBridge MQTT reconnect', () => {
       publish: jest.fn((_topic: string, _payload: unknown, _opts: object, cb?: () => void) =>
         cb?.()
       ),
+      subscribe: jest.fn(),
     })
     mockedMqtt.connect.mockReturnValue(client as unknown as mqtt.MqttClient)
 
