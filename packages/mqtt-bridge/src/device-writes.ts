@@ -2,6 +2,17 @@ import type { DataPoint } from '@ya-modbus/driver-types'
 
 import type { DeviceConfig } from './types.js'
 
+/** A failed write. `written` lists the points that were written before it, in order. */
+export class WriteError extends Error {
+  constructor(
+    message: string,
+    readonly written: string[],
+    options?: ErrorOptions
+  ) {
+    super(message, options)
+  }
+}
+
 /**
  * Values of a write message: a JSON object of data point IDs and values, with at least one point
  */

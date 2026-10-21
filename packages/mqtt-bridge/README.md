@@ -481,9 +481,9 @@ The bridge subscribes to `{topicPrefix}/{deviceId}/set` for each enabled device.
 
 - The device takes writes only when its config has `allowWrites: true`.
 - Before the bridge writes anything, it checks every point of the message. The point must exist in the driver and be writable: `access` is `'w'` or `'rw'`. A point without `access` is read-only. If the device does not allow writes, or a point does not exist or is read-only, the bridge writes nothing.
-- The bridge writes the points with the driver, one at a time, in the order of the message. If the driver fails to write a point, for example because the device rejects the value, the bridge stops. The points before it are written, the points after it are not.
+- The bridge writes the points with the driver, one at a time, in the order of the message. If the driver fails to write a point, for example because the device rejects the value, the bridge stops. The points before it stay written, and the result lists them in `written`. The points after it are not written.
 - A write waits for its turn on the serial port or TCP connection, like a poll. It never runs in the middle of a poll. On a serial port, the pause between devices (`interDeviceDelay`) applies to it too.
-- Right after the writes, the bridge reads the device and publishes the data on `{topicPrefix}/{deviceId}/data`, without waiting for the next poll. The bridge reads the device also after a failed write, because the points before it are written. When this read works, it counts as a good poll: the count of failed polls goes back to 0, and a device in the `error` state goes back to `connected`. The next poll stays at the time it was planned. If this read fails, the bridge logs a warning and the next poll reads the device. The failed read does not count as a failed poll.
+- Right after the writes, the bridge reads the device and publishes the data on `{topicPrefix}/{deviceId}/data`, without waiting for the next poll. The bridge reads the device also after a driver error, so the data shows the real state of the device, with the points that were written. When this read works, it counts as a good poll: the count of failed polls goes back to 0, and a device in the `error` state goes back to `connected`. The next poll stays at the time it was planned. If this read fails, the bridge logs a warning and the next poll reads the device. The failed read does not count as a failed poll.
 - A message published with retain is written once: the broker clears the retain flag when it forwards the message to the bridge. The broker also keeps a copy and sends it again with the retain flag on every subscribe, at every start of the bridge and after every reconnect. The bridge ignores this copy and logs a warning. Publish write messages without retain.
 
 The bridge publishes the result of every write message on `{topicPrefix}/{deviceId}/set/result`, except a retained copy that it ignores. Result messages use QoS 0 and are not retained, the same as data and status messages. When all points are written:
@@ -504,19 +504,20 @@ When the write failed:
   "deviceId": "thermostat1",
   "timestamp": 1760000000000,
   "ok": false,
-  "error": "Data point fan does not exist",
-  "values": { "setpoint": 21.5, "fan": 1 }
+  "error": "Failed to write data point mode: Illegal data value",
+  "written": ["setpoint"],
+  "values": { "setpoint": 21.5, "mode": 9 }
 }
 ```
 
-`values` is the message that was received. It is missing when the message is not a JSON object with at least one point. `error` says what is wrong, and names the point when the problem is a point:
+`written` lists the IDs of the points that the driver wrote before the error, in the order of the message. It is `[]` when nothing was written. `values` is the message that was received. It is missing when the message is not a JSON object with at least one point. `error` says what is wrong, and names the point when the problem is a point:
 
 | `error`                                                             | Cause                                                                                                   |
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `Device <deviceId> does not allow writes (allowWrites is not true)` | The device config does not have `allowWrites: true`. Nothing is written.                                |
 | `Data point <id> does not exist`                                    | The driver has no data point with this ID. Nothing is written.                                          |
 | `Data point <id> is read-only`                                      | The data point cannot be written. Nothing is written.                                                   |
-| `Failed to write data point <id>: <message>`                        | The driver failed to write this point. The points before it are written.                                |
+| `Failed to write data point <id>: <message>`                        | The driver failed to write this point. The points before it are written and listed in `written`.        |
 | `The message is not valid JSON`                                     | Nothing is written.                                                                                     |
 | `The message must be a JSON object of data point IDs and values`    | The message is an array, a number, a string, `null` or an empty object. Nothing is written.             |
 | `Device <deviceId> is not polled`                                   | The device was removed, or the bridge stopped, while the write waited for its turn. Nothing is written. |

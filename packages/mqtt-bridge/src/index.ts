@@ -1,7 +1,7 @@
 import mqtt from 'mqtt'
 
 import { DeviceManager, type DeviceStatusUpdate } from './device-manager.js'
-import { parseWriteValues } from './device-writes.js'
+import { parseWriteValues, WriteError } from './device-writes.js'
 import { DriverLoader } from './driver-loader.js'
 import { DEFAULT_MAX_RETRIES, PollingScheduler } from './polling-scheduler.js'
 import type {
@@ -176,7 +176,8 @@ export function createBridge(
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error)
       console.warn(`Write to device ${deviceId} failed: ${reason}`)
-      publishDeviceMessage(deviceId, 'set/result', { ok: false, error: reason, values })
+      const written = error instanceof WriteError ? error.written : []
+      publishDeviceMessage(deviceId, 'set/result', { ok: false, error: reason, written, values })
     }
   }
 

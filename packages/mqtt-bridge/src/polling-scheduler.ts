@@ -1,6 +1,6 @@
 import type { DeviceDriver } from '@ya-modbus/driver-types'
 
-import { checkWrites } from './device-writes.js'
+import { checkWrites, WriteError } from './device-writes.js'
 import type { DeviceConfig, DeviceConnection } from './types.js'
 
 interface ScheduledDevice {
@@ -128,7 +128,8 @@ export class PollingScheduler {
    *
    * Nothing is written when the device does not allow writes, or a point does not exist or is
    * read-only. A driver error stops the writes: the points before it are written, the points after
-   * it are not, and the device is still read. The error names the point and why.
+   * it are not, and the device is still read. The error names the point and why. After a driver
+   * error it is a WriteError that lists the written points.
    *
    * A failed read after the writes is left to the next poll and is not a failed poll.
    */
@@ -145,14 +146,18 @@ export class PollingScheduler {
         throw new Error(`Device ${deviceId} is not polled`)
       }
 
+      const written: string[] = []
       try {
         for (const [id, value] of Object.entries(values)) {
           try {
             await device.driver.writeDataPoint(id, value)
           } catch (error) {
             const reason = error instanceof Error ? error.message : String(error)
-            throw new Error(`Failed to write data point ${id}: ${reason}`, { cause: error })
+            throw new WriteError(`Failed to write data point ${id}: ${reason}`, written, {
+              cause: error,
+            })
           }
+          written.push(id)
         }
       } finally {
         try {

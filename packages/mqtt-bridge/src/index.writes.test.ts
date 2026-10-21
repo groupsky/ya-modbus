@@ -30,7 +30,7 @@ describe('createBridge writes', () => {
   }
   const thermostat: DeviceConfig = { ...readOnlyThermostat, allowWrites: true }
 
-  /** Driver of a device whose points hold the values in `registers` */
+  /** Driver of a device whose points hold the values in `registers`. It rejects a value above `max`. */
   const createDriver = (
     dataPoints: DataPoint[],
     registers: Record<string, unknown>
@@ -44,6 +44,10 @@ describe('createBridge writes', () => {
     dataPoints,
     readDataPoint: jest.fn<DeviceDriver['readDataPoint']>(),
     writeDataPoint: jest.fn((id: string, value: unknown) => {
+      const max = dataPoints.find((dp) => dp.id === id)?.max
+      if (max !== undefined && Number(value) > max) {
+        return Promise.reject(new Error('Illegal data value'))
+      }
       registers[id] = value
       return Promise.resolve()
     }),
@@ -82,7 +86,7 @@ describe('createBridge writes', () => {
       [
         { id: 'temperature', type: 'float' },
         { id: 'version', type: 'string', access: 'r' },
-        { id: 'setpoint', type: 'float', access: 'rw' },
+        { id: 'setpoint', type: 'float', access: 'rw', max: 30 },
         { id: 'mode', type: 'integer', access: 'rw' },
         { id: 'reset', type: 'boolean', access: 'w' },
       ],
@@ -251,7 +255,14 @@ describe('createBridge writes', () => {
 
     expect(driver.writeDataPoint).not.toHaveBeenCalled()
     expect(published('set/result')).toEqual([
-      { deviceId: 'thermostat', timestamp: expect.any(Number), ok: false, error, values },
+      {
+        deviceId: 'thermostat',
+        timestamp: expect.any(Number),
+        ok: false,
+        error,
+        written: [],
+        values,
+      },
     ])
   })
 
@@ -275,9 +286,6 @@ describe('createBridge writes', () => {
 
   it('stops at a driver error, names the point, and still reads the device', async () => {
     await startWith()
-    driver.writeDataPoint
-      .mockResolvedValueOnce(undefined)
-      .mockRejectedValueOnce(new Error('Illegal data value'))
 
     await send({ mode: 2, setpoint: 99, reset: true })
 
@@ -290,10 +298,14 @@ describe('createBridge writes', () => {
       expect.objectContaining({
         ok: false,
         error: 'Failed to write data point setpoint: Illegal data value',
+        written: ['mode'],
         values: { mode: 2, setpoint: 99, reset: true },
       }),
     ])
-    expect(published('data')).toHaveLength(1)
+    // The data shows the real state: mode is written, setpoint is not
+    expect(published('data')).toEqual([
+      expect.objectContaining({ data: expect.objectContaining({ mode: 2, setpoint: 20 }) }),
+    ])
   })
 
   it('leaves a failed read after a write to the next poll', async () => {
@@ -361,7 +373,7 @@ describe('createBridge writes', () => {
 
     expect(driver.writeDataPoint).not.toHaveBeenCalled()
     expect(published('set/result')).toEqual([
-      { deviceId: 'thermostat', timestamp: expect.any(Number), ok: false, error },
+      { deviceId: 'thermostat', timestamp: expect.any(Number), ok: false, error, written: [] },
     ])
   })
 })
