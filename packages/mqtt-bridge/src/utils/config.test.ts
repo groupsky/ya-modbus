@@ -152,6 +152,7 @@ describe('loadConfig', () => {
           driver: '@ya-modbus/driver-ex9em',
           connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
           polling: { interval: 2000 },
+          allowWrites: true,
         },
       ],
     })
@@ -163,6 +164,7 @@ describe('loadConfig', () => {
     expect(config.devices).toHaveLength(1)
     expect(config.devices?.[0].deviceId).toBe('test-device')
     expect(config.devices?.[0].driver).toBe('@ya-modbus/driver-ex9em')
+    expect(config.devices?.[0].allowWrites).toBe(true)
   })
 
   it.each(['a/b', 'a+', 'a#', '$SYS', 'a\u0000b'])(

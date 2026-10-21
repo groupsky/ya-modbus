@@ -81,6 +81,12 @@ export interface DeviceConfig {
   connection: DeviceConnection
   enabled?: boolean
   polling?: PollingConfig
+  /**
+   * Write the data points of a message on `{topicPrefix}/{deviceId}/set` (default: false).
+   * Without it, every write message gets an error result and nothing is written, so a meter is
+   * not written by mistake.
+   */
+  allowWrites?: boolean
 }
 
 export type DeviceConnection = RTUConnection | TCPConnection

@@ -640,6 +640,24 @@ describe('validateDeviceConfig', () => {
     })
   })
 
+  describe('allowWrites', () => {
+    const device = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: { type: 'tcp', host: 'localhost', slaveId: 1 },
+    }
+
+    it.each([true, false])('should accept %p', (allowWrites) => {
+      expect(() => validateDeviceConfig({ ...device, allowWrites })).not.toThrow()
+    })
+
+    it.each(['true', 1, null])('should reject %p', (allowWrites) => {
+      expect(() => validateDeviceConfig({ ...device, allowWrites })).toThrow(
+        'Invalid device configuration: allowWrites'
+      )
+    })
+  })
+
   it.each([
     {
       config: { connection: { type: 'rtu', port: '/dev/ttyUSB0', slaveId: 1, paritty: 'odd' } },

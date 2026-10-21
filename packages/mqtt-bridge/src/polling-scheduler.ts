@@ -1,11 +1,12 @@
 import type { DeviceDriver } from '@ya-modbus/driver-types'
 
+import { checkWrites, WriteError } from './device-writes.js'
 import type { DeviceConfig, DeviceConnection } from './types.js'
 
 interface ScheduledDevice {
   config: DeviceConfig
   driver: DeviceDriver
-  // Devices with the same key share a bus, and are polled one at a time
+  // Devices with the same key share a bus, and are polled and written one at a time
   connectionKey: string
   // Pending timer of the poll chain, undefined while a read is in flight or polling is stopped
   timer?: NodeJS.Timeout | undefined
@@ -49,7 +50,7 @@ const connectionKey = (connection: DeviceConnection): string =>
 export class PollingScheduler {
   private devices = new Map<string, ScheduledDevice>()
   private running = false
-  // Per connection: settles when the last poll that waits for its turn has ended
+  // Per connection: settles when the last poll or write that waits for its turn has ended
   private lastPolls = new Map<string, Promise<unknown>>()
 
   constructor(
@@ -118,6 +119,58 @@ export class PollingScheduler {
       clearTimeout(device.timer)
     }
     this.devices.delete(deviceId)
+  }
+
+  /**
+   * Write data points of a device in the order of `values`, then read the device at once and
+   * pass the data to onData. The write takes its turn on the connection like a poll, so it never
+   * runs in the middle of another poll or write.
+   *
+   * Nothing is written when the device does not allow writes, or a point does not exist or is
+   * read-only. A driver error stops the writes: the points before it are written, the points after
+   * it are not, and the device is still read. The error names the point and why. After a driver
+   * error it is a WriteError that lists the written points.
+   *
+   * A failed read after the writes is left to the next poll and is not a failed poll.
+   */
+  async writeDevice(deviceId: string, values: Record<string, unknown>): Promise<void> {
+    const device = this.devices.get(deviceId)
+    if (!device) {
+      throw new Error(`Device ${deviceId} is not polled`)
+    }
+    checkWrites(device.config, device.driver.dataPoints, values)
+
+    await this.inTurn(device.connectionKey, async () => {
+      // The device can be unscheduled, or polling stopped, while the write waits for its turn
+      if (!this.running || this.devices.get(deviceId) !== device) {
+        throw new Error(`Device ${deviceId} is not polled`)
+      }
+
+      const written: string[] = []
+      try {
+        for (const [id, value] of Object.entries(values)) {
+          try {
+            await device.driver.writeDataPoint(id, value)
+          } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error)
+            throw new WriteError(`Failed to write data point ${id}: ${reason}`, written, {
+              cause: error,
+            })
+          }
+          written.push(id)
+        }
+      } finally {
+        try {
+          const data = await this.readDevice(deviceId, device)
+          device.lastFailureCount = 0
+          this.onData(deviceId, data)
+        } catch (error) {
+          console.warn(
+            `Failed to read device ${deviceId} after a write, the next poll reads it: ${error instanceof Error ? error.message : String(error)}`
+          )
+        }
+      }
+    })
   }
 
   /**
@@ -218,9 +271,9 @@ export class PollingScheduler {
   }
 
   /**
-   * Run the polls of the devices on one connection one at a time, in the order they come. A
-   * device that polls again waits behind the devices that are waiting already, so every device
-   * gets its turn, also in continuous mode.
+   * Run the polls and writes of the devices on one connection one at a time, in the order they
+   * come. A device that polls again waits behind the devices that are waiting already, so every
+   * device gets its turn, also in continuous mode.
    */
   private inTurn<T>(key: string, poll: () => Promise<T>): Promise<T> {
     const previous = this.lastPolls.get(key)

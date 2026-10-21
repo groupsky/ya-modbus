@@ -196,6 +196,8 @@ modbus/
 │
 ├── {deviceId}/
 │   ├── data                 # Device data publications
+│   ├── set                  # Data points to write
+│   │   └── result           # Result of each write message
 │   ├── status/              # Device status
 │   └── errors/              # Device errors
 │

@@ -1,6 +1,7 @@
 import mqtt from 'mqtt'
 
 import { DeviceManager, type DeviceStatusUpdate } from './device-manager.js'
+import { parseWriteValues, WriteError } from './device-writes.js'
 import { DriverLoader } from './driver-loader.js'
 import { DEFAULT_MAX_RETRIES, PollingScheduler } from './polling-scheduler.js'
 import type {
@@ -67,7 +68,7 @@ export function createBridge(
   // Publish function that will be called from polling
   const publishDeviceMessage = (
     deviceId: string,
-    topic: 'data' | 'status',
+    topic: 'data' | 'status' | 'set/result',
     fields: Record<string, unknown>
   ): void => {
     if (!bridgeRef) {
@@ -158,6 +159,36 @@ export function createBridge(
   const pollingScheduler =
     dependencies?.pollingScheduler ?? new PollingScheduler(handlePollingData, handlePollingError)
 
+  // Write the values of a message on {topicPrefix}/{deviceId}/set, and publish the result
+  const handleWriteMessage = async (deviceId: string, message: MqttMessage): Promise<void> => {
+    // The broker sends a retained message again at every subscribe, so it would be written again
+    // at every start of the bridge and after every reconnect
+    if (message.retain) {
+      console.warn(`Ignored a retained write message for device ${deviceId}`)
+      return
+    }
+
+    let values: Record<string, unknown> | undefined
+    try {
+      values = parseWriteValues(message.payload)
+      await pollingScheduler.writeDevice(deviceId, values)
+      publishDeviceMessage(deviceId, 'set/result', { ok: true, values })
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error)
+      console.warn(`Write to device ${deviceId} failed: ${reason}`)
+      const written = error instanceof WriteError ? error.written : []
+      publishDeviceMessage(deviceId, 'set/result', { ok: false, error: reason, written, values })
+    }
+  }
+
+  // Not with bridge.subscribe(), which fails while the client is offline. mqtt.js sends a
+  // subscription made offline when it connects, and subscribes again after every reconnect.
+  const subscribeOnClient = (topic: string): void => {
+    client?.subscribe(topic, { qos: 0 }, (error) => {
+      if (error) console.error(`Failed to subscribe to ${topic}:`, error)
+    })
+  }
+
   const bridge: MqttBridge = {
     start() {
       return new Promise<void>((resolve, reject) => {
@@ -183,6 +214,9 @@ export function createBridge(
         }
 
         client = mqtt.connect(config.mqtt.url, mqttOptions)
+
+        // Write topics of the devices that were added before the start
+        for (const topic of subscriptions.keys()) subscribeOnClient(topic)
 
         let isInitialConnection = true
 
@@ -412,12 +446,23 @@ export function createBridge(
         }
 
         pollingScheduler.scheduleDevice(deviceConfig.deviceId, deviceConfig, driver)
+
+        const writeTopic = `${topicPrefix}/${deviceConfig.deviceId}/set`
+        subscriptions.set(writeTopic, (message) => {
+          void handleWriteMessage(deviceConfig.deviceId, message)
+        })
+        subscribeOnClient(writeTopic)
       }
     },
 
     async removeDevice(deviceId: string) {
       // Unschedule polling first
       pollingScheduler.unscheduleDevice(deviceId)
+
+      const writeTopic = `${topicPrefix}/${deviceId}/set`
+      // A failed unsubscribe is harmless: no handler takes the messages any more. The callback
+      // keeps mqtt.js from emitting it as an 'error' event.
+      if (subscriptions.delete(writeTopic)) client?.unsubscribe(writeTopic, () => undefined)
 
       // Remove device (unloads driver)
       await deviceManager.removeDevice(deviceId)
