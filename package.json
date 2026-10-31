@@ -55,7 +55,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
-    "@lerna-lite/changed": "^4.10.3",
+    "@lerna-lite/changed": "^5.6.3",
     "@lerna-lite/cli": "^4.10.3",
     "@lerna-lite/publish": "^4.10.3",
     "@lerna-lite/run": "^4.10.5",
