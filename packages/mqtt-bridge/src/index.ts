@@ -32,6 +32,7 @@ export type {
   DeviceConfig,
   DeviceStatus,
   DeviceConnection,
+  PublishConfig,
   RTUConnection,
   TCPConnection,
 } from './types.js'
