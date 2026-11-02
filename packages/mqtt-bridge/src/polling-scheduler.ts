@@ -23,7 +23,12 @@ interface ScheduledDevice {
   lastFailureCount: number
 }
 
-type DataCallback = (deviceId: string, data: Record<string, unknown>) => void
+/** `afterWrite` is true for the read that follows a write */
+type DataCallback = (
+  deviceId: string,
+  data: Record<string, unknown>,
+  info?: { afterWrite: true }
+) => void
 type ErrorCallback = (deviceId: string, error: Error, failureCount: number) => void
 
 /** Failed reads in a row before polling slows down to `retryBackoff` */
@@ -163,7 +168,7 @@ export class PollingScheduler {
         try {
           const data = await this.readDevice(deviceId, device)
           device.lastFailureCount = 0
-          this.onData(deviceId, data)
+          this.onData(deviceId, data, { afterWrite: true })
         } catch (error) {
           console.warn(
             `Failed to read device ${deviceId} after a write, the next poll reads it: ${error instanceof Error ? error.message : String(error)}`

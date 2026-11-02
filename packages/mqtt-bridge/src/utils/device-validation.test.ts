@@ -658,6 +658,33 @@ describe('validateDeviceConfig', () => {
     })
   })
 
+  describe('publish', () => {
+    const device = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: { type: 'tcp', host: 'localhost', slaveId: 1 },
+    }
+
+    it.each([{ mode: 'every-poll' }, { mode: 'on-change' }, { mode: 'on-change', heartbeat: 1 }])(
+      'should accept %p',
+      (publish) => {
+        expect(() => validateDeviceConfig({ ...device, publish })).not.toThrow()
+      }
+    )
+
+    it.each([
+      [{}, 'publish.mode'],
+      [{ mode: 'changes' }, 'publish.mode'],
+      [{ mode: 'on-change', heartbeat: 0 }, 'publish.heartbeat'],
+      [{ mode: 'on-change', heartbeat: 86400001 }, 'publish.heartbeat: Heartbeat must not exceed'],
+      [{ mode: 'on-change', hearbeat: 1000 }, 'publish: Unrecognized key'],
+    ])('should reject %p', (publish, message) => {
+      expect(() => validateDeviceConfig({ ...device, publish })).toThrow(
+        `Invalid device configuration: ${message}`
+      )
+    })
+  })
+
   it.each([
     {
       config: { connection: { type: 'rtu', port: '/dev/ttyUSB0', slaveId: 1, paritty: 'odd' } },

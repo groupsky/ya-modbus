@@ -57,6 +57,19 @@ describe('PollingScheduler writeDevice', () => {
     }
   }
 
+  it('marks the read after a write, and not a poll', async () => {
+    const onData = jest.fn()
+    scheduler = new PollingScheduler(onData, onError)
+    scheduler.scheduleDevice('thermostat', config, driver)
+    scheduler.start()
+    await jest.advanceTimersByTimeAsync(INTERVAL)
+    expect(onData).toHaveBeenLastCalledWith('thermostat', { setpoint: 1 })
+
+    await scheduler.writeDevice('thermostat', { setpoint: 23 })
+
+    expect(onData).toHaveBeenLastCalledWith('thermostat', { setpoint: 1 }, { afterWrite: true })
+  })
+
   it('rejects a write to a device that is not scheduled', async () => {
     await expect(scheduler.writeDevice('thermostat', { setpoint: 23 })).rejects.toThrow(
       'Device thermostat is not polled'
