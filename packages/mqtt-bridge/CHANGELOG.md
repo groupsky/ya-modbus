@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.25.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.24.2...@ya-modbus/mqtt-bridge@0.25.0) (2026-11-02)
+
+### Features
+
+- **mqtt-bridge:** publish only on change, with a heartbeat ([#703](https://github.com/groupsky/ya-modbus/issues/703)) ([4b48d08](https://github.com/groupsky/ya-modbus/commit/4b48d08063b0fb3342eb8464036fdb65c5425223)), closes [#695](https://github.com/groupsky/ya-modbus/issues/695)
+
 ## [0.24.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.24.1...@ya-modbus/mqtt-bridge@0.24.2) (2026-11-02)
 
 **Note:** Version bump only for package @ya-modbus/mqtt-bridge

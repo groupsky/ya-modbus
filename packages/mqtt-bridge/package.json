@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/mqtt-bridge",
-  "version": "0.24.2",
+  "version": "0.25.0",
   "description": "MQTT bridge for ya-modbus - orchestrates device management, polling, and MQTT publishing",
   "keywords": [
     "modbus",
@@ -49,7 +49,7 @@
     "typecheck": "../../node_modules/.bin/tsc --noEmit"
   },
   "dependencies": {
-    "@ya-modbus/driver-loader": "^0.12.2",
+    "@ya-modbus/driver-loader": "^0.12.3",
     "@ya-modbus/driver-types": "^0.8.3",
     "@ya-modbus/transport": "^0.14.1",
     "chalk": "^6.0.1",
@@ -60,7 +60,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
-    "@ya-modbus/emulator": "^0.16.1",
+    "@ya-modbus/emulator": "^0.16.2",
     "aedes": "^1.2.0",
     "jest": "^30.2.0",
     "ts-jest": "^29.1.1",
