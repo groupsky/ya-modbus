@@ -320,6 +320,6 @@ export async function loadDriver(
       throw new Error(`Failed to load driver: ${error.message}`, { cause: error })
     }
 
-    throw new Error('Failed to load driver: Unknown error')
+    throw new Error('Failed to load driver: Unknown error', { cause: error })
   }
 }

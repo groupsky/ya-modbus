@@ -24,7 +24,7 @@ export async function assertOutputWritable(file: string): Promise<void> {
     await checkWritable(file)
   } catch (error) {
     // The checks fail only with a system error, which always has a message
-    throw new Error(`Cannot write to ${file}: ${(error as Error).message}`)
+    throw new Error(`Cannot write to ${file}: ${(error as Error).message}`, { cause: error })
   }
 }
 
