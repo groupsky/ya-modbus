@@ -5,9 +5,8 @@ import { AddressInfo, createServer, Server } from 'node:net'
 import { jest } from '@jest/globals'
 import type { Transport, DeviceDriver } from '@ya-modbus/driver-types'
 import { TransportManager } from '@ya-modbus/transport'
-import Aedes from 'aedes'
-import type { AedesPublishPacket } from 'aedes'
-import type { Client } from 'aedes'
+import { Aedes } from 'aedes'
+import type { AedesPublishPacket, Client } from 'aedes'
 
 import { DriverLoader } from '../driver-loader.js'
 import { createBridge } from '../index.js'
@@ -498,7 +497,7 @@ export async function withBridgeAndMockDriver(
  * Start an Aedes MQTT broker on a dynamic port for testing
  */
 export async function startTestBroker(options?: { port?: number }): Promise<TestBroker> {
-  const broker = new Aedes()
+  const broker = await Aedes.createBroker()
   const server = createServer(broker.handle)
 
   return new Promise((resolve, reject) => {

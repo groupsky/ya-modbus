@@ -14,7 +14,13 @@ module.exports = {
         useESM: true,
       },
     ],
+    // aedes 1.x is ESM-only; compile it to CommonJS so Jest can load it
+    '/node_modules/aedes/.+\\.js$': [
+      'ts-jest',
+      { tsconfig: { allowJs: true, module: 'commonjs' }, diagnostics: false },
+    ],
   },
+  transformIgnorePatterns: ['/node_modules/(?!aedes/)'],
   moduleNameMapper: {
     '^@ya-modbus/(.*)$': '<rootDir>/../$1/src',
     '^(\\.{1,2}/.*)\\.js$': '$1',
