@@ -131,6 +131,22 @@ const pollingConfigSchema = z
   })
   .optional()
 
+const publishConfigSchema = z
+  .strictObject({
+    mode: z.enum(['every-poll', 'on-change']),
+    heartbeat: z
+      .number()
+      .int()
+      .positive()
+      .max(MAX_DURATION_MS, 'Heartbeat must not exceed 24 hours')
+      .optional(),
+  })
+  .transform((data) => {
+    const { heartbeat, ...rest } = data
+    return { ...rest, ...(heartbeat !== undefined ? { heartbeat } : {}) }
+  })
+  .optional()
+
 export const deviceConfigSchema = z
   .strictObject({
     deviceId: deviceIdSchema,
@@ -139,14 +155,16 @@ export const deviceConfigSchema = z
     enabled: z.boolean().optional(),
     polling: pollingConfigSchema,
     allowWrites: z.boolean().optional(),
+    publish: publishConfigSchema,
   })
   .transform((data) => {
-    const { enabled, polling, allowWrites, ...rest } = data
+    const { enabled, polling, allowWrites, publish, ...rest } = data
     return {
       ...rest,
       ...(enabled !== undefined ? { enabled } : {}),
       ...(polling !== undefined ? { polling } : {}),
       ...(allowWrites !== undefined ? { allowWrites } : {}),
+      ...(publish !== undefined ? { publish } : {}),
     }
   })
 

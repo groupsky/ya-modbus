@@ -4,6 +4,7 @@ import { DeviceManager, type DeviceStatusUpdate } from './device-manager.js'
 import { parseWriteValues, WriteError } from './device-writes.js'
 import { DriverLoader } from './driver-loader.js'
 import { DEFAULT_MAX_RETRIES, PollingScheduler } from './polling-scheduler.js'
+import { PublishFilter } from './publish-filter.js'
 import type {
   MqttBridgeConfig,
   MqttBridge,
@@ -31,6 +32,7 @@ export type {
   DeviceConfig,
   DeviceStatus,
   DeviceConnection,
+  PublishConfig,
   RTUConnection,
   TCPConnection,
 } from './types.js'
@@ -99,15 +101,28 @@ export function createBridge(
     }
   }
 
-  // Handle data from polling
-  const handlePollingData = (deviceId: string, data: Record<string, unknown>): void => {
-    publishDeviceMessage(deviceId, 'data', { data })
+  // Remembers the last published data of devices in publish mode on-change
+  const publishFilter = new PublishFilter()
 
+  // Handle data from polling
+  const handlePollingData = (
+    deviceId: string,
+    data: Record<string, unknown>,
+    info?: { afterWrite: true }
+  ): void => {
     // Read before the reset below. A device whose port could not be opened is in error state
     // without failed polls.
     const previous = deviceManager.getDevice(deviceId)
     const failedPolls = previous?.consecutiveFailures ?? 0
-    if (failedPolls > 0 || previous?.state === 'error') {
+    const recovered = failedPolls > 0 || previous?.state === 'error'
+
+    // The first read after a recovery and the read after a write are always published
+    const publishConfig = deviceManager.getDeviceConfig(deviceId)?.publish
+    if (publishFilter.shouldPublish(deviceId, data, publishConfig, recovered || !!info)) {
+      publishDeviceMessage(deviceId, 'data', { data })
+    }
+
+    if (recovered) {
       console.log(
         `Device ${deviceId} recovered` +
           (failedPolls > 0
@@ -227,6 +242,9 @@ export function createBridge(
           }
 
           // Automatic resubscription is handled by mqtt.js (resubscribe: true)
+
+          // Data may be lost while the broker was away: the next read of every device is published
+          publishFilter.forget()
 
           // Start polling scheduler
           pollingScheduler.start()
@@ -466,6 +484,7 @@ export function createBridge(
 
       // Remove device (unloads driver)
       await deviceManager.removeDevice(deviceId)
+      publishFilter.forget(deviceId)
     },
 
     getDevice(deviceId: string) {

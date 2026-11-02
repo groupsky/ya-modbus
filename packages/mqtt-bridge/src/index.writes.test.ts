@@ -66,6 +66,8 @@ describe('createBridge writes', () => {
   let drivers: Map<string, ReturnType<typeof createDriver>>
   let driver: ReturnType<typeof createDriver>
   let deviceManager: { updateDeviceState: jest.Mock }
+  let getDeviceConfig: jest.Mock<(deviceId: string) => DeviceConfig | undefined>
+  let getDevice: jest.Mock<(deviceId: string) => { consecutiveFailures: number } | undefined>
   let bridge: MqttBridge
 
   beforeEach(() => {
@@ -94,6 +96,8 @@ describe('createBridge writes', () => {
     )
     drivers = new Map([['thermostat', driver]])
     deviceManager = { updateDeviceState: jest.fn() }
+    getDeviceConfig = jest.fn()
+    getDevice = jest.fn()
 
     bridge = createBridge(
       { mqtt: { url: 'mqtt://localhost:1883' } },
@@ -107,8 +111,8 @@ describe('createBridge writes', () => {
           ...deviceManager,
           addDevice: jest.fn(),
           removeDevice: jest.fn(),
-          getDevice: jest.fn(),
-          getDeviceConfig: jest.fn(),
+          getDevice,
+          getDeviceConfig,
           clear: jest.fn(),
         } as unknown as DeviceManager,
       }
@@ -394,5 +398,40 @@ describe('createBridge writes', () => {
     expect(published('set/result')).toEqual([
       { deviceId: 'thermostat', timestamp: expect.any(Number), ok: false, error, written: [] },
     ])
+  })
+
+  describe('publish mode on-change', () => {
+    beforeEach(async () => {
+      getDeviceConfig.mockReturnValue({ ...thermostat, publish: { mode: 'on-change' } })
+      await startWith()
+      await jest.advanceTimersByTimeAsync(INTERVAL)
+    })
+
+    it('publishes the first poll and not the next polls with the same data', async () => {
+      await jest.advanceTimersByTimeAsync(INTERVAL * 3)
+
+      expect(published('data')).toHaveLength(1)
+    })
+
+    it('publishes the read after a write', async () => {
+      await send({ mode: 1 })
+
+      expect(published('data')).toHaveLength(2)
+    })
+
+    it('publishes the first good read after failed reads', async () => {
+      jest.spyOn(console, 'log').mockImplementation(() => undefined)
+      getDevice.mockReturnValueOnce({ consecutiveFailures: 1 })
+      await jest.advanceTimersByTimeAsync(INTERVAL)
+
+      expect(published('data')).toHaveLength(2)
+    })
+
+    it('publishes the next poll after the broker connects again', async () => {
+      client.emit('connect')
+      await jest.advanceTimersByTimeAsync(INTERVAL)
+
+      expect(published('data')).toHaveLength(2)
+    })
   })
 })

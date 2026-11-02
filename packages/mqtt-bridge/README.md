@@ -14,6 +14,7 @@ The MQTT bridge connects Modbus devices to MQTT:
 - **Graceful Lifecycle** - Start, stop, and status reporting
 - **Driver Integration** - Load device drivers dynamically and connect devices over RTU and TCP
 - **Polling** - Poll devices at an interval or continuously, with backoff after failed reads, and publish the data
+- **Publish on Change** - Publish the data of a device only when a value changes, with a heartbeat
 - **Writes** - Write data points from an MQTT message, then read the device at once and publish the new data
 - **Devices from Config** - Load the devices of a config file on startup
 
@@ -202,6 +203,9 @@ This config sets every option that the bridge uses. If an option has a default, 
         "maxRetries": 3,
         "retryBackoff": 4000,
         "maxRetryBackoff": 60000
+      },
+      "publish": {
+        "mode": "every-poll"
       }
     },
     {
@@ -223,7 +227,7 @@ The options from the command line replace the same options from the file. The br
 
 Times, counts and ports are whole numbers.
 
-Each key must be one of the options below. A key that is not an option there is an error, for example a misspelled key such as `paritty`. This is true at the top level and in `mqtt`, in a device, in `connection` and in `polling`. Keys are case-sensitive.
+Each key must be one of the options below. A key that is not an option there is an error, for example a misspelled key such as `paritty`. This is true at the top level and in `mqtt`, in a device, in `connection`, in `polling` and in `publish`. Keys are case-sensitive.
 
 **Configuration options:**
 
@@ -244,6 +248,7 @@ Each key must be one of the options below. A key that is not an option there is 
 - `enabled` (optional) - Enable/disable device (default: true). A disabled device is added with the state `disconnected`. The bridge does not load its driver and does not poll it.
 - `polling` (optional) - Polling configuration. Without it, the bridge polls the device every 5000 ms and uses the defaults of the polling options below.
 - `allowWrites` (optional) - Write the data points of the messages on `{topicPrefix}/{deviceId}/set` (default: false). Without it, the bridge answers every write message with an error and writes nothing, so a meter cannot be written by mistake. See [Writing Data Points](#writing-data-points).
+- `publish` (optional) - When the bridge publishes the data of a read on `{topicPrefix}/{deviceId}/data`. Without it, the bridge publishes every read. See [Publish Only on Change](#publish-only-on-change).
 
 **Connection:**
 
@@ -300,6 +305,26 @@ The driver gives each data point a `pollType` and an `access`. The bridge uses t
 | `access: 'w'` (write-only)               | Never                                                        |
 
 Static points are read in a separate request, after the dynamic points, and only in a poll where the dynamic read worked. If the static read fails, the bridge logs a warning with the device ID and the static data point IDs, still publishes the dynamic points, and tries the static points again on the next poll. A failed static read does not count as a failed read (see below). When a device is removed and added again, the bridge reads its static points again.
+
+### Publish Only on Change
+
+A device that is polled often and changes little can send many messages with the same data. With `publish.mode` `on-change`, the bridge publishes a read only when its data differs from the last published data of the device, and at least every `publish.heartbeat` ms:
+
+```json
+"publish": { "mode": "on-change", "heartbeat": 300000 }
+```
+
+- `mode` (required) - `every-poll`: publish every read. `on-change`: publish a read when any value changed.
+- `heartbeat` (optional) - In `on-change` mode, the longest time in milliseconds between two publishes when nothing changes (1-86400000, default: 300000).
+
+In `on-change` mode the bridge always publishes:
+
+- the first read after the bridge starts, or after the device is added again
+- the first read after the broker connects again
+- the first good read after failed reads (the device recovers)
+- the read after a write (see [Writing Data Points](#writing-data-points))
+
+The `timestamp` of a message is the time of the publish. A read that is not published does not change it, so a consumer sees the time of the last change or heartbeat.
 
 ### Failed Reads and Backoff
 

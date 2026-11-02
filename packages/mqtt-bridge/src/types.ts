@@ -75,6 +75,20 @@ export interface PollingConfig {
   maxRetryBackoff?: number
 }
 
+/** When the bridge publishes the data of a read on `{topicPrefix}/{deviceId}/data` */
+export interface PublishConfig {
+  /**
+   * `every-poll` (default): publish every read. `on-change`: publish a read only when a value
+   * differs from the last published data, and at least every `heartbeat` ms.
+   */
+  mode: 'every-poll' | 'on-change'
+  /**
+   * In `on-change` mode, longest time in milliseconds between two publishes when nothing
+   * changes (1-86400000, default: 300000).
+   */
+  heartbeat?: number
+}
+
 export interface DeviceConfig {
   deviceId: string
   driver: string
@@ -87,6 +101,7 @@ export interface DeviceConfig {
    * not written by mistake.
    */
   allowWrites?: boolean
+  publish?: PublishConfig
 }
 
 export type DeviceConnection = RTUConnection | TCPConnection
