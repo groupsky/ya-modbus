@@ -67,6 +67,7 @@ describe('createBridge writes', () => {
   let driver: ReturnType<typeof createDriver>
   let deviceManager: { updateDeviceState: jest.Mock }
   let getDeviceConfig: jest.Mock<(deviceId: string) => DeviceConfig | undefined>
+  let getDevice: jest.Mock<(deviceId: string) => { consecutiveFailures: number } | undefined>
   let bridge: MqttBridge
 
   beforeEach(() => {
@@ -96,6 +97,7 @@ describe('createBridge writes', () => {
     drivers = new Map([['thermostat', driver]])
     deviceManager = { updateDeviceState: jest.fn() }
     getDeviceConfig = jest.fn()
+    getDevice = jest.fn()
 
     bridge = createBridge(
       { mqtt: { url: 'mqtt://localhost:1883' } },
@@ -109,7 +111,7 @@ describe('createBridge writes', () => {
           ...deviceManager,
           addDevice: jest.fn(),
           removeDevice: jest.fn(),
-          getDevice: jest.fn(),
+          getDevice,
           getDeviceConfig,
           clear: jest.fn(),
         } as unknown as DeviceManager,
@@ -413,6 +415,14 @@ describe('createBridge writes', () => {
 
     it('publishes the read after a write', async () => {
       await send({ mode: 1 })
+
+      expect(published('data')).toHaveLength(2)
+    })
+
+    it('publishes the first good read after failed reads', async () => {
+      jest.spyOn(console, 'log').mockImplementation(() => undefined)
+      getDevice.mockReturnValueOnce({ consecutiveFailures: 1 })
+      await jest.advanceTimersByTimeAsync(INTERVAL)
 
       expect(published('data')).toHaveLength(2)
     })
