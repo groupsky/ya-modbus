@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.24.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.24.1...@ya-modbus/mqtt-bridge@0.24.2) (2026-11-02)
+
+**Note:** Version bump only for package @ya-modbus/mqtt-bridge
+
 ## [0.24.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.24.0...@ya-modbus/mqtt-bridge@0.24.1) (2026-10-27)
 
 **Note:** Version bump only for package @ya-modbus/mqtt-bridge
