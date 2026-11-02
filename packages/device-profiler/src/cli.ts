@@ -54,7 +54,8 @@ async function writeReportFile(file: string, report: string): Promise<void> {
     await new Promise<void>((resolve) => process.stdout.write(`${report}\n`, () => resolve()))
     // A failed write always fails with a system error, which has a message
     throw new Error(
-      `Cannot write to ${file}: ${(error as Error).message}. The report is printed to stdout instead.`
+      `Cannot write to ${file}: ${(error as Error).message}. The report is printed to stdout instead.`,
+      { cause: error }
     )
   }
 }
