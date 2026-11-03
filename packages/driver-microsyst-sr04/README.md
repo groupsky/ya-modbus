@@ -14,7 +14,7 @@ Microsyst SR04 solar heating systems controller driver for ya-modbus.
   - Stop bits: 1 (or 2)
   - Data bits: 8
 
-The register list is in [docs/register-map.md](docs/register-map.md). It comes from the maker's manual, revision 2020-10-30, pages 15-16: https://www.microsyst.net/wp-content/uploads/2020/11/SR04_2020-10-30_EN-1.pdf
+The register list is in [docs/register-map.md](https://github.com/groupsky/ya-modbus/blob/main/packages/driver-microsyst-sr04/docs/register-map.md). It comes from the maker's manual, revision 2020-10-30, pages 15-16: https://www.microsyst.net/wp-content/uploads/2020/11/SR04_2020-10-30_EN-1.pdf
 
 ## Installation
 
