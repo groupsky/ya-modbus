@@ -152,6 +152,44 @@ describe('createBridge device stats', () => {
     expect(statsMessages()).toEqual([])
   })
 
+  it('should log one line per device when statsLog is set, and no line otherwise', async () => {
+    const log = jest.spyOn(console, 'log').mockImplementation(() => undefined)
+    const logged = await start({ statsInterval: 10, statsLog: true })
+    await logged.addDevice(deviceConfig('meter1'))
+    read('meter1', 100, true)
+    read('meter1', 100, false)
+
+    jest.advanceTimersByTime(10_000)
+
+    expect(log).toHaveBeenCalledTimes(1)
+    expect(log).toHaveBeenCalledWith(
+      'Stats of device meter1: 2 polls, 1 errors, 1 failures in a row, ' +
+        'last success 1970-01-01T00:16:40.000Z, average read 100 ms, 0.1 reads/s'
+    )
+    await logged.stop()
+
+    log.mockClear()
+    const quiet = await start({ statsInterval: 10 })
+    await quiet.addDevice(deviceConfig('meter1'))
+    jest.advanceTimersByTime(10_000)
+    expect(log).not.toHaveBeenCalled()
+    log.mockRestore()
+  })
+
+  it('should log a device without a successful read as never and n/a', async () => {
+    const log = jest.spyOn(console, 'log').mockImplementation(() => undefined)
+    const bridge = await start({ statsInterval: 10, statsLog: true })
+    await bridge.addDevice(deviceConfig('meter1'))
+
+    jest.advanceTimersByTime(10_000)
+
+    expect(log).toHaveBeenCalledWith(
+      'Stats of device meter1: 0 polls, 0 errors, 0 failures in a row, last success never, ' +
+        'average read n/a, 0 reads/s'
+    )
+    log.mockRestore()
+  })
+
   it('should stop publishing stats of a removed device', async () => {
     const bridge = await start({ statsInterval: 10 })
     await bridge.addDevice(deviceConfig('meter1'))

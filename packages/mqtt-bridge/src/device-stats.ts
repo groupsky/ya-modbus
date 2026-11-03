@@ -30,6 +30,17 @@ const fresh = (now: number): Counters => ({
   windowReadMs: 0,
 })
 
+/** One line for the log, e.g. `Stats of meter1: 12 polls, 1 errors, ...` */
+export function formatStatsLine(deviceId: string, stats: DeviceStatsPayload): string {
+  const avg = stats.avgReadMs === null ? 'n/a' : `${Math.round(stats.avgReadMs)} ms`
+  const last = stats.lastSuccess === null ? 'never' : new Date(stats.lastSuccess).toISOString()
+  return (
+    `Stats of device ${deviceId}: ${stats.polls} polls, ${stats.errors} errors, ` +
+    `${stats.consecutiveFailures} failures in a row, last success ${last}, ` +
+    `average read ${avg}, ${Number(stats.readsPerSecond.toFixed(2))} reads/s`
+  )
+}
+
 /**
  * Poll counters of the devices. `polls`, `errors` and `consecutiveFailures` run from the time a
  * device is added; `avgReadMs` and `readsPerSecond` cover the time since the last report.

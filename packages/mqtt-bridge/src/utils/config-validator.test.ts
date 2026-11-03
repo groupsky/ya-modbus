@@ -93,6 +93,13 @@ describe('validateConfig', () => {
     expect(() => validateConfig(config)).toThrow('statsInterval')
   })
 
+  it('should accept statsLog and reject a statsLog that is not a boolean', () => {
+    const config = { mqtt: { url: 'mqtt://localhost:1883' }, statsInterval: 10 }
+
+    expect(() => validateConfig({ ...config, statsLog: true })).not.toThrow()
+    expect(() => validateConfig({ ...config, statsLog: 'yes' })).toThrow('statsLog')
+  })
+
   it('should validate config with devices array', () => {
     const config = {
       mqtt: {

@@ -105,6 +105,8 @@ describe('CLI - ya-modbus-bridge', () => {
           --stats-interval <seconds>    Publish device stats on
                                         {prefix}/{deviceId}/stats every N seconds
                                         (default: off)
+          --stats-log                   Also log one line per device at every stats
+                                        interval
           -h, --help                    display help for command
 
         Set YA_MODBUS_DEBUG=1 to log the full error (stack and cause) of failed polls and each request that is sent again.
@@ -261,6 +263,24 @@ describe('CLI - ya-modbus-bridge', () => {
   })
 
   describe('Run Command - stats interval', () => {
+    it('should set statsLog from --stats-log', async () => {
+      await program.parseAsync([
+        'node',
+        'bridge',
+        'run',
+        '--mqtt-url',
+        'mqtt://b:1883',
+        '--stats-interval',
+        '15',
+        '--stats-log',
+      ])
+      expect(indexModule.createBridge).toHaveBeenLastCalledWith({
+        mqtt: { url: 'mqtt://b:1883' },
+        statsInterval: 15,
+        statsLog: true,
+      })
+    })
+
     it('should set statsInterval from --stats-interval, with and without a config file', async () => {
       jest
         .mocked(configModule.loadConfig)

@@ -13,6 +13,11 @@ export interface MqttBridgeConfig {
    * the bridge publishes no stats.
    */
   statsInterval?: number
+  /**
+   * Also log one line per device at every `statsInterval` (default: false). It needs
+   * `statsInterval`.
+   */
+  statsLog?: boolean
   devices?: DeviceConfig[]
 }
 

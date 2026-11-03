@@ -1,7 +1,7 @@
 import mqtt from 'mqtt'
 
 import { DeviceManager, type DeviceStatusUpdate } from './device-manager.js'
-import { DeviceStats } from './device-stats.js'
+import { DeviceStats, formatStatsLine } from './device-stats.js'
 import { parseWriteValues, WriteError } from './device-writes.js'
 import { DriverLoader } from './driver-loader.js'
 import { DEFAULT_MAX_RETRIES, PollingScheduler, type DataInfo } from './polling-scheduler.js'
@@ -214,6 +214,9 @@ export function createBridge(
     if (!config.statsInterval || statsTimer) return
     statsTimer = setInterval(() => {
       const reports = deviceStats.report()
+      if (config.statsLog) {
+        for (const [deviceId, stats] of reports) console.log(formatStatsLine(deviceId, stats))
+      }
       // The window of the average starts anyway; a message to an offline broker would only fail
       if (!client?.connected) return
       for (const [deviceId, stats] of reports) publishDeviceMessage(deviceId, 'stats', { ...stats })
