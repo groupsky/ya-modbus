@@ -3,7 +3,7 @@ import mqtt from 'mqtt'
 import { DeviceManager, type DeviceStatusUpdate } from './device-manager.js'
 import { parseWriteValues, WriteError } from './device-writes.js'
 import { DriverLoader } from './driver-loader.js'
-import { DEFAULT_MAX_RETRIES, PollingScheduler } from './polling-scheduler.js'
+import { DEFAULT_MAX_RETRIES, PollingScheduler, type DataInfo } from './polling-scheduler.js'
 import { PublishFilter } from './publish-filter.js'
 import type {
   MqttBridgeConfig,
@@ -108,7 +108,7 @@ export function createBridge(
   const handlePollingData = (
     deviceId: string,
     data: Record<string, unknown>,
-    info?: { afterWrite: true }
+    info?: DataInfo
   ): void => {
     // Read before the reset below. A device whose port could not be opened is in error state
     // without failed polls.
@@ -118,7 +118,9 @@ export function createBridge(
 
     // The first read after a recovery and the read after a write are always published
     const publishConfig = deviceManager.getDeviceConfig(deviceId)?.publish
-    if (publishFilter.shouldPublish(deviceId, data, publishConfig, recovered || !!info)) {
+    if (
+      publishFilter.shouldPublish(deviceId, data, publishConfig, recovered || !!info?.afterWrite)
+    ) {
       publishDeviceMessage(deviceId, 'data', { data })
     }
 
