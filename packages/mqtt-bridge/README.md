@@ -17,10 +17,11 @@ The MQTT bridge connects Modbus devices to MQTT:
 - **Publish on Change** - Publish the data of a device only when a value changes, with a heartbeat
 - **Writes** - Write data points from an MQTT message, then read the device at once and publish the new data
 - **Devices from Config** - Load the devices of a config file on startup
+- **Availability** - Retained status of the bridge (with a last-will) and of each device
 
 ### Planned Features
 
-- State persistence, MQTT configuration topics and bridge status publishing (Phase 3)
+- State persistence, MQTT configuration topics and more bridge status topics (Phase 3)
 
 See [Architecture documentation](./docs/ARCHITECTURE.md) for complete details and roadmap.
 
@@ -242,7 +243,7 @@ Each key must be one of the options below. A key that is not an option there is 
 
 **Device configuration:**
 
-- `deviceId` (required) - Unique device identifier. The bridge uses it in the MQTT topics (`{topicPrefix}/{deviceId}/data`). It must not be empty. It must not contain `+`, `#`, `/`, `$` or the null character.
+- `deviceId` (required) - Unique device identifier. The bridge uses it in the MQTT topics (`{topicPrefix}/{deviceId}/data`). It must not be empty. It must not contain `+`, `#`, `/`, `$` or the null character. Do not use `bridge`: its status topic is the topic of the bridge status (see [Bridge Status](#bridge-status)).
 - `driver` (required) - Driver package name: `@ya-modbus/driver-<name>`, `ya-modbus-driver-<name>` or `@<scope>/ya-modbus-driver-<name>`. `<name>` and `<scope>` can have lowercase letters, numbers and hyphens. The package must be installed.
 - `connection` (required) - Connection configuration (RTU or TCP)
 - `enabled` (optional) - Enable/disable device (default: true). A disabled device is added with the state `disconnected`. The bridge does not load its driver and does not poll it.
@@ -521,6 +522,16 @@ Error: Invalid configuration: mqtt.url: URL must start with mqtt://, mqtts://, w
 - Other users of the machine can see command line options such as `--mqtt-password` in the process list. Put credentials in the config file instead.
 - `mqtt://` and `ws://` send the password without encryption. Use `mqtts://` or `wss://` when the broker is not on the same machine.
 
+## Bridge Status
+
+The bridge publishes `online` or `offline` (plain text, not JSON) to `{topicPrefix}/bridge/status`, retained, so a new subscriber gets it at once:
+
+- `online` - after every connect to the broker, also after a reconnect
+- `offline` - when the bridge stops cleanly (`bridge.stop()`, or `SIGINT`/`SIGTERM` for the CLI)
+- `offline` - when the connection is lost without a clean stop (crash, power loss, network down). The bridge registers this message as its MQTT last-will, and the broker publishes it (QoS 1, retained) when it notices the lost connection. This takes up to 1.5 times the MQTT keepalive (60 seconds by default), or less when the network connection closes.
+
+The retained device status (see [Device States](#device-states)) is the last state the bridge published. It stays on the broker after the bridge stops, so read it together with the bridge status: when the bridge is `offline`, the state of the devices is not known.
+
 ## Device States
 
 Each device has a `state`. `bridge.getDevice()` and `bridge.listDevices()` return it.
@@ -539,7 +550,7 @@ How the state changes:
 - `connected` → `error` - `maxRetries` consecutive reads failed (at least 1, so `0` works like `1`), or the port of the device is not open when the device is added. In the second case `addDevice()` works, and the state changes right after the driver is loaded.
 - `error` → `connected` - the next read works
 
-When the state changes between `connected` and `error`, or the list of failed data points changes, the bridge publishes a message to `{topicPrefix}/{deviceId}/status`:
+The bridge publishes the state of each device to `{topicPrefix}/{deviceId}/status`, retained: when the device is added, when the state changes between `connected` and `error` or the list of failed data points changes, and after every connect to the broker. A device that works sends its first status when it is added, and no more messages while it keeps working. A new subscriber gets the last status at once:
 
 ```json
 {
@@ -563,7 +574,7 @@ The `errors` field is only there when the state is `error`. It has the message o
 }
 ```
 
-Status messages use QoS 0 and are not retained, the same as the messages on `{topicPrefix}/{deviceId}/data`. If the bridge is not connected to the broker when the state changes, the message is lost. Use `bridge.getDevice()` to read the current state at any time.
+Status messages use QoS 0 and are retained. If the bridge is not connected to the broker when the state changes, the message is lost, but the bridge publishes the state of every device again when it connects. `bridge.removeDevice()` deletes the retained status of the device (it publishes an empty retained message, also when the bridge is not connected: the message waits for the connect). Use `bridge.getDevice()` to read the current state at any time.
 
 The `connected` field of the device status is deprecated. Use `state` instead. `connected` is `true` only when `state` is `connected`.
 
@@ -582,7 +593,7 @@ The bridge subscribes to `{topicPrefix}/{deviceId}/set` for each enabled device.
 - Right after the writes, the bridge reads the device and publishes the data on `{topicPrefix}/{deviceId}/data`, without waiting for the next poll. This read covers the points that a poll reads (see [Which Data Points Are Polled](#which-data-points-are-polled)): write-only and `on-demand` points are not read, and a `static` point keeps its first value. The bridge reads the device also after a driver error, so the data shows these points as they are on the device. After a timeout, the failed point may still have reached the device, even though it is not in `written`. When this read works, it counts as a good poll: the count of failed polls goes back to 0, and a device in the `error` state goes back to `connected`. The next poll stays at the time it was planned. If this read fails, the bridge logs a warning and the next poll reads the device. The failed read does not count as a failed poll.
 - A message published with retain is written once: the broker clears the retain flag when it forwards the message to the bridge. The broker also keeps a copy and sends it again with the retain flag on every subscribe, at every start of the bridge and after every reconnect. The bridge ignores this copy and logs a warning. Publish write messages without retain.
 
-The bridge publishes the result of every write message on `{topicPrefix}/{deviceId}/set/result`, except a retained copy that it ignores. Result messages use QoS 0 and are not retained, the same as data and status messages. When all points are written:
+The bridge publishes the result of every write message on `{topicPrefix}/{deviceId}/set/result`, except a retained copy that it ignores. Result messages use QoS 0 and are not retained, the same as data messages. When all points are written:
 
 ```json
 {

@@ -224,7 +224,19 @@ describe('createBridge', () => {
       clean: true,
       reconnectPeriod: 5000,
       resubscribe: true,
+      will: {
+        topic: 'modbus/bridge/status',
+        payload: Buffer.from('offline'),
+        qos: 1,
+        retain: true,
+      },
     })
+    expect(mockClient.publish).toHaveBeenCalledWith(
+      'modbus/bridge/status',
+      'online',
+      { qos: 0, retain: true },
+      expect.any(Function)
+    )
 
     const status = bridge.getStatus()
     expect(status.state).toBe('running')
@@ -1225,8 +1237,10 @@ describe('createBridge', () => {
         expect.any(Function)
       )
 
-      const publishCall = (mockClient.publish as jest.Mock).mock.calls[0]
-      const payload = JSON.parse(publishCall[1] as string)
+      const publishCall = (mockClient.publish as jest.Mock).mock.calls.find(
+        ([topic]) => topic === 'modbus/device1/data'
+      )
+      const payload = JSON.parse(publishCall?.[1] as string)
       expect(payload.deviceId).toBe('device1')
       expect(payload.data).toEqual(testData)
       expect(payload.timestamp).toBeGreaterThan(0)

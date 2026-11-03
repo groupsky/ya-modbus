@@ -49,6 +49,7 @@ describe('createBridge slow mode log', () => {
     mockDeviceManager = {
       getDevice: jest.fn(),
       getDeviceConfig: jest.fn(),
+      listDevices: jest.fn().mockReturnValue([]),
       updateDeviceState: jest.fn(),
     }
     MockedDeviceManager.mockReturnValue(mockDeviceManager)

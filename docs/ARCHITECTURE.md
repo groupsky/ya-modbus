@@ -504,6 +504,7 @@ For 10 devices @ 9600 baud:
 ### MQTT Status Topics
 
 ```
+modbus/bridge/status            # online/offline, retained, with a last-will
 modbus/bridge/status/health     # Overall bridge health
 modbus/{deviceId}/status/*      # Per-device status
 modbus/{deviceId}/errors/*      # Per-device errors
