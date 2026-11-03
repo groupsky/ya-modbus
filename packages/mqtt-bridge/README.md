@@ -473,7 +473,7 @@ The path names the wrong field. Compare it with the RTU and TCP lists above. Wit
 Error: Invalid configuration: devices: The devices on rtu:/dev/ttyUSB0 must have the same connection.pollOrder: meter1 has 'fixed', meter2 has 'arrival' (not set)
 ```
 
-All devices on one serial port, or on one TCP host and port, must have the same `pollOrder`. A device without it has `'arrival'`. Set the same value in every device on the line. `bridge.addDevice()` gives the same error for a device whose `pollOrder` differs from the devices on its line, and does not add the device.
+All devices on one serial port, or on one TCP host and port, must have the same `pollOrder`. A device without it has `'arrival'`. Disabled devices count too, so a device can be enabled later without an error. Set the same value in every device on the line. `bridge.addDevice()` gives the same error for a device whose `pollOrder` differs from the devices on its line, and does not add the device.
 
 **Setting that the driver does not support**
 
