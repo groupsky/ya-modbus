@@ -310,19 +310,20 @@ Static points are read in a separate request, after the dynamic points, and only
 
 A driver often reads several register blocks when the bridge asks it for the data points. When the device refuses one block, the whole read fails. How the bridge goes on depends on the error:
 
-- **The device answers with a Modbus exception** (for example 2, illegal data address). The device is alive. The bridge reads each data point on its own, once, to find the points that fail (the search). It publishes the points that work. The state stays `connected`, and the status message lists the failed points in `failedDataPoints` (see [Device States](#device-states)).
-- **Any other error** (a timeout, a closed port). The whole poll fails, the same as when the device does not answer (see [Failed Reads and Backoff](#failed-reads-and-backoff)).
+- **The device refuses the request** with Modbus exception 1 (illegal function), 2 (illegal data address) or 3 (illegal data value). The device is alive. The bridge reads each data point on its own, once, to find the points that fail (the search). It publishes the points that work. The state stays `connected`, and the status message lists the failed points in `failedDataPoints` (see [Device States](#device-states)).
+- **Any other error**: a timeout, a closed port, or any other Modbus exception, for example 4 (device failure) or 6 (busy). The whole poll fails, the same as when the device does not answer (see [Failed Reads and Backoff](#failed-reads-and-backoff)). No point is marked as failed.
 
-On later polls the bridge reads the good points in one request, and the failed points in a second request. When the second request works, the failed points are back in the data, and `failedDataPoints` goes away. Static points work the same way: the static points that work are kept, and only the failed ones are read again on each poll.
+On later polls the bridge reads the good points in one request, and the failed points in a second request. When the second request works, the failed points are back in the data, and `failedDataPoints` goes away. Static points work the same way: the static points that work are kept, and only the failed ones are read again on each poll, in one request.
 
 When the device refuses every dynamic point, the poll fails (see [Failed Reads and Backoff](#failed-reads-and-backoff)). Later polls read all of them in one request, until it works. When the device refuses every static point, the poll still works: the status names the static points, and later polls read them in one request.
 
 Limits:
 
-- The search costs one request per data point (for a meter with 56 points, about 4 seconds). It runs when a request with all points of a device fails, so once for each new failure. It does not run again while the device refuses every dynamic point.
+- The search costs one request per data point (for a meter with 56 points, about 4 seconds). It runs when the device refuses the request with the dynamic points that are not marked as failed, or the first request with the static points.
 - A device that does not answer a bad range at all (a timeout instead of an exception) still fails as a whole.
-- The failed points are retried together. When some of them work again and others do not, the second request still fails, so all of them stay failed until all work again, or until the next search.
-- After the device refused every dynamic point, the bridge searches again only when the request with all of them works. When the device answers some of them but not all, every poll still fails.
+- The failed points are retried together. When some of them work again and others do not, the second request still fails, so all of them stay failed until all of them work again.
+- Failed static points are never searched again. They are only read again in one request.
+- When the device refused every dynamic point, every poll fails, and the device goes to the `error` state and stays there, until all of them answer in one request. When the device answers some of them but not all, polls still fail.
 - A driver can read a smaller range for one point than for many. Then a point can work alone but fail in the full request, and every poll runs the search: the data is complete, but the poll is slow.
 
 ### Publish Only on Change
