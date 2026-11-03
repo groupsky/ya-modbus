@@ -196,6 +196,7 @@ These need a check on the real meter:
 - Word order of `running_time` and `startup_current`. The old reader wrote them low word first. If the old `startup_current` was a very large number (about 65536 times a small one), the timing current is stored low word first and the driver must swap the words.
 - The demand block reads up to 0x187 and the settings block reads 0x1018-0x101B. The old reader never read 0x186-0x187 or 0x101B. Check that the meter answers these requests.
 - The unit of `running_time` (the list gives none).
+- The reactive demand registers. The list puts them at 0x180-0x186 and skips 0x17E; the old reader read 0x17E-0x184. If the list is wrong, all four reactive demand values are one slot off. Check: read 0x176-0x187 under a reactive load and see which registers follow the forward reactive demand.
 
 ## Sources
 
