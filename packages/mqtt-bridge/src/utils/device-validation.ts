@@ -160,7 +160,12 @@ export const deviceConfigSchema = z
   .strictObject({
     deviceId: deviceIdSchema,
     driver: driverNameSchema,
-    connection: z.discriminatedUnion('type', [rtuConnectionSchema, tcpConnectionSchema]),
+    connection: z.discriminatedUnion('type', [rtuConnectionSchema, tcpConnectionSchema], {
+      error: (issue) =>
+        issue.input === undefined
+          ? 'Connection is required'
+          : "Connection type must be 'rtu' or 'tcp'",
+    }),
     enabled: z.boolean().optional(),
     polling: pollingConfigSchema,
     allowWrites: z.boolean().optional(),

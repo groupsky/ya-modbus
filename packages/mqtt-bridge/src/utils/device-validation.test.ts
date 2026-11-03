@@ -639,6 +639,21 @@ describe('validateDeviceConfig', () => {
     })
   })
 
+  // The error names the field that is wrong, not only the connection
+  it.each([
+    [{ type: 'rtu', port: '/dev/ttyUSB0', slaveId: 300 }, 'connection.slaveId: Too big'],
+    [{ type: 'tcp', slaveId: 1 }, 'connection.host: Invalid input'],
+    [
+      { type: 'serial', port: '/dev/ttyUSB0' },
+      "connection.type: Connection type must be 'rtu' or 'tcp'",
+    ],
+    [undefined, 'connection: Connection is required'],
+  ])('should name the wrong field of connection %p', (connection, message) => {
+    const config = { deviceId: 'device1', driver: 'ya-modbus-driver-test', connection }
+
+    expect(() => validateDeviceConfig(config)).toThrow(`Invalid device configuration: ${message}`)
+  })
+
   // The order in which the devices on one line take turns (#682)
   describe('connection.pollOrder', () => {
     const device = { deviceId: 'device1', driver: 'ya-modbus-driver-test' }
