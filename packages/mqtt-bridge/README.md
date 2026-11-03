@@ -265,6 +265,7 @@ The fields depend on `type`. A field that does not belong to the type is an erro
 - `stopBits` (optional) - Stop bits: 1 or 2. Default: from the driver
 - `timeout` (optional) - Time to wait for a response in milliseconds (1-86400000, default: 1000)
 - `interDeviceDelay` (optional) - Pause in milliseconds before a request to this device when the previous request on the port went to another device (0-60000, default: 150). Some meters do not answer a request that comes too soon after another meter's reply: a DDS519MR misses it after 50 ms and answers after 100 ms. The pause counts from the end of the previous request. The bridge waits only when the device changes, not between the requests of one device. `0` turns the pause off.
+- `pollOrder` (optional) - `"arrival"` (default) or `"fixed"`: the order in which the devices on the port take turns. All devices on one port must have the same value. See [Fixed Poll Order](#fixed-poll-order).
 
 The defaults of `baudRate`, `parity`, `dataBits` and `stopBits` are the factory settings of the device, from the `DEFAULT_CONFIG` of the driver. `ya-modbus show-defaults --driver <package>` shows them. If the driver has no `DEFAULT_CONFIG`, `baudRate` is required, and the bridge uses parity "none", 8 data bits and 1 stop bit.
 
@@ -281,6 +282,7 @@ Device meter1 uses /dev/ttyUSB0: baud rate 9600, data bits 8, parity odd, stop b
 - `port` (optional) - TCP port (1-65535, default: 502)
 - `slaveId` (required) - Modbus slave ID (0-247)
 - `timeout` (optional) - Time to wait for a response, and for the TCP connection to open, in milliseconds (1-86400000, default: 1000)
+- `pollOrder` (optional) - `"arrival"` (default) or `"fixed"`: the order in which the devices on the host and port take turns. All devices on one host and port must have the same value. See [Fixed Poll Order](#fixed-poll-order).
 
 **Polling configuration:**
 
@@ -401,10 +403,47 @@ The bridge checks the whole config before it connects to the broker. If the conf
 After the bridge has connected to the broker, it loads the devices one after another, in the order of the `devices` array. For each device the CLI prints `✓ Loaded device: <deviceId>`.
 
 - Devices share one connection when they use the same serial port with the same `baudRate`, `dataBits`, `parity` and `stopBits`, or the same TCP `host` and `port`. The first of them opens the connection and its `timeout` is used for all of them.
-- Devices on the same serial port, or on the same TCP host and port, are read one at a time, in turn. The whole poll of a device (its dynamic and static points) runs before the poll of the next device. A device that is ready to poll again waits behind the devices that are already waiting, also in `continuous` mode.
+- Devices on the same serial port, or on the same TCP host and port, are read one at a time, in turn. The whole poll of a device (its dynamic and static points) runs before the poll of the next device. A device that is ready to poll again waits behind the devices that are already waiting, also in `continuous` mode. At the start this is the config order, but a slow or failed read can change the order. To keep the config order, see [Fixed Poll Order](#fixed-poll-order).
 - A device ID can be used only once. If it is used twice, loading the second device fails with `devices[<N>] (<deviceId>): Device <deviceId> already exists`.
 - If a device fails to load, for example because the driver is not installed or does not support a serial setting, the CLI prints the error with the position and ID of the device, as `devices[<N>] (<deviceId>): <message>`, and exits with code 1. `N` is the position of the device in `devices`, counting from 0. The devices after it are not loaded.
 - A port that cannot be opened does not stop the bridge, for example a USB serial adapter that is not plugged in, or a TCP device that refuses the connection. The bridge prints a warning, the device starts in the `error` state, and the other devices start normally. A later poll opens the port (see [Unplugging a Serial Adapter](#unplugging-a-serial-adapter)). This does not work for a driver that reads from the device while it loads: that device fails to load.
+
+### Fixed Poll Order
+
+A line is one serial port, or one TCP host and port. Without a setting, the devices on a line take turns in the order their polls come (`pollOrder: "arrival"`). At the start this is the config order. A slow or failed read can change it, and the new order then stays.
+
+With `pollOrder: "fixed"` in the `connection` of every device on the line, the devices take turns in the order of the `devices` array:
+
+- A round polls each device once, from the first to the last, and then starts again from the first one. A slow or failed read does not change the order. The retries of a failed read stay in the turn of that device.
+- A device that is not due skips its turn and the round goes on with the next device: its `interval` has not passed since its last read ended, or it waits in backoff after failed reads (see [Failed Reads and Backoff](#failed-reads-and-backoff)). It never makes the other devices wait.
+- When no device is due, the line waits until the first device is due and then goes on with the device whose turn is next.
+- `interval` and `continuous` devices can be on one line. `interDeviceDelay` works as without the setting.
+- A device added with `bridge.addDevice()` takes its turn after the devices that are there already. A removed device leaves the round.
+
+Use it when a meter does not answer right after one particular other meter. Put the devices in the order that works, and set `pollOrder: "fixed"`, so the order does not drift by itself. It also makes the logs and timings of different days easier to compare, and it gives each device exactly one turn per round.
+
+```json
+{
+  "devices": [
+    {
+      "deviceId": "meter1",
+      "driver": "@ya-modbus/driver-ex9em",
+      "connection": { "type": "rtu", "port": "/dev/ttyUSB0", "slaveId": 1, "pollOrder": "fixed" }
+    },
+    {
+      "deviceId": "meter2",
+      "driver": "@ya-modbus/driver-ex9em",
+      "connection": { "type": "rtu", "port": "/dev/ttyUSB0", "slaveId": 2, "pollOrder": "fixed" }
+    }
+  ]
+}
+```
+
+After the devices are loaded, the CLI prints the order of each line with a fixed order. Disabled devices are not in it:
+
+```
+The devices on rtu:/dev/ttyUSB0 take turns in a fixed order: meter1, meter2
+```
 
 ### Common Configuration Errors
 
@@ -421,19 +460,20 @@ The key is not an option in that place. It is misspelled, or it belongs to the o
 **Wrong connection field**
 
 ```
-Error: Invalid configuration: devices.0.connection: Invalid input
+Error: Invalid configuration: devices.0.connection.slaveId: Too big: expected number to be <=247
+Error: Invalid configuration: devices.0.connection.type: Connection type must be 'rtu' or 'tcp'
+Error: Invalid configuration: devices.0.connection.pollOrder: Poll order must be 'arrival' or 'fixed'
 ```
 
-This message does not say which field is wrong. Compare the connection with the RTU and TCP lists above. The usual causes are:
+The path names the wrong field. Compare it with the RTU and TCP lists above. Without `connection` the message is `devices.0.connection: Connection is required`.
 
-- `slaveId` outside 0-247, or TCP `port` outside 1-65535
-- `port`, `host` or `slaveId` is missing, or `port` or `host` is empty
-- `baudRate` is not a positive number
-- `parity`, `dataBits` or `stopBits` has a value that is not in the list
-- `timeout` is not a whole number from 1 to 86400000
-- `interDeviceDelay` is not a whole number from 0 to 60000
-- `type` is not `"rtu"` or `"tcp"`, or `connection` is missing
-- an unknown key, together with another problem in the same connection (an unknown key alone gives `Unrecognized key`)
+**Devices on one line with a different poll order**
+
+```
+Error: Invalid configuration: devices: The devices on rtu:/dev/ttyUSB0 must have the same connection.pollOrder: meter1 has 'fixed', meter2 has 'arrival' (not set)
+```
+
+All devices on one serial port, or on one TCP host and port, must have the same `pollOrder`. A device without it has `'arrival'`. Set the same value in every device on the line. `bridge.addDevice()` gives the same error for a device whose `pollOrder` differs from the devices on its line, and does not add the device.
 
 **Setting that the driver does not support**
 
