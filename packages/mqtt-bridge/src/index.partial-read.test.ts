@@ -5,7 +5,7 @@ import type { DeviceDriver } from '@ya-modbus/driver-types'
 import mqtt from 'mqtt'
 
 import type { DriverLoader } from './driver-loader.js'
-import type { MqttBridge } from './types.js'
+import type { DeviceConfig, MqttBridge } from './types.js'
 
 import { createBridge } from './index.js'
 
@@ -31,7 +31,14 @@ describe('createBridge partial reads', () => {
     name: 'test',
     manufacturer: 'Test',
     model: 'TEST-001',
-    dataPoints: ['voltage', 'current', 'energy'].map((id) => ({ id, type: 'float', access: 'r' })),
+    dataPoints: [
+      ...['voltage', 'current', 'energy'].map((id) => ({
+        id,
+        type: 'float' as const,
+        access: 'r' as const,
+      })),
+      { id: 'setpoint', type: 'float', access: 'rw' },
+    ],
     readDataPoint: jest.fn<DeviceDriver['readDataPoint']>(),
     writeDataPoint: jest.fn<DeviceDriver['writeDataPoint']>(),
     readDataPoints: (ids) =>
@@ -68,13 +75,16 @@ describe('createBridge partial reads', () => {
     client.connected = true
     client.emit('connect')
     await started
-    await bridge.addDevice({
+  })
+
+  const addMeter = (extra: Partial<DeviceConfig> = {}): Promise<void> =>
+    bridge.addDevice({
       deviceId: 'meter',
       driver: 'ya-modbus-driver-test',
       connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
       polling: { interval: INTERVAL },
+      ...extra,
     })
-  })
 
   afterEach(async () => {
     await bridge.stop()
@@ -87,9 +97,12 @@ describe('createBridge partial reads', () => {
       .map(([, payload]) => JSON.parse(payload) as Record<string, unknown>)
 
   it('should publish the block that works, and name the failed points in the status', async () => {
+    await addMeter()
     await jest.advanceTimersByTimeAsync(INTERVAL)
 
-    expect(published('data').map((m) => m['data'])).toEqual([{ voltage: 1, current: 1 }])
+    expect(published('data').map((m) => m['data'])).toEqual([
+      { voltage: 1, current: 1, setpoint: 1 },
+    ])
     expect(published('status')).toEqual([
       expect.objectContaining({ state: 'connected', failedDataPoints: ['energy'] }),
     ])
@@ -97,6 +110,7 @@ describe('createBridge partial reads', () => {
   })
 
   it('should publish the status only when the failed points change', async () => {
+    await addMeter()
     await jest.advanceTimersByTimeAsync(INTERVAL * 2)
     expect(published('status')).toHaveLength(1)
 
@@ -107,6 +121,23 @@ describe('createBridge partial reads', () => {
     expect(status).toHaveLength(2)
     expect(status[1]).toEqual(expect.objectContaining({ state: 'connected' }))
     expect(status[1]).not.toHaveProperty('failedDataPoints')
-    expect(published('data').at(-1)?.['data']).toEqual({ voltage: 1, current: 1, energy: 1 })
+    expect(published('data').at(-1)?.['data']).toEqual({
+      voltage: 1,
+      current: 1,
+      energy: 1,
+      setpoint: 1,
+    })
+  })
+
+  it('should publish on change only, also while points fail, and always after a write', async () => {
+    await addMeter({ publish: { mode: 'on-change' }, allowWrites: true })
+    await jest.advanceTimersByTimeAsync(INTERVAL * 2)
+    expect(published('data')).toHaveLength(1)
+
+    client.emit('message', 'modbus/meter/set', Buffer.from('{"setpoint":1}'), { retain: false })
+    await jest.advanceTimersByTimeAsync(0)
+
+    expect(driver.writeDataPoint).toHaveBeenCalledWith('setpoint', 1)
+    expect(published('data')).toHaveLength(2)
   })
 })
