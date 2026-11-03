@@ -177,6 +177,7 @@ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for details.
 #### HVAC
 
 - **BAC002** - Climate controller
+- **TF3** - Autonics temperature controller
 
 #### Generic Modbus
 
