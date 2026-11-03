@@ -2,25 +2,28 @@ import type { DeviceDriver } from '@ya-modbus/driver-types'
 
 export interface PartialReadResult {
   data: Record<string, unknown>
-  /** Points the device refused with a Modbus exception */
+  /** Points the device refused with Modbus exception 1, 2 or 3 */
   failed: string[]
-  /** The Modbus exception of the last failed call, when one failed */
+  /** The refusal of the last failed call, when one failed */
   error?: unknown
 }
 
-// The device answered, but refused the request (for example 2 = illegal data address)
-const isModbusException = (error: unknown): boolean =>
-  typeof (error as { modbusCode?: unknown } | null)?.modbusCode === 'number'
+// Modbus exceptions that refuse the request itself: 1 illegal function, 2 illegal data address,
+// 3 illegal data value. Others (4 device failure, 6 busy, ...) say nothing about the points.
+const REFUSALS = [1, 2, 3]
+
+const isRefusal = (error: unknown): boolean =>
+  REFUSALS.includes((error as { modbusCode?: unknown } | null)?.modbusCode as number)
 
 /**
  * Read data points, and keep the points that work when the device refuses some of them.
  *
- * Without `failed` all points are read in one call. When the device answers it with a Modbus
- * exception, every point is read on its own once, to find the points that fail. With `failed`
+ * Without `failed` all points are read in one call. When the device refuses it with Modbus
+ * exception 1, 2 or 3, every point is read on its own once, to find the points that fail. With `failed`
  * the other points are read in one call, and the failed points in a second call. When the second
  * call works, the points are back.
  *
- * Any other error (a timeout, a closed port) is thrown.
+ * Any other error (a timeout, a closed port, another Modbus exception) is thrown.
  */
 export async function readPartial(
   driver: DeviceDriver,
@@ -36,11 +39,11 @@ export async function readPartial(
     try {
       return { data: { ...data, ...(await driver.readDataPoints(failed)) }, failed: [] }
     } catch (error) {
-      if (!isModbusException(error)) throw error
+      if (!isRefusal(error)) throw error
       return { data, failed, error }
     }
   } catch (error) {
-    if (!isModbusException(error)) throw error
+    if (!isRefusal(error)) throw error
     return scan(driver, ids, error)
   }
 }
@@ -55,7 +58,7 @@ async function scan(
     try {
       Object.assign(result.data, await driver.readDataPoints([id]))
     } catch (error) {
-      if (!isModbusException(error)) throw error
+      if (!isRefusal(error)) throw error
       result.failed.push(id)
     }
   }

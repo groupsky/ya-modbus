@@ -133,6 +133,28 @@ describe('PollingScheduler partial reads', () => {
     expect(onError).toHaveBeenCalledWith('device1', new Error('Timed out'), 1)
   })
 
+  it.each([4, 5, 6])(
+    'should fail the whole poll and mark nothing on Modbus exception %i',
+    async (modbusCode) => {
+      // 4 device failure, 5 acknowledge, 6 busy: the device did not refuse the points
+      const busy = Object.assign(new Error('Slave device busy'), { modbusCode })
+      readDataPoints.mockRejectedValueOnce(busy)
+      schedule()
+      await jest.advanceTimersByTimeAsync(INTERVAL)
+
+      expect(readDataPoints).toHaveBeenCalledTimes(1)
+      expect(onData).not.toHaveBeenCalled()
+      expect(onError).toHaveBeenCalledWith('device1', busy, 1)
+
+      energyFails = false
+      readDataPoints.mockClear()
+      await jest.advanceTimersByTimeAsync(INTERVAL)
+
+      expect(readDataPoints.mock.calls).toEqual([[['voltage', 'current', 'energy', 'frequency']]])
+      expect(onData).toHaveBeenCalledTimes(1)
+    }
+  )
+
   it('should fail the whole poll when the device refuses every point', async () => {
     readDataPoints.mockImplementation(() => Promise.reject(modbusException()))
     schedule()

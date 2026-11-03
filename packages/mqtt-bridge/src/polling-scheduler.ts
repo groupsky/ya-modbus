@@ -30,7 +30,7 @@ interface ScheduledDevice {
 
 /**
  * `afterWrite` is true for the read that follows a write. `failedDataPoints` names the points
- * the device refused with a Modbus exception; it is left out when no point failed.
+ * the device refused (Modbus exception 1, 2 or 3); it is left out when no point failed.
  */
 export interface DataInfo {
   afterWrite?: true
