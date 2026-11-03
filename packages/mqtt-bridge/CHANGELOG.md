@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.26.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.25.0...@ya-modbus/mqtt-bridge@0.26.0) (2026-11-03)
+
+### Features
+
+- **mqtt-bridge:** publish data points read fine when one block fails ([#720](https://github.com/groupsky/ya-modbus/issues/720)) ([fcdc964](https://github.com/groupsky/ya-modbus/commit/fcdc964225f26e38415c750b85c17afcfb8290ea)), closes [#604](https://github.com/groupsky/ya-modbus/issues/604)
+
 # [0.25.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.24.2...@ya-modbus/mqtt-bridge@0.25.0) (2026-11-02)
 
 ### Features
