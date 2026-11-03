@@ -1,7 +1,7 @@
 /** What the lines with a fixed poll order need from the polling scheduler */
 export interface FixedOrderDevices {
   isRunning(): boolean
-  /** When the device may be polled next, or undefined while it has no poll chain */
+  /** When the device may be polled next, in performance.now() time; undefined without a poll chain */
   dueAt(deviceId: string): number | undefined
   /** Poll the device once; resolves when the poll has ended */
   poll(deviceId: string): Promise<void>
@@ -71,7 +71,8 @@ export class FixedOrderLines {
     line.active = true
     try {
       while (this.devices.isRunning() && this.lines.get(key) === line) {
-        const now = Date.now()
+        // A clock that never goes back, so a change of the system time does not stop the line
+        const now = performance.now()
         let earliest = Infinity
         let due: number | undefined
         for (let i = 0; i < line.order.length; i++) {

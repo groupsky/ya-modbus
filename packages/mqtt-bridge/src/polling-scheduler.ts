@@ -283,7 +283,7 @@ export class PollingScheduler {
     }
 
     if (device.config.connection.pollOrder === 'fixed') {
-      device.dueAt = Date.now() + delay
+      device.dueAt = performance.now() + delay
       this.fixedLines.wake(device.connectionKey)
       return
     }
