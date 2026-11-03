@@ -10,8 +10,8 @@ BAC-002 room thermostat driver.
 - Data points are a list of fields in `src/index.ts`. A field with an `encode` function can be
   written, with function 6 (write single register)
 - Enum data points use the text values of the old reader (`off`, `heating`, `mon`, ...)
-- No vendor register document exists. The register list comes from the old reader and the
-  Wiren Board page for the BAC-002ALN. Do not add register addresses to the README
+- Registers 0-7 follow the vendor document `docs/bac-1000-modbus-protocol.pdf`. Registers
+  8-10 are not in it: they come from the old reader and the Wiren Board page for the BAC-002ALN
 
 ## Testing
 

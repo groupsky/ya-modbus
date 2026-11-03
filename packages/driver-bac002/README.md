@@ -2,9 +2,12 @@
 
 Driver for the BAC-002 room thermostat (fan coil thermostat with RS-485), for ya-modbus.
 
-The register list comes from an older reader of this device and from the
+Registers 0-7 (the settings and the clock) follow the vendor document
+"Thermostat Interface Protocol V1.0, Model BAC 1000", in `docs/bac-1000-modbus-protocol.pdf`.
+The read-only registers 8-10 are not in that document: they come from an older reader of this
+device and from the
 [Wiren Board page for the BAC-002ALN](https://wiki.wirenboard.com/wiki/BAC-002ALN).
-There is no vendor register document.
+The 5 to 35 °C target range comes from the vendor user guide.
 
 ## Device Information
 
@@ -62,7 +65,7 @@ lists the valid ones, and nothing is sent to the device.
 | `power`               | enum    |      | rw     | `off`, `on`                                     |
 | `fan_setting`         | enum    |      | rw     | `auto`, `high`, `mid`, `low`                    |
 | `mode`                | enum    |      | rw     | `cooling`, `heating`, `ventilation`             |
-| `target_temperature`  | float   | °C   | rw     | 0 to 100, rounded to steps of 0.5               |
+| `target_temperature`  | float   | °C   | rw     | 5 to 35, rounded to steps of 0.5                |
 | `lock`                | enum    |      | rw     | `unlock`, `lock`                                |
 | `clock_minutes`       | integer | min  | rw     | 0 to 59                                         |
 | `clock_hours`         | integer | h    | rw     | 0 to 23                                         |
@@ -111,14 +114,14 @@ The text values (`off`, `high`, `heating`, `mon`, and so on) are the same as bef
   through.
 - Temperatures are signed, so a room below 0 °C reads as `-1`, not `6552.6`.
 - The clock fields accept whole numbers only. The old writer rounded `12.4` to `12`.
-- The target temperature must be from 0 to 100 before rounding. The old writer rounded first, so
-  it also accepted values up to 100.2.
+- The target temperature must be from 5 to 35 before rounding, the range of the vendor user
+  guide. The old writer allowed 0 to 100.
 
 ## Target temperature step
 
 The driver rounds the target temperature to 0.5 °C and writes it in tenths of a degree, as the
 old writer did. A value like `21.3` is written as `21.5`. The register itself holds tenths of a
-degree. If the device accepts finer steps, the rounding can be removed.
+degree. The vendor document gives the accuracy as 0.5 °C, so finer steps are not useful.
 
 ## Testing
 

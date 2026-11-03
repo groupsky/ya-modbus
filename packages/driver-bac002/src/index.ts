@@ -1,8 +1,10 @@
 /**
  * BAC-002 room thermostat driver
  *
- * The register list comes from an older reader of this device and from the Wiren Board page
- * for the BAC-002ALN. There is no vendor register document.
+ * Registers 0-7 come from the vendor document "Thermostat Interface Protocol V1.0, Model BAC 1000"
+ * (docs/bac-1000-modbus-protocol.pdf). Registers 8-10 are not in it: they come from an older
+ * reader of this device and from the Wiren Board page for the BAC-002ALN. The 5-35 °C range of
+ * the target temperature comes from the vendor user guide.
  *
  * One read of holding registers 0-10 (function 3) returns everything:
  *
@@ -117,7 +119,7 @@ function temperatureField(register: number, dataPoint: Omit<DataPoint, 'type'>):
     // Signed 16-bit, so -1.0 degrees is not read as 6552.6
     decode: (raw) => (raw > 0x7fff ? raw - 0x10000 : raw) / 10,
     ...(dataPoint.access === 'rw' && {
-      // The device sets the temperature in steps of 0.5 degrees, as the old writer did
+      // The vendor document gives an accuracy of 0.5 degrees, and the old writer rounded the same way
       encode: (value) => {
         if (!isInRange(value)) {
           throw new Error(formatRangeError(dataPoint.id, value, min, max))
@@ -169,9 +171,9 @@ const FIELDS: ReadonlyArray<Field> = [
     id: 'target_temperature',
     name: 'Target Temperature',
     access: 'rw',
-    description: 'Wanted room temperature in degrees Celsius',
-    min: 0,
-    max: 100,
+    description: 'Wanted room temperature in degrees Celsius (5 to 35)',
+    min: 5,
+    max: 35,
   }),
   enumField(
     4,

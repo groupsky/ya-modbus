@@ -320,8 +320,8 @@ describe('BAC-002 driver with an emulated device', () => {
     it.each([
       [21.5, 215],
       [21, 210],
-      [0, 0],
-      [100, 1000],
+      [5, 50],
+      [35, 350],
       [21.2, 210],
       [21.3, 215],
       [21.74, 215],
@@ -331,7 +331,7 @@ describe('BAC-002 driver with an emulated device', () => {
       expect(register(3)).toBe(raw)
     })
 
-    it.each([-0.5, 100.5, NaN, Infinity, '21', null])(
+    it.each([4.5, 35.5, -0.5, NaN, Infinity, '21', null])(
       'rejects target temperature %p',
       async (value) => {
         await expect(driver.writeDataPoint('target_temperature', value)).rejects.toThrow(
@@ -342,8 +342,8 @@ describe('BAC-002 driver with an emulated device', () => {
     )
 
     it('names the range when the target temperature is wrong', async () => {
-      await expect(driver.writeDataPoint('target_temperature', 120)).rejects.toThrow(
-        'Invalid target_temperature: received 120, must be between 0 and 100'
+      await expect(driver.writeDataPoint('target_temperature', 40)).rejects.toThrow(
+        'Invalid target_temperature: received 40, must be between 5 and 35'
       )
     })
 
