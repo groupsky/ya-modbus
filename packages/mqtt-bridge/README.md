@@ -427,7 +427,7 @@ A line is one serial port, or one TCP host and port. Without a setting, the devi
 With `pollOrder: "fixed"` in the `connection` of every device on the line, the devices take turns in the order of the `devices` array:
 
 - A round polls each device once, from the first to the last, and then starts again from the first one. A slow or failed read does not change the order. The retries that the transport makes for a failed request stay in the turn of that device.
-- A device that is not due skips its turn and the round goes on with the next device: its `interval` has not passed since its last read ended, or it waits in backoff after failed reads (see [Failed Reads and Backoff](#failed-reads-and-backoff)). It never makes the other devices wait.
+- A device that is not due skips its turn and the round goes on with the next device: its `interval` has not passed since its last read ended, or it waits `retryDelay` or the backoff after failed reads (see [Failed Reads and Backoff](#failed-reads-and-backoff)). It never makes the other devices wait.
 - When no device is due, the line waits until the first device is due and then goes on with the device whose turn is next.
 - `interval` and `continuous` devices can be on one line. `interDeviceDelay` works as without the setting.
 - A device added with `bridge.addDevice()` takes its turn after the devices that are there already. A removed device leaves the round.

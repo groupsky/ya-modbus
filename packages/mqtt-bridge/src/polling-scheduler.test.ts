@@ -149,6 +149,30 @@ describe('PollingScheduler', () => {
       }
     )
 
+    it.each([0, -1000, NaN, Infinity, 2 ** 31])('should reject retry delay %p', (retryDelay) => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'test-driver',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+        polling: { interval: 1000, retryDelay },
+      }
+
+      const driver: DeviceDriver = {
+        name: 'test',
+        manufacturer: 'Test',
+        model: 'TEST-001',
+        dataPoints: [],
+        readDataPoint: jest.fn(),
+        writeDataPoint: jest.fn(),
+        readDataPoints: jest.fn(),
+      }
+
+      expect(() => scheduler.scheduleDevice('device1', config, driver)).toThrow(
+        `Invalid retry delay for device device1: ${retryDelay}`
+      )
+      expect(scheduler.isScheduled('device1')).toBe(false)
+    })
+
     it('should keep the default retry backoff within the timer limit for a long interval', async () => {
       const interval = 2 ** 30 + 1 // twice the interval would be above 2^31-1
       const config: DeviceConfig = {
