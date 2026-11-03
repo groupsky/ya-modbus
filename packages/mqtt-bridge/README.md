@@ -237,13 +237,13 @@ Each key must be one of the options below. A key that is not an option there is 
 - `mqtt.username` (optional) - Authentication username. Default: none
 - `mqtt.password` (optional) - Authentication password. Default: none
 - `mqtt.reconnectPeriod` (optional) - Time between reconnect attempts in milliseconds (1-86400000, default: 5000)
-- `topicPrefix` (optional) - Topic prefix for all MQTT topics (default: `modbus`). It must not be empty. It must not contain `+`, `#`, `/`, `$` or the null character. Do not use `bridge`: its status topic is the topic of the bridge status (see [Bridge Status](#bridge-status)).
+- `topicPrefix` (optional) - Topic prefix for all MQTT topics (default: `modbus`). It must not be empty. It must not contain `+`, `#`, `/`, `$` or the null character.
 - `stateDir` (optional) - Directory path for state persistence. The bridge accepts it but does not use it: it does not write any state to disk.
 - `devices` (optional) - Array of device configurations that the bridge loads at startup (default: no devices). The number of devices is not limited. See [Loading Devices](#loading-devices).
 
 **Device configuration:**
 
-- `deviceId` (required) - Unique device identifier. The bridge uses it in the MQTT topics (`{topicPrefix}/{deviceId}/data`). It must not be empty. It must not contain `+`, `#`, `/`, `$` or the null character.
+- `deviceId` (required) - Unique device identifier. The bridge uses it in the MQTT topics (`{topicPrefix}/{deviceId}/data`). It must not be empty. It must not contain `+`, `#`, `/`, `$` or the null character. Do not use `bridge`: its status topic is the topic of the bridge status (see [Bridge Status](#bridge-status)).
 - `driver` (required) - Driver package name: `@ya-modbus/driver-<name>`, `ya-modbus-driver-<name>` or `@<scope>/ya-modbus-driver-<name>`. `<name>` and `<scope>` can have lowercase letters, numbers and hyphens. The package must be installed.
 - `connection` (required) - Connection configuration (RTU or TCP)
 - `enabled` (optional) - Enable/disable device (default: true). A disabled device is added with the state `disconnected`. The bridge does not load its driver and does not poll it.
@@ -574,7 +574,7 @@ The `errors` field is only there when the state is `error`. It has the message o
 }
 ```
 
-Status messages use QoS 0 and are retained. If the bridge is not connected to the broker when the state changes, the message is lost, but the bridge publishes the state of every device again when it connects. `bridge.removeDevice()` deletes the retained status of the device (it publishes an empty retained message). Use `bridge.getDevice()` to read the current state at any time.
+Status messages use QoS 0 and are retained. If the bridge is not connected to the broker when the state changes, the message is lost, but the bridge publishes the state of every device again when it connects. `bridge.removeDevice()` deletes the retained status of the device (it publishes an empty retained message, also when the bridge is not connected: the message waits for the connect). Use `bridge.getDevice()` to read the current state at any time.
 
 The `connected` field of the device status is deprecated. Use `state` instead. `connected` is `true` only when `state` is `connected`.
 

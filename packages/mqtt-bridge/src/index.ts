@@ -280,7 +280,10 @@ export function createBridge(
           // Data may be lost while the broker was away: the next read of every device is published
           publishFilter.forget()
           // So may a change of state, and the retained status would stay old
-          for (const device of deviceManager.listDevices()) publishDeviceStatus(device.deviceId)
+          // Not a device whose driver still loads: addDevice() publishes its first state
+          for (const { deviceId, state } of deviceManager.listDevices()) {
+            if (state !== 'connecting') publishDeviceStatus(deviceId)
+          }
 
           // Start polling scheduler
           pollingScheduler.start()
@@ -535,8 +538,15 @@ export function createBridge(
       await deviceManager.removeDevice(deviceId)
       publishFilter.forget(deviceId)
 
-      // An empty retained message deletes the retained status of the device on the broker
-      void bridge.publish(`${deviceId}/status`, '', { qos: 0, retain: true }).catch(() => undefined)
+      // An empty retained message deletes the retained status of the device on the broker. Not
+      // with bridge.publish(), which fails while the client is offline: mqtt.js keeps this
+      // message and sends it at the connect.
+      client?.publish(
+        `${topicPrefix}/${deviceId}/status`,
+        '',
+        { qos: 0, retain: true },
+        () => undefined
+      )
     },
 
     getDevice(deviceId: string) {
