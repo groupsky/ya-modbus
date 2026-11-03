@@ -5,6 +5,7 @@ import { FixedOrderLines } from './fixed-poll-order.js'
 import { readPartial } from './partial-read.js'
 import { connectionKey, pollOrderConflict } from './poll-lines.js'
 import type { DeviceConfig } from './types.js'
+import { DEFAULT_POLLING_INTERVAL } from './utils/device-validation.js'
 
 interface ScheduledDevice {
   config: DeviceConfig
@@ -19,6 +20,8 @@ interface ScheduledDevice {
   // polling is stopped. The line polls it in its turn instead of a timer.
   dueAt?: number | undefined
   interval: number
+  // Wait after a failed read, until maxRetries failed reads in a row
+  retryDelay: number
   retryBackoff: number
   maxRetryBackoff: number
   // Read on every poll: readable points with pollType 'dynamic' (the default)
@@ -50,7 +53,6 @@ type ReadCallback = (deviceId: string, durationMs: number, ok: boolean) => void
 
 /** Failed reads in a row before polling slows down to `retryBackoff` */
 export const DEFAULT_MAX_RETRIES = 3
-const DEFAULT_POLLING_INTERVAL = 5000 // 5 seconds
 /** Longest wait between polls of a failing device, unless `retryBackoff` is longer */
 const DEFAULT_MAX_RETRY_BACKOFF = 60000
 
@@ -95,7 +97,12 @@ export class PollingScheduler {
       throw new Error(`Invalid polling interval for device ${deviceId}: ${interval}`)
     }
 
-    const retryBackoff = config.polling?.retryBackoff ?? Math.min(interval * 2, MAX_TIMER_DELAY)
+    const retryDelay = config.polling?.retryDelay ?? interval
+    if (!isValidTimerDelay(retryDelay)) {
+      throw new Error(`Invalid retry delay for device ${deviceId}: ${retryDelay}`)
+    }
+
+    const retryBackoff = config.polling?.retryBackoff ?? Math.min(retryDelay * 2, MAX_TIMER_DELAY)
     if (!isValidTimerDelay(retryBackoff)) {
       throw new Error(`Invalid retry backoff for device ${deviceId}: ${retryBackoff}`)
     }
@@ -135,6 +142,7 @@ export class PollingScheduler {
       failedDynamicIds: [],
       failedStaticIds: [],
       interval,
+      retryDelay,
       retryBackoff,
       maxRetryBackoff,
       lastFailureCount: 0,
@@ -283,9 +291,10 @@ export class PollingScheduler {
     } else if (mode === 'continuous' && device.lastFailureCount === 0) {
       // Continuous mode: poll on next event loop tick (effectively immediate)
       delay = 1
+    } else if (device.lastFailureCount > 0) {
+      // Retry after a failed read: wait, so a failing device does not flood a shared bus
+      delay = device.retryDelay
     } else {
-      // Interval mode, or retry after a failed read: wait for specified interval
-      // so a failing device does not flood a shared bus
       delay = device.interval
     }
 

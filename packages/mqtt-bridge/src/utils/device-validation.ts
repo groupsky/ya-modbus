@@ -7,6 +7,9 @@ import { z } from 'zod'
  */
 const MAX_DURATION_MS = 86400000
 
+/** Polling interval in ms when the config has none: no `polling`, or `continuous` mode */
+export const DEFAULT_POLLING_INTERVAL = 5000
+
 // MQTT topic segment requirements:
 // - Cannot contain null character
 // - Cannot contain + or # (MQTT wildcards)
@@ -98,8 +101,15 @@ const pollingConfigSchema = z
       .int()
       .positive()
       .min(100, 'Polling interval must be at least 100ms')
-      .max(MAX_DURATION_MS, 'Polling interval must not exceed 24 hours'),
+      .max(MAX_DURATION_MS, 'Polling interval must not exceed 24 hours')
+      .optional(),
     mode: z.enum(['interval', 'continuous']).optional(),
+    retryDelay: z
+      .number()
+      .int()
+      .min(100, 'Retry delay must be at least 100ms')
+      .max(MAX_DURATION_MS, 'Retry delay must not exceed 24 hours')
+      .optional(),
     maxRetries: z
       .number()
       .int()
@@ -119,20 +129,27 @@ const pollingConfigSchema = z
       .max(MAX_DURATION_MS, 'Max retry backoff must not exceed 24 hours')
       .optional(),
   })
-  // Same default as the polling scheduler: 2 x interval
+  .refine(({ interval, mode }) => interval !== undefined || mode === 'continuous', {
+    message: "Polling interval is required unless mode is 'continuous'",
+    path: ['interval'],
+  })
+  // Same default as the polling scheduler: 2 x retryDelay, which defaults to interval
   .refine(
-    ({ interval, retryBackoff, maxRetryBackoff }) =>
-      maxRetryBackoff === undefined || maxRetryBackoff >= (retryBackoff ?? interval * 2),
+    ({ interval, retryDelay, retryBackoff, maxRetryBackoff }) =>
+      maxRetryBackoff === undefined ||
+      maxRetryBackoff >= (retryBackoff ?? (retryDelay ?? interval ?? DEFAULT_POLLING_INTERVAL) * 2),
     {
-      message: 'Max retry backoff must not be below the retry backoff (default: 2 x interval)',
+      message: 'Max retry backoff must not be below the retry backoff (default: 2 x retryDelay)',
       path: ['maxRetryBackoff'],
     }
   )
   .transform((data) => {
-    const { mode, maxRetries, retryBackoff, maxRetryBackoff, ...rest } = data
+    const { interval, mode, retryDelay, maxRetries, retryBackoff, maxRetryBackoff, ...rest } = data
     return {
       ...rest,
+      ...(interval !== undefined ? { interval } : {}),
       ...(mode !== undefined ? { mode } : {}),
+      ...(retryDelay !== undefined ? { retryDelay } : {}),
       ...(maxRetries !== undefined ? { maxRetries } : {}),
       ...(retryBackoff !== undefined ? { retryBackoff } : {}),
       ...(maxRetryBackoff !== undefined ? { maxRetryBackoff } : {}),
