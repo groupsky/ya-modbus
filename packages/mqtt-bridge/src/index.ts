@@ -460,6 +460,14 @@ export function createBridge(
           )
         }
 
+        try {
+          pollingScheduler.scheduleDevice(deviceConfig.deviceId, deviceConfig, driver)
+        } catch (error) {
+          // A device that is not polled is not added, so it can be added again with a fixed config
+          await deviceManager.removeDevice(deviceConfig.deviceId)
+          throw error
+        }
+
         // A port that cannot be opened (USB adapter not plugged in) does not stop the bridge.
         // The device is in error state until a poll opens the port and reads it.
         const connectionError = driverLoader.getConnectionError(deviceConfig.deviceId)
@@ -472,14 +480,6 @@ export function createBridge(
             state: 'error',
             errors: [connectionError.message],
           })
-        }
-
-        try {
-          pollingScheduler.scheduleDevice(deviceConfig.deviceId, deviceConfig, driver)
-        } catch (error) {
-          // A device that is not polled is not added, so it can be added again with a fixed config
-          await deviceManager.removeDevice(deviceConfig.deviceId)
-          throw error
         }
 
         const writeTopic = `${topicPrefix}/${deviceConfig.deviceId}/set`
