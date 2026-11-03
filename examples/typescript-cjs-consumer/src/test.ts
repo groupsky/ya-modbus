@@ -14,6 +14,7 @@ import {
   DEFAULT_CONFIG as EX9EM_CONFIG,
 } from '@ya-modbus/driver-ex9em'
 import { loadDriver } from '@ya-modbus/driver-loader'
+import { createDriver as createBac002Driver } from '@ya-modbus/driver-bac002'
 import { createDriver as createDds024mrDriver } from '@ya-modbus/driver-dds024mr'
 import { createDriver as createOrWe514Driver } from '@ya-modbus/driver-or-we-514'
 import { createDriver as createDds519mrDriver } from '@ya-modbus/driver-dds519mr'
@@ -34,6 +35,7 @@ async function main() {
     program,
     scanRegisters,
     createEx9emDriver,
+    createBac002Driver,
     loadDriver,
     createDds024mrDriver,
     createDds519mrDriver,
