@@ -1,6 +1,7 @@
 import type { DeviceDriver } from '@ya-modbus/driver-types'
 
 import { checkWrites, WriteError } from './device-writes.js'
+import { readPartial } from './partial-read.js'
 import type { DeviceConfig, DeviceConnection } from './types.js'
 
 interface ScheduledDevice {
@@ -17,18 +18,25 @@ interface ScheduledDevice {
   maxRetryBackoff: number
   // Read on every poll: readable points with pollType 'dynamic' (the default)
   dynamicIds: string[]
+  // Dynamic points the device refused with a Modbus exception, retried in a call of their own
+  failedDynamicIds: string[]
   // Read until one read works, then sent from staticValues in every data message
   staticIds: string[]
   staticValues?: Record<string, unknown> | undefined
+  // Static points the device refused with a Modbus exception, read again on every poll
+  failedStaticIds: string[]
   lastFailureCount: number
 }
 
-/** `afterWrite` is true for the read that follows a write */
-type DataCallback = (
-  deviceId: string,
-  data: Record<string, unknown>,
-  info?: { afterWrite: true }
-) => void
+/**
+ * `afterWrite` is true for the read that follows a write. `failedDataPoints` names the points
+ * the device refused (Modbus exception 1, 2 or 3); it is left out when no point failed.
+ */
+export interface DataInfo {
+  afterWrite?: true
+  failedDataPoints?: string[]
+}
+type DataCallback = (deviceId: string, data: Record<string, unknown>, info?: DataInfo) => void
 type ErrorCallback = (deviceId: string, error: Error, failureCount: number) => void
 
 /** Failed reads in a row before polling slows down to `retryBackoff` */
@@ -103,6 +111,8 @@ export class PollingScheduler {
       connectionKey: connectionKey(config.connection),
       dynamicIds: polled.filter((dp) => dp.pollType !== 'static').map((dp) => dp.id),
       staticIds: polled.filter((dp) => dp.pollType === 'static').map((dp) => dp.id),
+      failedDynamicIds: [],
+      failedStaticIds: [],
       interval,
       retryBackoff,
       maxRetryBackoff,
@@ -168,7 +178,7 @@ export class PollingScheduler {
         try {
           const data = await this.readDevice(deviceId, device)
           device.lastFailureCount = 0
-          this.onData(deviceId, data, { afterWrite: true })
+          this.onData(deviceId, data, { afterWrite: true, ...this.failedInfo(device) })
         } catch (error) {
           console.warn(
             `Failed to read device ${deviceId} after a write, the next poll reads it: ${error instanceof Error ? error.message : String(error)}`
@@ -261,18 +271,27 @@ export class PollingScheduler {
   }
 
   /**
-   * Read the static points of a device. A failed read is not a poll failure: the dynamic data
-   * is still published, and the next poll tries the static points again.
+   * Read the static points of a device that were not read yet. A failed read is not a poll
+   * failure: the dynamic data is still published, and the next poll tries the static points again.
    */
   private async readStaticPoints(deviceId: string, device: ScheduledDevice): Promise<void> {
+    const ids = device.staticValues ? device.failedStaticIds : device.staticIds
     try {
-      device.staticValues = await device.driver.readDataPoints(device.staticIds)
+      const { data, failed } = await readPartial(device.driver, ids, device.failedStaticIds)
+      device.staticValues = { ...device.staticValues, ...data }
+      device.failedStaticIds = failed
     } catch (error) {
       console.warn(
-        `Failed to read static data points of device ${deviceId} (${device.staticIds.join(', ')}), trying again on the next poll:`,
+        `Failed to read static data points of device ${deviceId} (${ids.join(', ')}), trying again on the next poll:`,
         error
       )
     }
+  }
+
+  // The `failedDataPoints` of the data callback, left out when no point failed
+  private failedInfo(device: ScheduledDevice): DataInfo {
+    const failed = [...device.failedDynamicIds, ...device.failedStaticIds]
+    return failed.length > 0 ? { failedDataPoints: failed } : {}
   }
 
   /**
@@ -299,11 +318,20 @@ export class PollingScheduler {
     deviceId: string,
     device: ScheduledDevice
   ): Promise<Record<string, unknown>> {
-    const data =
-      device.dynamicIds.length > 0 ? await device.driver.readDataPoints(device.dynamicIds) : {}
+    let data: Record<string, unknown> = {}
+    if (device.dynamicIds.length > 0) {
+      const result = await readPartial(device.driver, device.dynamicIds, device.failedDynamicIds)
+      data = result.data
+      device.failedDynamicIds = result.failed
+      // The device refuses every point: the poll fails. The next poll reads them in one request.
+      if (result.failed.length === device.dynamicIds.length) throw result.error
+    }
 
     // Only after a dynamic read worked, so a device that does not answer costs one timeout
-    if (device.staticIds.length > 0 && !device.staticValues) {
+    if (
+      device.staticIds.length > 0 &&
+      (!device.staticValues || device.failedStaticIds.length > 0)
+    ) {
       await this.readStaticPoints(deviceId, device)
     }
 
@@ -334,7 +362,12 @@ export class PollingScheduler {
       device.lastFailureCount = 0
 
       try {
-        this.onData(deviceId, data)
+        const info = this.failedInfo(device)
+        if (info.failedDataPoints) {
+          this.onData(deviceId, data, info)
+        } else {
+          this.onData(deviceId, data)
+        }
       } catch (callbackError) {
         // Data callback threw - log but don't count as polling failure
         console.error(

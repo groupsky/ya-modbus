@@ -3,7 +3,7 @@ import mqtt from 'mqtt'
 import { DeviceManager, type DeviceStatusUpdate } from './device-manager.js'
 import { parseWriteValues, WriteError } from './device-writes.js'
 import { DriverLoader } from './driver-loader.js'
-import { DEFAULT_MAX_RETRIES, PollingScheduler } from './polling-scheduler.js'
+import { DEFAULT_MAX_RETRIES, PollingScheduler, type DataInfo } from './polling-scheduler.js'
 import { PublishFilter } from './publish-filter.js'
 import type {
   MqttBridgeConfig,
@@ -90,14 +90,22 @@ export function createBridge(
     })
   }
 
-  // Update device status and publish the state (with the errors that caused it) when it changes
+  // Update device status and publish the state (with the errors that caused it, or the data
+  // points that failed) when the state or the failed data points change
   const updateDeviceStatus = (deviceId: string, updates: DeviceStatusUpdate): void => {
-    const previousState = deviceManager.getDevice(deviceId)?.state
+    const previous = deviceManager.getDevice(deviceId)
     deviceManager.updateDeviceState(deviceId, updates)
 
-    const { state, errors } = updates
-    if (state !== undefined && state !== previousState) {
-      publishDeviceMessage(deviceId, 'status', { state, ...(errors && { errors }) })
+    const { state, errors, failedDataPoints } = updates
+    const failedChanged =
+      failedDataPoints !== undefined &&
+      JSON.stringify(failedDataPoints) !== JSON.stringify(previous?.failedDataPoints ?? [])
+    if (state !== undefined && (state !== previous?.state || failedChanged)) {
+      publishDeviceMessage(deviceId, 'status', {
+        state,
+        ...(errors && { errors }),
+        ...(failedDataPoints?.length && { failedDataPoints }),
+      })
     }
   }
 
@@ -108,7 +116,7 @@ export function createBridge(
   const handlePollingData = (
     deviceId: string,
     data: Record<string, unknown>,
-    info?: { afterWrite: true }
+    info?: DataInfo
   ): void => {
     // Read before the reset below. A device whose port could not be opened is in error state
     // without failed polls.
@@ -118,7 +126,9 @@ export function createBridge(
 
     // The first read after a recovery and the read after a write are always published
     const publishConfig = deviceManager.getDeviceConfig(deviceId)?.publish
-    if (publishFilter.shouldPublish(deviceId, data, publishConfig, recovered || !!info)) {
+    if (
+      publishFilter.shouldPublish(deviceId, data, publishConfig, recovered || !!info?.afterWrite)
+    ) {
       publishDeviceMessage(deviceId, 'data', { data })
     }
 
@@ -137,6 +147,7 @@ export function createBridge(
       lastPoll: Date.now(),
       lastUpdate: Date.now(),
       consecutiveFailures: 0,
+      failedDataPoints: info?.failedDataPoints ?? [],
     })
   }
 
