@@ -50,12 +50,12 @@ async function setup(options?: Parameters<typeof createMock>[0]): Promise<[Devic
 }
 
 describe('configuration', () => {
-  it('defaults to 9600 baud, 8 data bits, odd parity, 1 stop bit', () => {
+  it('defaults to the factory settings: 9600 baud, 8 data bits, no parity, 2 stop bits', () => {
     expect(DEFAULT_CONFIG).toMatchObject({
       baudRate: 9600,
       dataBits: 8,
-      parity: 'odd',
-      stopBits: 1,
+      parity: 'none',
+      stopBits: 2,
     })
   })
 

@@ -31,21 +31,21 @@ import {
   type PointSpec,
 } from './data-points.js'
 
-/** What the device supports. The baud rates, parities and stop bits are the ones the old reader could set. */
+/** What the device supports (communication manual V1.1: address 1 to 99, holding 0x0130..0x0133) */
 export const SUPPORTED_CONFIG = {
   validBaudRates: [2400, 4800, 9600, 19200, 38400],
   validParity: ['none', 'even', 'odd'],
   validDataBits: [8],
   validStopBits: [1, 2],
-  validAddressRange: [1, 247],
+  validAddressRange: [1, 99],
 } as const satisfies SupportedSerialConfig
 
-/** Settings of the controller on the target bus: 9600 baud, 8 data bits, odd parity, 1 stop bit */
+/** Factory settings (communication manual V1.1): 9600 baud, 8 data bits, no parity, 2 stop bits */
 export const DEFAULT_CONFIG = {
   baudRate: 9600,
-  parity: 'odd',
+  parity: 'none',
   dataBits: 8,
-  stopBits: 1,
+  stopBits: 2,
   defaultAddress: 1,
 } as const satisfies DefaultSerialConfig
 

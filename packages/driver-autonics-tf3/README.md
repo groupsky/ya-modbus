@@ -8,16 +8,18 @@ Autonics TF3 temperature controller driver for ya-modbus.
 - **Model**: TF3 series (the RS-485 models, for example `TF3x-xxA-T`/`-A`)
 - **Vendor page**: https://www.autonics.com/series/3000394
 - **Communication**: Modbus RTU. Measured values are input registers (function code 04), setup values are holding registers (03/06), the two outputs are coils (01/05).
-- **Default Settings** (the target bus):
+- **Default Settings** (factory settings, from the communication manual V1.1):
   - Baud rate: 9600
-  - Parity: Odd
+  - Parity: None
   - Data bits: 8
-  - Stop bits: 1
-  - Address: 1 (an assumption: the address is a setting of the device)
+  - Stop bits: 2
+  - Address: 1 (the device allows 1 to 99)
+
+  These are set on the device panel. If your device uses other settings (for example odd parity, 1 stop bit), pass them in the connection config.
 
 ## Source of the register list
 
-The vendor "TF3 communication manual" could not be downloaded when this driver was written (2026-11-03): the vendor site loads its download list with a script. The registers come from the reader this driver replaces (homy `autonics-tf3`), which ran against a real controller. Nothing here is checked against the manual. Units of the time values (delays, cycles) are not known, so they carry no unit.
+The registers come from the reader this driver replaces (homy `autonics-tf3`), which ran against a real controller. On 2026-11-03 every address, enum and the decimal-point scaling were checked against the vendor "TF3 Series User Manual for Communication" V1.1 (MCT-TF3C1-V1.1-1701US), and they agree. The manual is not copied here; get it from the vendor page above. Units of the time values (delays, cycles) are not known, so they carry no unit.
 
 ## Installation
 

@@ -4,8 +4,8 @@
  * Register groups ("blocks") are read whole. Every data point says which block it lives in, at
  * which register (word) of the block, and how to decode it.
  *
- * Source: the register use of the homy `autonics-tf3` reader. The vendor communication manual
- * could not be downloaded, so nothing here is checked against it.
+ * Source: the register use of the homy `autonics-tf3` reader, checked against the vendor
+ * "TF3 Series User Manual for Communication" V1.1 (addresses, enums, decimal-point scaling).
  */
 
 import type { DataPoint } from '@ya-modbus/driver-types'
