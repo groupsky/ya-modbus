@@ -20,6 +20,7 @@ import { createDriver as createDds519mrDriver } from '@ya-modbus/driver-dds519mr
 import { createDriver as createOrWe516Driver } from '@ya-modbus/driver-or-we-516'
 import { readScaledUInt16BE, createEnumValidator } from '@ya-modbus/driver-sdk'
 import { createDriver as createSdm630Driver } from '@ya-modbus/driver-sdm630'
+import { createDriver as createSun2000Driver } from '@ya-modbus/driver-sun2000'
 import type { DataType, DeviceDriver } from '@ya-modbus/driver-types'
 import { createDriver as createXYMD1Driver, DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
 import { ModbusEmulator } from '@ya-modbus/emulator'
@@ -38,6 +39,7 @@ async function main() {
     createDds024mrDriver,
     createDds519mrDriver,
     createSdm630Driver,
+    createSun2000Driver,
     createOrWe514Driver,
     createOrWe516Driver,
     readScaledUInt16BE,
