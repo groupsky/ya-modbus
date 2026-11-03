@@ -50,29 +50,35 @@ export type MessageHandler = (message: MqttMessage) => void
 export interface PollingConfig {
   /**
    * Time between the end of a read and the start of the next one, in milliseconds
-   * (100-86400000). In `continuous` mode it is the delay before the next read after a failed
-   * read, until `maxRetries` is reached. Default when `polling` is not set: 5000.
+   * (100-86400000). It is a gap after the read, not a fixed period: a read that takes 300 ms with
+   * `interval` 1000 starts a read every 1300 ms. Required unless `mode` is `continuous`; there it
+   * is only the default for `retryDelay`. Default when it is not set: 5000.
    */
-  interval: number
+  interval?: number
   /**
    * `interval` (default) waits `interval` ms after each read. `continuous` starts the next read
    * as soon as the previous read worked.
    */
   mode?: 'interval' | 'continuous'
   /**
+   * Time to wait after a failed read, in milliseconds (100-86400000, default: `interval`), until
+   * `maxRetries` reads failed in a row. Then `retryBackoff` takes over.
+   */
+  retryDelay?: number
+  /**
    * Number of consecutive failed reads after which the device goes to the `error` state. From
    * then on the bridge polls less often: it waits `retryBackoff` ms, doubling with every
-   * further failed read up to `maxRetryBackoff`, instead of `interval` ms (0-100, default: 3).
+   * further failed read up to `maxRetryBackoff`, instead of `retryDelay` ms (0-100, default: 3).
    *
    * It is not a limit on retries: polling goes on until a read works. With
-   * `3`, the bridge waits `interval` ms after the 1st and the 2nd failed read, and the 3rd
+   * `3`, the bridge waits `retryDelay` ms after the 1st and the 2nd failed read, and the 3rd
    * failed read starts the backoff. `0` and `1` behave the same: the backoff starts after the
    * first failed read.
    */
   maxRetries?: number
   /**
    * Time to wait between reads in milliseconds when the device enters the `error` state
-   * (1-86400000, default: 2 × `interval`). It doubles with every further failed read, up to
+   * (1-86400000, default: 2 × `retryDelay`). It doubles with every further failed read, up to
    * `maxRetryBackoff`.
    */
   retryBackoff?: number
