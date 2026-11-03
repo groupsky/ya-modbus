@@ -17,7 +17,7 @@
  * | 6        | `clock_hours`       | 0-23                                       | rw     |
  * | 7        | `week_day`          | 1 mon ... 7 sun (0 when not set)           | rw     |
  * | 8        | `current_temperature` | tenths of a degree                       | r      |
- * | 9        | `valve`, `valve_status` | number; 0 off, 1 on                    | r      |
+ * | 9        | `valve`, `valve_status` | number; 0 off, above 0 on            | r      |
  * | 10       | `fan`, `fan_status` | number; 0 off, 1 high, 2 mid, 3 low        | r      |
  */
 
@@ -68,18 +68,16 @@ function enumField(
   dataPoint: Omit<DataPoint, 'type' | 'enumValues'>,
   names: Readonly<Record<string, number>>,
   labels: Readonly<Record<string, string>>,
-  unsetName?: string
+  normalize: (raw: number) => number = (raw) => raw
 ): Field {
   return {
     register,
-    dataPoint: { ...dataPoint, type: 'enum', enumValues: labels },
+    dataPoint: { ...dataPoint, type: 'enum', enumValues: { ...labels, unknown: 'Unknown value' } },
     decode: (raw) => {
-      if (raw === 0 && unsetName !== undefined) return unsetName
-      const found = Object.entries(names).find(([, value]) => value === raw)
-      if (found === undefined) {
-        throw new Error(`Unknown ${dataPoint.name} value from device: ${raw}`)
-      }
-      return found[0]
+      // A register value with no meaning reads as 'unknown', so one odd register
+      // does not break the read of the other data points
+      const found = Object.entries(names).find(([, value]) => value === normalize(raw))
+      return found === undefined ? 'unknown' : found[0]
     },
     ...(dataPoint.access === 'rw' && {
       encode: (value) => {
@@ -116,7 +114,8 @@ function temperatureField(register: number, dataPoint: Omit<DataPoint, 'type'>):
   return {
     register,
     dataPoint: { ...dataPoint, type: 'float', unit: '°C', decimals: 1 },
-    decode: (raw) => raw / 10,
+    // Signed 16-bit, so -1.0 degrees is not read as 6552.6
+    decode: (raw) => (raw > 0x7fff ? raw - 0x10000 : raw) / 10,
     ...(dataPoint.access === 'rw' && {
       // The device sets the temperature in steps of 0.5 degrees, as the old writer did
       encode: (value) => {
@@ -221,8 +220,7 @@ const FIELDS: ReadonlyArray<Field> = [
       fri: 'Friday',
       sat: 'Saturday',
       sun: 'Sunday',
-    },
-    'unknown'
+    }
   ),
   temperatureField(8, {
     id: 'current_temperature',
@@ -240,7 +238,9 @@ const FIELDS: ReadonlyArray<Field> = [
     9,
     { id: 'valve_status', name: 'Valve', access: 'r', description: 'Valve state: off or on' },
     VALVE_STATUS,
-    { off: 'Off', on: 'On' }
+    { off: 'Off', on: 'On' },
+    // Any value above 0 means the valve is open
+    (raw) => Math.min(raw, 1)
   ),
   integerField(10, {
     id: 'fan',

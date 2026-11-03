@@ -73,10 +73,9 @@ lists the valid ones, and nothing is sent to the device.
 | `fan`                 | integer |      | r      | Raw fan number from the device                  |
 | `fan_status`          | enum    |      | r      | `off`, `high`, `mid`, `low`                     |
 
-`week_day` reads as `unknown` when the device has no day set. You cannot write `unknown`.
-
-A register value that has no meaning (for example mode 9) makes the read fail with an error that
-names the data point.
+A register value that has no meaning (for example mode 9) reads as `unknown`, for every enum data
+point. `unknown` is listed so you can read it, but you cannot write it. `valve_status` is `on`
+for any raw valve value above 0. A week day that is not set (0) also reads `unknown`.
 
 ## Old field to data point
 
@@ -106,12 +105,14 @@ The text values (`off`, `high`, `heating`, `mon`, and so on) are the same as bef
 - Writes go through `writeDataPoint`, one data point at a time. The old writer's raw register
   writes and its register scan are not part of the driver.
 - A week day that is not set reads as `unknown`. The old reader showed `??`.
-- A register value with no meaning makes the read fail. The old reader passed the raw number
+- A register value with no meaning reads as `unknown`. The old reader passed the raw number
+  through. Use `valve` and `fan` for the raw numbers.
+- `valve_status` is `on` for any raw valve value above 0. The old reader passed values above 1
   through.
+- Temperatures are signed, so a room below 0 °C reads as `-1`, not `6552.6`.
 - The clock fields accept whole numbers only. The old writer rounded `12.4` to `12`.
 - The target temperature must be from 0 to 100 before rounding. The old writer rounded first, so
   it also accepted values up to 100.2.
-- Temperatures are exact to one decimal (`21.5`), with no floating point noise.
 
 ## Target temperature step
 

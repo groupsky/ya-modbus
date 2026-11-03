@@ -220,10 +220,31 @@ describe('BAC-002 driver with an emulated device', () => {
       })
     })
 
-    it('rejects a register value that has no meaning', async () => {
-      setRegisters({ 2: 9 })
-      await expect(driver.readDataPoint('mode')).rejects.toThrow(
-        'Unknown Mode value from device: 9'
+    it('reads a negative room temperature', async () => {
+      setRegisters({ 3: 65526, 8: 65526 }) // -1.0 C as a signed 16-bit value
+      await expect(
+        driver.readDataPoints(['target_temperature', 'current_temperature'])
+      ).resolves.toEqual({ target_temperature: -1, current_temperature: -1 })
+    })
+
+    it('reads register values with no meaning as unknown and still reads the rest', async () => {
+      setRegisters({ 9: 37, 10: 4, 2: 9 })
+      const ids = driver.dataPoints.map((dp) => dp.id)
+      await expect(driver.readDataPoints(ids)).resolves.toMatchObject({
+        valve: 37,
+        valve_status: 'on',
+        fan: 4,
+        fan_status: 'unknown',
+        mode: 'unknown',
+        power: 'on',
+      })
+    })
+
+    it('lists unknown as a value to read, but does not accept it for writing', async () => {
+      const mode = driver.dataPoints.find((dp) => dp.id === 'mode')
+      expect(Object.keys(mode!.enumValues!)).toContain('unknown')
+      await expect(driver.writeDataPoint('mode', 'unknown')).rejects.toThrow(
+        'must be one of cooling, heating, ventilation'
       )
     })
 
