@@ -420,7 +420,7 @@ With `pollOrder: "fixed"` in the `connection` of every device on the line, the d
 - `interval` and `continuous` devices can be on one line. `interDeviceDelay` works as without the setting.
 - A device added with `bridge.addDevice()` takes its turn after the devices that are there already. A removed device leaves the round.
 
-Use it when a meter does not answer right after one particular other meter. Put the devices in the order that works, and set `pollOrder: "fixed"`, so the order does not drift by itself. It also makes the logs and timings of different days easier to compare, and it gives each device exactly one turn per round.
+Use it when a meter does not answer right after one particular other meter. Put the devices in the order that works, and set `pollOrder: "fixed"`, so the order does not drift by itself. If the meter needs more time after the other meter's reply, a longer `interDeviceDelay` on the meter that does not answer can help too, with or without a fixed order. It also makes the logs and timings of different days easier to compare, and it gives each device exactly one turn per round.
 
 ```json
 {
