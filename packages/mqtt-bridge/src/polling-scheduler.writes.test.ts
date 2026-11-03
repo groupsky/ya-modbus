@@ -63,11 +63,15 @@ describe('PollingScheduler writeDevice', () => {
     scheduler.scheduleDevice('thermostat', config, driver)
     scheduler.start()
     await jest.advanceTimersByTimeAsync(INTERVAL)
-    expect(onData).toHaveBeenLastCalledWith('thermostat', { setpoint: 1 })
+    expect(onData).toHaveBeenLastCalledWith('thermostat', { setpoint: 1 }, { readMs: 0 })
 
     await scheduler.writeDevice('thermostat', { setpoint: 23 })
 
-    expect(onData).toHaveBeenLastCalledWith('thermostat', { setpoint: 1 }, { afterWrite: true })
+    expect(onData).toHaveBeenLastCalledWith(
+      'thermostat',
+      { setpoint: 1 },
+      { readMs: 0, afterWrite: true }
+    )
   })
 
   it('rejects a write to a device that is not scheduled', async () => {

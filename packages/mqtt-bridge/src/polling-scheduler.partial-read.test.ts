@@ -86,7 +86,7 @@ describe('PollingScheduler partial reads', () => {
     expect(onData).toHaveBeenCalledWith(
       'device1',
       { voltage: 'voltage-value', current: 'current-value' },
-      { failedDataPoints: ['energy', 'frequency'] }
+      { readMs: 0, failedDataPoints: ['energy', 'frequency'] }
     )
     expect(onError).not.toHaveBeenCalled()
   })
@@ -101,7 +101,7 @@ describe('PollingScheduler partial reads', () => {
     expect(onData).toHaveBeenLastCalledWith(
       'device1',
       { voltage: 'voltage-value', current: 'current-value' },
-      { failedDataPoints: ['energy', 'frequency'] }
+      { readMs: 0, failedDataPoints: ['energy', 'frequency'] }
     )
   })
 
@@ -111,12 +111,16 @@ describe('PollingScheduler partial reads', () => {
     energyFails = false
     await jest.advanceTimersByTimeAsync(INTERVAL)
 
-    expect(onData).toHaveBeenLastCalledWith('device1', {
-      voltage: 'voltage-value',
-      current: 'current-value',
-      energy: 'energy-value',
-      frequency: 'frequency-value',
-    })
+    expect(onData).toHaveBeenLastCalledWith(
+      'device1',
+      {
+        voltage: 'voltage-value',
+        current: 'current-value',
+        energy: 'energy-value',
+        frequency: 'frequency-value',
+      },
+      { readMs: 0 }
+    )
 
     readDataPoints.mockClear()
     await jest.advanceTimersByTimeAsync(INTERVAL)
@@ -185,12 +189,16 @@ describe('PollingScheduler partial reads', () => {
     refuseAll = false
     await jest.advanceTimersByTimeAsync(INTERVAL)
 
-    expect(onData).toHaveBeenCalledWith('device1', {
-      voltage: 'voltage-value',
-      current: 'current-value',
-      energy: 'energy-value',
-      frequency: 'frequency-value',
-    })
+    expect(onData).toHaveBeenCalledWith(
+      'device1',
+      {
+        voltage: 'voltage-value',
+        current: 'current-value',
+        energy: 'energy-value',
+        frequency: 'frequency-value',
+      },
+      { readMs: 0 }
+    )
   })
 
   it('should fail the whole poll when the device stops answering during the scan', async () => {
@@ -217,7 +225,7 @@ describe('PollingScheduler partial reads', () => {
     expect(onData).toHaveBeenLastCalledWith(
       'device1',
       { serial_number: 'serial_number-value', voltage: 'voltage-value' },
-      { failedDataPoints: ['energy'] }
+      { readMs: 0, failedDataPoints: ['energy'] }
     )
 
     readDataPoints.mockClear()
@@ -225,11 +233,15 @@ describe('PollingScheduler partial reads', () => {
     await jest.advanceTimersByTimeAsync(INTERVAL)
 
     expect(readDataPoints.mock.calls).toEqual([[['voltage']], [['energy']]])
-    expect(onData).toHaveBeenLastCalledWith('device1', {
-      serial_number: 'serial_number-value',
-      energy: 'energy-value',
-      voltage: 'voltage-value',
-    })
+    expect(onData).toHaveBeenLastCalledWith(
+      'device1',
+      {
+        serial_number: 'serial_number-value',
+        energy: 'energy-value',
+        voltage: 'voltage-value',
+      },
+      { readMs: 0 }
+    )
     warn.mockRestore()
   })
 
@@ -244,7 +256,7 @@ describe('PollingScheduler partial reads', () => {
     expect(onData).toHaveBeenLastCalledWith(
       'device1',
       { voltage: 'voltage-value' },
-      { failedDataPoints: ['energy', 'frequency'] }
+      { readMs: 0, failedDataPoints: ['energy', 'frequency'] }
     )
 
     readDataPoints.mockClear()

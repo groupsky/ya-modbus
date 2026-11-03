@@ -1197,7 +1197,9 @@ describe('createBridge', () => {
 
   describe('polling callbacks', () => {
     it('should call handlePollingData and publish data', async () => {
-      let dataCallback: ((deviceId: string, data: Record<string, unknown>) => void) | undefined
+      let dataCallback:
+        | ((deviceId: string, data: Record<string, unknown>, info: { readMs: number }) => void)
+        | undefined
 
       const mockDeviceManager = new MockedDeviceManager()
       MockedDeviceManager.mockReturnValue(mockDeviceManager as any)
@@ -1226,7 +1228,7 @@ describe('createBridge', () => {
       // Call the data callback
       expect(dataCallback).toBeDefined()
       const testData = { temperature: 25.5, humidity: 60 }
-      dataCallback!('device1', testData)
+      dataCallback!('device1', testData, { readMs: 120 })
 
       // Verify publish was called
       await new Promise((resolve) => setTimeout(resolve, 10))
@@ -1243,6 +1245,7 @@ describe('createBridge', () => {
       const payload = JSON.parse(publishCall?.[1] as string)
       expect(payload.deviceId).toBe('device1')
       expect(payload.data).toEqual(testData)
+      expect(payload.readMs).toBe(120)
       expect(payload.timestamp).toBeGreaterThan(0)
 
       // Verify device state is updated with reset consecutiveFailures
@@ -1378,7 +1381,9 @@ describe('createBridge', () => {
     })
 
     it('should handle publish error in data callback', async () => {
-      let dataCallback: ((deviceId: string, data: Record<string, unknown>) => void) | undefined
+      let dataCallback:
+        | ((deviceId: string, data: Record<string, unknown>, info: { readMs: number }) => void)
+        | undefined
 
       MockedPollingScheduler.mockImplementation((onData) => {
         dataCallback = onData
@@ -1410,7 +1415,7 @@ describe('createBridge', () => {
 
       // Call the data callback - should not throw
       expect(dataCallback).toBeDefined()
-      expect(() => dataCallback!('device1', { test: 'data' })).not.toThrow()
+      expect(() => dataCallback!('device1', { test: 'data' }, { readMs: 0 })).not.toThrow()
 
       await new Promise((resolve) => setTimeout(resolve, 10))
     })
@@ -1570,7 +1575,9 @@ describe('createBridge', () => {
     })
 
     it('should handle polling data callback before bridge is fully initialized', async () => {
-      let dataCallback: ((deviceId: string, data: Record<string, unknown>) => void) | undefined
+      let dataCallback:
+        | ((deviceId: string, data: Record<string, unknown>, info: { readMs: number }) => void)
+        | undefined
 
       // Capture the data callback when scheduler is created
       MockedPollingScheduler.mockImplementation((onData) => {
@@ -1597,7 +1604,7 @@ describe('createBridge', () => {
       const testData = { temperature: 25.5 }
 
       // Should not throw error even if called before bridge is initialized
-      expect(() => dataCallback!('device1', testData)).not.toThrow()
+      expect(() => dataCallback!('device1', testData, { readMs: 0 })).not.toThrow()
 
       // Verify publish was NOT called (bridge not initialized)
       expect(mockClient.publish).not.toHaveBeenCalled()
@@ -1608,7 +1615,7 @@ describe('createBridge', () => {
       await startPromise
 
       // Call callback again after bridge is initialized
-      dataCallback!('device1', testData)
+      dataCallback!('device1', testData, { readMs: 0 })
 
       // Wait for async publish to be called (more deterministic than setTimeout)
       await waitForMockCall(mockClient.publish as jest.Mock)

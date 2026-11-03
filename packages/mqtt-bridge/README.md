@@ -526,6 +526,27 @@ Error: Invalid configuration: mqtt.url: URL must start with mqtt://, mqtts://, w
 - Other users of the machine can see command line options such as `--mqtt-password` in the process list. Put credentials in the config file instead.
 - `mqtt://` and `ws://` send the password without encryption. Use `mqtts://` or `wss://` when the broker is not on the same machine.
 
+## Data Messages
+
+The bridge publishes the data of a read on `{topicPrefix}/{deviceId}/data` (QoS 0, not retained):
+
+```json
+{
+  "deviceId": "meter1",
+  "timestamp": 1760000000000,
+  "readMs": 180,
+  "data": { "voltage": 230.1, "serial_number": "A1" }
+}
+```
+
+| Field       | Description                                                                                                                                                     |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `timestamp` | When the read was done and the message was made, in milliseconds since the epoch                                                                                |
+| `readMs`    | How long the read took, in milliseconds. It does not include the time the bridge waited for the connection to be free. The read started at `timestamp - readMs` |
+| `data`      | The values of the polled data points                                                                                                                            |
+
+The values of `static` points come from the first read that worked (see [Which Data Points Are Polled](#which-data-points-are-polled)). They are not read again, so `timestamp` and `readMs` are not their age.
+
 ## Bridge Status
 
 The bridge publishes `online` or `offline` (plain text, not JSON) to `{topicPrefix}/bridge/status`, retained, so a new subscriber gets it at once:

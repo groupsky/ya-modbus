@@ -135,7 +135,7 @@ export function createBridge(
   const handlePollingData = (
     deviceId: string,
     data: Record<string, unknown>,
-    info?: DataInfo
+    info: DataInfo
   ): void => {
     // Read before the reset below. A device whose port could not be opened is in error state
     // without failed polls.
@@ -146,9 +146,9 @@ export function createBridge(
     // The first read after a recovery and the read after a write are always published
     const publishConfig = deviceManager.getDeviceConfig(deviceId)?.publish
     if (
-      publishFilter.shouldPublish(deviceId, data, publishConfig, recovered || !!info?.afterWrite)
+      publishFilter.shouldPublish(deviceId, data, publishConfig, recovered || !!info.afterWrite)
     ) {
-      publishDeviceMessage(deviceId, 'data', { data })
+      publishDeviceMessage(deviceId, 'data', { readMs: info.readMs, data })
     }
 
     if (recovered) {
@@ -166,7 +166,7 @@ export function createBridge(
       lastPoll: Date.now(),
       lastUpdate: Date.now(),
       consecutiveFailures: 0,
-      failedDataPoints: info?.failedDataPoints ?? [],
+      failedDataPoints: info.failedDataPoints ?? [],
     })
   }
 
