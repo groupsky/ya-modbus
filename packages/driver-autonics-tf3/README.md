@@ -55,7 +55,7 @@ Signed values (temperatures, corrections, limits) are read as signed 16 bit numb
 
 ## Response delay
 
-The controller has a setting (holding register 0x0134) for a pause it wants before each request. The driver reads it once, and waits that many milliseconds before every request, like the old reader did.
+The controller has a setting (holding register 0x0134) for how long it waits before it answers. The driver does not use it: a pause before our request does not help. The transport timeout covers the answer, and the bridge has `connection.interDeviceDelay` for spacing on the bus.
 
 ## Data points
 
@@ -108,7 +108,7 @@ Enums are read and written as the number; the labels are in `enumValues` of the 
 
 The device information points (`product_number`, `hardware_version`, `software_version`, `model`) are static: read once. The versions are the raw register numbers.
 
-A write checks the value first (a number, in the register range, one of the enum values, true/false for coils) and writes nothing when it is wrong. The factory reset (coil 0x0002) and the communication setup (address, baud rate, parity, stop bits, response delay) are not data points, because a wrong write can cut the device off the bus.
+A write checks the value first (a number, in the register range, one of the enum values, true/false for coils) and writes nothing when it is wrong. The factory reset (coil 0x0002) and the communication setup (address, baud rate, parity, stop bits) are not data points, because a wrong write can cut the device off the bus.
 
 ## Old field to data point id
 
@@ -166,6 +166,8 @@ Differences from the old reader:
 - `device.productNumber` is read unsigned. The old reader combined the two registers with a signed shift, which gives a negative number from 2^31 up.
 - The old reader published only when something changed, with its own heartbeat. The MQTT bridge does that now.
 - The old reader read the decimal-point register and then cached it. This driver reads it with every temperature.
+- The old reader slept the response delay (0x0134) before every request. This driver does not (see Response delay).
+- The old `setup()` could write `inputType`, `input2Enabled`, `input3Type` and the temperature unit setting. They are read-only here, because they change the scale or the meaning of the readings, so a stray write would make every value wrong.
 
 ## Testing
 
