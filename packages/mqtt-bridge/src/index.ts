@@ -474,7 +474,13 @@ export function createBridge(
           })
         }
 
-        pollingScheduler.scheduleDevice(deviceConfig.deviceId, deviceConfig, driver)
+        try {
+          pollingScheduler.scheduleDevice(deviceConfig.deviceId, deviceConfig, driver)
+        } catch (error) {
+          // A device that is not polled is not added, so it can be added again with a fixed config
+          await deviceManager.removeDevice(deviceConfig.deviceId)
+          throw error
+        }
 
         const writeTopic = `${topicPrefix}/${deviceConfig.deviceId}/set`
         subscriptions.set(writeTopic, (message) => {

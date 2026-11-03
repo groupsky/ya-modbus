@@ -1484,6 +1484,34 @@ describe('createBridge', () => {
       // Verify scheduleDevice was NOT called
       expect(mockPollingScheduler.scheduleDevice).not.toHaveBeenCalled()
     })
+
+    // For example a device whose connection.pollOrder differs from the other devices on its line
+    it('should remove the device again when the scheduler refuses it', async () => {
+      const bridge = createBridge({ mqtt: { url: 'mqtt://localhost:1883' } })
+      const scheduler = MockedPollingScheduler.mock.results[0]?.value as PollingScheduler
+      jest.mocked(scheduler.scheduleDevice).mockImplementation(() => {
+        throw new Error('The devices on rtu:/dev/ttyUSB0 must have the same connection.pollOrder')
+      })
+      const startPromise = bridge.start()
+      emitEvent('connect')
+      await startPromise
+      const deviceConfig: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'ya-modbus-driver-test',
+        connection: { type: 'rtu', port: '/dev/ttyUSB0', slaveId: 1, pollOrder: 'fixed' },
+      }
+
+      await expect(bridge.addDevice(deviceConfig)).rejects.toThrow(
+        'The devices on rtu:/dev/ttyUSB0 must have the same connection.pollOrder'
+      )
+
+      expect(bridge.getDevice('device1')).toBeUndefined()
+      expect(mockClient.subscribe).not.toHaveBeenCalledWith(
+        'modbus/device1/set',
+        expect.anything(),
+        expect.anything()
+      )
+    })
   })
 
   describe('race conditions', () => {
