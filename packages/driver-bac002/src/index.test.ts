@@ -331,7 +331,7 @@ describe('BAC-002 driver with an emulated device', () => {
       expect(register(3)).toBe(raw)
     })
 
-    it.each([4.5, 35.5, -0.5, NaN, Infinity, '21', null])(
+    it.each([4.9, 35.1, 4.5, 35.5, -0.5, NaN, Infinity, '21', null])(
       'rejects target temperature %p',
       async (value) => {
         await expect(driver.writeDataPoint('target_temperature', value)).rejects.toThrow(
