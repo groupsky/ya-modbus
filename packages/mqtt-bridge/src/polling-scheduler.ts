@@ -1,8 +1,10 @@
 import type { DeviceDriver } from '@ya-modbus/driver-types'
 
 import { checkWrites, WriteError } from './device-writes.js'
+import { FixedOrderLines } from './fixed-poll-order.js'
 import { readPartial } from './partial-read.js'
-import type { DeviceConfig, DeviceConnection } from './types.js'
+import { connectionKey, pollOrderConflict } from './poll-lines.js'
+import type { DeviceConfig } from './types.js'
 
 interface ScheduledDevice {
   config: DeviceConfig
@@ -13,6 +15,9 @@ interface ScheduledDevice {
   timer?: NodeJS.Timeout | undefined
   // True from the start of a read until its poll chain continues or ends
   readInFlight: boolean
+  // On a line with a fixed poll order: when the device may be polled next, undefined while
+  // polling is stopped. The line polls it in its turn instead of a timer.
+  dueAt?: number | undefined
   interval: number
   retryBackoff: number
   maxRetryBackoff: number
@@ -51,12 +56,6 @@ const MAX_TIMER_DELAY = 2 ** 31 - 1
 // NaN compares false with everything, so it is rejected too
 const isValidTimerDelay = (ms: number): boolean => ms > 0 && ms <= MAX_TIMER_DELAY
 
-// The serial port, or the TCP host and port. Other serial settings do not make another bus.
-const connectionKey = (connection: DeviceConnection): string =>
-  connection.type === 'rtu'
-    ? `rtu:${connection.port}`
-    : `tcp:${connection.host}:${connection.port ?? 502}`
-
 /**
  * Coordinates polling across multiple devices
  */
@@ -65,6 +64,14 @@ export class PollingScheduler {
   private running = false
   // Per connection: settles when the last poll or write that waits for its turn has ended
   private lastPolls = new Map<string, Promise<unknown>>()
+  private fixedLines = new FixedOrderLines({
+    isRunning: () => this.running,
+    dueAt: (deviceId) => this.devices.get(deviceId)?.dueAt,
+    poll: async (deviceId) => {
+      const device = this.devices.get(deviceId)
+      if (device) await this.pollDevice(deviceId, device)
+    },
+  })
 
   constructor(
     private onData: DataCallback,
@@ -72,7 +79,9 @@ export class PollingScheduler {
   ) {}
 
   /**
-   * Schedule a device for polling
+   * Schedule a device for polling. On a line with `connection.pollOrder: 'fixed'` the device takes
+   * its turn after the devices that are already scheduled; a device that is scheduled again moves
+   * to the end of the order.
    */
   scheduleDevice(deviceId: string, config: DeviceConfig, driver: DeviceDriver): void {
     const interval = config.polling?.interval ?? DEFAULT_POLLING_INTERVAL
@@ -97,6 +106,13 @@ export class PollingScheduler {
       )
     }
 
+    const key = connectionKey(config.connection)
+    const others = [...this.devices]
+      .filter(([id, device]) => id !== deviceId && device.connectionKey === key)
+      .map(([, device]) => device.config)
+    const conflict = pollOrderConflict(key, [...others, config])
+    if (conflict) throw new Error(conflict)
+
     // A device scheduled again must not keep the timer of its previous schedule
     this.unscheduleDevice(deviceId)
 
@@ -108,7 +124,7 @@ export class PollingScheduler {
     this.devices.set(deviceId, {
       config,
       driver,
-      connectionKey: connectionKey(config.connection),
+      connectionKey: key,
       dynamicIds: polled.filter((dp) => dp.pollType !== 'static').map((dp) => dp.id),
       staticIds: polled.filter((dp) => dp.pollType === 'static').map((dp) => dp.id),
       failedDynamicIds: [],
@@ -119,6 +135,7 @@ export class PollingScheduler {
       lastFailureCount: 0,
       readInFlight: false,
     })
+    if (config.connection.pollOrder === 'fixed') this.fixedLines.add(key, deviceId)
 
     if (this.running) {
       this.startDevicePolling(deviceId)
@@ -133,6 +150,7 @@ export class PollingScheduler {
     if (device?.timer) {
       clearTimeout(device.timer)
     }
+    if (device) this.fixedLines.remove(device.connectionKey, deviceId)
     this.devices.delete(deviceId)
   }
 
@@ -205,12 +223,14 @@ export class PollingScheduler {
    */
   stop(): void {
     this.running = false
+    this.fixedLines.stop()
 
     for (const device of this.devices.values()) {
       if (device.timer) {
         clearTimeout(device.timer)
         device.timer = undefined
       }
+      device.dueAt = undefined
     }
   }
 
@@ -230,7 +250,7 @@ export class PollingScheduler {
 
     // A device has one poll chain: a pending timer or a read in flight. A read that was in flight
     // when polling stopped continues the chain when it finishes.
-    if (device.timer || device.readInFlight) return
+    if (device.timer || device.readInFlight || device.dueAt !== undefined) return
 
     // Schedule first poll after the interval
     this.scheduleNextPoll(deviceId, device)
@@ -260,6 +280,12 @@ export class PollingScheduler {
       // Interval mode, or retry after a failed read: wait for specified interval
       // so a failing device does not flood a shared bus
       delay = device.interval
+    }
+
+    if (device.config.connection.pollOrder === 'fixed') {
+      device.dueAt = performance.now() + delay
+      this.fixedLines.wake(device.connectionKey)
+      return
     }
 
     // stop(), unscheduleDevice() and scheduleDevice() clear the timer, so it only fires for a

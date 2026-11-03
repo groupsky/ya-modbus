@@ -34,6 +34,10 @@ const timeoutSchema = z
   .max(MAX_DURATION_MS, 'Connection timeout must not exceed 24 hours')
   .optional()
 
+const pollOrderSchema = z
+  .enum(['arrival', 'fixed'], { message: "Poll order must be 'arrival' or 'fixed'" })
+  .optional()
+
 // Serial settings that are not set come from the driver when the device is added
 const rtuConnectionSchema = z
   .strictObject({
@@ -51,9 +55,11 @@ const rtuConnectionSchema = z
       .min(0)
       .max(60000, 'Inter-device delay must not exceed 60 seconds')
       .optional(),
+    pollOrder: pollOrderSchema,
   })
   .transform((data) => {
-    const { baudRate, parity, dataBits, stopBits, timeout, interDeviceDelay, ...rest } = data
+    const { baudRate, parity, dataBits, stopBits, timeout, interDeviceDelay, pollOrder, ...rest } =
+      data
     return {
       ...rest,
       ...(baudRate !== undefined ? { baudRate } : {}),
@@ -62,6 +68,7 @@ const rtuConnectionSchema = z
       ...(stopBits !== undefined ? { stopBits } : {}),
       ...(timeout !== undefined ? { timeout } : {}),
       ...(interDeviceDelay !== undefined ? { interDeviceDelay } : {}),
+      ...(pollOrder !== undefined ? { pollOrder } : {}),
     }
   })
 
@@ -72,13 +79,15 @@ const tcpConnectionSchema = z
     port: z.number().int().positive().max(65535).optional(),
     slaveId: z.number().int().min(0).max(247),
     timeout: timeoutSchema,
+    pollOrder: pollOrderSchema,
   })
   .transform((data) => {
-    const { port, timeout, ...rest } = data
+    const { port, timeout, pollOrder, ...rest } = data
     return {
       ...rest,
       ...(port !== undefined ? { port } : {}),
       ...(timeout !== undefined ? { timeout } : {}),
+      ...(pollOrder !== undefined ? { pollOrder } : {}),
     }
   })
 
@@ -151,7 +160,12 @@ export const deviceConfigSchema = z
   .strictObject({
     deviceId: deviceIdSchema,
     driver: driverNameSchema,
-    connection: z.union([rtuConnectionSchema, tcpConnectionSchema]),
+    connection: z.discriminatedUnion('type', [rtuConnectionSchema, tcpConnectionSchema], {
+      error: (issue) =>
+        issue.input === undefined
+          ? 'Connection is required'
+          : "Connection type must be 'rtu' or 'tcp'",
+    }),
     enabled: z.boolean().optional(),
     polling: pollingConfigSchema,
     allowWrites: z.boolean().optional(),

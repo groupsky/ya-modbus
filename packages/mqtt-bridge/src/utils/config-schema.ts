@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { devicesByLine, pollOrderConflict } from '../poll-lines.js'
+
 import { deviceConfigSchema } from './device-validation.js'
 
 export const mqttUrlSchema = z
@@ -37,5 +39,13 @@ export const mqttBridgeConfigSchema = z.strictObject({
         'Topic prefix must not contain MQTT special characters (+, #, /, $) or null character',
     })
     .optional(),
-  devices: z.array(deviceConfigSchema).optional(),
+  devices: z
+    .array(deviceConfigSchema)
+    .superRefine((devices, ctx) => {
+      for (const [line, onLine] of devicesByLine(devices)) {
+        const message = pollOrderConflict(line, onLine)
+        if (message) ctx.addIssue({ code: 'custom', message })
+      }
+    })
+    .optional(),
 })

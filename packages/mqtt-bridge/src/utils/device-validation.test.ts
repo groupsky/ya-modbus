@@ -538,7 +538,6 @@ describe('validateDeviceConfig', () => {
       {
         name: 'RTU connection.timeout',
         build: (ms: number) => ({ ...device, connection: { ...rtu, timeout: ms } }),
-        // A union of connection types reports only "Invalid input" without the reason
         message: 'Invalid device configuration: connection',
       },
       {
@@ -636,6 +635,49 @@ describe('validateDeviceConfig', () => {
 
       expect(() => validateDeviceConfig(config)).toThrow(
         'Invalid device configuration: connection: Unrecognized key: "interDeviceDelay"'
+      )
+    })
+  })
+
+  // The error names the field that is wrong, not only the connection
+  it.each([
+    [{ type: 'rtu', port: '/dev/ttyUSB0', slaveId: 300 }, 'connection.slaveId: Too big'],
+    [{ type: 'tcp', slaveId: 1 }, 'connection.host: Invalid input'],
+    [
+      { type: 'serial', port: '/dev/ttyUSB0' },
+      "connection.type: Connection type must be 'rtu' or 'tcp'",
+    ],
+    [undefined, 'connection: Connection is required'],
+  ])('should name the wrong field of connection %p', (connection, message) => {
+    const config = { deviceId: 'device1', driver: 'ya-modbus-driver-test', connection }
+
+    expect(() => validateDeviceConfig(config)).toThrow(`Invalid device configuration: ${message}`)
+  })
+
+  // The order in which the devices on one line take turns (#682)
+  describe('connection.pollOrder', () => {
+    const device = { deviceId: 'device1', driver: 'ya-modbus-driver-test' }
+    const connections = [
+      ['RTU', { type: 'rtu', port: '/dev/ttyUSB0', slaveId: 1 }],
+      ['TCP', { type: 'tcp', host: 'localhost', slaveId: 1 }],
+    ] as const
+
+    it.each(connections.flatMap(([name, c]) => ['arrival', 'fixed'].map((v) => [v, name, c])))(
+      'should accept %p for a %s connection',
+      (pollOrder, _name, connection) => {
+        const config = { ...device, connection: { ...connection, pollOrder } }
+
+        expect(() => validateDeviceConfig(config)).not.toThrow()
+      }
+    )
+
+    it.each(
+      connections.flatMap(([name, c]) => ['Fixed', 'config', 1, null].map((v) => [v, name, c]))
+    )('should reject %p for a %s connection', (pollOrder, _name, connection) => {
+      const config = { ...device, connection: { ...connection, pollOrder } }
+
+      expect(() => validateDeviceConfig(config)).toThrow(
+        "connection.pollOrder: Poll order must be 'arrival' or 'fixed'"
       )
     })
   })
