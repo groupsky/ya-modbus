@@ -230,4 +230,64 @@ describe('validateConfig', () => {
   it('should throw error when mqtt.url is missing', () => {
     expect(() => validateConfig({ mqtt: {} })).toThrow('mqtt.url')
   })
+  // All devices on one line take turns the same way (#682)
+  describe('connection.pollOrder of the devices on one line', () => {
+    const device = (deviceId: string, connection: Record<string, unknown>): unknown => ({
+      deviceId,
+      driver: 'ya-modbus-driver-test',
+      connection: { slaveId: 1, ...connection },
+    })
+    const rtu = (port: string, pollOrder?: string): Record<string, unknown> => ({
+      type: 'rtu',
+      port,
+      ...(pollOrder && { pollOrder }),
+    })
+    const withDevices = (devices: unknown[]): unknown => ({
+      mqtt: { url: 'mqtt://localhost' },
+      devices,
+    })
+
+    it('should accept devices on one line that agree, and other lines with another value', () => {
+      const config = withDevices([
+        device('a', rtu('/dev/ttyUSB0', 'fixed')),
+        device('b', rtu('/dev/ttyUSB0', 'fixed')),
+        device('c', rtu('/dev/ttyUSB1')),
+        device('d', rtu('/dev/ttyUSB1', 'arrival')),
+        device('e', { type: 'tcp', host: 'meter', pollOrder: 'fixed' }),
+      ])
+
+      expect(() => validateConfig(config)).not.toThrow()
+    })
+
+    it('should name the line and the devices when devices on one line disagree', () => {
+      const config = withDevices([
+        device('a', rtu('/dev/ttyUSB0', 'fixed')),
+        device('other', rtu('/dev/ttyUSB1')),
+        device('b', rtu('/dev/ttyUSB0')),
+        device('c', rtu('/dev/ttyUSB0', 'arrival')),
+      ])
+
+      expect(() => validateConfig(config)).toThrow(
+        'Invalid configuration: devices: The devices on rtu:/dev/ttyUSB0 must have the same ' +
+          "connection.pollOrder: a has 'fixed', b has 'arrival' (not set), c has 'arrival'"
+      )
+    })
+
+    it('should treat a TCP port that is not set as port 502', () => {
+      const config = withDevices([
+        device('a', { type: 'tcp', host: 'meter', pollOrder: 'fixed' }),
+        device('b', { type: 'tcp', host: 'meter', port: 502 }),
+      ])
+
+      expect(() => validateConfig(config)).toThrow('The devices on tcp:meter:502 must have')
+    })
+
+    it('should name the wrong value', () => {
+      const config = withDevices([device('a', rtu('/dev/ttyUSB0', 'Fixed'))])
+
+      expect(() => validateConfig(config)).toThrow(
+        "devices.0.connection.pollOrder: Poll order must be 'arrival' or 'fixed'"
+      )
+    })
+  })
 })

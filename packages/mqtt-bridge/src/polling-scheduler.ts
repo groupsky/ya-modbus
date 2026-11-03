@@ -2,7 +2,8 @@ import type { DeviceDriver } from '@ya-modbus/driver-types'
 
 import { checkWrites, WriteError } from './device-writes.js'
 import { readPartial } from './partial-read.js'
-import type { DeviceConfig, DeviceConnection } from './types.js'
+import { connectionKey } from './poll-lines.js'
+import type { DeviceConfig } from './types.js'
 
 interface ScheduledDevice {
   config: DeviceConfig
@@ -50,12 +51,6 @@ const MAX_TIMER_DELAY = 2 ** 31 - 1
 
 // NaN compares false with everything, so it is rejected too
 const isValidTimerDelay = (ms: number): boolean => ms > 0 && ms <= MAX_TIMER_DELAY
-
-// The serial port, or the TCP host and port. Other serial settings do not make another bus.
-const connectionKey = (connection: DeviceConnection): string =>
-  connection.type === 'rtu'
-    ? `rtu:${connection.port}`
-    : `tcp:${connection.host}:${connection.port ?? 502}`
 
 /**
  * Coordinates polling across multiple devices

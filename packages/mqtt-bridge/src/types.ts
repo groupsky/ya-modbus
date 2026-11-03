@@ -127,6 +127,13 @@ export interface RTUConnection {
    * request to the same device as the previous one does not wait. `0` turns the pause off.
    */
   interDeviceDelay?: number
+  /**
+   * Order in which the devices on this line (the same serial port, or the same TCP host and
+   * port) take turns. `arrival` (default): in the order their polls come; a slow or failed
+   * read can change that order. `fixed`: in config order, one turn per device in each round;
+   * a device that is not due skips its turn. All devices on one line must have the same value.
+   */
+  pollOrder?: 'arrival' | 'fixed'
 }
 
 export interface TCPConnection {
@@ -135,6 +142,13 @@ export interface TCPConnection {
   port?: number
   slaveId: number
   timeout?: number
+  /**
+   * Order in which the devices on this line (the same serial port, or the same TCP host and
+   * port) take turns. `arrival` (default): in the order their polls come; a slow or failed
+   * read can change that order. `fixed`: in config order, one turn per device in each round;
+   * a device that is not due skips its turn. All devices on one line must have the same value.
+   */
+  pollOrder?: 'arrival' | 'fixed'
 }
 
 export interface DeviceStatus {
