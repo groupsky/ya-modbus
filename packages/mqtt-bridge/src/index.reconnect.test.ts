@@ -77,6 +77,8 @@ describe('createBridge MQTT reconnect', () => {
         } as unknown as DriverLoader,
         deviceManager: {
           addDevice: jest.fn(),
+          listDevices: jest.fn().mockReturnValue([]),
+          getDevice: jest.fn(),
           updateDeviceState: jest.fn(),
           clear: jest.fn(),
         } as unknown as DeviceManager,

@@ -1,6 +1,12 @@
 import mqtt from 'mqtt'
 
-import { createTestBridgeConfig, startTestBroker, type TestBroker } from './utils/test-utils.js'
+import {
+  createTestBridgeConfig,
+  startTestBroker,
+  waitForPublish,
+  withBridgeAndMockDriver,
+  type TestBroker,
+} from './utils/test-utils.js'
 
 import { createBridge } from './index.js'
 
@@ -63,5 +69,42 @@ describe('Bridge availability', () => {
     } finally {
       await bridge.stop()
     }
+  })
+
+  test('the retained device status has the first state, and a removed device has none', async () => {
+    const device = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: { type: 'tcp' as const, host: 'localhost', port: 502, slaveId: 1 },
+      polling: { interval: 60000 },
+    }
+    const readStatus = async (): Promise<unknown> => {
+      const payload = await readRetained(broker.url, 'modbus/device1/status')
+      return payload === undefined ? undefined : JSON.parse(payload)
+    }
+
+    // A restart: each start publishes the first state again
+    for (let run = 0; run < 2; run++) {
+      await withBridgeAndMockDriver(broker, async (bridge) => {
+        const published = waitForPublish(broker, 'modbus/device1/status')
+        await bridge.addDevice(device)
+        await published
+        expect(await readStatus()).toEqual({
+          deviceId: 'device1',
+          timestamp: expect.any(Number),
+          state: 'connected',
+        })
+      })
+    }
+
+    await withBridgeAndMockDriver(broker, async (bridge) => {
+      const published = waitForPublish(broker, 'modbus/device1/status')
+      await bridge.addDevice(device)
+      await published
+      const cleared = waitForPublish(broker, 'modbus/device1/status')
+      await bridge.removeDevice('device1')
+      expect((await cleared).payload).toHaveLength(0)
+      expect(await readStatus()).toBeUndefined()
+    })
   })
 })

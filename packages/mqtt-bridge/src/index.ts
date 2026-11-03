@@ -56,11 +56,12 @@ export function createBridge(
 
   let client: mqtt.MqttClient | null = null
   const topicPrefix = config.topicPrefix ?? 'modbus'
-  // Retained 'online' or 'offline'. QoS 1, so a stop or a lost connection is not missed.
+  // Retained 'online' or 'offline'. QoS 0 like the other messages: a QoS 1 message that is not
+  // acknowledged yet makes client.end() wait, and a second stop() at the same time removes the
+  // listener it waits for.
   const bridgeStatusTopic = `${topicPrefix}/bridge/status`
-  const bridgeStatusOptions = { qos: 1, retain: true } as const
   const publishBridgeStatus = (value: 'online' | 'offline'): void => {
-    client?.publish(bridgeStatusTopic, value, bridgeStatusOptions, (error) => {
+    client?.publish(bridgeStatusTopic, value, { qos: 0, retain: true }, (error) => {
       if (error) console.error(`Failed to publish ${bridgeStatusTopic}:`, error)
     })
   }
@@ -92,8 +93,9 @@ export function createBridge(
       ...fields,
     })
 
-    // Publish to device-specific topic
-    void bridgeRef.publish(`${deviceId}/${topic}`, payload, { qos: 0 }).catch((error: Error) => {
+    // Publish to device-specific topic. The status is retained, so a new subscriber gets it.
+    const options: PublishOptions = { qos: 0, ...(topic === 'status' && { retain: true }) }
+    void bridgeRef.publish(`${deviceId}/${topic}`, payload, options).catch((error: Error) => {
       console.error(`Failed to publish ${topic} for device ${deviceId}:`, error)
     })
   }
@@ -104,17 +106,25 @@ export function createBridge(
     const previous = deviceManager.getDevice(deviceId)
     deviceManager.updateDeviceState(deviceId, updates)
 
-    const { state, errors, failedDataPoints } = updates
+    const { state, failedDataPoints } = updates
     const failedChanged =
       failedDataPoints !== undefined &&
       JSON.stringify(failedDataPoints) !== JSON.stringify(previous?.failedDataPoints ?? [])
     if (state !== undefined && (state !== previous?.state || failedChanged)) {
-      publishDeviceMessage(deviceId, 'status', {
-        state,
-        ...(errors && { errors }),
-        ...(failedDataPoints?.length && { failedDataPoints }),
-      })
+      publishDeviceStatus(deviceId)
     }
+  }
+
+  // Publish the current state of the device, with the errors that caused an error state
+  const publishDeviceStatus = (deviceId: string): void => {
+    const device = deviceManager.getDevice(deviceId)
+    if (!device) return
+    const { state, errors, failedDataPoints } = device
+    publishDeviceMessage(deviceId, 'status', {
+      state,
+      ...(state === 'error' && errors && { errors }),
+      ...(failedDataPoints?.length && { failedDataPoints }),
+    })
   }
 
   // Remembers the last published data of devices in publish mode on-change
@@ -236,11 +246,7 @@ export function createBridge(
           reconnectPeriod: config.mqtt.reconnectPeriod ?? 5000,
           resubscribe: true, // Automatic resubscription on reconnect (default: true)
           // The broker publishes it when the connection is lost without a clean stop
-          will: {
-            topic: bridgeStatusTopic,
-            payload: Buffer.from('offline'),
-            ...bridgeStatusOptions,
-          },
+          will: { topic: bridgeStatusTopic, payload: Buffer.from('offline'), qos: 1, retain: true },
         }
 
         if (config.mqtt.clientId) {
@@ -273,6 +279,8 @@ export function createBridge(
 
           // Data may be lost while the broker was away: the next read of every device is published
           publishFilter.forget()
+          // So may a change of state, and the retained status would stay old
+          for (const device of deviceManager.listDevices()) publishDeviceStatus(device.deviceId)
 
           // Start polling scheduler
           pollingScheduler.start()
@@ -352,7 +360,7 @@ export function createBridge(
             resolve()
             return
           }
-          // A clean stop sends no last-will. end() waits until the broker has this message.
+          // A clean stop sends no last-will. The broker gets this message before the disconnect.
           if (client.connected) publishBridgeStatus('offline')
           client.end(false, {}, () => {
             status = {
@@ -499,6 +507,9 @@ export function createBridge(
             state: 'error',
             errors: [connectionError.message],
           })
+        } else {
+          // The first state; later only changes are published
+          publishDeviceStatus(deviceConfig.deviceId)
         }
 
         const writeTopic = `${topicPrefix}/${deviceConfig.deviceId}/set`
@@ -506,6 +517,8 @@ export function createBridge(
           void handleWriteMessage(deviceConfig.deviceId, message)
         })
         subscribeOnClient(writeTopic)
+      } else {
+        publishDeviceStatus(deviceConfig.deviceId)
       }
     },
 
@@ -521,6 +534,9 @@ export function createBridge(
       // Remove device (unloads driver)
       await deviceManager.removeDevice(deviceId)
       publishFilter.forget(deviceId)
+
+      // An empty retained message deletes the retained status of the device on the broker
+      void bridge.publish(`${deviceId}/status`, '', { qos: 0, retain: true }).catch(() => undefined)
     },
 
     getDevice(deviceId: string) {

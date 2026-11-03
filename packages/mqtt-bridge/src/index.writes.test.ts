@@ -111,6 +111,7 @@ describe('createBridge writes', () => {
           ...deviceManager,
           addDevice: jest.fn(),
           removeDevice: jest.fn(),
+          listDevices: jest.fn().mockReturnValue([]),
           getDevice,
           getDeviceConfig,
           clear: jest.fn(),

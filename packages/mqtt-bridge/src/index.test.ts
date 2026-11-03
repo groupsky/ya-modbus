@@ -234,7 +234,7 @@ describe('createBridge', () => {
     expect(mockClient.publish).toHaveBeenCalledWith(
       'modbus/bridge/status',
       'online',
-      { qos: 1, retain: true },
+      { qos: 0, retain: true },
       expect.any(Function)
     )
 
