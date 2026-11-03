@@ -30,6 +30,7 @@ describe('createBridge device stats', () => {
   let read: (deviceId: string, ms: number, ok: boolean) => void
   let publish: jest.Mock
   let connected: boolean
+  let connectHandler: () => void
   let start: (config?: Partial<MqttBridgeConfig>) => Promise<MqttBridge>
 
   beforeEach(() => {
@@ -81,6 +82,7 @@ describe('createBridge device stats', () => {
       } as any
     })
 
+    connectHandler = () => handlers.get('connect')?.()
     start = async (config) => {
       const bridge = createBridge({ mqtt: { url: 'mqtt://localhost:1883' }, ...config })
       const started = bridge.start()
@@ -188,6 +190,25 @@ describe('createBridge device stats', () => {
         'average read n/a, 0 reads/s'
     )
     log.mockRestore()
+  })
+
+  it('should keep one stats timer when the broker connects again', async () => {
+    const bridge = await start({ statsInterval: 10 })
+    await bridge.addDevice(deviceConfig('meter1'))
+    connectHandler()
+
+    jest.advanceTimersByTime(10_000)
+
+    expect(statsMessages()).toHaveLength(1)
+  })
+
+  it('should publish no stats for a disabled device', async () => {
+    const bridge = await start({ statsInterval: 10 })
+    await bridge.addDevice({ ...deviceConfig('meter1'), enabled: false })
+
+    jest.advanceTimersByTime(10_000)
+
+    expect(statsMessages()).toEqual([])
   })
 
   it('should stop publishing stats of a removed device', async () => {

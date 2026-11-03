@@ -92,3 +92,42 @@ export class DeviceStats {
     return reports
   }
 }
+
+interface StatsTimerOptions {
+  /** Seconds between reports; the timer does nothing when it is not set or 0 */
+  interval: number | undefined
+  /** Also log one line per device */
+  log: boolean | undefined
+  isConnected: () => boolean
+  publish: (deviceId: string, stats: DeviceStatsPayload) => void
+}
+
+/**
+ * One timer for all devices. `start` can be called again (as on every MQTT reconnect) without a
+ * second timer.
+ */
+export function createStatsTimer(
+  stats: DeviceStats,
+  options: StatsTimerOptions
+): { start: () => void; stop: () => void } {
+  let timer: NodeJS.Timeout | undefined
+  return {
+    start() {
+      if (!options.interval || timer) return
+      timer = setInterval(() => {
+        const reports = stats.report()
+        if (options.log) {
+          for (const [deviceId, report] of reports) console.log(formatStatsLine(deviceId, report))
+        }
+        // The window of the average starts anyway; a message to an offline broker would only fail
+        if (!options.isConnected()) return
+        for (const [deviceId, report] of reports) options.publish(deviceId, report)
+      }, options.interval * 1000)
+      timer.unref()
+    },
+    stop() {
+      clearInterval(timer)
+      timer = undefined
+    },
+  }
+}
