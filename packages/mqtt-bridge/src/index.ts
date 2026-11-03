@@ -90,14 +90,22 @@ export function createBridge(
     })
   }
 
-  // Update device status and publish the state (with the errors that caused it) when it changes
+  // Update device status and publish the state (with the errors that caused it, or the data
+  // points that failed) when the state or the failed data points change
   const updateDeviceStatus = (deviceId: string, updates: DeviceStatusUpdate): void => {
-    const previousState = deviceManager.getDevice(deviceId)?.state
+    const previous = deviceManager.getDevice(deviceId)
     deviceManager.updateDeviceState(deviceId, updates)
 
-    const { state, errors } = updates
-    if (state !== undefined && state !== previousState) {
-      publishDeviceMessage(deviceId, 'status', { state, ...(errors && { errors }) })
+    const { state, errors, failedDataPoints } = updates
+    const failedChanged =
+      failedDataPoints !== undefined &&
+      JSON.stringify(failedDataPoints) !== JSON.stringify(previous?.failedDataPoints ?? [])
+    if (state !== undefined && (state !== previous?.state || failedChanged)) {
+      publishDeviceMessage(deviceId, 'status', {
+        state,
+        ...(errors && { errors }),
+        ...(failedDataPoints?.length && { failedDataPoints }),
+      })
     }
   }
 
@@ -139,6 +147,7 @@ export function createBridge(
       lastPoll: Date.now(),
       lastUpdate: Date.now(),
       consecutiveFailures: 0,
+      failedDataPoints: info?.failedDataPoints ?? [],
     })
   }
 

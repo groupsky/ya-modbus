@@ -170,6 +170,11 @@ export interface DeviceStatus {
   lastPoll?: number
   consecutiveFailures?: number
   errors?: string[]
+  /**
+   * Data points that the device refused with a Modbus exception in the last read that worked.
+   * Empty when every point was read.
+   */
+  failedDataPoints?: string[]
 }
 
 export interface MqttBridge {
