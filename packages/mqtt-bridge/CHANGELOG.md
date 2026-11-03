@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.30.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.29.0...@ya-modbus/mqtt-bridge@0.30.0) (2026-11-03)
+
+### Features
+
+- **mqtt-bridge:** add the read duration to data messages ([#728](https://github.com/groupsky/ya-modbus/issues/728)) ([72299b6](https://github.com/groupsky/ya-modbus/commit/72299b6f85bbb8452e9dc4427a51d5b739770ca7)), closes [#617](https://github.com/groupsky/ya-modbus/issues/617)
+
 # [0.29.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.28.0...@ya-modbus/mqtt-bridge@0.29.0) (2026-11-03)
 
 ### Features
