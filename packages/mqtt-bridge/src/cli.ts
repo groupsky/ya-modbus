@@ -5,6 +5,7 @@ import { getSerialNodeWarning } from '@ya-modbus/transport'
 import chalk from 'chalk'
 import { Command, CommanderError } from 'commander'
 
+import { devicesByLine } from './poll-lines.js'
 import type { MqttBridgeConfig } from './types.js'
 import { validateConfig } from './utils/config-validator.js'
 import { loadConfig } from './utils/config.js'
@@ -129,6 +130,14 @@ async function runCommand(options: RunCommandOptions): Promise<void> {
         .stop()
         .catch((stopError: unknown) => console.error(chalk.red('Shutdown error:'), stopError))
       throw error
+    }
+  }
+
+  const polled = config.devices?.filter((device) => device.enabled !== false) ?? []
+  for (const [line, devices] of devicesByLine(polled)) {
+    if (devices[0]?.connection.pollOrder === 'fixed') {
+      const order = devices.map((device) => device.deviceId).join(', ')
+      console.log(chalk.blue(`The devices on ${line} take turns in a fixed order: ${order}`))
     }
   }
 

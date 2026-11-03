@@ -626,6 +626,38 @@ describe('CLI - ya-modbus-bridge', () => {
       ])
     })
 
+    // The order in which the devices take turns on a line with connection.pollOrder 'fixed'
+    it('should list the polled devices of each line with a fixed poll order', async () => {
+      const fixed = (deviceId: string, slaveId: number, enabled = true): object => {
+        const device = rtuDevice(deviceId, slaveId)
+        return {
+          ...device,
+          connection: { ...device.connection, pollOrder: 'fixed' },
+          ...(!enabled && { enabled }),
+        }
+      }
+      mockBridge.addDevice = jest.fn().mockResolvedValue(undefined)
+      jest.mocked(configModule.loadConfig).mockResolvedValue({
+        mqtt: { url: 'mqtt://localhost:1883' },
+        devices: [
+          fixed('meter3', 3),
+          { ...rtuDevice('other'), connection: { type: 'tcp', host: 'meter', slaveId: 1 } },
+          fixed('meter1', 1),
+          fixed('off', 4, false),
+          fixed('meter2', 2),
+        ],
+      } as any)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(consoleLogSpy.mock.calls.map((call) => String(call[0])).slice(-2)).toEqual([
+        expect.stringContaining(
+          'The devices on rtu:/dev/ttyUSB0 take turns in a fixed order: meter3, meter1, meter2'
+        ),
+        expect.stringContaining('Bridge started successfully'),
+      ])
+    })
+
     it('should not print the success message when a device fails to load', async () => {
       mockBridge.addDevice = jest.fn().mockRejectedValue(new Error('Failed to load driver'))
       jest.mocked(configModule.loadConfig).mockResolvedValue({
