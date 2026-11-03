@@ -1,6 +1,7 @@
 import mqtt from 'mqtt'
 
 import { DeviceManager, type DeviceStatusUpdate } from './device-manager.js'
+import { createStatsTimer, DeviceStats } from './device-stats.js'
 import { parseWriteValues, WriteError } from './device-writes.js'
 import { DriverLoader } from './driver-loader.js'
 import { DEFAULT_MAX_RETRIES, PollingScheduler, type DataInfo } from './polling-scheduler.js'
@@ -79,7 +80,7 @@ export function createBridge(
   // Publish function that will be called from polling
   const publishDeviceMessage = (
     deviceId: string,
-    topic: 'data' | 'status' | 'set/result',
+    topic: 'data' | 'status' | 'set/result' | 'stats',
     fields: Record<string, unknown>
   ): void => {
     if (!bridgeRef) {
@@ -200,8 +201,19 @@ export function createBridge(
     })
   }
 
+  const deviceStats = new DeviceStats()
   const pollingScheduler =
-    dependencies?.pollingScheduler ?? new PollingScheduler(handlePollingData, handlePollingError)
+    dependencies?.pollingScheduler ??
+    new PollingScheduler(handlePollingData, handlePollingError, (deviceId, ms, ok) =>
+      deviceStats.record(deviceId, ms, ok)
+    )
+
+  const statsTimer = createStatsTimer(deviceStats, {
+    interval: config.statsInterval,
+    log: config.statsLog,
+    isConnected: () => client?.connected ?? false,
+    publish: (deviceId, stats) => publishDeviceMessage(deviceId, 'stats', { ...stats }),
+  })
 
   // Write the values of a message on {topicPrefix}/{deviceId}/set, and publish the result
   const handleWriteMessage = async (deviceId: string, message: MqttMessage): Promise<void> => {
@@ -287,6 +299,7 @@ export function createBridge(
 
           // Start polling scheduler
           pollingScheduler.start()
+          statsTimer.start()
 
           if (isInitialConnection) {
             isInitialConnection = false
@@ -346,6 +359,7 @@ export function createBridge(
 
       // Stop polling first
       pollingScheduler.stop()
+      statsTimer.stop()
 
       // Cleanup device manager (unloads drivers)
       await deviceManager.clear()
@@ -497,6 +511,7 @@ export function createBridge(
           await deviceManager.removeDevice(deviceConfig.deviceId)
           throw error
         }
+        deviceStats.add(deviceConfig.deviceId)
 
         // A port that cannot be opened (USB adapter not plugged in) does not stop the bridge.
         // The device is in error state until a poll opens the port and reads it.
@@ -528,6 +543,7 @@ export function createBridge(
     async removeDevice(deviceId: string) {
       // Unschedule polling first
       pollingScheduler.unscheduleDevice(deviceId)
+      deviceStats.remove(deviceId)
 
       const writeTopic = `${topicPrefix}/${deviceId}/set`
       // A failed unsubscribe is harmless: no handler takes the messages any more. The callback
@@ -537,7 +553,6 @@ export function createBridge(
       // Remove device (unloads driver)
       await deviceManager.removeDevice(deviceId)
       publishFilter.forget(deviceId)
-
       // An empty retained message deletes the retained status of the device on the broker. Not
       // with bridge.publish(), which fails while the client is offline: mqtt.js keeps this
       // message and sends it at the connect.

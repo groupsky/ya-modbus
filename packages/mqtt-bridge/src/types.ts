@@ -8,6 +8,16 @@ export interface MqttBridgeConfig {
   }
   stateDir?: string
   topicPrefix?: string
+  /**
+   * Seconds between the messages on `{topicPrefix}/{deviceId}/stats` (1-86400, 0 = off). Default: not set,
+   * the bridge publishes no stats.
+   */
+  statsInterval?: number
+  /**
+   * Also log one line per device at every `statsInterval` (default: false). It needs
+   * `statsInterval`.
+   */
+  statsLog?: boolean
   devices?: DeviceConfig[]
 }
 

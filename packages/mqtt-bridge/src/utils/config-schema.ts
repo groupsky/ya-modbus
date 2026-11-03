@@ -39,6 +39,8 @@ export const mqttBridgeConfigSchema = z.strictObject({
         'Topic prefix must not contain MQTT special characters (+, #, /, $) or null character',
     })
     .optional(),
+  statsInterval: z.number().int().min(0).max(86400).optional(),
+  statsLog: z.boolean().optional(),
   devices: z
     .array(deviceConfigSchema)
     .superRefine((devices, ctx) => {
