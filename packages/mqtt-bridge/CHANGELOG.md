@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.27.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.26.0...@ya-modbus/mqtt-bridge@0.27.0) (2026-11-03)
+
+### Features
+
+- **mqtt-bridge:** opt-in fixed poll order for the devices on one line ([#722](https://github.com/groupsky/ya-modbus/issues/722)) ([4aec395](https://github.com/groupsky/ya-modbus/commit/4aec3957ee6f75419e45489f0de4e9ddaa4a9d24)), closes [#682](https://github.com/groupsky/ya-modbus/issues/682) [#682](https://github.com/groupsky/ya-modbus/issues/682) [#682](https://github.com/groupsky/ya-modbus/issues/682) [#682](https://github.com/groupsky/ya-modbus/issues/682) [#682](https://github.com/groupsky/ya-modbus/issues/682) [#682](https://github.com/groupsky/ya-modbus/issues/682) [#682](https://github.com/groupsky/ya-modbus/issues/682) [#682](https://github.com/groupsky/ya-modbus/issues/682) [#682](https://github.com/groupsky/ya-modbus/issues/682)
+
 # [0.26.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.25.0...@ya-modbus/mqtt-bridge@0.26.0) (2026-11-03)
 
 ### Features
