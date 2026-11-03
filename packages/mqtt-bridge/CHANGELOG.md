@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.28.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.27.0...@ya-modbus/mqtt-bridge@0.28.0) (2026-11-03)
+
+### Features
+
+- **mqtt-bridge:** retained availability for the bridge and each device, with a last-will ([#724](https://github.com/groupsky/ya-modbus/issues/724)) ([171574f](https://github.com/groupsky/ya-modbus/commit/171574f676e6b0b470f1d4e8ef4e278af2488973)), closes [#618](https://github.com/groupsky/ya-modbus/issues/618)
+
 # [0.27.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.26.0...@ya-modbus/mqtt-bridge@0.27.0) (2026-11-03)
 
 ### Features
