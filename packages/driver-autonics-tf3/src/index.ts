@@ -10,6 +10,9 @@
  * device off the bus. The response delay (0x0134) is not used: it is how long the
  * device waits before it answers, so a pause before our request would not help. The transport timeout
  * covers the answer, and the bridge has `connection.interDeviceDelay` for spacing on the bus.
+ *
+ * The device refuses every write while its "communication write" setting (COW, holding 0x0135) is
+ * disabled. When a write fails, the driver reads that setting and says so in the error.
  */
 
 import { readScaledInt16BE, readScaledUInt16BE } from '@ya-modbus/driver-sdk'
@@ -48,6 +51,10 @@ export const DEFAULT_CONFIG = {
   stopBits: 2,
   defaultAddress: 1,
 } as const satisfies DefaultSerialConfig
+
+/** Communication write setting (COW): 0 enabled, 1 disabled */
+const COMM_WRITE_ADDRESS = 0x0135
+const COMM_WRITE_DISABLED = 1
 
 /** Scale of the temperatures from the decimal-point register */
 function scaleFromRegister(raw: number): number {
@@ -133,6 +140,23 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
       (await transport.readInputRegisters(BLOCKS.status.address + DIVISOR_WORD, 1)).readUInt16BE(0)
     )
 
+  /** Rethrow a failed write, with a clear message when the device has writes disabled */
+  const explainFailedWrite = async (id: string, error: unknown): Promise<never> => {
+    let disabled = false
+    try {
+      const setting = await transport.readHoldingRegisters(COMM_WRITE_ADDRESS, 1)
+      disabled = setting.readUInt16BE(0) === COMM_WRITE_DISABLED
+    } catch {
+      // The setting cannot be read: keep the first error
+    }
+    if (!disabled) throw error
+    throw new Error(
+      `Cannot write ${id}: writes over Modbus are disabled on the device ` +
+        `(setting COW, holding 0x0135, is "DsA"). Set COW to "EnA" on the device panel.`,
+      { cause: error }
+    )
+  }
+
   const specFor = (id: string): PointSpec => {
     const spec = SPEC_BY_ID.get(id)
     if (!spec) throw new Error(`Unknown data point: ${id}`)
@@ -178,13 +202,17 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         if (typeof value !== 'boolean') {
           throw new Error(`Invalid value for ${id}: expected true or false, got ${String(value)}`)
         }
-        await transport.writeSingleCoil(address, value)
+        await transport
+          .writeSingleCoil(address, value)
+          .catch((error) => explainFailedWrite(id, error))
         return
       }
 
       const scale = isTemperature(spec) ? await readScale() : 1
       const raw = encode(spec, value, scale)
-      await transport.writeSingleRegister(address, raw)
+      await transport
+        .writeSingleRegister(address, raw)
+        .catch((error) => explainFailedWrite(id, error))
     },
   }
 

@@ -112,6 +112,8 @@ The device information points (`product_number`, `hardware_version`, `software_v
 
 A write checks the value first (a number, in the register range, one of the enum values, true/false for coils) and writes nothing when it is wrong. The factory reset (coil 0x0002) and the communication setup (address, baud rate, parity, stop bits) are not data points, because a wrong write can cut the device off the bus.
 
+The device refuses every write while its "communication write" setting (COW, holding 0x0135) is "DsA" (disabled). When a write fails, the driver reads that setting; if writes are disabled, the error says so and tells you to set COW to "EnA" on the device panel.
+
 ## Old field to data point id
 
 The old reader (homy `autonics-tf3`) published one nested object. Each of its fields is one data point here.

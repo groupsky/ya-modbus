@@ -303,4 +303,38 @@ describe('writing', () => {
 
     await expect(driver.writeDataPoint('mode', 5)).rejects.toThrow(/valid: 0, 1/)
   })
+
+  describe('when the device refuses a write', () => {
+    const refused = new Error('Modbus exception 1')
+
+    it.each([
+      ['target_temp', 20, 'writeRegister'],
+      ['comp_enabled', true, 'writeCoil'],
+    ] as const)('says when writes are disabled on the device (%s)', async (id, value, write) => {
+      const [driver, mock] = await setup()
+      mock[write].mockRejectedValue(refused)
+      mock.readHolding.mockResolvedValue(registers(1))
+
+      const error = (await driver.writeDataPoint(id, value).catch((e: unknown) => e)) as Error
+      expect(error.message).toMatch(/writes over Modbus are disabled.*COW.*0x0135/)
+      expect(error.cause).toBe(refused)
+      expect(mock.readHolding).toHaveBeenCalledWith(0x0135, 1)
+    })
+
+    it('keeps the first error when writes are enabled', async () => {
+      const [driver, mock] = await setup()
+      mock.writeRegister.mockRejectedValue(refused)
+      mock.readHolding.mockResolvedValue(registers(0))
+
+      await expect(driver.writeDataPoint('defrost_method', 1)).rejects.toBe(refused)
+    })
+
+    it('keeps the first error when the setting cannot be read', async () => {
+      const [driver, mock] = await setup()
+      mock.writeRegister.mockRejectedValue(refused)
+      mock.readHolding.mockRejectedValue(new Error('timeout'))
+
+      await expect(driver.writeDataPoint('defrost_method', 1)).rejects.toBe(refused)
+    })
+  })
 })
