@@ -56,6 +56,14 @@ export function createBridge(
 
   let client: mqtt.MqttClient | null = null
   const topicPrefix = config.topicPrefix ?? 'modbus'
+  // Retained 'online' or 'offline'. QoS 1, so a stop or a lost connection is not missed.
+  const bridgeStatusTopic = `${topicPrefix}/bridge/status`
+  const bridgeStatusOptions = { qos: 1, retain: true } as const
+  const publishBridgeStatus = (value: 'online' | 'offline'): void => {
+    client?.publish(bridgeStatusTopic, value, bridgeStatusOptions, (error) => {
+      if (error) console.error(`Failed to publish ${bridgeStatusTopic}:`, error)
+    })
+  }
   // Subscriptions map needed because mqtt client doesn't expose handler lookup
   const subscriptions = new Map<string, MessageHandler>()
 
@@ -227,6 +235,12 @@ export function createBridge(
           clean: true,
           reconnectPeriod: config.mqtt.reconnectPeriod ?? 5000,
           resubscribe: true, // Automatic resubscription on reconnect (default: true)
+          // The broker publishes it when the connection is lost without a clean stop
+          will: {
+            topic: bridgeStatusTopic,
+            payload: Buffer.from('offline'),
+            ...bridgeStatusOptions,
+          },
         }
 
         if (config.mqtt.clientId) {
@@ -253,6 +267,9 @@ export function createBridge(
           }
 
           // Automatic resubscription is handled by mqtt.js (resubscribe: true)
+
+          // After every connect: the broker may have published the last-will while it was away
+          publishBridgeStatus('online')
 
           // Data may be lost while the broker was away: the next read of every device is published
           publishFilter.forget()
@@ -335,6 +352,8 @@ export function createBridge(
             resolve()
             return
           }
+          // A clean stop sends no last-will. end() waits until the broker has this message.
+          if (client.connected) publishBridgeStatus('offline')
           client.end(false, {}, () => {
             status = {
               state: 'stopped',
