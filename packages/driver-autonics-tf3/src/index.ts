@@ -80,7 +80,7 @@ function decode(spec: PointSpec, buffer: Buffer, scale: number): unknown {
     case 'flag':
       return buffer.readUInt16BE(offset) !== 0
     case 'coil':
-      return ((buffer[0]! >> spec.word) & 1) === 1
+      return ((buffer.readUInt8(0) >> spec.word) & 1) === 1
     case 'divisor':
       return scaleFromRegister(buffer.readUInt16BE(offset))
     case 'uint32':
@@ -163,17 +163,16 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
       // The status group carries the decimal-point register
       if (specs.some(isTemperature)) needed.add('status')
 
-      const buffers = new Map<BlockName, Buffer>()
+      const buffers = {} as Record<BlockName, Buffer>
       for (const name of needed) {
-        buffers.set(name, await paced(() => readBlock(transport, name)))
+        buffers[name] = await paced(() => readBlock(transport, name))
       }
 
-      const statusBuffer = buffers.get('status')
-      const scale = statusBuffer
-        ? scaleFromRegister(statusBuffer.readUInt16BE(DIVISOR_WORD * 2))
+      const scale = needed.has('status')
+        ? scaleFromRegister(buffers.status.readUInt16BE(DIVISOR_WORD * 2))
         : 1
       return Object.fromEntries(
-        specs.map((spec) => [spec.point.id, decode(spec, buffers.get(spec.block)!, scale)])
+        specs.map((spec) => [spec.point.id, decode(spec, buffers[spec.block], scale)])
       )
     },
 
