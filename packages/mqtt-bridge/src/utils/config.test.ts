@@ -118,6 +118,16 @@ describe('loadConfig', () => {
     })
   })
 
+  it('should keep statsInterval', async () => {
+    mockedReadFile.mockResolvedValue(
+      JSON.stringify({ mqtt: { url: 'mqtt://localhost:1883' }, statsInterval: 30 })
+    )
+
+    const config = await loadConfig('/path/to/config.json')
+
+    expect(config.statsInterval).toBe(30)
+  })
+
   it('should accept reconnectPeriod of 24 hours', async () => {
     mockedReadFile.mockResolvedValue(
       JSON.stringify({ mqtt: { url: 'mqtt://localhost:1883', reconnectPeriod: 86400000 } })

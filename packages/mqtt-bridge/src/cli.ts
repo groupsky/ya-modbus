@@ -36,6 +36,11 @@ program
   .option('--mqtt-reconnect-period <ms>', 'Reconnection interval in milliseconds', parseInt)
   .option('--topic-prefix <prefix>', 'Topic prefix for all MQTT topics (default: modbus)')
   .option('--state-dir <path>', 'Directory path for state persistence')
+  .option(
+    '--stats-interval <seconds>',
+    'Publish device stats on {prefix}/{deviceId}/stats every N seconds (default: off)',
+    parseInt
+  )
   .addHelpText(
     'after',
     '\nSet YA_MODBUS_DEBUG=1 to log the full error (stack and cause) of failed polls and each request that is sent again.'
@@ -58,6 +63,7 @@ interface RunCommandOptions {
   mqttReconnectPeriod?: number
   topicPrefix?: string
   stateDir?: string
+  statsInterval?: number
 }
 
 async function runCommand(options: RunCommandOptions): Promise<void> {
@@ -75,6 +81,7 @@ async function runCommand(options: RunCommandOptions): Promise<void> {
     if (options.mqttReconnectPeriod) config.mqtt.reconnectPeriod = options.mqttReconnectPeriod
     if (options.topicPrefix) config.topicPrefix = options.topicPrefix
     if (options.stateDir) config.stateDir = options.stateDir
+    if (options.statsInterval) config.statsInterval = options.statsInterval
   } else {
     // Build from CLI options only
     if (!options.mqttUrl) {
@@ -90,6 +97,7 @@ async function runCommand(options: RunCommandOptions): Promise<void> {
       },
       ...(options.topicPrefix && { topicPrefix: options.topicPrefix }),
       ...(options.stateDir && { stateDir: options.stateDir }),
+      ...(options.statsInterval && { statsInterval: options.statsInterval }),
     }
   }
 

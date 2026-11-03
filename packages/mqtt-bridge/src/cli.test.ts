@@ -102,6 +102,9 @@ describe('CLI - ya-modbus-bridge', () => {
           --topic-prefix <prefix>       Topic prefix for all MQTT topics (default:
                                         modbus)
           --state-dir <path>            Directory path for state persistence
+          --stats-interval <seconds>    Publish device stats on
+                                        {prefix}/{deviceId}/stats every N seconds
+                                        (default: off)
           -h, --help                    display help for command
 
         Set YA_MODBUS_DEBUG=1 to log the full error (stack and cause) of failed polls and each request that is sent again.
@@ -254,6 +257,40 @@ describe('CLI - ya-modbus-bridge', () => {
         })
       )
       expect(mockBridge.start).toHaveBeenCalled()
+    })
+  })
+
+  describe('Run Command - stats interval', () => {
+    it('should set statsInterval from --stats-interval, with and without a config file', async () => {
+      jest
+        .mocked(configModule.loadConfig)
+        .mockResolvedValue({ mqtt: { url: 'mqtt://localhost:1883' }, statsInterval: 30 })
+      await program.parseAsync([
+        'node',
+        'bridge',
+        'run',
+        '--config',
+        'c.json',
+        '--stats-interval',
+        '60',
+      ])
+      expect(indexModule.createBridge).toHaveBeenLastCalledWith(
+        expect.objectContaining({ statsInterval: 60 })
+      )
+
+      await program.parseAsync([
+        'node',
+        'bridge',
+        'run',
+        '--mqtt-url',
+        'mqtt://b:1883',
+        '--stats-interval',
+        '15',
+      ])
+      expect(indexModule.createBridge).toHaveBeenLastCalledWith({
+        mqtt: { url: 'mqtt://b:1883' },
+        statsInterval: 15,
+      })
     })
   })
 

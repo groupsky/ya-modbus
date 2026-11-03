@@ -43,6 +43,8 @@ export interface DataInfo {
 }
 type DataCallback = (deviceId: string, data: Record<string, unknown>, info?: DataInfo) => void
 type ErrorCallback = (deviceId: string, error: Error, failureCount: number) => void
+/** Called after every poll with the time the read took (without the wait for its turn) */
+type ReadCallback = (deviceId: string, durationMs: number, ok: boolean) => void
 
 /** Failed reads in a row before polling slows down to `retryBackoff` */
 export const DEFAULT_MAX_RETRIES = 3
@@ -75,7 +77,8 @@ export class PollingScheduler {
 
   constructor(
     private onData: DataCallback,
-    private onError: ErrorCallback
+    private onError: ErrorCallback,
+    private onRead?: ReadCallback
   ) {}
 
   /**
@@ -364,6 +367,22 @@ export class PollingScheduler {
     return { ...device.staticValues, ...data }
   }
 
+  // Read the device and report how long it took, also when the read fails
+  private async timedRead(
+    deviceId: string,
+    device: ScheduledDevice
+  ): Promise<Record<string, unknown>> {
+    const start = Date.now()
+    try {
+      const data = await this.readDevice(deviceId, device)
+      this.onRead?.(deviceId, Date.now() - start, true)
+      return data
+    } catch (error) {
+      this.onRead?.(deviceId, Date.now() - start, false)
+      throw error
+    }
+  }
+
   /**
    * Poll a device once
    */
@@ -376,7 +395,7 @@ export class PollingScheduler {
       // device is not read.
       const data = await this.inTurn(device.connectionKey, async () =>
         this.running && this.devices.get(deviceId) === device
-          ? this.readDevice(deviceId, device)
+          ? this.timedRead(deviceId, device)
           : undefined
       )
       if (data === undefined) {

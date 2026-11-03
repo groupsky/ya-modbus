@@ -1,6 +1,7 @@
 import mqtt from 'mqtt'
 
 import { DeviceManager, type DeviceStatusUpdate } from './device-manager.js'
+import { DeviceStats } from './device-stats.js'
 import { parseWriteValues, WriteError } from './device-writes.js'
 import { DriverLoader } from './driver-loader.js'
 import { DEFAULT_MAX_RETRIES, PollingScheduler, type DataInfo } from './polling-scheduler.js'
@@ -79,7 +80,7 @@ export function createBridge(
   // Publish function that will be called from polling
   const publishDeviceMessage = (
     deviceId: string,
-    topic: 'data' | 'status' | 'set/result',
+    topic: 'data' | 'status' | 'set/result' | 'stats',
     fields: Record<string, unknown>
   ): void => {
     if (!bridgeRef) {
@@ -200,8 +201,29 @@ export function createBridge(
     })
   }
 
+  const deviceStats = new DeviceStats()
   const pollingScheduler =
-    dependencies?.pollingScheduler ?? new PollingScheduler(handlePollingData, handlePollingError)
+    dependencies?.pollingScheduler ??
+    new PollingScheduler(handlePollingData, handlePollingError, (deviceId, ms, ok) =>
+      deviceStats.record(deviceId, ms, ok)
+    )
+
+  // One timer for all devices; only when config.statsInterval is set
+  let statsTimer: NodeJS.Timeout | undefined
+  const startStats = (): void => {
+    if (!config.statsInterval || statsTimer) return
+    statsTimer = setInterval(() => {
+      const reports = deviceStats.report()
+      // The window of the average starts anyway; a message to an offline broker would only fail
+      if (!client?.connected) return
+      for (const [deviceId, stats] of reports) publishDeviceMessage(deviceId, 'stats', { ...stats })
+    }, config.statsInterval * 1000)
+    statsTimer.unref()
+  }
+  const stopStats = (): void => {
+    clearInterval(statsTimer)
+    statsTimer = undefined
+  }
 
   // Write the values of a message on {topicPrefix}/{deviceId}/set, and publish the result
   const handleWriteMessage = async (deviceId: string, message: MqttMessage): Promise<void> => {
@@ -287,6 +309,7 @@ export function createBridge(
 
           // Start polling scheduler
           pollingScheduler.start()
+          startStats()
 
           if (isInitialConnection) {
             isInitialConnection = false
@@ -346,6 +369,7 @@ export function createBridge(
 
       // Stop polling first
       pollingScheduler.stop()
+      stopStats()
 
       // Cleanup device manager (unloads drivers)
       await deviceManager.clear()
@@ -497,6 +521,7 @@ export function createBridge(
           await deviceManager.removeDevice(deviceConfig.deviceId)
           throw error
         }
+        deviceStats.add(deviceConfig.deviceId)
 
         // A port that cannot be opened (USB adapter not plugged in) does not stop the bridge.
         // The device is in error state until a poll opens the port and reads it.
@@ -537,6 +562,7 @@ export function createBridge(
       // Remove device (unloads driver)
       await deviceManager.removeDevice(deviceId)
       publishFilter.forget(deviceId)
+      deviceStats.remove(deviceId)
 
       // An empty retained message deletes the retained status of the device on the broker. Not
       // with bridge.publish(), which fails while the client is offline: mqtt.js keeps this

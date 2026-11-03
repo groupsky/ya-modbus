@@ -41,6 +41,7 @@ export async function loadConfig(configPath: string): Promise<MqttBridgeConfig> 
     },
     ...(result.data.stateDir !== undefined && { stateDir: result.data.stateDir }),
     ...(result.data.topicPrefix !== undefined && { topicPrefix: result.data.topicPrefix }),
+    ...(result.data.statsInterval !== undefined && { statsInterval: result.data.statsInterval }),
     ...(result.data.devices !== undefined && { devices: result.data.devices }),
   }
 
