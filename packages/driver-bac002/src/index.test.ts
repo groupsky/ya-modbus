@@ -45,6 +45,9 @@ describe('BAC-002 driver with an emulated device', () => {
   let transport: Transport
   let driver: DeviceDriver
 
+  const register = (address: number): number =>
+    emulator.getDevice(SLAVE_ID)!.getHoldingRegister(address)
+
   const setRegisters = (values: Record<number, number>): void => {
     for (const [address, value] of Object.entries(values)) {
       emulator.getDevice(SLAVE_ID)!.setHoldingRegister(Number(address), value)
@@ -244,6 +247,124 @@ describe('BAC-002 driver with an emulated device', () => {
   })
 
   describe('writing', () => {
+    it.each([
+      ['power', 'off', 0, 0],
+      ['power', 'on', 1, 0],
+      ['fan_setting', 'auto', 0, 1],
+      ['fan_setting', 'high', 1, 1],
+      ['fan_setting', 'mid', 2, 1],
+      ['fan_setting', 'low', 3, 1],
+      ['mode', 'cooling', 0, 2],
+      ['mode', 'heating', 1, 2],
+      ['mode', 'ventilation', 2, 2],
+      ['lock', 'unlock', 0, 4],
+      ['lock', 'lock', 1, 4],
+      ['week_day', 'mon', 1, 7],
+      ['week_day', 'tue', 2, 7],
+      ['week_day', 'wed', 3, 7],
+      ['week_day', 'thu', 4, 7],
+      ['week_day', 'fri', 5, 7],
+      ['week_day', 'sat', 6, 7],
+      ['week_day', 'sun', 7, 7],
+    ])('writes %s %s as register value %i', async (id, value, raw, address) => {
+      setRegisters({ [address]: 9 })
+      await driver.writeDataPoint(id, value)
+      expect(register(address)).toBe(raw)
+      await expect(driver.readDataPoint(id)).resolves.toBe(value)
+    })
+
+    it.each([
+      ['power', 'on '],
+      ['power', 1],
+      ['power', null],
+      ['fan_setting', 'turbo'],
+      ['mode', 'dry'],
+      ['lock', true],
+      ['week_day', 'unknown'],
+      ['week_day', 'toString'],
+    ])('rejects %s value %p and leaves the register alone', async (id, value) => {
+      const before = { ...SAMPLE_REGISTERS }
+      await expect(driver.writeDataPoint(id, value)).rejects.toThrow(`Invalid ${id}: received`)
+      for (const [address, raw] of Object.entries(before)) {
+        expect(register(Number(address))).toBe(raw)
+      }
+    })
+
+    it('names the valid values when an enum value is wrong', async () => {
+      await expect(driver.writeDataPoint('fan_setting', 'turbo')).rejects.toThrow(
+        'Invalid fan_setting: received turbo, must be one of auto, high, mid, low'
+      )
+    })
+
+    it.each([
+      [21.5, 215],
+      [21, 210],
+      [0, 0],
+      [100, 1000],
+      [21.2, 210],
+      [21.3, 215],
+      [21.74, 215],
+      [21.75, 220],
+    ])('writes target temperature %p as register value %i', async (value, raw) => {
+      await driver.writeDataPoint('target_temperature', value)
+      expect(register(3)).toBe(raw)
+    })
+
+    it.each([-0.5, 100.5, NaN, Infinity, '21', null])(
+      'rejects target temperature %p',
+      async (value) => {
+        await expect(driver.writeDataPoint('target_temperature', value)).rejects.toThrow(
+          'Invalid target_temperature'
+        )
+        expect(register(3)).toBe(215)
+      }
+    )
+
+    it('names the range when the target temperature is wrong', async () => {
+      await expect(driver.writeDataPoint('target_temperature', 120)).rejects.toThrow(
+        'Invalid target_temperature: received 120, must be between 0 and 100'
+      )
+    })
+
+    it.each([
+      ['clock_minutes', 5, 0, 59],
+      ['clock_hours', 6, 0, 23],
+    ])('writes %s inside its range', async (id, address, min, max) => {
+      await driver.writeDataPoint(id, min)
+      expect(register(address)).toBe(min)
+      await driver.writeDataPoint(id, max)
+      expect(register(address)).toBe(max)
+      await expect(driver.readDataPoint(id)).resolves.toBe(max)
+    })
+
+    it.each([
+      ['clock_minutes', 5, -1],
+      ['clock_minutes', 5, 60],
+      ['clock_minutes', 5, 1.5],
+      ['clock_minutes', 5, '30'],
+      ['clock_hours', 6, -1],
+      ['clock_hours', 6, 24],
+      ['clock_hours', 6, NaN],
+      ['clock_hours', 6, null],
+    ])('rejects %s value %p', async (id, address, value) => {
+      const before = register(address)
+      await expect(driver.writeDataPoint(id, value)).rejects.toThrow(`Invalid ${id}: received`)
+      expect(register(address)).toBe(before)
+    })
+
+    it('names the range when the clock is wrong', async () => {
+      await expect(driver.writeDataPoint('clock_hours', 24)).rejects.toThrow(
+        'Invalid clock_hours: received 24, must be between 0 and 23'
+      )
+    })
+
+    it('changes one register and no other', async () => {
+      await driver.writeDataPoint('mode', 'cooling')
+      expect(register(2)).toBe(0)
+      const all = Array.from({ length: 11 }, (_, address) => register(address))
+      expect(all).toEqual(Object.values({ ...SAMPLE_REGISTERS, 2: 0 }))
+    })
+
     it('rejects an unknown data point', async () => {
       await expect(driver.writeDataPoint('humidity')).rejects.toThrow(
         'Unknown data point: humidity'

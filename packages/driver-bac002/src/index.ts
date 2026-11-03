@@ -21,6 +21,12 @@
  * | 10       | `fan`, `fan_status` | number; 0 off, 1 high, 2 mid, 3 low        | r      |
  */
 
+import {
+  createRangeValidator,
+  formatEnumError,
+  formatRangeError,
+  isValidInteger,
+} from '@ya-modbus/driver-sdk'
 import type {
   CreateDriverFunction,
   DataPoint,
@@ -49,6 +55,8 @@ interface Field {
   readonly dataPoint: DataPoint
   readonly register: number
   readonly decode: (raw: number) => unknown
+  /** Checks a value and turns it into the register value. Only fields that can be written have it. */
+  readonly encode?: (value: unknown) => number
 }
 
 /**
@@ -73,18 +81,51 @@ function enumField(
       }
       return found[0]
     },
+    ...(dataPoint.access === 'rw' && {
+      encode: (value) => {
+        if (typeof value !== 'string' || !Object.hasOwn(names, value)) {
+          throw new Error(formatEnumError(dataPoint.id, value, Object.keys(names)))
+        }
+        return names[value] as number
+      },
+    }),
   }
 }
 
 function integerField(register: number, dataPoint: Omit<DataPoint, 'type'>): Field {
-  return { register, dataPoint: { ...dataPoint, type: 'integer' }, decode: (raw) => raw }
+  const { id, min = 0, max = 0xffff } = dataPoint
+  const isInRange = createRangeValidator(min, max)
+  return {
+    register,
+    dataPoint: { ...dataPoint, type: 'integer' },
+    decode: (raw) => raw,
+    ...(dataPoint.access === 'rw' && {
+      encode: (value) => {
+        if (!isValidInteger(value) || !isInRange(value)) {
+          throw new Error(formatRangeError(id, value, min, max))
+        }
+        return value
+      },
+    }),
+  }
 }
 
 function temperatureField(register: number, dataPoint: Omit<DataPoint, 'type'>): Field {
+  const { min = 0, max = 100 } = dataPoint
+  const isInRange = createRangeValidator(min, max)
   return {
     register,
     dataPoint: { ...dataPoint, type: 'float', unit: '°C', decimals: 1 },
     decode: (raw) => raw / 10,
+    ...(dataPoint.access === 'rw' && {
+      // The device sets the temperature in steps of 0.5 degrees, as the old writer did
+      encode: (value) => {
+        if (!isInRange(value)) {
+          throw new Error(formatRangeError(dataPoint.id, value, min, max))
+        }
+        return Math.round(value * 2) * 5
+      },
+    }),
   }
 }
 
@@ -265,10 +306,12 @@ export const createDriver: CreateDriverFunction = ({ transport }) => {
       return readFields(ids.map(findField))
     },
 
-    // eslint-disable-next-line @typescript-eslint/require-await
-    async writeDataPoint(id: string): Promise<void> {
-      findField(id)
-      throw new Error(`Data point ${id} is read-only`)
+    async writeDataPoint(id: string, value: unknown): Promise<void> {
+      const field = findField(id)
+      if (field.encode === undefined) {
+        throw new Error(`Data point ${id} is read-only`)
+      }
+      await transport.writeSingleRegister(field.register, field.encode(value))
     },
   }
 
