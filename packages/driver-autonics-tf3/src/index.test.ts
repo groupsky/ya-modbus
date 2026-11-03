@@ -25,14 +25,12 @@ interface Mock {
   writeCoil: jest.Mock
 }
 
-function createMock(options: { statusBlock?: Buffer; delay?: number } = {}): Mock {
+function createMock(options: { statusBlock?: Buffer } = {}): Mock {
   const statusBlock = options.statusBlock ?? status(1)
   const readInput = jest.fn((address: number, count: number) =>
     Promise.resolve(address === 0x03e8 + 12 && count === 1 ? statusBlock.subarray(24) : statusBlock)
   )
-  const readHolding = jest.fn((address: number) =>
-    Promise.resolve(address === 0x0134 ? registers(options.delay ?? 0) : registers(0, 0))
-  )
+  const readHolding = jest.fn(() => Promise.resolve(registers(0, 0)))
   const readCoils = jest.fn(() => Promise.resolve(Buffer.from([0b01])))
   const writeRegister = jest.fn(() => Promise.resolve())
   const writeCoil = jest.fn(() => Promise.resolve())
@@ -92,17 +90,27 @@ describe('data points', () => {
     const [driver] = await setup()
     const writable = driver.dataPoints.filter((p) => p.access === 'rw').map((p) => p.id)
 
-    expect(writable).toEqual(
-      expect.arrayContaining([
-        'target_temp',
-        'mode',
-        'aux_enabled',
-        'comp_enabled',
-        'defrost_cycle',
-      ])
-    )
-    expect(writable).not.toContain('current_temp')
-    expect(writable).not.toContain('model')
+    expect([...writable].sort()).toEqual([
+      'aux_enabled',
+      'comp_enabled',
+      'compressor_continuous_operation',
+      'compressor_min_cycle_time',
+      'compressor_min_run_time',
+      'compressor_restart_delay',
+      'compressor_startup_delay',
+      'defrost_cycle',
+      'defrost_method',
+      'high_temp_limit',
+      'hysteresis',
+      'input1_correction',
+      'input2_correction',
+      'input3_correction',
+      'low_temp_limit',
+      'mode',
+      'offset',
+      'target_temp',
+      'virtual_temp_rate',
+    ])
   })
 
   it('gives every enum point a label for each value', async () => {
@@ -143,6 +151,12 @@ describe('reading temperatures', () => {
     await expect(driver.readDataPoint('current_temp')).rejects.toThrow(/decimal point/i)
   })
 
+  it('reads points that are not temperatures although the decimal-point register is unknown', async () => {
+    const [driver] = await setup({ statusBlock: status(2, { 7: 5 }) })
+
+    expect(await driver.readDataPoint('inputs')).toBe(5)
+  })
+
   it('reads a setting that is a temperature with the status block for the scale', async () => {
     const [driver, mock] = await setup({ statusBlock: status(0) })
 
@@ -160,7 +174,7 @@ describe('reading in groups', () => {
     await driver.readDataPoints(['target_temp', 'inputs', 'temperature_unit', 'temp_divisor'])
 
     expect(mock.readInput).toHaveBeenCalledTimes(1)
-    expect(mock.readHolding).toHaveBeenCalledTimes(1) // the response delay
+    expect(mock.readHolding).not.toHaveBeenCalled()
   })
 
   it('does not read the status block for points that are not temperatures', async () => {
@@ -204,20 +218,6 @@ describe('device information', () => {
     const driver = await createDriver({ transport: mock.transport })
 
     expect(await driver.readDataPoint('model')).toBe('TF3')
-  })
-})
-
-describe('response delay', () => {
-  it('reads the delay once and waits that long before each request', async () => {
-    const [driver, mock] = await setup({ delay: 30 })
-
-    const started = Date.now()
-    await driver.readDataPoint('inputs')
-    await driver.readDataPoint('inputs')
-
-    expect(Date.now() - started).toBeGreaterThanOrEqual(55)
-    const delayReads = mock.readHolding.mock.calls.filter(([address]) => address === 0x0134)
-    expect(delayReads).toHaveLength(1)
   })
 })
 

@@ -80,9 +80,6 @@ function controllerRegisters(): {
   ])
   // Defrost setup
   place(holding, 0x00c8, [2, 6])
-  // Response delay
-  holding[0x0134] = 0
-
   return { holding, input, coils: { 0: true, 1: false } }
 }
 

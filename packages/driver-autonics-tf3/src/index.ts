@@ -7,7 +7,9 @@
  *
  * Out of scope on purpose: factory reset (coil 0x0002) and the communication setup
  * (0x0130..0x0133 address, baud rate, parity, stop bits), because a wrong write there cuts the
- * device off the bus. The response delay (0x0134) is only read.
+ * device off the bus. The response delay (0x0134) is not used: it is how long the
+ * device waits before it answers, so a pause before our request would not help. The transport timeout
+ * covers the answer, and the bridge has `connection.interDeviceDelay` for spacing on the bus.
  */
 
 import { readScaledInt16BE, readScaledUInt16BE } from '@ya-modbus/driver-sdk'
@@ -24,7 +26,6 @@ import {
   BLOCKS,
   DATA_POINTS,
   DIVISOR_WORD,
-  RESPONSE_DELAY_ADDRESS,
   SPEC_BY_ID,
   type BlockName,
   type PointSpec,
@@ -47,8 +48,6 @@ export const DEFAULT_CONFIG = {
   stopBits: 1,
   defaultAddress: 1,
 } as const satisfies DefaultSerialConfig
-
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** Scale of the temperatures from the decimal-point register */
 function scaleFromRegister(raw: number): number {
@@ -129,20 +128,9 @@ function encode(spec: PointSpec, value: unknown, scale: number): number {
 export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
   const { transport } = config
 
-  // The device wants a pause before each request. Read once, then kept.
-  let delayMs: number | undefined
-
-  const paced = async <T>(request: () => Promise<T>): Promise<T> => {
-    delayMs ??= (await transport.readHoldingRegisters(RESPONSE_DELAY_ADDRESS, 1)).readUInt16BE(0)
-    if (delayMs > 0) await sleep(delayMs)
-    return request()
-  }
-
   const readScale = async (): Promise<number> =>
     scaleFromRegister(
-      (
-        await paced(() => transport.readInputRegisters(BLOCKS.status.address + DIVISOR_WORD, 1))
-      ).readUInt16BE(0)
+      (await transport.readInputRegisters(BLOCKS.status.address + DIVISOR_WORD, 1)).readUInt16BE(0)
     )
 
   const specFor = (id: string): PointSpec => {
@@ -165,10 +153,11 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
 
       const buffers = {} as Record<BlockName, Buffer>
       for (const name of needed) {
-        buffers[name] = await paced(() => readBlock(transport, name))
+        buffers[name] = await readBlock(transport, name)
       }
 
-      const scale = needed.has('status')
+      // Only a temperature needs the scale, so an unknown decimal value does not break other reads
+      const scale = specs.some(isTemperature)
         ? scaleFromRegister(buffers.status.readUInt16BE(DIVISOR_WORD * 2))
         : 1
       return Object.fromEntries(
@@ -189,13 +178,13 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         if (typeof value !== 'boolean') {
           throw new Error(`Invalid value for ${id}: expected true or false, got ${String(value)}`)
         }
-        await paced(() => transport.writeSingleCoil(address, value))
+        await transport.writeSingleCoil(address, value)
         return
       }
 
       const scale = isTemperature(spec) ? await readScale() : 1
       const raw = encode(spec, value, scale)
-      await paced(() => transport.writeSingleRegister(address, raw))
+      await transport.writeSingleRegister(address, raw)
     },
   }
 

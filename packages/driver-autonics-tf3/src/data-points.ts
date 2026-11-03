@@ -35,9 +35,6 @@ export type BlockName = keyof typeof BLOCKS
 /** Word of the decimal-point register in the status block */
 export const DIVISOR_WORD = 12
 
-/** Holding register that sets the pause the device wants before each request, in ms */
-export const RESPONSE_DELAY_ADDRESS = 0x0134
-
 export type Kind =
   /** Signed 16 bit temperature, divided by the decimal-point scale */
   | 'temp'
