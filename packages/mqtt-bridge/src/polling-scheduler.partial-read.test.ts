@@ -142,6 +142,35 @@ describe('PollingScheduler partial reads', () => {
     expect(onError).toHaveBeenCalledTimes(1)
   })
 
+  it('should read the refused points in one request until a read works again', async () => {
+    let refuseAll = true
+    readDataPoints.mockImplementation((ids) =>
+      refuseAll
+        ? Promise.reject(modbusException())
+        : Promise.resolve(Object.fromEntries(ids.map((id) => [id, `${id}-value`])))
+    )
+    schedule()
+    await jest.advanceTimersByTimeAsync(INTERVAL)
+    expect(readDataPoints).toHaveBeenCalledTimes(5)
+
+    readDataPoints.mockClear()
+    await jest.advanceTimersByTimeAsync(INTERVAL)
+
+    expect(readDataPoints.mock.calls).toEqual([[['voltage', 'current', 'energy', 'frequency']]])
+    expect(onError).toHaveBeenCalledTimes(2)
+    expect(onData).not.toHaveBeenCalled()
+
+    refuseAll = false
+    await jest.advanceTimersByTimeAsync(INTERVAL)
+
+    expect(onData).toHaveBeenCalledWith('device1', {
+      voltage: 'voltage-value',
+      current: 'current-value',
+      energy: 'energy-value',
+      frequency: 'frequency-value',
+    })
+  })
+
   it('should fail the whole poll when the device stops answering during the scan', async () => {
     readDataPoints
       .mockRejectedValueOnce(modbusException())
@@ -180,5 +209,26 @@ describe('PollingScheduler partial reads', () => {
       voltage: 'voltage-value',
     })
     warn.mockRestore()
+  })
+
+  it('should name every static point when the device refuses them all, and retry in one request', async () => {
+    schedule([
+      point('voltage'),
+      point('energy', { pollType: 'static' }),
+      point('frequency', { pollType: 'static' }),
+    ])
+    await jest.advanceTimersByTimeAsync(INTERVAL)
+
+    expect(onData).toHaveBeenLastCalledWith(
+      'device1',
+      { voltage: 'voltage-value' },
+      { failedDataPoints: ['energy', 'frequency'] }
+    )
+
+    readDataPoints.mockClear()
+    await jest.advanceTimersByTimeAsync(INTERVAL)
+
+    expect(readDataPoints.mock.calls).toEqual([[['voltage']], [['energy', 'frequency']]])
+    expect(onError).not.toHaveBeenCalled()
   })
 })

@@ -323,6 +323,8 @@ export class PollingScheduler {
       const result = await readPartial(device.driver, device.dynamicIds, device.failedDynamicIds)
       data = result.data
       device.failedDynamicIds = result.failed
+      // The device refuses every point: the poll fails. The next poll reads them in one request.
+      if (result.failed.length === device.dynamicIds.length) throw result.error
     }
 
     // Only after a dynamic read worked, so a device that does not answer costs one timeout
