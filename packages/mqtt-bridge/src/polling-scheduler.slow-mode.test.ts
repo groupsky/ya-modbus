@@ -84,6 +84,24 @@ describe('PollingScheduler slow mode', () => {
     expect(waits).toEqual([1, 100, 200, 400, 500, 500])
   })
 
+  it('waits retryDelay instead of interval after a failed read', async () => {
+    const waits = await failureWaits(
+      { interval: 100, retryDelay: 300, maxRetries: 3, retryBackoff: 1000, maxRetryBackoff: 1000 },
+      5
+    )
+
+    expect(waits).toEqual([100, 300, 300, 1000, 1000])
+  })
+
+  it('needs no interval in continuous mode, and backs off from 2 x retryDelay', async () => {
+    const waits = await failureWaits(
+      { mode: 'continuous', retryDelay: 50, maxRetries: 2, maxRetryBackoff: 300 },
+      6
+    )
+
+    expect(waits).toEqual([1, 50, 100, 200, 300, 300])
+  })
+
   it('treats maxRetries 0 like 1', async () => {
     const waits = await failureWaits(
       { interval: 100, maxRetries: 0, retryBackoff: 200, maxRetryBackoff: 500 },
