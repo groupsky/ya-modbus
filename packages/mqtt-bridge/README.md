@@ -306,6 +306,22 @@ The driver gives each data point a `pollType` and an `access`. The bridge uses t
 
 Static points are read in a separate request, after the dynamic points, and only in a poll where the dynamic read worked. If the static read fails, the bridge logs a warning with the device ID and the static data point IDs, still publishes the dynamic points, and tries the static points again on the next poll. A failed static read does not count as a failed read (see below). When a device is removed and added again, the bridge reads its static points again.
 
+### Data Points the Device Refuses
+
+A driver often reads several register blocks when the bridge asks it for the data points. When the device refuses one block, the whole read fails. How the bridge goes on depends on the error:
+
+- **The device answers with a Modbus exception** (for example 2, illegal data address). The device is alive. The bridge reads each data point on its own, once, to find the points that fail (the search). It publishes the points that work. The state stays `connected`, and the status message lists the failed points in `failedDataPoints` (see [Device States](#device-states)).
+- **Any other error** (a timeout, a closed port). The whole poll fails, the same as when the device does not answer (see [Failed Reads and Backoff](#failed-reads-and-backoff)).
+
+On later polls the bridge reads the good points in one request, and the failed points in a second request. When the second request works, the failed points are back in the data, and `failedDataPoints` goes away. Static points work the same way: the static points that work are kept, and only the failed ones are read again on each poll. When the device refuses every point, the poll fails.
+
+Limits:
+
+- The search costs one request per data point (for a meter with 56 points, about 4 seconds). It runs once, and again after each new failure.
+- A device that does not answer a bad range at all (a timeout instead of an exception) still fails as a whole.
+- The failed points are retried together. When some of them work again and others do not, the second request still fails, so all of them stay failed until all work again, or until the next search.
+- A driver can read a smaller range for one point than for many. Then a point can work alone but fail in the full request, and every poll runs the search: the data is complete, but the poll is slow.
+
 ### Publish Only on Change
 
 A device that is polled often and changes little can send many messages with the same data. With `publish.mode` `on-change`, the bridge publishes a read only when its data differs from the last published data of the device, and at least every `publish.heartbeat` ms:
@@ -479,7 +495,7 @@ How the state changes:
 - `connected` → `error` - `maxRetries` consecutive reads failed (at least 1, so `0` works like `1`), or the port of the device is not open when the device is added. In the second case `addDevice()` works, and the state changes right after the driver is loaded.
 - `error` → `connected` - the next read works
 
-When the state changes between `connected` and `error`, the bridge publishes a message to `{topicPrefix}/{deviceId}/status`:
+When the state changes between `connected` and `error`, or the list of failed data points changes, the bridge publishes a message to `{topicPrefix}/{deviceId}/status`:
 
 ```json
 {
@@ -492,7 +508,18 @@ When the state changes between `connected` and `error`, the bridge publishes a m
 }
 ```
 
-The `errors` field is only there when the state is `error`. It has the message of the last failed read, or why the port could not be opened. Status messages use QoS 0 and are not retained, the same as the messages on `{topicPrefix}/{deviceId}/data`. If the bridge is not connected to the broker when the state changes, the message is lost. Use `bridge.getDevice()` to read the current state at any time.
+The `errors` field is only there when the state is `error`. It has the message of the last failed read, or why the port could not be opened. The `failedDataPoints` field is only there when the state is `connected` and the device refuses some data points (see [Data Points the Device Refuses](#data-points-the-device-refuses)):
+
+```json
+{
+  "deviceId": "sensor1",
+  "timestamp": 1760000000000,
+  "state": "connected",
+  "failedDataPoints": ["total_energy", "export_energy"]
+}
+```
+
+Status messages use QoS 0 and are not retained, the same as the messages on `{topicPrefix}/{deviceId}/data`. If the bridge is not connected to the broker when the state changes, the message is lost. Use `bridge.getDevice()` to read the current state at any time.
 
 The `connected` field of the device status is deprecated. Use `state` instead. `connected` is `true` only when `state` is `connected`.
 
