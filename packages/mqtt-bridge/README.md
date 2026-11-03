@@ -322,6 +322,7 @@ Limits:
 - The search costs one request per data point (for a meter with 56 points, about 4 seconds). It runs when a request with all points of a device fails, so once for each new failure. It does not run again while the device refuses every dynamic point.
 - A device that does not answer a bad range at all (a timeout instead of an exception) still fails as a whole.
 - The failed points are retried together. When some of them work again and others do not, the second request still fails, so all of them stay failed until all work again, or until the next search.
+- After the device refused every dynamic point, the bridge searches again only when the request with all of them works. When the device answers some of them but not all, every poll still fails.
 - A driver can read a smaller range for one point than for many. Then a point can work alone but fail in the full request, and every poll runs the search: the data is complete, but the poll is slow.
 
 ### Publish Only on Change
