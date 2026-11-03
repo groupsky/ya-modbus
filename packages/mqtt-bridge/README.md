@@ -313,11 +313,13 @@ A driver often reads several register blocks when the bridge asks it for the dat
 - **The device answers with a Modbus exception** (for example 2, illegal data address). The device is alive. The bridge reads each data point on its own, once, to find the points that fail (the search). It publishes the points that work. The state stays `connected`, and the status message lists the failed points in `failedDataPoints` (see [Device States](#device-states)).
 - **Any other error** (a timeout, a closed port). The whole poll fails, the same as when the device does not answer (see [Failed Reads and Backoff](#failed-reads-and-backoff)).
 
-On later polls the bridge reads the good points in one request, and the failed points in a second request. When the second request works, the failed points are back in the data, and `failedDataPoints` goes away. Static points work the same way: the static points that work are kept, and only the failed ones are read again on each poll. When the device refuses every point, the poll fails.
+On later polls the bridge reads the good points in one request, and the failed points in a second request. When the second request works, the failed points are back in the data, and `failedDataPoints` goes away. Static points work the same way: the static points that work are kept, and only the failed ones are read again on each poll.
+
+When the device refuses every dynamic point, the poll fails (see [Failed Reads and Backoff](#failed-reads-and-backoff)). Later polls read all of them in one request, until it works. When the device refuses every static point, the poll still works: the status names the static points, and later polls read them in one request.
 
 Limits:
 
-- The search costs one request per data point (for a meter with 56 points, about 4 seconds). It runs once, and again after each new failure.
+- The search costs one request per data point (for a meter with 56 points, about 4 seconds). It runs when a request with all points of a device fails, so once for each new failure. It does not run again while the device refuses every dynamic point.
 - A device that does not answer a bad range at all (a timeout instead of an exception) still fails as a whole.
 - The failed points are retried together. When some of them work again and others do not, the second request still fails, so all of them stay failed until all work again, or until the next search.
 - A driver can read a smaller range for one point than for many. Then a point can work alone but fail in the full request, and every poll runs the search: the data is complete, but the poll is slow.
