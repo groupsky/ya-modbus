@@ -22,6 +22,7 @@ async function main() {
     driverOrWe516: require('@ya-modbus/driver-or-we-516'),
     driverSdk: require('@ya-modbus/driver-sdk'),
     driverSdm630: require('@ya-modbus/driver-sdm630'),
+    driverSun2000: require('@ya-modbus/driver-sun2000'),
     driverXymd1: require('@ya-modbus/driver-xymd1'),
     emulator: require('@ya-modbus/emulator'),
     mqttBridge: require('@ya-modbus/mqtt-bridge'),
