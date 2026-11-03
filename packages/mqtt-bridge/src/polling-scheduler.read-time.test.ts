@@ -49,4 +49,27 @@ describe('PollingScheduler read time callback', () => {
     expect(onRead).toHaveBeenCalledTimes(1)
     expect(onRead).toHaveBeenCalledWith('device1', 250, ok)
   })
+
+  it('should pass the read time with the data of a poll and of the read after a write', async () => {
+    const onData = jest.fn()
+    scheduler = new PollingScheduler(onData, jest.fn())
+    scheduler.scheduleDevice(
+      'device1',
+      { ...config, allowWrites: true },
+      driverWithRead(250, false)
+    )
+    scheduler.start()
+
+    await jest.advanceTimersByTimeAsync(1000 + 250)
+    expect(onData).toHaveBeenLastCalledWith('device1', { temp: 1 }, { readMs: 250 })
+
+    const write = scheduler.writeDevice('device1', {})
+    await jest.advanceTimersByTimeAsync(250)
+    await write
+    expect(onData).toHaveBeenLastCalledWith(
+      'device1',
+      { temp: 1 },
+      { readMs: 250, afterWrite: true }
+    )
+  })
 })

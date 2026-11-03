@@ -235,7 +235,7 @@ describe('PollingScheduler', () => {
       // First poll
       await jest.advanceTimersByTimeAsync(1000)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(1)
-      expect(onDataCallback).toHaveBeenCalledWith('device1', { temp: 25.5 })
+      expect(onDataCallback).toHaveBeenCalledWith('device1', { temp: 25.5 }, { readMs: 0 })
 
       // Second poll
       await jest.advanceTimersByTimeAsync(1000)
@@ -274,7 +274,7 @@ describe('PollingScheduler', () => {
 
       // Second poll - success
       await jest.advanceTimersByTimeAsync(1000)
-      expect(onDataCallback).toHaveBeenCalledWith('device1', { temp: 25.5 })
+      expect(onDataCallback).toHaveBeenCalledWith('device1', { temp: 25.5 }, { readMs: 0 })
     })
 
     it('should implement backoff for consecutive failures', async () => {
@@ -365,7 +365,7 @@ describe('PollingScheduler', () => {
       await jest.advanceTimersByTimeAsync(2000)
       expect(mockReadDataPoints).toHaveBeenCalledTimes(5)
       expect(onDataCallback).toHaveBeenCalledTimes(1)
-      expect(onDataCallback).toHaveBeenCalledWith('device1', { temp: 25 })
+      expect(onDataCallback).toHaveBeenCalledWith('device1', { temp: 25 }, { readMs: 0 })
 
       // Next poll should use normal interval (1000ms), not backoff (2000ms)
       await jest.advanceTimersByTimeAsync(1000)

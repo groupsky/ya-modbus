@@ -38,10 +38,12 @@ interface ScheduledDevice {
  * the device refused (Modbus exception 1, 2 or 3); it is left out when no point failed.
  */
 export interface DataInfo {
+  /** Time the read took in milliseconds, without the wait for its turn */
+  readMs: number
   afterWrite?: true
   failedDataPoints?: string[]
 }
-type DataCallback = (deviceId: string, data: Record<string, unknown>, info?: DataInfo) => void
+type DataCallback = (deviceId: string, data: Record<string, unknown>, info: DataInfo) => void
 type ErrorCallback = (deviceId: string, error: Error, failureCount: number) => void
 /** Called after every poll with the time the read took (without the wait for its turn) */
 type ReadCallback = (deviceId: string, durationMs: number, ok: boolean) => void
@@ -197,9 +199,11 @@ export class PollingScheduler {
         }
       } finally {
         try {
+          const start = Date.now()
           const data = await this.readDevice(deviceId, device)
+          const readMs = Date.now() - start
           device.lastFailureCount = 0
-          this.onData(deviceId, data, { afterWrite: true, ...this.failedInfo(device) })
+          this.onData(deviceId, data, { readMs, afterWrite: true, ...this.failedInfo(device) })
         } catch (error) {
           console.warn(
             `Failed to read device ${deviceId} after a write, the next poll reads it: ${error instanceof Error ? error.message : String(error)}`
@@ -318,7 +322,7 @@ export class PollingScheduler {
   }
 
   // The `failedDataPoints` of the data callback, left out when no point failed
-  private failedInfo(device: ScheduledDevice): DataInfo {
+  private failedInfo(device: ScheduledDevice): Pick<DataInfo, 'failedDataPoints'> {
     const failed = [...device.failedDynamicIds, ...device.failedStaticIds]
     return failed.length > 0 ? { failedDataPoints: failed } : {}
   }
@@ -371,12 +375,13 @@ export class PollingScheduler {
   private async timedRead(
     deviceId: string,
     device: ScheduledDevice
-  ): Promise<Record<string, unknown>> {
+  ): Promise<{ data: Record<string, unknown>; readMs: number }> {
     const start = Date.now()
     try {
       const data = await this.readDevice(deviceId, device)
-      this.onRead?.(deviceId, Date.now() - start, true)
-      return data
+      const readMs = Date.now() - start
+      this.onRead?.(deviceId, readMs, true)
+      return { data, readMs }
     } catch (error) {
       this.onRead?.(deviceId, Date.now() - start, false)
       throw error
@@ -393,12 +398,12 @@ export class PollingScheduler {
       // The whole poll of a device runs before the poll of the next device on its connection.
       // When the device is unscheduled or polling stops while the poll waits for its turn, the
       // device is not read.
-      const data = await this.inTurn(device.connectionKey, async () =>
+      const read = await this.inTurn(device.connectionKey, async () =>
         this.running && this.devices.get(deviceId) === device
           ? this.timedRead(deviceId, device)
           : undefined
       )
-      if (data === undefined) {
+      if (read === undefined) {
         device.readInFlight = false
         return
       }
@@ -407,12 +412,7 @@ export class PollingScheduler {
       device.lastFailureCount = 0
 
       try {
-        const info = this.failedInfo(device)
-        if (info.failedDataPoints) {
-          this.onData(deviceId, data, info)
-        } else {
-          this.onData(deviceId, data)
-        }
+        this.onData(deviceId, read.data, { readMs: read.readMs, ...this.failedInfo(device) })
       } catch (callbackError) {
         // Data callback threw - log but don't count as polling failure
         console.error(
