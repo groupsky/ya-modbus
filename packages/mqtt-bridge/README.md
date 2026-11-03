@@ -102,6 +102,8 @@ The `ya-modbus-bridge` command-line tool provides the following commands:
 - `--mqtt-reconnect-period <ms>` - Reconnection interval in milliseconds
 - `--topic-prefix <prefix>` - Topic prefix for all MQTT topics (default: modbus)
 - `--state-dir <path>` - Directory path for state persistence (accepted, but the bridge does not use it)
+- `--stats-interval <seconds>` - Publish device stats every N seconds (default: off). See [Device Stats](#device-stats)
+- `--stats-log` - Also log one line per device at every stats interval
 
 **General:**
 
@@ -239,6 +241,8 @@ Each key must be one of the options below. A key that is not an option there is 
 - `mqtt.reconnectPeriod` (optional) - Time between reconnect attempts in milliseconds (1-86400000, default: 5000)
 - `topicPrefix` (optional) - Topic prefix for all MQTT topics (default: `modbus`). It must not be empty. It must not contain `+`, `#`, `/`, `$` or the null character.
 - `stateDir` (optional) - Directory path for state persistence. The bridge accepts it but does not use it: it does not write any state to disk.
+- `statsInterval` (optional) - Seconds between the messages on `{topicPrefix}/{deviceId}/stats` (0-86400, default: not set). Without it, or with `0`, the bridge publishes no stats. See [Device Stats](#device-stats).
+- `statsLog` (optional) - Also write one line per device to stdout at every `statsInterval` (default: false). It does nothing without `statsInterval`.
 - `devices` (optional) - Array of device configurations that the bridge loads at startup (default: no devices). The number of devices is not limited. See [Loading Devices](#loading-devices).
 
 **Device configuration:**
@@ -577,6 +581,41 @@ The `errors` field is only there when the state is `error`. It has the message o
 Status messages use QoS 0 and are retained. If the bridge is not connected to the broker when the state changes, the message is lost, but the bridge publishes the state of every device again when it connects. `bridge.removeDevice()` deletes the retained status of the device (it publishes an empty retained message, also when the bridge is not connected: the message waits for the connect). Use `bridge.getDevice()` to read the current state at any time.
 
 The `connected` field of the device status is deprecated. Use `state` instead. `connected` is `true` only when `state` is `connected`.
+
+## Device Stats
+
+With `statsInterval` set (seconds), the bridge publishes the poll statistics of each polled device to `{topicPrefix}/{deviceId}/stats` every `statsInterval` seconds. One timer serves all devices. Messages use QoS 0 and are not retained. The bridge does not publish while it is not connected to the broker. A device that is removed stops sending stats.
+
+```json
+{
+  "deviceId": "sensor1",
+  "timestamp": 1760000010000,
+  "polls": 120,
+  "errors": 3,
+  "consecutiveFailures": 0,
+  "lastSuccess": 1760000009500,
+  "avgReadMs": 182.5,
+  "readsPerSecond": 0.2
+}
+```
+
+| Field                 | Meaning                                                                                                              |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `timestamp`           | Time of the message in milliseconds since the epoch, as in the other messages                                        |
+| `polls`               | Polls of the device since it was added, failed ones included                                                         |
+| `errors`              | Failed polls since the device was added                                                                              |
+| `consecutiveFailures` | Failed polls in a row; `0` after a poll that worked                                                                  |
+| `lastSuccess`         | Time of the last poll that worked (milliseconds since the epoch), `null` before the first one                        |
+| `avgReadMs`           | Average time of the polls that worked since the previous message, in milliseconds; `null` if none worked in the time |
+| `readsPerSecond`      | Polls that worked per second since the previous message                                                              |
+
+`polls`, `errors` and `consecutiveFailures` count from the time the device was added (the numbers start again at `0` when the bridge restarts). `avgReadMs` and `readsPerSecond` cover only the time since the previous message, so they show the present speed. The read time is the time of the Modbus requests of one poll. It does not include the wait for the turn on a shared bus. The read after a write is not counted.
+
+With `statsLog` the bridge also writes one line per device to stdout at every interval, also when the broker is not connected:
+
+```
+Stats of device sensor1: 120 polls, 3 errors, 0 failures in a row, last success 2025-10-09T08:53:29.500Z, average read 183 ms, 0.2 reads/s
+```
 
 ## Writing Data Points
 
