@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.30.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.30.0...@ya-modbus/mqtt-bridge@0.30.1) (2026-11-04)
+
+### Bug Fixes
+
+- **mqtt-bridge:** say clearly that stateDir is not used yet ([#732](https://github.com/groupsky/ya-modbus/issues/732)) ([2054b11](https://github.com/groupsky/ya-modbus/commit/2054b11dabcead89a7fc0f34dc6299d227f15a41)), closes [#621](https://github.com/groupsky/ya-modbus/issues/621)
+
 # [0.30.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.29.0...@ya-modbus/mqtt-bridge@0.30.0) (2026-11-03)
 
 ### Features
