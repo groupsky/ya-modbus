@@ -44,6 +44,19 @@ const tcpTransport = await createTransport({
 await rtuTransport.readHoldingRegisters(0, 10)
 ```
 
+A failed request is sent again: up to `maxRetries` times in total (default: 3, `1` for no retry),
+with `retryDelay` ms between the tries (default: 100). `logger` is called for each retry:
+
+```typescript
+const transport = await createTransport({
+  host: '192.168.1.100',
+  slaveId: 1,
+  maxRetries: 2,
+  retryDelay: 500,
+  logger: (attempt, error) => console.warn(`Try ${attempt} failed: ${error.message}`),
+})
+```
+
 ## Several devices on one connection
 
 `TransportManager` shares one connection between the devices on a serial port with the same
