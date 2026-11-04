@@ -21,6 +21,9 @@ export interface ReadOptions {
   // Common options
   slaveId?: number
   timeout?: number
+  attempts?: number
+  retryDelay?: number
+  verbose?: boolean
 
   // Driver options
   driver?: string

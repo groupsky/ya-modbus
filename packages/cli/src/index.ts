@@ -37,6 +37,17 @@ function addConnectionOptions(command: Command): Command {
         parseInt
       )
       .option('--timeout <ms>', 'Response timeout in milliseconds (default: 1000)', parseInt)
+      .option(
+        '--attempts <n>',
+        'Times each request is sent before it fails (default: 3, use 1 for no retry)',
+        parseInt
+      )
+      .option(
+        '--retry-delay <ms>',
+        'Pause between attempts in milliseconds (default: 100)',
+        parseInt
+      )
+      .option('--verbose', 'Print each retry of a failed request')
 
       // RTU Connection
       .optionsGroup('RTU Connection (choose this OR TCP):')

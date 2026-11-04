@@ -17,7 +17,13 @@ import type {
   StopBits,
   Transport,
 } from '@ya-modbus/driver-types'
-import { createTransport, getSerialNodeWarning, type TransportConfig } from '@ya-modbus/transport'
+import {
+  createTransport,
+  getSerialNodeWarning,
+  MAX_RETRIES,
+  RETRY_DELAY_MS,
+  type TransportConfig,
+} from '@ya-modbus/transport'
 
 import { omitUndefined } from './object-utils.js'
 import { validateConnectionOptions } from './validation.js'
@@ -233,6 +239,12 @@ export interface TransportOptions {
   // Common options
   slaveId: number
   timeout?: number
+  /** Times each request is sent before it fails (default: 3) */
+  attempts?: number
+  /** Pause between attempts in milliseconds (default: 100) */
+  retryDelay?: number
+  /** Print each retry of a failed request */
+  verbose?: boolean
 }
 
 /**
@@ -255,6 +267,19 @@ export async function withTransport<T>(
   options: TransportOptions,
   fn: (transport: Transport) => Promise<T>
 ): Promise<T> {
+  const retry = {
+    maxRetries: options.attempts,
+    retryDelay: options.retryDelay,
+    logger: options.verbose
+      ? (attempt: number, error: Error): void => {
+          console.warn(
+            `Attempt ${attempt} of ${options.attempts ?? MAX_RETRIES} failed: ${error.message}. ` +
+              `Retrying in ${options.retryDelay ?? RETRY_DELAY_MS} ms`
+          )
+        }
+      : undefined,
+  }
+
   // Build transport configuration
   const transportConfig: TransportConfig = options.host
     ? {
@@ -263,6 +288,7 @@ export async function withTransport<T>(
         port: options.tcpPort ?? DEFAULT_TCP_PORT,
         slaveId: options.slaveId,
         timeout: options.timeout,
+        ...retry,
       }
     : {
         // RTU configuration
@@ -273,6 +299,7 @@ export async function withTransport<T>(
         stopBits: (options.stopBits ?? DEFAULT_RTU_CONFIG.stopBits) as StopBits,
         slaveId: options.slaveId,
         timeout: options.timeout,
+        ...retry,
       }
 
   if (!options.host) {

@@ -145,6 +145,10 @@ describe('CLI Entry Point - Integration Tests', () => {
           -s, --slave-id <id>     Modbus slave ID (1-247). Uses driver default if not
                                   specified (RTU only)
           --timeout <ms>          Response timeout in milliseconds (default: 1000)
+          --attempts <n>          Times each request is sent before it fails (default:
+                                  3, use 1 for no retry)
+          --retry-delay <ms>      Pause between attempts in milliseconds (default: 100)
+          --verbose               Print each retry of a failed request
 
         RTU Connection (choose this OR TCP):
           -p, --port <path>       Serial port for RTU (e.g., /dev/ttyUSB0, COM3)
@@ -435,6 +439,10 @@ describe('CLI Entry Point - Integration Tests', () => {
           -s, --slave-id <id>     Modbus slave ID (1-247). Uses driver default if not
                                   specified (RTU only)
           --timeout <ms>          Response timeout in milliseconds (default: 1000)
+          --attempts <n>          Times each request is sent before it fails (default:
+                                  3, use 1 for no retry)
+          --retry-delay <ms>      Pause between attempts in milliseconds (default: 100)
+          --verbose               Print each retry of a failed request
 
         RTU Connection (choose this OR TCP):
           -p, --port <path>       Serial port for RTU (e.g., /dev/ttyUSB0, COM3)

@@ -255,6 +255,43 @@ describe('Read Command', () => {
     })
   })
 
+  test('should pass --attempts and --retry-delay to the transport', async () => {
+    mockDriver.readDataPoint.mockResolvedValue(24.5)
+
+    await readCommand({
+      host: '192.168.1.100',
+      slaveId: 1,
+      attempts: 1,
+      retryDelay: 0,
+      dataPoint: ['temperature'],
+      format: 'table',
+    })
+
+    expect(transportFactory.createTransport).toHaveBeenCalledWith(
+      expect.objectContaining({ maxRetries: 1, retryDelay: 0, logger: undefined })
+    )
+  })
+
+  test('should print each retry with --verbose', async () => {
+    mockDriver.readDataPoint.mockResolvedValue(24.5)
+
+    await readCommand({
+      host: '192.168.1.100',
+      slaveId: 1,
+      attempts: 2,
+      retryDelay: 250,
+      verbose: true,
+      dataPoint: ['temperature'],
+      format: 'table',
+    })
+
+    const config = jest.mocked(transportFactory.createTransport).mock.calls[0]?.[0]
+    config?.logger?.(1, new Error('Timed out'))
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      'Attempt 1 of 2 failed: Timed out. Retrying in 250 ms'
+    )
+  })
+
   // On Node.js 26.4+ serial requests time out (#507), so the user sees why reads fail
   test('should warn on stderr when serial requests time out on this Node.js version', async () => {
     jest.mocked(transportFactory.getSerialNodeWarning).mockReturnValue('serial warning')
