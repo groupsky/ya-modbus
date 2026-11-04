@@ -1,8 +1,26 @@
 import { describe, it, expect } from '@jest/globals'
 
-import { validateConfig } from './config-validator.js'
+import { ConfigValidationError, validateConfig } from './config-validator.js'
 
 describe('validateConfig', () => {
+  it('should list each error with its path', () => {
+    const config = { mqtt: { url: 'http://localhost:1883' }, topicPrefix: 1, typo: true }
+
+    let error: unknown
+    try {
+      validateConfig(config)
+    } catch (e) {
+      error = e
+    }
+
+    expect(error).toBeInstanceOf(ConfigValidationError)
+    expect((error as ConfigValidationError).errors).toEqual([
+      expect.stringMatching(/^mqtt\.url: /),
+      expect.stringMatching(/^topicPrefix: /),
+      expect.stringContaining('typo'),
+    ])
+  })
+
   it('should validate valid config', () => {
     const config = {
       mqtt: {

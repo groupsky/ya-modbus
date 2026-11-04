@@ -11,7 +11,7 @@ import type { LoadedDriver } from '@ya-modbus/driver-loader'
 import type { DeviceDriver } from '@ya-modbus/driver-types'
 import { TransportManager } from '@ya-modbus/transport'
 
-import { DriverLoader } from './driver-loader.js'
+import { checkDriver, DriverLoader } from './driver-loader.js'
 import type { RTUConnection } from './types.js'
 
 jest.mock('modbus-serial')
@@ -182,5 +182,60 @@ describe('DriverLoader serial settings', () => {
       )
       expect(connectRTUBuffered).not.toHaveBeenCalled()
     })
+  })
+})
+
+describe('checkDriver', () => {
+  const load = (loadedDriver: LoadedDriver) => () => Promise.resolve(loadedDriver)
+
+  beforeEach(() => {
+    jest.requireMock<jest.Mock>('modbus-serial').mockClear()
+  })
+
+  it('should pass a device that the driver supports, without opening a port', async () => {
+    await expect(
+      checkDriver('ya-modbus-driver-test', rtu(), load(oddOnlyDriver))
+    ).resolves.toBeUndefined()
+    expect(jest.requireMock<jest.Mock>('modbus-serial')).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [
+      rtu({ parity: 'none' }),
+      oddOnlyDriver,
+      "Invalid parity 'none'. This driver supports: odd (default: odd)",
+    ],
+    [rtu(), plainDriver, 'baudRate is required: ya-modbus-driver-test has no DEFAULT_CONFIG'],
+  ] as const)(
+    'should reject the serial settings of %p',
+    async (connection, loadedDriver, message) => {
+      await expect(
+        checkDriver('ya-modbus-driver-test', connection, load(loadedDriver))
+      ).rejects.toThrow(message)
+    }
+  )
+
+  it('should not check serial settings of a TCP device', async () => {
+    await expect(
+      checkDriver(
+        'ya-modbus-driver-test',
+        { type: 'tcp', host: 'meter.local', port: 502, slaveId: 1 },
+        load(plainDriver)
+      )
+    ).resolves.toBeUndefined()
+  })
+
+  it('should reject a name that is not a driver package', async () => {
+    const loadDriverFn = jest.fn(load(plainDriver))
+    await expect(checkDriver('../evil', rtu(), loadDriverFn)).rejects.toThrow()
+    expect(loadDriverFn).not.toHaveBeenCalled()
+  })
+
+  it('should report a driver package that does not load', async () => {
+    await expect(
+      checkDriver('ya-modbus-driver-missing', rtu(), () =>
+        Promise.reject(new Error('Cannot find module ya-modbus-driver-missing'))
+      )
+    ).rejects.toThrow('Cannot find module ya-modbus-driver-missing')
   })
 })

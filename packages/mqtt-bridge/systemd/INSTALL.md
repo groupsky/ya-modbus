@@ -103,6 +103,21 @@ sudo chmod 600 /etc/ya-modbus-bridge/config.json
 sudo chown ya-modbus-bridge:ya-modbus-bridge /etc/ya-modbus-bridge/config.json
 ```
 
+Check the file as the service user, who owns it. The command prints each error with its path and exits with 1 if there is one. It opens no serial port and no MQTT connection:
+
+```bash
+sudo -u ya-modbus-bridge ya-modbus-bridge check --config /etc/ya-modbus-bridge/config.json
+```
+
+The service file runs the same check as `ExecStartPre`, so a bad config stops the service before it connects to MQTT:
+
+```ini
+ExecStartPre=/usr/bin/ya-modbus-bridge check --config /etc/ya-modbus-bridge/config.json
+ExecStart=/usr/bin/ya-modbus-bridge run --config /etc/ya-modbus-bridge/config.json
+```
+
+The errors of a failed check are in `journalctl -u ya-modbus-bridge`.
+
 ### 7. Create environment file
 
 ```bash

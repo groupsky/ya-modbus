@@ -5,9 +5,10 @@ import { getSerialNodeWarning } from '@ya-modbus/transport'
 import chalk from 'chalk'
 import { Command, CommanderError } from 'commander'
 
+import { checkDriver } from './driver-loader.js'
 import { devicesByLine } from './poll-lines.js'
 import type { MqttBridgeConfig } from './types.js'
-import { validateConfig } from './utils/config-validator.js'
+import { ConfigValidationError, validateConfig } from './utils/config-validator.js'
 import { loadConfig } from './utils/config.js'
 import { processUtils } from './utils/process.js'
 
@@ -54,6 +55,61 @@ program
       processUtils.exit(1)
     }
   })
+
+program
+  .command('check')
+  .description('Check a config file and the driver of each device')
+  .requiredOption('-c, --config <path>', 'Path to configuration file')
+  .addHelpText(
+    'after',
+    '\nIt opens no serial port and no MQTT connection. Devices with "enabled": false are not checked.'
+  )
+  .action(async (options: { config: string }) => {
+    const errors = await checkCommand(options.config)
+    for (const error of errors) console.error(chalk.red('✗'), error)
+    if (errors.length) {
+      console.error(chalk.red(`${errors.length} error(s) in ${options.config}`))
+      processUtils.exit(1)
+    } else {
+      console.log(chalk.green(`✓ ${options.config} is valid`))
+      processUtils.exit(0)
+    }
+  })
+
+/**
+ * Errors of a config file: the schema errors, or else repeated device IDs and the errors of each
+ * enabled device's driver (the same checks that `run` does before it opens a port)
+ */
+async function checkCommand(configPath: string): Promise<string[]> {
+  let config: MqttBridgeConfig
+  try {
+    config = await loadConfig(configPath)
+  } catch (error) {
+    if (error instanceof ConfigValidationError) return [...error.errors]
+    return [error instanceof Error ? error.message : String(error)]
+  }
+
+  const errors: string[] = []
+  const deviceIds = new Set<string>()
+  for (const [index, device] of (config.devices ?? []).entries()) {
+    // run rejects a repeated ID even when the device is disabled
+    if (deviceIds.has(device.deviceId)) {
+      errors.push(
+        `devices[${index}] (${device.deviceId}): Device ${device.deviceId} already exists`
+      )
+      continue
+    }
+    deviceIds.add(device.deviceId)
+    if (device.enabled === false) continue
+    try {
+      await checkDriver(device.driver, device.connection)
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error)
+      errors.push(`devices[${index}] (${device.deviceId}): ${reason}`)
+    }
+  }
+  return errors
+}
 
 interface RunCommandOptions {
   config?: string

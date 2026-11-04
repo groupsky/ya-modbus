@@ -34,6 +34,8 @@ EnvironmentFile=/etc/ya-modbus-bridge/environment
 EnvironmentFile=-/etc/ya-modbus-bridge/environment.local
 
 # Execution
+# Check the config file and the drivers first: a bad config stops here, before MQTT connects
+ExecStartPre=/usr/bin/ya-modbus-bridge check --config /etc/ya-modbus-bridge/config.json
 ExecStart=/usr/bin/ya-modbus-bridge run --config /etc/ya-modbus-bridge/config.json
 
 # Logging
