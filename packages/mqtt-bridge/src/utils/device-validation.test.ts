@@ -755,6 +755,7 @@ describe('validateDeviceConfig', () => {
       [{ ...rtu, slaveId: -1 }, slaveId],
       [{ ...rtu, slaveId: 1.5 }, slaveId],
       [{ ...rtu, slaveId: '1' }, slaveId],
+      [{ ...rtu, slaveId: 1e20 }, slaveId],
       [{ ...rtu, parity: 'evn' }, "connection.parity: Parity must be 'none', 'even' or 'odd'"],
       [{ ...rtu, dataBits: 9 }, 'connection.dataBits: Data bits must be 7 or 8'],
       [{ ...rtu, stopBits: 3 }, 'connection.stopBits: Stop bits must be 1 or 2'],
