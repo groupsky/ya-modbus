@@ -249,7 +249,7 @@ Each key must be one of the options below. A key that is not an option there is 
 **Device configuration:**
 
 - `deviceId` (required) - Unique device identifier. The bridge uses it in the MQTT topics (`{topicPrefix}/{deviceId}/data`). It must not be empty. It must not contain `+`, `#`, `/`, `$` or the null character. Do not use `bridge`: its status topic is the topic of the bridge status (see [Bridge Status](#bridge-status)).
-- `driver` (required) - Driver package name: `@ya-modbus/driver-<name>`, `ya-modbus-driver-<name>` or `@<scope>/ya-modbus-driver-<name>`. `<name>` and `<scope>` can have lowercase letters, numbers and hyphens. The package must be installed.
+- `driver` (required) - Driver name: a short name such as `xymd1`, or a package name `@ya-modbus/driver-<name>`, `ya-modbus-driver-<name>` or `@<scope>/ya-modbus-driver-<name>`. `<name>` and `<scope>` can have lowercase letters, numbers and hyphens. A short name loads `@ya-modbus/driver-<name>`, or `ya-modbus-driver-<name>` when the first is not installed, and the bridge logs which one it uses. The package must be installed.
 - `connection` (required) - Connection configuration (RTU or TCP)
 - `enabled` (optional) - Enable/disable device (default: true). A disabled device is added with the state `disconnected`. The bridge does not load its driver and does not poll it.
 - `polling` (optional) - Polling configuration. Without it, the bridge polls the device every 5000 ms and uses the defaults of the polling options below.
@@ -511,10 +511,10 @@ The message starts with the device: `3` is the position in `devices`, counting f
 **Wrong driver name**
 
 ```
-Error: Invalid configuration: devices.0.driver: Driver must be @ya-modbus/driver-<name> or ya-modbus-driver-<name> with only lowercase letters, numbers, and hyphens
+Error: Invalid configuration: devices.0.driver: Driver name must be a short name such as xymd1, or @ya-modbus/driver-<name>, ya-modbus-driver-<name> or @<scope>/ya-modbus-driver-<name>, where <name> and <scope> use only lowercase letters, numbers and hyphens
 ```
 
-Write the full package name, for example `@ya-modbus/driver-ex9em`. Then install the package: `npm install @ya-modbus/driver-ex9em`.
+Write a short name such as `ex9em`, or the full package name, for example `@ya-modbus/driver-ex9em`. Then install the package: `npm install @ya-modbus/driver-ex9em`.
 
 **MQTT special characters in the device ID**
 

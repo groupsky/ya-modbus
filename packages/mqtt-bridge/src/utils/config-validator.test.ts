@@ -206,7 +206,7 @@ describe('validateConfig', () => {
       devices: [
         {
           deviceId: 'device1',
-          driver: 'invalid-driver',
+          driver: 'invalid/driver',
           connection: {
             type: 'rtu',
             port: '/dev/ttyUSB0',

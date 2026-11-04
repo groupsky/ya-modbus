@@ -1,5 +1,5 @@
 import { describe, it, expect, jest } from '@jest/globals'
-import type { LoadedDriver } from '@ya-modbus/driver-loader'
+import { DriverNotFoundError, type LoadedDriver, type loadDriver } from '@ya-modbus/driver-loader'
 import type { DeviceDriver, CreateDriverFunction, Transport } from '@ya-modbus/driver-types'
 import { TransportManager } from '@ya-modbus/transport'
 
@@ -315,6 +315,7 @@ describe('DriverLoader', () => {
       ['an empty name after the monorepo prefix', '@ya-modbus/driver-'],
       ['a parent directory path', '../../malicious-code'],
       ['traversal with backslashes', 'ya-modbus-driver-test\\..\\evil'],
+      ['a file: specifier', 'file:../x'],
     ])('should reject %s without loading anything', async (_description, packageName) => {
       const mockLoadDriver = jest.fn()
       const loader = new DriverLoader(mockLoadDriver, createMockTransportManager())
@@ -330,9 +331,77 @@ describe('DriverLoader', () => {
       }
 
       await expect(loader.loadDriver(packageName, connection)).rejects.toThrow(
-        'must be @ya-modbus/driver-<name>, ya-modbus-driver-<name> or @<scope>/ya-modbus-driver-<name>'
+        'must be a short name such as xymd1, or @ya-modbus/driver-<name>'
       )
       expect(mockLoadDriver).not.toHaveBeenCalled()
+    })
+
+    describe('with a short driver name', () => {
+      const connection: DeviceConnection = {
+        type: 'tcp',
+        host: 'localhost',
+        port: 502,
+        slaveId: 1,
+      }
+      const mockDriver = { dataPoints: [] } as unknown as DeviceDriver
+      const loadedDriver: LoadedDriver = {
+        createDriver: jest.fn<CreateDriverFunction>().mockResolvedValue(mockDriver),
+      }
+      const notFound = (name: string): DriverNotFoundError =>
+        new DriverNotFoundError(`Driver package not found: ${name}`, name)
+
+      it('should load @ya-modbus/driver-<name> and log it', async () => {
+        const mockLoadDriver = jest.fn<typeof loadDriver>().mockResolvedValue(loadedDriver)
+        const log = jest.spyOn(console, 'log').mockImplementation(() => {})
+        const loader = new DriverLoader(mockLoadDriver, createMockTransportManager())
+
+        await expect(loader.loadDriver('xymd1', connection, 'device1')).resolves.toBe(mockDriver)
+
+        expect(mockLoadDriver.mock.calls).toEqual([[{ driverPackage: '@ya-modbus/driver-xymd1' }]])
+        expect(log).toHaveBeenCalledWith('Device device1 uses driver @ya-modbus/driver-xymd1')
+        log.mockRestore()
+      })
+
+      it('should load ya-modbus-driver-<name> when the scoped package is not installed', async () => {
+        const mockLoadDriver = jest
+          .fn<typeof loadDriver>()
+          .mockRejectedValueOnce(notFound('@ya-modbus/driver-test'))
+          .mockResolvedValueOnce(loadedDriver)
+        const log = jest.spyOn(console, 'log').mockImplementation(() => {})
+        const loader = new DriverLoader(mockLoadDriver, createMockTransportManager())
+
+        await loader.loadDriver('test', connection, 'device1')
+
+        expect(mockLoadDriver.mock.calls).toEqual([
+          [{ driverPackage: '@ya-modbus/driver-test' }],
+          [{ driverPackage: 'ya-modbus-driver-test' }],
+        ])
+        expect(log).toHaveBeenCalledWith('Device device1 uses driver ya-modbus-driver-test')
+        log.mockRestore()
+      })
+
+      it('should name both packages, and never try the bare name, when none is installed', async () => {
+        const mockLoadDriver = jest
+          .fn<typeof loadDriver>()
+          .mockImplementation(({ driverPackage }) => Promise.reject(notFound(driverPackage ?? '')))
+        const loader = new DriverLoader(mockLoadDriver, createMockTransportManager())
+
+        await expect(loader.loadDriver('test', connection)).rejects.toThrow(
+          'Driver "test" not found: none of @ya-modbus/driver-test, ya-modbus-driver-test is installed'
+        )
+        expect(mockLoadDriver).toHaveBeenCalledTimes(2)
+      })
+
+      it('should not try the next package when an installed one fails to load', async () => {
+        const broken = new DriverNotFoundError('Failed to load', '@ya-modbus/driver-test', {
+          cause: new Error('syntax error'),
+        })
+        const mockLoadDriver = jest.fn<typeof loadDriver>().mockRejectedValue(broken)
+        const loader = new DriverLoader(mockLoadDriver, createMockTransportManager())
+
+        await expect(loader.loadDriver('test', connection)).rejects.toBe(broken)
+        expect(mockLoadDriver).toHaveBeenCalledTimes(1)
+      })
     })
 
     it('should not cache driver if deviceId is not provided', async () => {
