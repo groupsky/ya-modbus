@@ -42,7 +42,12 @@ const fieldError = (
 /** A whole number from min to max, with one message for every failure. */
 const intInRange = (min: number, max: number, label: string, rule: string): z.ZodNumber => {
   const err = fieldError(label, rule)
-  return z.number(err).int(err).min(min, err).max(max, err)
+  // abort: a number past 2^53 fails int() and max(); the message is printed once
+  return z
+    .number(err)
+    .int({ ...err, abort: true })
+    .min(min, err)
+    .max(max, err)
 }
 
 const serialPortError = fieldError('Serial port', 'a device path, for example /dev/ttyUSB0')
