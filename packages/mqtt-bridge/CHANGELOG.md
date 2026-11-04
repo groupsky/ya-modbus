@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.32.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.31.0...@ya-modbus/mqtt-bridge@0.32.0) (2026-11-04)
+
+### Features
+
+- **mqtt-bridge:** accept short driver names such as xymd1 ([#735](https://github.com/groupsky/ya-modbus/issues/735)) ([7b4fbe6](https://github.com/groupsky/ya-modbus/commit/7b4fbe695b9fdc731ec988c6a5c0284b0053ecf9)), closes [#610](https://github.com/groupsky/ya-modbus/issues/610)
+
 # [0.31.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.30.1...@ya-modbus/mqtt-bridge@0.31.0) (2026-11-04)
 
 ### Features
