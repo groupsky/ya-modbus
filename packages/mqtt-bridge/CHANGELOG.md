@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.31.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.30.1...@ya-modbus/mqtt-bridge@0.31.0) (2026-11-04)
+
+### Features
+
+- **mqtt-bridge:** add a check command for config files ([#733](https://github.com/groupsky/ya-modbus/issues/733)) ([884be67](https://github.com/groupsky/ya-modbus/commit/884be677c93eece3dbdae7e1ab184738f499d3af)), closes [#613](https://github.com/groupsky/ya-modbus/issues/613)
+
 ## [0.30.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.30.0...@ya-modbus/mqtt-bridge@0.30.1) (2026-11-04)
 
 ### Bug Fixes
