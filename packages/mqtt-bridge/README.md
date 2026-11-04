@@ -89,6 +89,7 @@ The `ya-modbus-bridge` command-line tool provides the following commands:
 ### Commands
 
 - `run` - Run the MQTT bridge with a configuration file
+- `check --config <path>` - Check a configuration file and exit with 0 if it is valid, or 1. See [Checking a Configuration File](#checking-a-configuration-file)
 
 ### Options
 
@@ -449,6 +450,25 @@ After the devices are loaded, the CLI prints the order of each line with a fixed
 ```
 The devices on rtu:/dev/ttyUSB0 take turns in a fixed order: meter1, meter2
 ```
+
+### Checking a Configuration File
+
+`ya-modbus-bridge check --config <path>` checks a file without starting the bridge. It opens no serial port and no MQTT connection. It does the checks that `run` does before it opens a port:
+
+- the file against the schema: unknown keys and wrong values, each on its own line with its path;
+- if the file passes, each device that is not `"enabled": false`: that its driver package loads, and that the driver supports its serial settings and slave ID.
+
+It exits with 0 if there is no error, and with 1 if there is one:
+
+```
+$ ya-modbus-bridge check --config config.json
+✗ devices[0] (meter1): Invalid parity 'none'. This driver supports: odd (default: odd)
+✗ devices[1] (meter2): Driver package not found: ya-modbus-driver-missing
+Install it with: npm install ya-modbus-driver-missing
+2 error(s) in config.json
+```
+
+The systemd service runs it as `ExecStartPre` (see [systemd/INSTALL.md](./systemd/INSTALL.md)).
 
 ### Common Configuration Errors
 
