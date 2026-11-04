@@ -71,6 +71,23 @@ function toRTUConfig(
 }
 
 /**
+ * Check a device as DriverLoader.loadDriver() does, but without opening a port or creating the
+ * driver: the package name, that the package loads, and the serial settings against the driver.
+ *
+ * @throws Error if the name is not a driver package name, the package does not load, or the
+ *   driver does not support a serial setting or the slave ID
+ */
+export async function checkDriver(
+  packageName: string,
+  connection: DeviceConnection,
+  loadDriverFn: LoadDriverFunction = loadDriverPackage
+): Promise<void> {
+  assertValidDriverPackageName(packageName)
+  const loadedDriver = await loadDriverFn({ driverPackage: packageName })
+  if (connection.type === 'rtu') toRTUConfig(connection, loadedDriver, packageName)
+}
+
+/**
  * Manages dynamic loading and lifecycle of device drivers
  * Uses TransportManager to pool RTU transports and prevent bus collisions
  *
