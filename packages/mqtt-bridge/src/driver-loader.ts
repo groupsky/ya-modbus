@@ -103,6 +103,8 @@ function toRTUConfig(
     stopBits: merged.stopBits ?? 1,
     slaveId: merged.slaveId,
     timeout: merged.timeout,
+    maxRetries: connection.attempts,
+    retryDelay: connection.retryDelay,
     interDeviceDelay: merged.interDeviceDelay ?? DEFAULT_INTER_DEVICE_DELAY_MS,
   }
   validateSerialOptions(config, driver)
@@ -193,6 +195,8 @@ export class DriverLoader {
         port: connection.port,
         slaveId: connection.slaveId,
         timeout: connection.timeout,
+        maxRetries: connection.attempts,
+        retryDelay: connection.retryDelay,
         logger: retryLogger(device),
       }
     }

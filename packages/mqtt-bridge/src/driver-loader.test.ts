@@ -336,6 +336,36 @@ describe('DriverLoader', () => {
       expect(mockLoadDriver).not.toHaveBeenCalled()
     })
 
+    it.each<DeviceConnection>([
+      { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1, attempts: 1, retryDelay: 0 },
+      { type: 'tcp', host: 'localhost', slaveId: 1, attempts: 1, retryDelay: 0 },
+    ])(
+      'should pass attempts and retryDelay of a $type connection to the transport',
+      async (connection) => {
+        const mockDriver: DeviceDriver = {
+          name: 'test-device',
+          manufacturer: 'Test Manufacturer',
+          model: 'TEST-001',
+          dataPoints: [],
+          readDataPoint: jest.fn(),
+          writeDataPoint: jest.fn(),
+          readDataPoints: jest.fn(),
+        }
+        const transportManager = createMockTransportManager()
+        const loader = new DriverLoader(
+          jest.fn().mockResolvedValue({ createDriver: jest.fn().mockResolvedValue(mockDriver) }),
+          transportManager
+        )
+        jest.spyOn(console, 'log').mockImplementation(() => undefined)
+
+        await loader.loadDriver('ya-modbus-driver-test', connection, 'meter')
+
+        expect(transportManager.getTransport).toHaveBeenCalledWith(
+          expect.objectContaining({ maxRetries: 1, retryDelay: 0 })
+        )
+      }
+    )
+
     describe('with a short driver name', () => {
       const connection: DeviceConnection = {
         type: 'tcp',

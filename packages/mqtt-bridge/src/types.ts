@@ -131,6 +131,13 @@ export interface RTUConnection {
   stopBits?: 1 | 2
   timeout?: number
   /**
+   * Times each Modbus request is sent before it fails (1-10, default: 3). `1` sends it once,
+   * with no retry. Not the same as `polling.maxRetries`, which counts failed reads.
+   */
+  attempts?: number
+  /** Pause in milliseconds between the attempts of a request (0-60000, default: 100) */
+  retryDelay?: number
+  /**
    * Pause in milliseconds before a request to this device when the previous request on the
    * port went to another device, counted from the end of that request (0-60000, default: 150).
    * Some meters do not answer a request that comes too soon after another meter's reply. A
@@ -152,6 +159,13 @@ export interface TCPConnection {
   port?: number
   slaveId: number
   timeout?: number
+  /**
+   * Times each Modbus request is sent before it fails (1-10, default: 3). `1` sends it once,
+   * with no retry. Not the same as `polling.maxRetries`, which counts failed reads.
+   */
+  attempts?: number
+  /** Pause in milliseconds between the attempts of a request (0-60000, default: 100) */
+  retryDelay?: number
   /**
    * Order in which the devices on this line (the same serial port, or the same TCP host and
    * port) take turns. `arrival` (default): in the order their polls come; a slow or failed
