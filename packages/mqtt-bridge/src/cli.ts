@@ -35,7 +35,7 @@ program
   .option('--mqtt-password <password>', 'MQTT authentication password')
   .option('--mqtt-reconnect-period <ms>', 'Reconnection interval in milliseconds', parseInt)
   .option('--topic-prefix <prefix>', 'Topic prefix for all MQTT topics (default: modbus)')
-  .option('--state-dir <path>', 'Directory path for state persistence')
+  .option('--state-dir <path>', 'Not used yet: the bridge keeps no state on disk')
   .option(
     '--stats-interval <seconds>',
     'Publish device stats on {prefix}/{deviceId}/stats every N seconds (default: off)',
@@ -107,6 +107,14 @@ async function runCommand(options: RunCommandOptions): Promise<void> {
 
   // Validate configuration after merging CLI options
   validateConfig(config)
+
+  if (config.stateDir !== undefined) {
+    console.warn(
+      chalk.yellow(
+        'stateDir is set, but the bridge does not use it yet: it keeps no state on disk.'
+      )
+    )
+  }
 
   if (config.devices?.some((device) => device.connection.type === 'rtu')) {
     const serialWarning = getSerialNodeWarning(process.version)

@@ -101,7 +101,7 @@ describe('CLI - ya-modbus-bridge', () => {
           --mqtt-reconnect-period <ms>  Reconnection interval in milliseconds
           --topic-prefix <prefix>       Topic prefix for all MQTT topics (default:
                                         modbus)
-          --state-dir <path>            Directory path for state persistence
+          --state-dir <path>            Not used yet: the bridge keeps no state on disk
           --stats-interval <seconds>    Publish device stats on
                                         {prefix}/{deviceId}/stats every N seconds
                                         (default: off)
@@ -869,6 +869,58 @@ describe('CLI - ya-modbus-bridge', () => {
         expect.stringContaining('devices.1.deviceId: Device ID must not be empty')
       )
       expect(processUtils.exit).toHaveBeenCalledWith(1)
+    })
+
+    // stateDir is accepted but nothing uses it yet (#88), so an operator who sets it must
+    // not think that the bridge keeps state (#621)
+    it.each([
+      { from: 'the config file', config: { stateDir: '/tmp/state' }, args: [] },
+      {
+        from: '--state-dir with --config',
+        config: {},
+        args: ['--state-dir', '/tmp/state'],
+      },
+      {
+        from: '--state-dir without --config',
+        config: undefined,
+        args: ['--mqtt-url', 'mqtt://localhost:1883', '--state-dir', '/tmp/state'],
+      },
+    ])(
+      'should warn at startup that stateDir is not used, set from $from',
+      async ({ config, args }) => {
+        jest.mocked(configModule.loadConfig).mockResolvedValue({
+          mqtt: { url: 'mqtt://localhost:1883' },
+          ...config,
+        })
+        const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
+
+        try {
+          const configArgs = config ? ['--config', 'config.json'] : []
+          await program.parseAsync(['node', 'ya-modbus-bridge', 'run', ...configArgs, ...args])
+
+          expect(consoleWarnSpy.mock.calls).toEqual([
+            [expect.stringContaining('stateDir is set, but the bridge does not use it yet')],
+          ])
+          expect(mockBridge.start).toHaveBeenCalled()
+        } finally {
+          consoleWarnSpy.mockRestore()
+        }
+      }
+    )
+
+    it('should not warn about stateDir when it is not set', async () => {
+      jest.mocked(configModule.loadConfig).mockResolvedValue({
+        mqtt: { url: 'mqtt://localhost:1883' },
+      })
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
+
+      try {
+        await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+        expect(consoleWarnSpy).not.toHaveBeenCalled()
+      } finally {
+        consoleWarnSpy.mockRestore()
+      }
     })
 
     // On Node.js 26.4+ serial requests time out (#507), so the bridge says why its serial

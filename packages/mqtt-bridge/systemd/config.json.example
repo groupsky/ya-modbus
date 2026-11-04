@@ -6,6 +6,5 @@
     "password": "your-mqtt-password",
     "reconnectPeriod": 5000
   },
-  "topicPrefix": "modbus",
-  "stateDir": "/var/lib/ya-modbus-bridge/state"
+  "topicPrefix": "modbus"
 }

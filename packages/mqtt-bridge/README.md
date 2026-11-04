@@ -101,7 +101,7 @@ The `ya-modbus-bridge` command-line tool provides the following commands:
 - `--mqtt-password <password>` - MQTT authentication password
 - `--mqtt-reconnect-period <ms>` - Reconnection interval in milliseconds
 - `--topic-prefix <prefix>` - Topic prefix for all MQTT topics (default: modbus)
-- `--state-dir <path>` - Directory path for state persistence (accepted, but the bridge does not use it)
+- `--state-dir <path>` - Not used yet: the bridge keeps no state on disk, and it warns at startup when this is set
 - `--stats-interval <seconds>` - Publish device stats every N seconds (default: off). See [Device Stats](#device-stats)
 - `--stats-log` - Also log one line per device at every stats interval
 
@@ -240,7 +240,7 @@ Each key must be one of the options below. A key that is not an option there is 
 - `mqtt.password` (optional) - Authentication password. Default: none
 - `mqtt.reconnectPeriod` (optional) - Time between reconnect attempts in milliseconds (1-86400000, default: 5000)
 - `topicPrefix` (optional) - Topic prefix for all MQTT topics (default: `modbus`). It must not be empty. It must not contain `+`, `#`, `/`, `$` or the null character.
-- `stateDir` (optional) - Directory path for state persistence. The bridge accepts it but does not use it: it does not write any state to disk.
+- `stateDir` (optional) - Not used yet: the bridge keeps no state on disk, and it warns at startup when this is set.
 - `statsInterval` (optional) - Seconds between the messages on `{topicPrefix}/{deviceId}/stats` (0-86400, default: not set). Without it, or with `0`, the bridge publishes no stats. See [Device Stats](#device-stats).
 - `statsLog` (optional) - Also write one line per device to stdout at every `statsInterval` (default: false). It does nothing without `statsInterval`.
 - `devices` (optional) - Array of device configurations that the bridge loads at startup (default: no devices). The number of devices is not limited. See [Loading Devices](#loading-devices).
