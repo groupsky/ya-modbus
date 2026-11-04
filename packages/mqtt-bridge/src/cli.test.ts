@@ -875,7 +875,16 @@ describe('CLI - ya-modbus-bridge', () => {
     // not think that the bridge keeps state (#621)
     it.each([
       { from: 'the config file', config: { stateDir: '/tmp/state' }, args: [] },
-      { from: '--state-dir', config: {}, args: ['--state-dir', '/tmp/state'] },
+      {
+        from: '--state-dir with --config',
+        config: {},
+        args: ['--state-dir', '/tmp/state'],
+      },
+      {
+        from: '--state-dir without --config',
+        config: undefined,
+        args: ['--mqtt-url', 'mqtt://localhost:1883', '--state-dir', '/tmp/state'],
+      },
     ])(
       'should warn at startup that stateDir is not used, set from $from',
       async ({ config, args }) => {
@@ -886,14 +895,8 @@ describe('CLI - ya-modbus-bridge', () => {
         const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
 
         try {
-          await program.parseAsync([
-            'node',
-            'ya-modbus-bridge',
-            'run',
-            '--config',
-            'config.json',
-            ...args,
-          ])
+          const configArgs = config ? ['--config', 'config.json'] : []
+          await program.parseAsync(['node', 'ya-modbus-bridge', 'run', ...configArgs, ...args])
 
           expect(consoleWarnSpy.mock.calls).toEqual([
             [expect.stringContaining('stateDir is set, but the bridge does not use it yet')],
