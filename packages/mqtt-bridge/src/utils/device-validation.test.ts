@@ -117,6 +117,9 @@ describe('validateDeviceConfig', () => {
     ['a parent directory path', '../x'],
     ['traversal after the unscoped prefix', 'ya-modbus-driver-../evil'],
     ['traversal with backslashes', 'ya-modbus-driver-test\\..\\evil'],
+    ['a file: specifier', 'file:../x'],
+    ['a short name with a dot', 'x.y'],
+    ['a short name with uppercase letters', 'XYMD1'],
   ])('should reject %s and list the allowed forms', (_description, driver) => {
     const config = {
       deviceId: 'device1',
@@ -126,8 +129,18 @@ describe('validateDeviceConfig', () => {
 
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
     expect(() => validateDeviceConfig(config)).toThrow(
-      'driver: Driver package name must be @ya-modbus/driver-<name>, ya-modbus-driver-<name> or @<scope>/ya-modbus-driver-<name>'
+      'driver: Driver name must be a short name such as xymd1, or @ya-modbus/driver-<name>, ya-modbus-driver-<name> or @<scope>/ya-modbus-driver-<name>'
     )
+  })
+
+  it('should accept a short driver name', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'xymd1',
+      connection: { type: 'tcp', host: 'localhost', port: 502, slaveId: 1 },
+    }
+
+    expect(() => validateDeviceConfig(config)).not.toThrow()
   })
 
   it('should throw error for driver with uppercase letters', () => {

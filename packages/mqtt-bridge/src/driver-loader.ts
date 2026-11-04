@@ -1,7 +1,8 @@
 import {
   applyDriverDefaults,
-  assertValidDriverPackageName,
+  DriverNotFoundError,
   loadDriver as loadDriverPackage,
+  ValidationError,
   validateSerialOptions,
   type LoadedDriver,
 } from '@ya-modbus/driver-loader'
@@ -14,9 +15,48 @@ import {
   type TransportConfig,
 } from '@ya-modbus/transport'
 
+import { DRIVER_NAME_RULE, getDriverPackageCandidates } from './driver-name.js'
 import type { DeviceConnection, RTUConnection } from './types.js'
 
 type LoadDriverFunction = typeof loadDriverPackage
+
+/**
+ * Load the first package that is installed for a driver name (see getDriverPackageCandidates)
+ *
+ * @returns The loaded driver and the name of its package
+ * @throws ValidationError if the name is not allowed, or DriverNotFoundError if no package is
+ *   installed. A package that is installed but fails to load throws its own error.
+ */
+async function loadDriverByName(
+  name: string,
+  loadDriverFn: LoadDriverFunction
+): Promise<{ loadedDriver: LoadedDriver; packageName: string }> {
+  // Security validation: the name becomes an import specifier, so only npm package names
+  // of the allowed driver forms pass (never paths)
+  const candidates = getDriverPackageCandidates(name)
+  const [first] = candidates
+  if (first === undefined) {
+    throw new ValidationError(
+      `Invalid driver name ${JSON.stringify(name)}: must be ${DRIVER_NAME_RULE}`,
+      'driverPackage'
+    )
+  }
+
+  for (const packageName of candidates) {
+    try {
+      return { loadedDriver: await loadDriverFn({ driverPackage: packageName }), packageName }
+    } catch (error) {
+      // Try the next form only when this package is not installed at all
+      if (!(error instanceof DriverNotFoundError) || error.cause !== undefined) throw error
+      if (candidates.length === 1) throw error
+    }
+  }
+
+  throw new DriverNotFoundError(
+    `Driver ${JSON.stringify(name)} not found: none of ${candidates.join(', ')} is installed`,
+    first
+  )
+}
 
 /**
  * Pause in ms before a request to a device after a request to another device on its port. Some
@@ -72,18 +112,17 @@ function toRTUConfig(
 
 /**
  * Check a device as DriverLoader.loadDriver() does, but without opening a port or creating the
- * driver: the package name, that the package loads, and the serial settings against the driver.
+ * driver: the driver name, that its package loads, and the serial settings against the driver.
  *
- * @throws Error if the name is not a driver package name, the package does not load, or the
+ * @throws Error if the name is not a driver name, the package does not load, or the
  *   driver does not support a serial setting or the slave ID
  */
 export async function checkDriver(
-  packageName: string,
+  driverName: string,
   connection: DeviceConnection,
   loadDriverFn: LoadDriverFunction = loadDriverPackage
 ): Promise<void> {
-  assertValidDriverPackageName(packageName)
-  const loadedDriver = await loadDriverFn({ driverPackage: packageName })
+  const { loadedDriver, packageName } = await loadDriverByName(driverName, loadDriverFn)
   if (connection.type === 'rtu') toRTUConfig(connection, loadedDriver, packageName)
 }
 
@@ -114,29 +153,29 @@ export class DriverLoader {
   /**
    * Load a driver package and create an instance for a device
    *
-   * @param packageName - NPM package name (e.g., '@ya-modbus/driver-xymd1', 'ya-modbus-driver-test'
-   *   or '@org/ya-modbus-driver-test')
+   * @param driverName - Short driver name (e.g., 'xymd1', which loads '@ya-modbus/driver-xymd1',
+   *   else 'ya-modbus-driver-xymd1') or npm package name (e.g., '@ya-modbus/driver-xymd1',
+   *   'ya-modbus-driver-test' or '@org/ya-modbus-driver-test'). The package that a short name
+   *   loads is logged.
    * @param connection - Device connection configuration. Serial settings that it does not set
    *   come from the driver (see toRTUConfig). The settings used are logged.
    * @param deviceId - Unique device identifier for tracking the instance. Without it,
    *   unloadDriver() cannot release the transport, and its port stays open until
    *   closeAllTransports().
    * @returns Driver instance
-   * @throws ValidationError if the driver does not support a serial setting or the slave ID
+   * @throws ValidationError if the name is not allowed, or the driver does not support a serial
+   *   setting or the slave ID
+   * @throws DriverNotFoundError if no package of the name is installed
    */
   async loadDriver(
-    packageName: string,
+    driverName: string,
     connection: DeviceConnection,
     deviceId?: string
   ): Promise<DeviceDriver> {
-    // Security validation: the name becomes an import specifier, so only npm package names
-    // of the allowed driver forms pass (never paths)
-    assertValidDriverPackageName(packageName)
-
-    // Load driver package using driver-loader
-    const loadedDriver = await this.loadDriverFn({ driverPackage: packageName })
+    const { loadedDriver, packageName } = await loadDriverByName(driverName, this.loadDriverFn)
 
     const device = deviceId ?? packageName
+    if (packageName !== driverName) console.log(`Device ${device} uses driver ${packageName}`)
     let config: TransportConfig
     if (connection.type === 'rtu') {
       config = {
