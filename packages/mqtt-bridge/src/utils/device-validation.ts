@@ -1,5 +1,6 @@
-import { DRIVER_PACKAGE_NAME_RULE, isValidDriverPackageName } from '@ya-modbus/driver-loader'
 import { z } from 'zod'
+
+import { DRIVER_NAME_RULE, isValidDriverName } from '../driver-name.js'
 
 /**
  * Longest duration a device config accepts: 24 hours. setTimeout runs delays above 2^31-1 ms
@@ -25,7 +26,7 @@ const deviceIdSchema = z
 const driverNameSchema = z
   .string()
   .min(1, 'Driver name must not be empty')
-  .refine(isValidDriverPackageName, { message: `Driver package name ${DRIVER_PACKAGE_NAME_RULE}` })
+  .refine(isValidDriverName, { message: `Driver name must be ${DRIVER_NAME_RULE}` })
 
 const timeoutSchema = z
   .number()
