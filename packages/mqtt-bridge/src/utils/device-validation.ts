@@ -35,6 +35,20 @@ const timeoutSchema = z
   .max(MAX_DURATION_MS, 'Connection timeout must not exceed 24 hours')
   .optional()
 
+const attemptsSchema = z
+  .number()
+  .int()
+  .min(1, 'Attempts must be at least 1 (1 sends each request once, with no retry)')
+  .max(10, 'Attempts must not exceed 10')
+  .optional()
+
+const retryDelaySchema = z
+  .number()
+  .int()
+  .min(0)
+  .max(60000, 'Retry delay must not exceed 60 seconds')
+  .optional()
+
 const pollOrderSchema = z
   .enum(['arrival', 'fixed'], { message: "Poll order must be 'arrival' or 'fixed'" })
   .optional()
@@ -56,11 +70,23 @@ const rtuConnectionSchema = z
       .min(0)
       .max(60000, 'Inter-device delay must not exceed 60 seconds')
       .optional(),
+    attempts: attemptsSchema,
+    retryDelay: retryDelaySchema,
     pollOrder: pollOrderSchema,
   })
   .transform((data) => {
-    const { baudRate, parity, dataBits, stopBits, timeout, interDeviceDelay, pollOrder, ...rest } =
-      data
+    const {
+      baudRate,
+      parity,
+      dataBits,
+      stopBits,
+      timeout,
+      interDeviceDelay,
+      attempts,
+      retryDelay,
+      pollOrder,
+      ...rest
+    } = data
     return {
       ...rest,
       ...(baudRate !== undefined ? { baudRate } : {}),
@@ -69,6 +95,8 @@ const rtuConnectionSchema = z
       ...(stopBits !== undefined ? { stopBits } : {}),
       ...(timeout !== undefined ? { timeout } : {}),
       ...(interDeviceDelay !== undefined ? { interDeviceDelay } : {}),
+      ...(attempts !== undefined ? { attempts } : {}),
+      ...(retryDelay !== undefined ? { retryDelay } : {}),
       ...(pollOrder !== undefined ? { pollOrder } : {}),
     }
   })
@@ -80,14 +108,18 @@ const tcpConnectionSchema = z
     port: z.number().int().positive().max(65535).optional(),
     slaveId: z.number().int().min(0).max(247),
     timeout: timeoutSchema,
+    attempts: attemptsSchema,
+    retryDelay: retryDelaySchema,
     pollOrder: pollOrderSchema,
   })
   .transform((data) => {
-    const { port, timeout, pollOrder, ...rest } = data
+    const { port, timeout, attempts, retryDelay, pollOrder, ...rest } = data
     return {
       ...rest,
       ...(port !== undefined ? { port } : {}),
       ...(timeout !== undefined ? { timeout } : {}),
+      ...(attempts !== undefined ? { attempts } : {}),
+      ...(retryDelay !== undefined ? { retryDelay } : {}),
       ...(pollOrder !== undefined ? { pollOrder } : {}),
     }
   })

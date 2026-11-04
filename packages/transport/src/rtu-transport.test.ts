@@ -392,6 +392,35 @@ describe('RTU Transport', () => {
     expect(mockModbus.readHoldingRegisters).toHaveBeenCalledTimes(5)
   })
 
+  test('should wait the retryDelay config option between attempts', async () => {
+    jest.useFakeTimers()
+    try {
+      mockModbus.connectRTUBuffered.mockResolvedValue(undefined)
+      mockModbus.readHoldingRegisters
+        .mockRejectedValueOnce(new Error('Failed'))
+        .mockResolvedValueOnce({ data: [1], buffer: Buffer.from([0x00, 0x01]) })
+
+      const transport = await createRTUTransport({
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'even',
+        stopBits: 1,
+        slaveId: 1,
+        retryDelay: 500,
+      })
+
+      const reading = transport.readHoldingRegisters(0, 1)
+      await jest.advanceTimersByTimeAsync(499)
+      expect(mockModbus.readHoldingRegisters).toHaveBeenCalledTimes(1)
+
+      await jest.advanceTimersByTimeAsync(1)
+      await expect(reading).resolves.toEqual(Buffer.from([0x00, 0x01]))
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
   test('should call logger on retry attempts', async () => {
     const logger = jest.fn()
     const config = {

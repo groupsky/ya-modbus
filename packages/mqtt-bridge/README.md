@@ -270,6 +270,8 @@ The fields depend on `type`. A field that does not belong to the type is an erro
 - `dataBits` (optional) - Data bits: 7 or 8. Default: from the driver
 - `stopBits` (optional) - Stop bits: 1 or 2. Default: from the driver
 - `timeout` (optional) - Time to wait for a response in milliseconds (1-86400000, default: 1000)
+- `attempts` (optional) - Times each Modbus request is sent before it fails (1-10, default: 3). `1` sends it once, with no retry. This is not `polling.maxRetries`, which counts failed reads
+- `retryDelay` (optional) - Pause in milliseconds between the attempts of a request (0-60000, default: 100)
 - `interDeviceDelay` (optional) - Pause in milliseconds before a request to this device when the previous request on the port went to another device (0-60000, default: 150). Some meters do not answer a request that comes too soon after another meter's reply: a DDS519MR misses it after 50 ms and answers after 100 ms. The pause counts from the end of the previous request. The bridge waits only when the device changes, not between the requests of one device. `0` turns the pause off.
 - `pollOrder` (optional) - `"arrival"` (default) or `"fixed"`: the order in which the devices on the port take turns. All devices on one port must have the same value. See [Fixed Poll Order](#fixed-poll-order).
 
@@ -288,6 +290,8 @@ Device meter1 uses /dev/ttyUSB0: baud rate 9600, data bits 8, parity odd, stop b
 - `port` (optional) - TCP port (1-65535, default: 502)
 - `slaveId` (required) - Modbus slave ID (0-247)
 - `timeout` (optional) - Time to wait for a response, and for the TCP connection to open, in milliseconds (1-86400000, default: 1000)
+- `attempts` (optional) - Times each Modbus request is sent before it fails (1-10, default: 3). `1` sends it once, with no retry
+- `retryDelay` (optional) - Pause in milliseconds between the attempts of a request (0-60000, default: 100)
 - `pollOrder` (optional) - `"arrival"` (default) or `"fixed"`: the order in which the devices on the host and port take turns. All devices on one host and port must have the same value. See [Fixed Poll Order](#fixed-poll-order).
 
 **Polling configuration:**
@@ -372,7 +376,7 @@ Example with `interval` 2000, `maxRetries` 3 and the default `retryBackoff` and 
 | `1`           | There is no extra try after `interval`. The backoff starts after the first failed read.                                     |
 | `0`           | The same as `1`. The backoff starts after the first failed read. A device that works never uses the backoff, even with `0`. |
 
-The transport also retries every Modbus request by itself before a read counts as failed. This is separate from `maxRetries`.
+The transport also sends every Modbus request up to `connection.attempts` times (default: 3) before a read counts as failed. This is separate from `maxRetries`.
 
 ### Polling Logs
 
@@ -541,7 +545,7 @@ Error: Invalid configuration: mqtt.url: URL must start with mqtt://, mqtts://, w
 ### Performance and Security Tips
 
 - Devices that share a connection are read one at a time, so a device can wait for the others. On a serial port, each change to another device also costs its `interDeviceDelay`. Use more serial adapters if you need shorter times between the reads of a device.
-- A device that does not answer keeps its connection busy while the bridge waits for the response. The transport tries every request up to 3 times, and each try can take up to `timeout` ms. A device that never answers costs the other devices on the same connection about 5 % of their reads at the longest wait (3 s of bus time every 63 s, with the default `timeout` and `maxRetryBackoff`). Use a larger `maxRetryBackoff` for devices that are often offline.
+- A device that does not answer keeps its connection busy while the bridge waits for the response. The transport tries every request up to `connection.attempts` times (default: 3), with `connection.retryDelay` ms between the tries (default: 100), and each try can take up to `timeout` ms. A device that never answers costs the other devices on the same connection about 5 % of their reads at the longest wait (3.2 s of bus time every 63 s, with the defaults). Use a larger `maxRetryBackoff` for devices that are often offline, or `attempts: 1` for a device that answers well when it is online.
 - The config file can contain the MQTT password. Make the file readable only by the user that runs the bridge, for example with `chmod 600 config.json`.
 - Other users of the machine can see command line options such as `--mqtt-password` in the process list. Put credentials in the config file instead.
 - `mqtt://` and `ws://` send the password without encryption. Use `mqtts://` or `wss://` when the broker is not on the same machine.

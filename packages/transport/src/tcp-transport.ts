@@ -21,6 +21,8 @@ export interface TCPConfig {
   timeout?: number | undefined
   /** Maximum retry attempts (default: 3, use 1 to disable retries) */
   maxRetries?: number | undefined
+  /** Pause between attempts in milliseconds (default: 100) */
+  retryDelay?: number | undefined
   /** Optional callback to log retry attempts for debugging */
   logger?: RetryLogger | undefined
 }
@@ -48,7 +50,7 @@ export async function createTCPTransport(config: TCPConfig): Promise<Transport> 
 
   const connection = new ModbusConnection(await open(), `${config.host}:${port}`, open)
   return withRequestContext(
-    createModbusTransport(connection, config.maxRetries, config.logger),
+    createModbusTransport(connection, config.maxRetries, config.logger, config.retryDelay),
     `${config.host}:${port}, slave ${config.slaveId}`
   )
 }

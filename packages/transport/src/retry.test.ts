@@ -141,6 +141,22 @@ describe('withRetry', () => {
     expect(result).toBe('success')
   })
 
+  test('should wait the given retry delay between attempts', async () => {
+    const operation = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('Error'))
+      .mockResolvedValueOnce('success')
+
+    const promise = withRetry(operation, MAX_RETRIES, undefined, 500)
+
+    await jest.advanceTimersByTimeAsync(499)
+    expect(operation).toHaveBeenCalledTimes(1)
+
+    await jest.advanceTimersByTimeAsync(1)
+    expect(operation).toHaveBeenCalledTimes(2)
+    await expect(promise).resolves.toBe('success')
+  })
+
   test('should use default parameters when only function is provided', async () => {
     const operation = jest
       .fn()

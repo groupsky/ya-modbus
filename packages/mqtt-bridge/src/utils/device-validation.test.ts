@@ -652,6 +652,33 @@ describe('validateDeviceConfig', () => {
     })
   })
 
+  describe('connection.attempts and connection.retryDelay', () => {
+    const device = { deviceId: 'device1', driver: 'ya-modbus-driver-test' }
+    const rtu = { type: 'rtu', port: '/dev/ttyUSB0', slaveId: 1 }
+    const tcp = { type: 'tcp', host: 'localhost', slaveId: 1 }
+
+    it.each([
+      [rtu, { attempts: 1, retryDelay: 0 }],
+      [tcp, { attempts: 10, retryDelay: 60000 }],
+    ])('should accept %p with %p', (connection, retry) => {
+      const config = { ...device, connection: { ...connection, ...retry } }
+
+      expect(() => validateDeviceConfig(config)).not.toThrow()
+    })
+
+    it.each([
+      [{ attempts: 0 }, 'connection.attempts: Attempts must be at least 1'],
+      [{ attempts: 11 }, 'connection.attempts: Attempts must not exceed 10'],
+      [{ attempts: 1.5 }, 'connection.attempts'],
+      [{ retryDelay: -1 }, 'connection.retryDelay'],
+      [{ retryDelay: 60001 }, 'connection.retryDelay: Retry delay must not exceed 60 seconds'],
+    ])('should reject %p', (retry, message) => {
+      const config = { ...device, connection: { ...rtu, ...retry } }
+
+      expect(() => validateDeviceConfig(config)).toThrow(message)
+    })
+  })
+
   // The error names the field that is wrong, not only the connection
   it.each([
     [{ type: 'rtu', port: '/dev/ttyUSB0', slaveId: 300 }, 'connection.slaveId: Too big'],

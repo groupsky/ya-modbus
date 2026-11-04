@@ -360,6 +360,9 @@ Use either `--port` (RTU) or `--host` (TCP), not both. The command fails with an
 
 - `--slave-id <id>` - Modbus slave ID (1-247). `read` and `write` use the driver's default address (`DEFAULT_CONFIG.defaultAddress`) when it is not given, and print `Using slave ID N (driver default)` on stderr. With `--host` (driver defaults apply only to serial/RTU), or when the driver has no default address, the option is required.
 - `--timeout <ms>` - Response timeout in milliseconds (default: 1000). With `--host`, also the longest time to open the TCP connection
+- `--attempts <n>` - Times each request is sent before it fails (default: 3). `1` sends it once, with no retry. A device that does not answer costs `attempts × timeout + (attempts - 1) × retry-delay` ms per request: 3.2 s with the defaults
+- `--retry-delay <ms>` - Pause between the attempts of a request in milliseconds (default: 100)
+- `--verbose` - Print each retry of a failed request on stderr, for example `Attempt 1 of 3 failed: Timed out. Retrying in 100 ms`
 - `--driver <package>` - Driver package name or short name (for example `xymd1`)
 - `--device <key>` - Device key for multi-device drivers (use `list-devices` to see available devices)
 
@@ -730,6 +733,7 @@ What to check:
 - Verify parity and baud rate against the settings in the message
 - Try slower baud rate (e.g., 4800)
 - Increase timeout: `--timeout 2000`
+- See each failed try with `--verbose`. To find out fast if a device answers at all, send each request once: `--attempts 1`
 
 ### Driver Configuration Errors
 
