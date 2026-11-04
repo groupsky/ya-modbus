@@ -465,12 +465,12 @@ The key is not an option in that place. It is misspelled, or it belongs to the o
 **Wrong connection field**
 
 ```
-Error: Invalid configuration: devices.0.connection.slaveId: Too big: expected number to be <=247
+Error: Invalid configuration: devices.0.connection.slaveId: Slave ID must be a whole number from 0 to 247, devices.0.connection.parity: Parity must be 'none', 'even' or 'odd'
 Error: Invalid configuration: devices.0.connection.type: Connection type must be 'rtu' or 'tcp'
 Error: Invalid configuration: devices.0.connection.pollOrder: Poll order must be 'arrival' or 'fixed'
 ```
 
-The path names the wrong field. Compare it with the RTU and TCP lists above. Without `connection` the message is `devices.0.connection: Connection is required`.
+The path names the wrong field, and the message gives the values it allows. A required field that is missing says so, for example `devices.0.connection.slaveId: Slave ID is required`. Without `connection` the message is `devices.0.connection: Connection is required`.
 
 **Devices on one line with a different poll order**
 
