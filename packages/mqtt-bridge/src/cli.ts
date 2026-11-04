@@ -77,8 +77,8 @@ program
   })
 
 /**
- * Errors of a config file: the schema errors, or else the errors of each enabled device's
- * driver (the same checks that `run` does before it opens a port)
+ * Errors of a config file: the schema errors, or else repeated device IDs and the errors of each
+ * enabled device's driver (the same checks that `run` does before it opens a port)
  */
 async function checkCommand(configPath: string): Promise<string[]> {
   let config: MqttBridgeConfig
@@ -90,7 +90,16 @@ async function checkCommand(configPath: string): Promise<string[]> {
   }
 
   const errors: string[] = []
+  const deviceIds = new Set<string>()
   for (const [index, device] of (config.devices ?? []).entries()) {
+    // run rejects a repeated ID even when the device is disabled
+    if (deviceIds.has(device.deviceId)) {
+      errors.push(
+        `devices[${index}] (${device.deviceId}): Device ${device.deviceId} already exists`
+      )
+      continue
+    }
+    deviceIds.add(device.deviceId)
     if (device.enabled === false) continue
     try {
       await checkDriver(device.driver, device.connection)

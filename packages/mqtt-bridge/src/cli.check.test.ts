@@ -122,6 +122,25 @@ describe('CLI check command', () => {
     expect(processUtils.exit).toHaveBeenCalledWith(1)
   })
 
+  it('should report a repeated device ID, also of a disabled device', async () => {
+    const errors = await check({
+      devices: [device('meter', {}), device('meter', {}, { enabled: false })],
+    })
+
+    expect(errors).toEqual([
+      '✗ devices[1] (meter): Device meter already exists',
+      expect.stringMatching(/^1 error\(s\) in /),
+    ])
+    expect(loadDriver).toHaveBeenCalledTimes(1)
+  })
+
+  it('should print a file that does not exist as one error', async () => {
+    await main(['node', 'ya-modbus-bridge', 'check', '--config', join(dir, 'missing.json')])
+
+    expect(errorSpy.mock.calls[0]?.join(' ')).toContain('ENOENT')
+    expect(processUtils.exit).toHaveBeenCalledWith(1)
+  })
+
   it('should print a file that is not JSON as one error', async () => {
     const errors = await check('{')
 

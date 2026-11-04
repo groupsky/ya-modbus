@@ -456,7 +456,7 @@ The devices on rtu:/dev/ttyUSB0 take turns in a fixed order: meter1, meter2
 `ya-modbus-bridge check --config <path>` checks a file without starting the bridge. It opens no serial port and no MQTT connection. It does the checks that `run` does before it opens a port:
 
 - the file against the schema: unknown keys and wrong values, each on its own line with its path;
-- if the file passes, each device that is not `"enabled": false`: that its driver package loads, and that the driver supports its serial settings and slave ID.
+- if the file passes, that no two devices have the same `deviceId`, and for each device that is not `"enabled": false`: that its driver package loads, and that the driver supports its serial settings and slave ID.
 
 It exits with 0 if there is no error, and with 1 if there is one:
 

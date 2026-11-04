@@ -200,14 +200,20 @@ describe('checkDriver', () => {
   })
 
   it.each([
-    [rtu({ parity: 'none' }), "Invalid parity 'none'. This driver supports: odd (default: odd)"],
-    [rtu(), 'baudRate is required: ya-modbus-driver-test has no DEFAULT_CONFIG'],
-  ] as const)('should reject the serial settings of %p', async (connection, message) => {
-    const loadedDriver = connection.parity ? oddOnlyDriver : plainDriver
-    await expect(
-      checkDriver('ya-modbus-driver-test', connection, load(loadedDriver))
-    ).rejects.toThrow(message)
-  })
+    [
+      rtu({ parity: 'none' }),
+      oddOnlyDriver,
+      "Invalid parity 'none'. This driver supports: odd (default: odd)",
+    ],
+    [rtu(), plainDriver, 'baudRate is required: ya-modbus-driver-test has no DEFAULT_CONFIG'],
+  ] as const)(
+    'should reject the serial settings of %p',
+    async (connection, loadedDriver, message) => {
+      await expect(
+        checkDriver('ya-modbus-driver-test', connection, load(loadedDriver))
+      ).rejects.toThrow(message)
+    }
+  )
 
   it('should not check serial settings of a TCP device', async () => {
     await expect(
