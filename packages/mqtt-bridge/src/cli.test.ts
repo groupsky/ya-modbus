@@ -70,12 +70,13 @@ describe('CLI - ya-modbus-bridge', () => {
         publishing
 
         Options:
-          -V, --version   output the version number
-          -h, --help      display help for command
+          -V, --version    output the version number
+          -h, --help       display help for command
 
         Commands:
-          run [options]   Run the MQTT bridge
-          help [command]  display help for command
+          run [options]    Run the MQTT bridge
+          check [options]  Check a config file and the driver of each device
+          help [command]   display help for command
         "
       `)
     })
