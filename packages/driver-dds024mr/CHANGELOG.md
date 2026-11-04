@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.8](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-dds024mr@0.1.7...@ya-modbus/driver-dds024mr@0.1.8) (2026-11-04)
+
+**Note:** Version bump only for package @ya-modbus/driver-dds024mr
+
 ## [0.1.7](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-dds024mr@0.1.6...@ya-modbus/driver-dds024mr@0.1.7) (2026-11-02)
 
 **Note:** Version bump only for package @ya-modbus/driver-dds024mr

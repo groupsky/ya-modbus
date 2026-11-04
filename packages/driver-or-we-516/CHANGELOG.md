@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.2.26](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.25...@ya-modbus/driver-or-we-516@0.2.26) (2026-11-04)
+
+**Note:** Version bump only for package @ya-modbus/driver-or-we-516
+
 ## [0.2.25](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.24...@ya-modbus/driver-or-we-516@0.2.25) (2026-11-02)
 
 **Note:** Version bump only for package @ya-modbus/driver-or-we-516

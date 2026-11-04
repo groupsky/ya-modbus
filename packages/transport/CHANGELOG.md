@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.15.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/transport@0.14.1...@ya-modbus/transport@0.15.0) (2026-11-04)
+
+### Features
+
+- set request attempts and retry delay from the CLI and the bridge config ([#736](https://github.com/groupsky/ya-modbus/issues/736)) ([42963d0](https://github.com/groupsky/ya-modbus/commit/42963d0ea295a073bb731f08ad0d436c6c3616bf)), closes [#624](https://github.com/groupsky/ya-modbus/issues/624)
+
 ## [0.14.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/transport@0.14.0...@ya-modbus/transport@0.14.1) (2026-10-20)
 
 ### Bug Fixes

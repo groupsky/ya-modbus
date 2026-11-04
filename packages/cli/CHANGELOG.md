@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.16.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.15.3...@ya-modbus/cli@0.16.0) (2026-11-04)
+
+### Features
+
+- set request attempts and retry delay from the CLI and the bridge config ([#736](https://github.com/groupsky/ya-modbus/issues/736)) ([42963d0](https://github.com/groupsky/ya-modbus/commit/42963d0ea295a073bb731f08ad0d436c6c3616bf)), closes [#624](https://github.com/groupsky/ya-modbus/issues/624)
+
 ## [0.15.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.15.2...@ya-modbus/cli@0.15.3) (2026-11-02)
 
 **Note:** Version bump only for package @ya-modbus/cli
