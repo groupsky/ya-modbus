@@ -761,6 +761,35 @@ describe('TransportManager', () => {
     })
   })
 
+  test('waits retryDelay between attempts of a request', async () => {
+    jest.useFakeTimers()
+    try {
+      mockClient1.readHoldingRegisters
+        .mockRejectedValueOnce(new Error('Timed out'))
+        .mockResolvedValueOnce({ data: [1], buffer: Buffer.from([0x00, 0x01]) })
+      const transport = await manager.getTransport({
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'even',
+        stopBits: 1,
+        slaveId: 1,
+        maxRetries: 2,
+        retryDelay: 500,
+      })
+
+      const reading = transport.readHoldingRegisters(0, 1)
+      await jest.advanceTimersByTimeAsync(499)
+      expect(mockClient1.readHoldingRegisters).toHaveBeenCalledTimes(1)
+
+      await jest.advanceTimersByTimeAsync(1)
+      await expect(reading).resolves.toEqual(Buffer.from([0x00, 0x01]))
+      expect(mockClient1.readHoldingRegisters).toHaveBeenCalledTimes(2)
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
   describe('Lost Connections', () => {
     // What modbus-serial emits when a write fails because the USB adapter is gone
     const serialPortError = {

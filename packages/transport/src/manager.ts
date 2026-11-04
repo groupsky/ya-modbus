@@ -121,7 +121,8 @@ export class TransportManager {
       config.maxRetries ?? 3,
       config.logger,
       this.isRTUConfig(config) ? config.interDeviceDelay : undefined,
-      entry.lastRequest
+      entry.lastRequest,
+      config.retryDelay
     )
     const target = this.getTarget(config)
     const where = this.isRTUConfig(config) ? `${target} ${formatSerialSettings(config)}` : target
