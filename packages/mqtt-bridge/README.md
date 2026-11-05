@@ -551,6 +551,21 @@ Error: Invalid configuration: mqtt.url: URL must start with mqtt://, mqtts://, w
 - Other users of the machine can see command line options such as `--mqtt-password` in the process list. Put credentials in the config file instead.
 - `mqtt://` and `ws://` send the password without encryption. Use `mqtts://` or `wss://` when the broker is not on the same machine.
 
+## MQTT Topics
+
+All topics start with `topicPrefix` (default: `modbus`).
+
+| Topic                                 | Direction         | QoS              | Retained | Payload                                                            |
+| ------------------------------------- | ----------------- | ---------------- | -------- | ------------------------------------------------------------------ |
+| `{topicPrefix}/bridge/status`         | bridge publishes  | 0 (last-will: 1) | yes      | `online` or `offline`, see [Bridge Status](#bridge-status)         |
+| `{topicPrefix}/{deviceId}/data`       | bridge publishes  | 0                | no       | JSON, see [Data Messages](#data-messages)                          |
+| `{topicPrefix}/{deviceId}/status`     | bridge publishes  | 0                | yes      | JSON, see [Device States](#device-states)                          |
+| `{topicPrefix}/{deviceId}/stats`      | bridge publishes  | 0                | no       | JSON, only with `statsInterval`, see [Device Stats](#device-stats) |
+| `{topicPrefix}/{deviceId}/set`        | bridge subscribes | 0 (subscription) | ignored  | JSON, see [Writing Data Points](#writing-data-points)              |
+| `{topicPrefix}/{deviceId}/set/result` | bridge publishes  | 0                | no       | JSON, see [Writing Data Points](#writing-data-points)              |
+
+The bridge uses no other topics.
+
 ## Data Messages
 
 The bridge publishes the data of a read on `{topicPrefix}/{deviceId}/data` (QoS 0, not retained):

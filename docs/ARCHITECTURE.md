@@ -6,9 +6,9 @@ ya-modbus is a TypeScript monorepo that bridges Modbus devices (RTU/TCP) to MQTT
 
 1. **Bus collision prevention** - Automatic mutex for RTU serial buses
 2. **Adaptive polling** - Different rates for dynamic vs static registers
-3. **Runtime reconfiguration** - Add/modify/remove devices via MQTT
+3. **Runtime reconfiguration** (planned) - Add/modify/remove devices via MQTT
 4. **Device discovery** - Auto-detect devices and connection parameters
-5. **Production monitoring** - Comprehensive diagnostics and error publishing
+5. **Monitoring** - Retained bridge and device status with the last error
 
 ## Core Architecture
 
@@ -173,13 +173,13 @@ The emulator serves 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0F and 0x10. See `pack
 
 **Rationale**: Reduces read operations by 70-90% for typical devices.
 
-### 4. Runtime Configuration via MQTT
+### 4. Runtime Configuration via MQTT (planned)
 
 **Problem**: Adding/modifying devices requires bridge restart.
 
 **Solution**: MQTT-based configuration with state persistence.
 
-**MQTT Topic Structure**:
+**MQTT Topic Structure** (`config/`, `errors/` and `discovery/` are planned):
 
 ```
 modbus/
@@ -198,12 +198,12 @@ modbus/
 │   ├── data                 # Device data publications
 │   ├── set                  # Data points to write
 │   │   └── result           # Result of each write message
-│   ├── status/              # Device status
-│   └── errors/              # Device errors
+│   ├── status               # Device status
+│   └── errors/              # Device errors (planned)
 │
 └── bridge/
-    ├── status/              # Bridge status
-    └── discovery/           # Discovery results
+    ├── status               # Bridge status
+    └── discovery/           # Discovery results (planned)
 ```
 
 **State Persistence**:
@@ -229,7 +229,9 @@ modbus/
 
 **Implementation**: `packages/device-profiler/src/`
 
-### 6. Error Handling & Publishing
+### 6. Error Handling & Publishing (planned)
+
+The bridge has no error topics: the last error of a device is in the `errors` field of its retained `status` message (see the Device States section of `packages/mqtt-bridge/README.md`).
 
 **Strategy**: Publish all errors to MQTT for monitoring.
 
@@ -341,7 +343,7 @@ modbus/
 
 ## Data Flow
 
-### 1. Device Registration (Runtime)
+### 1. Device Registration (Runtime, planned)
 
 ```
 User → MQTT Publish → modbus/config/devices/add
@@ -379,7 +381,7 @@ Scheduler triggers poll (interval-based)
     Update statistics & diagnostics
 ```
 
-### 3. Error Handling Flow
+### 3. Error Handling Flow (planned)
 
 ```
 Modbus operation fails
@@ -505,9 +507,9 @@ For 10 devices @ 9600 baud:
 
 ```
 modbus/bridge/status            # online/offline, retained, with a last-will
-modbus/bridge/status/health     # Overall bridge health
-modbus/{deviceId}/status/*      # Per-device status
-modbus/{deviceId}/errors/*      # Per-device errors
+modbus/bridge/status/health     # Overall bridge health (future)
+modbus/{deviceId}/status        # Per-device state, retained
+modbus/{deviceId}/errors/*      # Per-device errors (future)
 ```
 
 ### Integration with Monitoring Systems
