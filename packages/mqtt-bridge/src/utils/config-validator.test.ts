@@ -221,7 +221,7 @@ describe('validateConfig', () => {
     expect(() => validateConfig(config)).toThrow('driver')
   })
 
-  it.each(['a/b', 'a+', 'a#', '$SYS', 'a\u0000b'])(
+  it.each(['a+', 'a#', '$SYS', 'a\u0000b'])(
     'should throw error for topicPrefix with MQTT special characters: %j',
     (topicPrefix) => {
       const config = { mqtt: { url: 'mqtt://localhost:1883' }, topicPrefix }
@@ -229,6 +229,29 @@ describe('validateConfig', () => {
       expect(() => validateConfig(config)).toThrow('Topic prefix must not contain MQTT special')
     }
   )
+
+  it.each(['home/modbus', 'site/house/modbus'])(
+    'should accept the nested topicPrefix %j',
+    (topicPrefix) => {
+      const config = { mqtt: { url: 'mqtt://localhost:1883' }, topicPrefix }
+
+      expect(() => validateConfig(config)).not.toThrow()
+    }
+  )
+
+  it.each([
+    ['/home', 'Topic prefix must not start or end with /'],
+    ['home/', 'Topic prefix must not start or end with /'],
+    ['/', 'Topic prefix must not start or end with /'],
+    ['home//modbus', 'Topic prefix must not contain // (an empty level)'],
+    ['home/+/modbus', 'Topic prefix must not contain MQTT special'],
+    ['home/#', 'Topic prefix must not contain MQTT special'],
+    ['', 'Topic prefix must not be empty'],
+  ])('should throw error for topicPrefix %j', (topicPrefix, message) => {
+    const config = { mqtt: { url: 'mqtt://localhost:1883' }, topicPrefix }
+
+    expect(() => validateConfig(config)).toThrow(message)
+  })
 
   // The error has to name the invalid device, not only the field
   it('should name the invalid device when only one of several devices is invalid', () => {

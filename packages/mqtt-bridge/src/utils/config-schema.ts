@@ -31,12 +31,19 @@ export const mqttConfigSchema = z.strictObject({
 export const mqttBridgeConfigSchema = z.strictObject({
   mqtt: mqttConfigSchema,
   stateDir: z.string().optional(),
+  // Levels joined with `/`, such as `home/modbus`. The bridge adds `/{deviceId}/data` and others.
   topicPrefix: z
     .string()
+    .min(1, 'Topic prefix must not be empty')
     // eslint-disable-next-line no-control-regex
-    .regex(/^[^+#/$\x00]+$/, {
-      message:
-        'Topic prefix must not contain MQTT special characters (+, #, /, $) or null character',
+    .regex(/^[^+#$\x00]*$/, {
+      message: 'Topic prefix must not contain MQTT special characters (+, #, $) or null character',
+    })
+    .refine((prefix) => !prefix.startsWith('/') && !prefix.endsWith('/'), {
+      message: 'Topic prefix must not start or end with /',
+    })
+    .refine((prefix) => !prefix.includes('//'), {
+      message: 'Topic prefix must not contain // (an empty level)',
     })
     .optional(),
   statsInterval: z.number().int().min(0).max(86400).optional(),

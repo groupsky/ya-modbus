@@ -240,7 +240,7 @@ Each key must be one of the options below. A key that is not an option there is 
 - `mqtt.username` (optional) - Authentication username. Default: none
 - `mqtt.password` (optional) - Authentication password. Default: none
 - `mqtt.reconnectPeriod` (optional) - Time between reconnect attempts in milliseconds (1-86400000, default: 5000)
-- `topicPrefix` (optional) - Topic prefix for all MQTT topics (default: `modbus`). It must not be empty. It must not contain `+`, `#`, `/`, `$` or the null character.
+- `topicPrefix` (optional) - Topic prefix for all MQTT topics (default: `modbus`). It can have more than one level, for example `home/modbus`: the data of device `meter1` then goes to `home/modbus/meter1/data`. It must not be empty. It must not start or end with `/`, and must not contain `//`. It must not contain `+`, `#`, `$` or the null character.
 - `stateDir` (optional) - Not used yet: the bridge keeps no state on disk, and it warns at startup when this is set.
 - `statsInterval` (optional) - Seconds between the messages on `{topicPrefix}/{deviceId}/stats` (0-86400, default: not set). Without it, or with `0`, the bridge publishes no stats. See [Device Stats](#device-stats).
 - `statsLog` (optional) - Also write one line per device to stdout at every `statsInterval` (default: false). It does nothing without `statsInterval`.

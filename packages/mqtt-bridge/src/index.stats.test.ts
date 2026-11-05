@@ -28,6 +28,7 @@ const deviceConfig = (deviceId: string): any =>
 
 describe('createBridge device stats', () => {
   let read: (deviceId: string, ms: number, ok: boolean) => void
+  let onData: (deviceId: string, data: Record<string, unknown>, info: object) => void
   let publish: jest.Mock
   let connected: boolean
   let connectHandler: () => void
@@ -72,8 +73,9 @@ describe('createBridge device stats', () => {
       getDriver: jest.fn().mockReturnValue({}),
       getConnectionError: jest.fn(),
     } as any)
-    MockedPollingScheduler.mockImplementation((_onData, _onError, onRead) => {
+    MockedPollingScheduler.mockImplementation((dataCallback, _onError, onRead) => {
       read = onRead as typeof read
+      onData = dataCallback as typeof onData
       return {
         start: jest.fn(),
         stop: jest.fn(),
@@ -143,6 +145,18 @@ describe('createBridge device stats', () => {
     jest.advanceTimersByTime(15_000)
 
     expect(statsMessages().map((m) => m.topic)).toEqual(Array(3).fill('home/meter1/stats'))
+  })
+
+  it('should publish data and stats under a nested topic prefix', async () => {
+    const bridge = await start({ statsInterval: 5, topicPrefix: 'home/modbus' })
+    await bridge.addDevice(deviceConfig('meter1'))
+
+    onData('meter1', { voltage: 230 }, { readMs: 10 })
+    jest.advanceTimersByTime(5_000)
+
+    const topics = publish.mock.calls.map(([topic]) => topic)
+    expect(topics).toContain('home/modbus/meter1/data')
+    expect(topics).toContain('home/modbus/meter1/stats')
   })
 
   it.each([undefined, 0])('should publish no stats when statsInterval is %p', async (interval) => {
