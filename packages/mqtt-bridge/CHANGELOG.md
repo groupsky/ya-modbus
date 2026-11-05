@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.34.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.33.0...@ya-modbus/mqtt-bridge@0.34.0) (2026-11-05)
+
+### Features
+
+- **mqtt-bridge:** device key in the device config for multi-device drivers ([#738](https://github.com/groupsky/ya-modbus/issues/738)) ([d96eb34](https://github.com/groupsky/ya-modbus/commit/d96eb342b8c2d704ea7502bc31c8d336330b25ab)), closes [#625](https://github.com/groupsky/ya-modbus/issues/625)
+
 # [0.33.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.32.0...@ya-modbus/mqtt-bridge@0.33.0) (2026-11-04)
 
 ### Features
