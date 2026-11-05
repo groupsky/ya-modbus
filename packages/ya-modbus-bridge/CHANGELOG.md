@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.29](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.28...ya-modbus-bridge@0.1.29) (2026-11-05)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
 ## [0.1.28](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.27...ya-modbus-bridge@0.1.28) (2026-11-05)
 
 **Note:** Version bump only for package ya-modbus-bridge
