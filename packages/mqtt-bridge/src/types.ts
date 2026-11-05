@@ -102,6 +102,11 @@ export interface PublishConfig {
 export interface DeviceConfig {
   deviceId: string
   driver: string
+  /**
+   * Key of the model in the driver's DEVICES, for drivers that support several models. Its
+   * defaults and supported settings are used. Without it, the driver uses its default model.
+   */
+  device?: string
   connection: DeviceConnection
   enabled?: boolean
   polling?: PollingConfig

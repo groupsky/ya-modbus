@@ -193,6 +193,7 @@ export const deviceConfigSchema = z
   .strictObject({
     deviceId: deviceIdSchema,
     driver: driverNameSchema,
+    device: z.string().min(1, 'Device key must not be empty').optional(),
     connection: z.discriminatedUnion('type', [rtuConnectionSchema, tcpConnectionSchema], {
       error: (issue) =>
         issue.input === undefined
@@ -205,9 +206,10 @@ export const deviceConfigSchema = z
     publish: publishConfigSchema,
   })
   .transform((data) => {
-    const { enabled, polling, allowWrites, publish, ...rest } = data
+    const { device, enabled, polling, allowWrites, publish, ...rest } = data
     return {
       ...rest,
+      ...(device !== undefined ? { device } : {}),
       ...(enabled !== undefined ? { enabled } : {}),
       ...(polling !== undefined ? { polling } : {}),
       ...(allowWrites !== undefined ? { allowWrites } : {}),
