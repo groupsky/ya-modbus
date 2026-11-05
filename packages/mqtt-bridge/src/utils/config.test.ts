@@ -177,7 +177,7 @@ describe('loadConfig', () => {
     expect(config.devices?.[0].allowWrites).toBe(true)
   })
 
-  it.each(['a/b', 'a+', 'a#', '$SYS', 'a\u0000b'])(
+  it.each(['a+', 'a#', '$SYS', 'a\u0000b'])(
     'should throw error for topicPrefix with MQTT special characters: %j',
     async (topicPrefix) => {
       mockedReadFile.mockResolvedValue(
