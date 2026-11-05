@@ -69,7 +69,8 @@ describe('DeviceManager', () => {
       expect(mockDriverLoader.loadDriver).toHaveBeenCalledWith(
         'ya-modbus-driver-test',
         config.connection,
-        'device1'
+        'device1',
+        undefined
       )
     })
 

@@ -1,5 +1,6 @@
 import {
   applyDriverDefaults,
+  getEffectiveDriverMetadata,
   DriverNotFoundError,
   loadDriver as loadDriverPackage,
   ValidationError,
@@ -16,7 +17,7 @@ import {
 } from '@ya-modbus/transport'
 
 import { DRIVER_NAME_RULE, getDriverPackageCandidates } from './driver-name.js'
-import type { DeviceConnection, RTUConnection } from './types.js'
+import type { DeviceConfig, DeviceConnection, RTUConnection } from './types.js'
 
 type LoadDriverFunction = typeof loadDriverPackage
 
@@ -78,6 +79,33 @@ function retryLogger(device: string): RetryLogger | undefined {
 }
 
 /**
+ * The driver with the defaults and supported settings of the selected model (the `device` key of
+ * the device config). Without a key, the driver as it is.
+ *
+ * @throws Error if the key is not in the driver's DEVICES, or the driver has no DEVICES
+ */
+function selectModel(
+  loadedDriver: LoadedDriver,
+  packageName: string,
+  model: string | undefined
+): LoadedDriver {
+  if (model === undefined) return loadedDriver
+  if (!loadedDriver.devices) {
+    throw new Error(
+      `Unknown device "${model}": ${packageName} supports one model only (it has no DEVICES). ` +
+        'Remove "device" from the device config'
+    )
+  }
+  const validDevices = Object.keys(loadedDriver.devices)
+  if (!validDevices.includes(model)) {
+    throw new Error(
+      `Unknown device "${model}" for ${packageName}. Valid devices: ${validDevices.join(', ')}`
+    )
+  }
+  return getEffectiveDriverMetadata(loadedDriver, model)
+}
+
+/**
  * Transport config of an RTU connection. Serial settings that are not set come from the driver's
  * DEFAULT_CONFIG. A driver without one gets 8 data bits, no parity and 1 stop bit, and needs
  * `baudRate`. The final settings are checked against the driver's SUPPORTED_CONFIG.
@@ -114,18 +142,22 @@ function toRTUConfig(
 
 /**
  * Check a device as DriverLoader.loadDriver() does, but without opening a port or creating the
- * driver: the driver name, that its package loads, and the serial settings against the driver.
+ * driver: the driver name, that its package loads, the device key, and the serial settings
+ * against the driver.
  *
- * @throws Error if the name is not a driver name, the package does not load, or the
+ * @throws Error if the name is not a driver name, the package does not load, the device key is
+ *   not one of the driver's DEVICES, or the
  *   driver does not support a serial setting or the slave ID
  */
 export async function checkDriver(
-  driverName: string,
-  connection: DeviceConnection,
+  device: Pick<DeviceConfig, 'driver' | 'connection' | 'device'>,
   loadDriverFn: LoadDriverFunction = loadDriverPackage
 ): Promise<void> {
-  const { loadedDriver, packageName } = await loadDriverByName(driverName, loadDriverFn)
-  if (connection.type === 'rtu') toRTUConfig(connection, loadedDriver, packageName)
+  const loaded = await loadDriverByName(device.driver, loadDriverFn)
+  const loadedDriver = selectModel(loaded.loadedDriver, loaded.packageName, device.device)
+  if (device.connection.type === 'rtu') {
+    toRTUConfig(device.connection, loadedDriver, loaded.packageName)
+  }
 }
 
 /**
@@ -164,17 +196,23 @@ export class DriverLoader {
    * @param deviceId - Unique device identifier for tracking the instance. Without it,
    *   unloadDriver() cannot release the transport, and its port stays open until
    *   closeAllTransports().
+   * @param model - Key of the model in the driver's DEVICES (the `device` field of the device
+   *   config). Its defaults and supported settings are used, and it is passed to createDriver.
    * @returns Driver instance
    * @throws ValidationError if the name is not allowed, or the driver does not support a serial
    *   setting or the slave ID
+   * @throws Error if the model is not one of the driver's DEVICES
    * @throws DriverNotFoundError if no package of the name is installed
    */
   async loadDriver(
     driverName: string,
     connection: DeviceConnection,
-    deviceId?: string
+    deviceId?: string,
+    model?: string
   ): Promise<DeviceDriver> {
-    const { loadedDriver, packageName } = await loadDriverByName(driverName, this.loadDriverFn)
+    const loaded = await loadDriverByName(driverName, this.loadDriverFn)
+    const { packageName } = loaded
+    const loadedDriver = selectModel(loaded.loadedDriver, packageName, model)
 
     const device = deviceId ?? packageName
     if (packageName !== driverName) console.log(`Device ${device} uses driver ${packageName}`)
@@ -210,6 +248,7 @@ export class DriverLoader {
       driver = await loadedDriver.createDriver({
         transport,
         slaveId: connection.slaveId,
+        ...(model !== undefined ? { device: model } : {}),
       })
 
       // Call initialize if available

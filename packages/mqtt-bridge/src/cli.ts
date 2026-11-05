@@ -102,7 +102,7 @@ async function checkCommand(configPath: string): Promise<string[]> {
     deviceIds.add(device.deviceId)
     if (device.enabled === false) continue
     try {
-      await checkDriver(device.driver, device.connection)
+      await checkDriver(device)
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error)
       errors.push(`devices[${index}] (${device.deviceId}): ${reason}`)

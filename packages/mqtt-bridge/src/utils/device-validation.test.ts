@@ -722,6 +722,24 @@ describe('validateDeviceConfig', () => {
     })
   })
 
+  describe('device', () => {
+    const device = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: { type: 'tcp', host: 'localhost', slaveId: 1 },
+    }
+
+    it('should accept a device key', () => {
+      expect(() => validateDeviceConfig({ ...device, device: 'fast' })).not.toThrow()
+    })
+
+    it.each(['', 1, null])('should reject %p', (key) => {
+      expect(() => validateDeviceConfig({ ...device, device: key })).toThrow(
+        'Invalid device configuration: device'
+      )
+    })
+  })
+
   describe('allowWrites', () => {
     const device = {
       deviceId: 'device1',

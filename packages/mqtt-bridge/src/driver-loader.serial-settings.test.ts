@@ -194,7 +194,7 @@ describe('checkDriver', () => {
 
   it('should pass a device that the driver supports, without opening a port', async () => {
     await expect(
-      checkDriver('ya-modbus-driver-test', rtu(), load(oddOnlyDriver))
+      checkDriver({ driver: 'ya-modbus-driver-test', connection: rtu() }, load(oddOnlyDriver))
     ).resolves.toBeUndefined()
     expect(jest.requireMock<jest.Mock>('modbus-serial')).not.toHaveBeenCalled()
   })
@@ -210,7 +210,7 @@ describe('checkDriver', () => {
     'should reject the serial settings of %p',
     async (connection, loadedDriver, message) => {
       await expect(
-        checkDriver('ya-modbus-driver-test', connection, load(loadedDriver))
+        checkDriver({ driver: 'ya-modbus-driver-test', connection: connection }, load(loadedDriver))
       ).rejects.toThrow(message)
     }
   )
@@ -218,8 +218,10 @@ describe('checkDriver', () => {
   it('should not check serial settings of a TCP device', async () => {
     await expect(
       checkDriver(
-        'ya-modbus-driver-test',
-        { type: 'tcp', host: 'meter.local', port: 502, slaveId: 1 },
+        {
+          driver: 'ya-modbus-driver-test',
+          connection: { type: 'tcp', host: 'meter.local', port: 502, slaveId: 1 },
+        },
         load(plainDriver)
       )
     ).resolves.toBeUndefined()
@@ -227,13 +229,15 @@ describe('checkDriver', () => {
 
   it('should reject a name that is not a driver package', async () => {
     const loadDriverFn = jest.fn(load(plainDriver))
-    await expect(checkDriver('../evil', rtu(), loadDriverFn)).rejects.toThrow()
+    await expect(
+      checkDriver({ driver: '../evil', connection: rtu() }, loadDriverFn)
+    ).rejects.toThrow()
     expect(loadDriverFn).not.toHaveBeenCalled()
   })
 
   it('should report a driver package that does not load', async () => {
     await expect(
-      checkDriver('ya-modbus-driver-missing', rtu(), () =>
+      checkDriver({ driver: 'ya-modbus-driver-missing', connection: rtu() }, () =>
         Promise.reject(new Error('Cannot find module ya-modbus-driver-missing'))
       )
     ).rejects.toThrow('Cannot find module ya-modbus-driver-missing')
