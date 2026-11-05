@@ -11,10 +11,9 @@
 
 - **Automatic bus collision prevention** - Zero-config async-mutex for RTU serial buses
 - **Adaptive polling** - Different rates for dynamic vs static registers (60-80% traffic reduction)
-- **Runtime reconfiguration** - Add/modify/remove devices via MQTT without restart
 - **Device discovery** - Auto-detect devices, baud rate, parity, and slave ID
 - **Multi-register optimization** - Batch adjacent registers (70-90% fewer operations)
-- **Production monitoring** - Comprehensive diagnostics, error publishing, health checks
+- **Monitoring** - Retained bridge and device status with the last error, poll stats, MQTT last-will
 - **RTU & TCP support** - Serial (RS-485/RS-232) and network Modbus devices
 - **Software emulator** - Test device drivers without physical hardware
 - **Agent-friendly** - Comprehensive documentation, per-directory guides for AI assistants
@@ -272,66 +271,15 @@ packages/
 └── driver-*/         # Device drivers (e.g., driver-ex9em, driver-xymd1)
 ```
 
-## Runtime Configuration via MQTT
-
-Add devices without restarting:
-
-```bash
-# Add device
-mosquitto_pub -t "modbus/config/devices/add" -m '{
-  "id": "meter_2",
-  "driver": "SDM630",
-  "transport": "rtu",
-  "port": "/dev/ttyUSB0",
-  "slaveId": 2
-}'
-
-# Remove device
-mosquitto_pub -t "modbus/config/devices/remove" -m "meter_2"
-
-# Enable/disable device
-mosquitto_pub -t "modbus/config/devices/meter_1/enabled" -m "false"
-
-# Update polling interval
-mosquitto_pub -t "modbus/config/devices/meter_1/polling" -m '{
-  "interval": 10000
-}'
-```
-
 ## Monitoring
 
-### Device Status
-
-Subscribe to device status:
+The bridge publishes the data of each device on `modbus/{deviceId}/data`, and a retained state on `modbus/{deviceId}/status` and `modbus/bridge/status`:
 
 ```bash
-mosquitto_sub -t "modbus/+/status/#"
+mosquitto_sub -v -t "modbus/#"
 ```
 
-Example output:
-
-```json
-{
-  "timestamp": "2025-12-22T10:30:45.123Z",
-  "connected": true,
-  "pollRate": 9.8,
-  "avgLatency": 42,
-  "errorRate": 0.001,
-  "errors": {
-    "total": 15,
-    "timeout": 10,
-    "crc": 5
-  }
-}
-```
-
-### Error Monitoring
-
-Subscribe to errors:
-
-```bash
-mosquitto_sub -t "modbus/+/errors/#"
-```
+Every topic, with QoS, retain and full message examples: [MQTT Topics](packages/mqtt-bridge/README.md#mqtt-topics).
 
 ### Integration with Telegraf
 
@@ -341,7 +289,7 @@ mosquitto_sub -t "modbus/+/errors/#"
   servers = ["tcp://localhost:1883"]
   topics = ["modbus/+/data"]
   data_format = "json"
-  tag_keys = ["device_id", "device_type"]
+  tag_keys = ["deviceId"]
 
 [[outputs.influxdb_v2]]
   urls = ["http://localhost:8086"]
@@ -398,6 +346,7 @@ See [GitHub Projects](https://github.com/groupsky/ya-modbus/projects) for planne
 
 Key upcoming features:
 
+- Runtime configuration via MQTT: add, change and remove devices without a restart
 - Web UI for configuration and monitoring
 - Advanced device fingerprinting
 - High-availability mode with failover

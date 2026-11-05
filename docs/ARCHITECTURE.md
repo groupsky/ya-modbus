@@ -341,7 +341,7 @@ modbus/
 
 ## Data Flow
 
-### 1. Device Registration (Runtime)
+### 1. Device Registration (Runtime, planned)
 
 ```
 User → MQTT Publish → modbus/config/devices/add
