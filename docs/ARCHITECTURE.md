@@ -6,9 +6,9 @@ ya-modbus is a TypeScript monorepo that bridges Modbus devices (RTU/TCP) to MQTT
 
 1. **Bus collision prevention** - Automatic mutex for RTU serial buses
 2. **Adaptive polling** - Different rates for dynamic vs static registers
-3. **Runtime reconfiguration** - Add/modify/remove devices via MQTT
+3. **Runtime reconfiguration** (planned) - Add/modify/remove devices via MQTT
 4. **Device discovery** - Auto-detect devices and connection parameters
-5. **Production monitoring** - Comprehensive diagnostics and error publishing
+5. **Monitoring** - Retained bridge and device status with the last error
 
 ## Core Architecture
 
