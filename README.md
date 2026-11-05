@@ -1,6 +1,6 @@
 # ya-modbus
 
-> Production-ready Modbus to MQTT bridge with automatic bus collision prevention, adaptive polling, and runtime reconfiguration
+> Production-ready Modbus to MQTT bridge with automatic bus collision prevention, and adaptive polling
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
@@ -113,7 +113,7 @@ We analyzed 48+ competing solutions. **None** provide all of:
 
 - ✅ Automatic mutex for RTU bus protection
 - ✅ Adaptive polling (dynamic vs static registers)
-- ✅ Runtime reconfiguration via MQTT
+- 🔜 Runtime reconfiguration via MQTT (planned)
 - ✅ Multi-register read optimization
 - ✅ Device discovery & auto-detection
 - ✅ TypeScript with comprehensive tooling

@@ -2,7 +2,7 @@
   "name": "ya-modbus",
   "version": "0.0.0",
   "private": true,
-  "description": "Production-ready Modbus to MQTT bridge with automatic bus collision prevention, adaptive polling, and runtime reconfiguration",
+  "description": "Production-ready Modbus to MQTT bridge with automatic bus collision prevention and adaptive polling",
   "keywords": [
     "modbus",
     "mqtt",
