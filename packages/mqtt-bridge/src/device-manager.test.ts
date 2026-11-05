@@ -74,6 +74,24 @@ describe('DeviceManager', () => {
       )
     })
 
+    it('should pass the device key to the driver loader', async () => {
+      const config: DeviceConfig = {
+        deviceId: 'device1',
+        driver: 'ya-modbus-driver-test',
+        device: 'fast',
+        connection: { type: 'tcp', host: 'meter.local', port: 502, slaveId: 1 },
+      }
+
+      await manager.addDevice(config)
+
+      expect(mockDriverLoader.loadDriver).toHaveBeenCalledWith(
+        'ya-modbus-driver-test',
+        config.connection,
+        'device1',
+        'fast'
+      )
+    })
+
     it('should add device with enabled=false and not load driver', async () => {
       const config: DeviceConfig = {
         deviceId: 'device1',
