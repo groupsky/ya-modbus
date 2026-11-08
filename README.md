@@ -23,7 +23,7 @@
 ### Installation
 
 ```bash
-npm install -g @ya-modbus/cli
+npm install -g @ya-modbus/cli @ya-modbus/mqtt-bridge
 ```
 
 Or run a tool without installing it. Each command has a short package name:
