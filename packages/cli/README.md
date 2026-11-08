@@ -77,6 +77,33 @@ ya-modbus read \
   --all
 ```
 
+**When some data points fail:**
+
+With several data points (or `--all`), `read` first asks for all of them at
+once. If that fails, it prints one line on stderr and then reads each data
+point on its own. The values that worked are printed as usual. The ones that
+failed are listed on stderr:
+
+```
+Reading all data points at once failed (Timed out); reading each one on its own
+...
+Failed data points:
+  humidity: Illegal address
+```
+
+With `--format json`, the failures are in the `errors` array next to
+`dataPoints` (empty when nothing failed), and `performance.errors` is how many
+failed:
+
+```json
+"errors": [{ "id": "humidity", "error": "Illegal address" }]
+```
+
+The exit code is 1 when any data point failed. If the first 3 single reads all
+fail, `read` stops and shows the first error, so a device that is off does not
+cost many timeouts. It does the same when every data point fails. A single
+data point that fails is an error, as before.
+
 **JSON output:**
 
 ```bash

@@ -412,8 +412,110 @@ describe('Read Command', () => {
         requests: 1,
         retries: 1,
         dataPoints: 2,
+        errors: 0,
         operations: 2,
       })
+    })
+  })
+
+  describe('when some data points fail', () => {
+    let consoleErrorSpy: jest.SpyInstance
+    const base = { port: '/dev/ttyUSB0', slaveId: 1, dataPoint: ['temperature', 'humidity'] }
+    const logged = (): string => consoleLogSpy.mock.calls.map((call) => String(call[0])).join('\n')
+    const errored = (): string =>
+      consoleErrorSpy.mock.calls.map((call) => String(call[0])).join('\n')
+
+    beforeEach(() => {
+      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+      process.exitCode = undefined
+      mockDriver.readDataPoints.mockRejectedValue(new Error('Timed out'))
+    })
+
+    afterEach(() => {
+      process.exitCode = undefined
+    })
+
+    test('should print the good values, list the failure and set exit code 1', async () => {
+      mockDriver.readDataPoint.mockImplementation((id) =>
+        id === 'humidity' ? Promise.reject(new Error('Illegal address')) : Promise.resolve(24.5)
+      )
+
+      await readCommand({ ...base, format: 'table' })
+
+      expect(errored()).toContain(
+        'Reading all data points at once failed (Timed out); reading each one on its own'
+      )
+      expect(logged()).toContain('24.5')
+      expect(logged()).not.toContain('Humidity')
+      expect(errored()).toContain('Failed data points:')
+      expect(errored()).toContain('  humidity: Illegal address')
+      expect(process.exitCode).toBe(1)
+    })
+
+    test('should give the failures in the JSON errors array', async () => {
+      mockDriver.readDataPoint.mockImplementation((id) =>
+        id === 'humidity' ? Promise.reject(new Error('Illegal address')) : Promise.resolve(24.5)
+      )
+
+      await readCommand({ ...base, format: 'json' })
+
+      const output = JSON.parse(logged())
+      expect(output.dataPoints.map((dp: { id: string }) => dp.id)).toEqual(['temperature'])
+      expect(output.errors).toEqual([{ id: 'humidity', error: 'Illegal address' }])
+      expect(output.performance.errors).toBe(1)
+      expect(process.exitCode).toBe(1)
+    })
+
+    test('should give an empty errors array and keep exit code when nothing fails', async () => {
+      mockDriver.readDataPoints.mockResolvedValue({ temperature: 24.5, humidity: 65.2 })
+
+      await readCommand({ ...base, format: 'json' })
+
+      const output = JSON.parse(logged())
+      expect(output.errors).toEqual([])
+      expect(output.performance.errors).toBe(0)
+      expect(process.exitCode).toBeUndefined()
+    })
+
+    test('should stop after 3 failed reads when none worked', async () => {
+      mockDriver.dataPoints = ['a', 'b', 'c', 'd', 'e'].map((id) => ({
+        id,
+        name: id,
+        type: 'float' as const,
+        access: 'r' as const,
+      }))
+      mockDriver.readDataPoint.mockRejectedValue(new Error('No answer'))
+
+      await expect(
+        readCommand({ ...base, dataPoint: ['a', 'b', 'c', 'd', 'e'], format: 'table' })
+      ).rejects.toThrow('Timed out')
+
+      expect(mockDriver.readDataPoint).toHaveBeenCalledTimes(3)
+    })
+
+    test('should keep reading after 3 failures when one read worked', async () => {
+      mockDriver.dataPoints = ['a', 'b', 'c', 'd'].map((id) => ({
+        id,
+        name: id,
+        type: 'float' as const,
+        access: 'r' as const,
+      }))
+      mockDriver.readDataPoint.mockImplementation((id) =>
+        id === 'a' ? Promise.resolve(1) : Promise.reject(new Error('No answer'))
+      )
+
+      await readCommand({ ...base, dataPoint: ['a', 'b', 'c', 'd'], format: 'table' })
+
+      expect(mockDriver.readDataPoint).toHaveBeenCalledTimes(4)
+      expect(errored()).toContain('  d: No answer')
+    })
+
+    test('should throw the batch error when every data point fails', async () => {
+      mockDriver.readDataPoint.mockRejectedValue(new Error('No answer'))
+
+      await expect(readCommand({ ...base, format: 'table' })).rejects.toThrow('Timed out')
+
+      expect(mockDriver.readDataPoint).toHaveBeenCalledTimes(2)
     })
   })
 

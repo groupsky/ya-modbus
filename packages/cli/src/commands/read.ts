@@ -1,4 +1,6 @@
-import { formatJSON } from '../formatters/json.js'
+import type { DeviceDriver } from '@ya-modbus/driver-types'
+
+import { formatJSON, type DataPointError } from '../formatters/json.js'
 import { formatPerformance, type PerformanceMetrics } from '../formatters/performance.js'
 import { formatTable } from '../formatters/table.js'
 import { isReadable, withDriver } from '../utils/commands.js'
@@ -37,6 +39,49 @@ export interface ReadOptions {
   format: 'table' | 'json'
 }
 
+/** Single reads that may fail, with no success yet, before giving up */
+const MAX_LEADING_FAILURES = 3
+
+/**
+ * Read several data points at once. If that fails, read each one on its own
+ * so the good values are not lost.
+ *
+ * @throws The batch error when no single read worked, or the first
+ *   MAX_LEADING_FAILURES single reads all failed
+ */
+async function readMany(
+  driver: DeviceDriver,
+  ids: string[]
+): Promise<{ values: Record<string, unknown>; errors: DataPointError[] }> {
+  try {
+    return { values: await driver.readDataPoints(ids), errors: [] }
+  } catch (batchError) {
+    console.error(
+      `Reading all data points at once failed (${errorMessage(batchError)}); reading each one on its own`
+    )
+
+    const values: Record<string, unknown> = {}
+    const errors: DataPointError[] = []
+    for (const id of ids) {
+      try {
+        values[id] = await driver.readDataPoint(id)
+      } catch (error) {
+        errors.push({ id, error: errorMessage(error) })
+        if (errors.length === MAX_LEADING_FAILURES && Object.keys(values).length === 0) {
+          throw batchError
+        }
+      }
+    }
+    if (errors.length === ids.length) {
+      throw batchError
+    }
+    return { values, errors }
+  }
+}
+
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error)
+
 /**
  * Read command implementation
  *
@@ -72,6 +117,7 @@ export async function readCommand(options: ReadOptions): Promise<void> {
 
     // Read data points
     let values: Record<string, unknown>
+    let errors: DataPointError[] = []
 
     if (dataPointIds.length === 1) {
       // Single data point - use readDataPoint
@@ -80,7 +126,7 @@ export async function readCommand(options: ReadOptions): Promise<void> {
       values = { [dataPointId]: value }
     } else {
       // Multiple data points - use batch read
-      values = await driver.readDataPoints(dataPointIds)
+      ;({ values, errors } = await readMany(driver, dataPointIds))
     }
 
     // Calculate performance metrics
@@ -104,7 +150,12 @@ export async function readCommand(options: ReadOptions): Promise<void> {
             : mergedOptions.port
               ? { port: mergedOptions.port, slaveId: mergedOptions.slaveId }
               : undefined,
-          performance: { ...metrics, operations: metrics.dataPoints },
+          errors,
+          performance: {
+            ...metrics,
+            errors: errors.length,
+            operations: metrics.dataPoints,
+          },
         }
       )
       console.log(output)
@@ -116,6 +167,15 @@ export async function readCommand(options: ReadOptions): Promise<void> {
       )
       console.log(table)
       console.log(formatPerformance(metrics))
+    }
+
+    if (errors.length > 0) {
+      if (options.format !== 'json') {
+        console.error(
+          ['Failed data points:', ...errors.map((e) => `  ${e.id}: ${e.error}`)].join('\n')
+        )
+      }
+      process.exitCode = 1
     }
   })
 }
