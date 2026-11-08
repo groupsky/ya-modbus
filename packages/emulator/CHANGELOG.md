@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.16.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.16.2...@ya-modbus/emulator@0.16.3) (2026-11-08)
+
+### Bug Fixes
+
+- **emulator:** say clearly when a config file is empty ([#741](https://github.com/groupsky/ya-modbus/issues/741)) ([1241b25](https://github.com/groupsky/ya-modbus/commit/1241b251b4b963abe4c29bc3727d1d9c0e409dd0)), closes [#642](https://github.com/groupsky/ya-modbus/issues/642)
+
 ## [0.16.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.16.1...@ya-modbus/emulator@0.16.2) (2026-11-02)
 
 **Note:** Version bump only for package @ya-modbus/emulator
