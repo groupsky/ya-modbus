@@ -14,7 +14,7 @@ CLI tool for testing and developing Modbus device drivers.
 - **List supported devices** from multi-device drivers
 - **Auto-detect drivers** from current package during development
 - **Multiple output formats** (table, JSON)
-- **Performance metrics** (response time, operation count)
+- **Performance metrics** (response time, Modbus requests, retries, data points)
 - **Value verification** after writes
 
 ## Installation
@@ -649,8 +649,8 @@ Performance:
 neighbouring registers together, so one request can give many data points.
 `Retries` counts extra attempts after a failed one. With `--format json` the
 same numbers are in `performance.requests`, `performance.retries` and
-`performance.dataPoints`. The old `performance.operations` key (the number of
-data points) is still there for one release.
+`performance.dataPoints`. `performance.operations` is deprecated: it is the
+number of data points, so use `performance.dataPoints`.
 
 ### Write and verify setpoint
 
