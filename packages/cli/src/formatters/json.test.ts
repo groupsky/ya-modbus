@@ -186,6 +186,7 @@ describe('JSON Formatter', () => {
           },
         ],
         "driver": "@ya-modbus/driver-xymd1",
+        "errors": [],
         "performance": {
           "dataPoints": 2,
           "operations": 2,
@@ -195,5 +196,24 @@ describe('JSON Formatter', () => {
         },
       }
     `)
+  })
+
+  test('should list failed data points in an errors array, empty when none failed', () => {
+    const dataPoints: DataPoint[] = [
+      { id: 'temperature', type: 'float', access: 'r' },
+      { id: 'humidity', type: 'float', access: 'r' },
+    ]
+
+    const failed = JSON.parse(
+      formatJSON(
+        dataPoints,
+        { temperature: 24.5 },
+        { errors: [{ id: 'humidity', error: 'Timeout' }] }
+      )
+    )
+    const clean = JSON.parse(formatJSON(dataPoints, { temperature: 24.5 }, {}))
+
+    expect(failed.errors).toEqual([{ id: 'humidity', error: 'Timeout' }])
+    expect(clean.errors).toEqual([])
   })
 })
