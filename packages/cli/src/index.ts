@@ -74,7 +74,7 @@ function addConnectionOptions(command: Command): Command {
 
       // TCP Connection
       .optionsGroup('TCP Connection (choose this OR RTU):')
-      .option('-h, --host <host>', 'TCP host for Modbus TCP (e.g., 192.168.1.100)')
+      .option('--host <host>', 'TCP host for Modbus TCP (e.g., 192.168.1.100)')
       .option('--tcp-port <port>', 'TCP port (default: 502)', parseInt)
   )
 }

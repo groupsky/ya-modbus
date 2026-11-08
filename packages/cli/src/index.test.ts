@@ -126,6 +126,18 @@ describe('CLI Entry Point - Integration Tests', () => {
     })
   })
 
+  // -h used to be the short form of --host on read and write, so `read -h`
+  // failed with "argument missing" instead of showing help (#615).
+  it.each(['read', 'write', 'discover', 'show-defaults', 'list-devices'])(
+    'should show the same help for "%s -h" as for --help',
+    async (command) => {
+      const shortHelp = await captureHelpOutput(['node', 'ya-modbus', command, '-h'])
+      const longHelp = await captureHelpOutput(['node', 'ya-modbus', command, '--help'])
+      expect(shortHelp).toContain(`Usage: ya-modbus ${command}`)
+      expect(shortHelp).toBe(longHelp)
+    }
+  )
+
   describe('Read Command', () => {
     it('should display help information for read command', async () => {
       const helpOutput = await captureHelpOutput(['node', 'ya-modbus', 'read', '--help'])
@@ -162,7 +174,7 @@ describe('CLI Entry Point - Integration Tests', () => {
                                   not specified
 
         TCP Connection (choose this OR RTU):
-          -h, --host <host>       TCP host for Modbus TCP (e.g., 192.168.1.100)
+          --host <host>           TCP host for Modbus TCP (e.g., 192.168.1.100)
           --tcp-port <port>       TCP port (default: 502)
 
         Data Selection:
@@ -174,7 +186,7 @@ describe('CLI Entry Point - Integration Tests', () => {
                                   (default: "table")
 
         Options:
-          --help                  display help for command
+          -h, --help              display help for command
         "
       `)
     })
@@ -456,7 +468,7 @@ describe('CLI Entry Point - Integration Tests', () => {
                                   not specified
 
         TCP Connection (choose this OR RTU):
-          -h, --host <host>       TCP host for Modbus TCP (e.g., 192.168.1.100)
+          --host <host>           TCP host for Modbus TCP (e.g., 192.168.1.100)
           --tcp-port <port>       TCP port (default: 502)
 
         Data Options:
@@ -468,7 +480,7 @@ describe('CLI Entry Point - Integration Tests', () => {
           --verify                Read back and verify written value
 
         Options:
-          --help                  display help for command
+          -h, --help              display help for command
         "
       `)
     })
