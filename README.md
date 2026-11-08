@@ -38,14 +38,14 @@ Or run a tool without installing it. Each command has a short package name:
 ### Basic Usage
 
 ```bash
-# Start bridge with configuration file
-ya-modbus bridge --config config.json
+# Start the MQTT bridge with a configuration file (package @ya-modbus/mqtt-bridge)
+ya-modbus-bridge run --config config.json
 
-# Discover devices on serial bus
-ya-modbus discover /dev/ttyUSB0
+# Find devices on a serial bus
+ya-modbus discover --port /dev/ttyUSB0
 
-# Test device connectivity
-ya-modbus test --device SDM630 --port /dev/ttyUSB0 --slave 1
+# Read all data points from one device
+ya-modbus read --driver @ya-modbus/driver-xymd1 --port /dev/ttyUSB0 --slave-id 1 --all
 ```
 
 ### Configuration Example
@@ -187,7 +187,7 @@ Device drivers can be distributed as independent npm packages:
 
 ```bash
 # Install bridge + third-party driver
-npm install -g @ya-modbus/cli ya-modbus-driver-solar
+npm install -g @ya-modbus/mqtt-bridge ya-modbus-driver-solar
 
 # Use in configuration
 {
@@ -261,7 +261,7 @@ npm run dev
 ```
 packages/
 ├── mqtt-bridge/      # Bridge orchestration, MQTT publishing, polling
-├── cli/              # Command-line tool (test, provision, monitor)
+├── cli/              # Command-line tool (read, write, discover)
 ├── transport/        # RTU/TCP transport implementations
 ├── driver-types/     # TypeScript type definitions
 ├── driver-sdk/       # Runtime SDK for driver development
