@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.16.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.16.0...@ya-modbus/cli@0.16.1) (2026-11-08)
+
+### Bug Fixes
+
+- **cli:** count Modbus requests, not data points, in the read performance output ([#743](https://github.com/groupsky/ya-modbus/issues/743)) ([3520048](https://github.com/groupsky/ya-modbus/commit/352004829cd972fde6553ae6489adc44d42d0cd7)), closes [#608](https://github.com/groupsky/ya-modbus/issues/608)
+
 # [0.16.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.15.3...@ya-modbus/cli@0.16.0) (2026-11-04)
 
 ### Features
