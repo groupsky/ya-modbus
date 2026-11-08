@@ -639,10 +639,18 @@ Temperature      24.5       °C
 Humidity         65.2       %
 
 Performance:
-  Response time: 45ms
-  Operations: 2
-  Errors: 0
+  Response time: 45.0ms
+  Requests: 1
+  Retries: 0
+  Data points: 2
 ```
+
+`Requests` counts the Modbus requests sent on the bus. The driver reads
+neighbouring registers together, so one request can give many data points.
+`Retries` counts extra attempts after a failed one. With `--format json` the
+same numbers are in `performance.requests`, `performance.retries` and
+`performance.dataPoints`. The old `performance.operations` key (the number of
+data points) is still there for one release.
 
 ### Write and verify setpoint
 

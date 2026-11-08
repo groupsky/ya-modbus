@@ -355,6 +355,7 @@ describe('Write Command', () => {
       host: '192.168.1.100',
       port: 5020,
       slaveId: 1,
+      logger: expect.any(Function),
     })
 
     expect(mockDriver.writeDataPoint).toHaveBeenCalledWith('setpoint', 25.0)
@@ -668,6 +669,7 @@ describe('Write Command', () => {
       host: '192.168.1.100',
       port: 502,
       slaveId: 1,
+      logger: expect.any(Function),
     })
   })
 
@@ -690,6 +692,7 @@ describe('Write Command', () => {
       parity: 'even',
       stopBits: 1,
       slaveId: 1,
+      logger: expect.any(Function),
     })
   })
 
@@ -889,7 +892,7 @@ describe('Write Command', () => {
 
     await writeCommand({ port: '/dev/ttyUSB0', dataPoint: 'setpoint', value: '25.0', yes: true })
 
-    expect(mockCreateDriver).toHaveBeenCalledWith({ transport: mockTransport, slaveId: 5 })
+    expect(mockCreateDriver).toHaveBeenCalledWith({ transport: expect.any(Object), slaveId: 5 })
     expect(consoleWarnSpy).toHaveBeenCalledWith('Using slave ID 5 (driver default)')
   })
 
