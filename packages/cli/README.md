@@ -100,7 +100,7 @@ failed:
 ```
 
 The exit code is 1 when any data point failed. If the first 3 single reads all
-fail, `read` stops and shows the first error, so a device that is off does not
+fail, `read` stops and shows the error from reading all data points at once, so a device that is off does not
 cost many timeouts. It does the same when every data point fails. A single
 data point that fails is an error, as before.
 
