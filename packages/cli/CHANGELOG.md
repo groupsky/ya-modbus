@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.17.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.16.1...@ya-modbus/cli@0.17.0) (2026-11-08)
+
+### Features
+
+- **cli:** read prints the values it got and lists the failed data points ([#745](https://github.com/groupsky/ya-modbus/issues/745)) ([800cb2f](https://github.com/groupsky/ya-modbus/commit/800cb2f5dc16a325ad9b2f9af79a5c57cd1bbaa7)), closes [#606](https://github.com/groupsky/ya-modbus/issues/606)
+
 ## [0.16.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.16.0...@ya-modbus/cli@0.16.1) (2026-11-08)
 
 ### Bug Fixes
