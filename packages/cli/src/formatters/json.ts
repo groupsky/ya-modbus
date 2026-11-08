@@ -1,5 +1,7 @@
 import type { DataPoint } from '@ya-modbus/driver-types'
 
+import type { PerformanceMetrics } from './performance.js'
+
 /**
  * Metadata for JSON output
  */
@@ -16,11 +18,10 @@ export interface JSONMetadata {
     | undefined
   /** Performance metrics */
   performance?:
-    | {
-        responseTimeMs: number
-        operations: number
-        errors: number
-      }
+    | (PerformanceMetrics & {
+        /** @deprecated Same as `dataPoints`; kept for one release */
+        operations?: number
+      })
     | undefined
 }
 

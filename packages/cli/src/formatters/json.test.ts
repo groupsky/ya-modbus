@@ -80,8 +80,9 @@ describe('JSON Formatter', () => {
     const values = { test: 100 }
     const performance = {
       responseTimeMs: 45,
-      operations: 1,
-      errors: 0,
+      requests: 1,
+      retries: 0,
+      dataPoints: 1,
     }
 
     const result = formatJSON(dataPoints, values, { performance })
@@ -147,8 +148,10 @@ describe('JSON Formatter', () => {
       connection: { port: '/dev/ttyUSB0', slaveId: 1 },
       performance: {
         responseTimeMs: 45,
+        requests: 1,
+        retries: 0,
+        dataPoints: 2,
         operations: 2,
-        errors: 0,
       },
     }
 
@@ -184,9 +187,11 @@ describe('JSON Formatter', () => {
         ],
         "driver": "@ya-modbus/driver-xymd1",
         "performance": {
-          "errors": 0,
+          "dataPoints": 2,
           "operations": 2,
+          "requests": 1,
           "responseTimeMs": 45,
+          "retries": 0,
         },
       }
     `)

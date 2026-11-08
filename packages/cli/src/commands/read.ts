@@ -45,7 +45,7 @@ export interface ReadOptions {
 export async function readCommand(options: ReadOptions): Promise<void> {
   const startTime = performance.now()
 
-  await withDriver(options, async (driver, mergedOptions) => {
+  await withDriver(options, async (driver, mergedOptions, stats) => {
     // Determine which data points to read
     let dataPointIds: string[]
 
@@ -87,8 +87,9 @@ export async function readCommand(options: ReadOptions): Promise<void> {
     const endTime = performance.now()
     const metrics: PerformanceMetrics = {
       responseTimeMs: endTime - startTime,
-      operations: dataPointIds.length,
-      errors: 0, // Errors cause exceptions, so this is always 0 for successful reads
+      requests: stats.requests,
+      retries: stats.retries,
+      dataPoints: dataPointIds.length,
     }
 
     // Format output
@@ -103,7 +104,7 @@ export async function readCommand(options: ReadOptions): Promise<void> {
             : mergedOptions.port
               ? { port: mergedOptions.port, slaveId: mergedOptions.slaveId }
               : undefined,
-          performance: metrics,
+          performance: { ...metrics, operations: metrics.dataPoints },
         }
       )
       console.log(output)

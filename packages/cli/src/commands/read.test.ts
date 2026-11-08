@@ -103,6 +103,7 @@ describe('Read Command', () => {
     expect(transportFactory.createTransport).toHaveBeenCalledWith({
       port: '/dev/ttyUSB0',
       slaveId: 1,
+      logger: expect.any(Function),
       baudRate: 9600,
       parity: 'even',
       dataBits: 8,
@@ -114,7 +115,7 @@ describe('Read Command', () => {
 
     // Verify driver was created with transport
     expect(mockCreateDriver).toHaveBeenCalledWith({
-      transport: mockTransport,
+      transport: expect.any(Object),
       slaveId: 1,
     })
 
@@ -252,6 +253,7 @@ describe('Read Command', () => {
       host: '192.168.1.100',
       port: 5020,
       slaveId: 1,
+      logger: expect.any(Function),
     })
   })
 
@@ -268,7 +270,7 @@ describe('Read Command', () => {
     })
 
     expect(transportFactory.createTransport).toHaveBeenCalledWith(
-      expect.objectContaining({ maxRetries: 1, retryDelay: 0, logger: undefined })
+      expect.objectContaining({ maxRetries: 1, retryDelay: 0 })
     )
   })
 
@@ -366,28 +368,53 @@ describe('Read Command', () => {
     expect(driverLoader.loadDriver).toHaveBeenCalledWith({})
   })
 
-  test('should measure performance metrics', async () => {
-    const options = {
-      port: '/dev/ttyUSB0',
-      slaveId: 1,
-      baudRate: 9600,
-      parity: 'even',
-      dataBits: 8,
-      stopBits: 1,
-      dataPoint: ['temperature'],
-      format: 'table',
+  describe('performance', () => {
+    // A driver that reads both data points with one request, and a bus that
+    // fails that request once before it succeeds
+    const readAllWithOneRetry = async (format: 'table' | 'json'): Promise<string> => {
+      jest.mocked(transportFactory.createTransport).mockImplementation((config) => {
+        mockTransport.readHoldingRegisters.mockImplementation(() => {
+          config.logger?.(1, new Error('Timeout'))
+          return Promise.resolve(Buffer.alloc(4))
+        })
+        return Promise.resolve(mockTransport)
+      })
+      mockCreateDriver.mockImplementation(({ transport }: { transport: Transport }) => {
+        mockDriver.readDataPoints.mockImplementation(async () => {
+          await transport.readHoldingRegisters(0, 2)
+          return { temperature: 24.5, humidity: 65.2 }
+        })
+        return Promise.resolve(mockDriver)
+      })
+
+      await readCommand({ port: '/dev/ttyUSB0', slaveId: 1, all: true, format })
+
+      return consoleLogSpy.mock.calls.map((call) => String(call[0])).join('\n')
     }
 
-    mockDriver.readDataPoint.mockResolvedValue(24.5)
+    test('should count Modbus requests and retries, not data points', async () => {
+      const output = await readAllWithOneRetry('table')
 
-    await readCommand(options)
+      expect(output).toContain('Response time')
+      expect(output).toContain('Requests: 1')
+      expect(output).toContain('Retries: 1')
+      expect(output).toContain('Data points: 2')
+      expect(output).not.toContain('Operations')
+      expect(output).not.toContain('Errors')
+      expect(consoleWarnSpy).not.toHaveBeenCalledWith(expect.stringContaining('Attempt 1'))
+    })
 
-    // Verify performance metrics are in output (real formatter used)
-    const output = consoleLogSpy.mock.calls.map((call) => call[0]).join('\n')
-    expect(output).toContain('Performance')
-    expect(output).toContain('Response time')
-    expect(output).toContain('Operations: 1')
-    expect(output).toContain('Errors: 0')
+    test('should give the counts in JSON and keep the old operations key', async () => {
+      const output = await readAllWithOneRetry('json')
+
+      expect(JSON.parse(output).performance).toEqual({
+        responseTimeMs: expect.any(Number),
+        requests: 1,
+        retries: 1,
+        dataPoints: 2,
+        operations: 2,
+      })
+    })
   })
 
   test('should handle errors gracefully', async () => {
@@ -552,6 +579,7 @@ describe('Read Command', () => {
       host: '192.168.1.100',
       port: 502,
       slaveId: 1,
+      logger: expect.any(Function),
     })
   })
 
@@ -578,6 +606,7 @@ describe('Read Command', () => {
       parity: 'even',
       stopBits: 1,
       slaveId: 1,
+      logger: expect.any(Function),
     })
   })
 
@@ -646,7 +675,7 @@ describe('Read Command', () => {
 
       await readCommand({ ...rtuOptions, slaveId: 3 })
 
-      expect(mockCreateDriver).toHaveBeenCalledWith({ transport: mockTransport, slaveId: 3 })
+      expect(mockCreateDriver).toHaveBeenCalledWith({ transport: expect.any(Object), slaveId: 3 })
       expect(consoleWarnSpy).not.toHaveBeenCalled()
     })
 
@@ -660,7 +689,7 @@ describe('Read Command', () => {
 
       await readCommand(rtuOptions)
 
-      expect(mockCreateDriver).toHaveBeenCalledWith({ transport: mockTransport, slaveId: 5 })
+      expect(mockCreateDriver).toHaveBeenCalledWith({ transport: expect.any(Object), slaveId: 5 })
       expect(consoleWarnSpy).toHaveBeenCalledWith('Using slave ID 5 (driver default)')
       // stdout stays free of the note, so JSON and piped output keep working
       expect(consoleLogSpy.mock.calls.flat().join('\n')).not.toContain('driver default')

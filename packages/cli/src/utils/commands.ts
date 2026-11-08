@@ -248,6 +248,37 @@ export interface TransportOptions {
 }
 
 /**
+ * Modbus traffic counted during one command
+ */
+export interface BusStats {
+  /** Requests the driver sent (a retried request counts once) */
+  requests: number
+  /** Extra attempts sent after a failed attempt */
+  retries: number
+}
+
+/**
+ * Wrap a transport so that each request is counted in `stats`
+ */
+export function countRequests(transport: Transport, stats: BusStats): Transport {
+  const count = <T>(request: () => Promise<T>): Promise<T> => {
+    stats.requests++
+    return request()
+  }
+  return {
+    readHoldingRegisters: (a, n) => count(() => transport.readHoldingRegisters(a, n)),
+    readInputRegisters: (a, n) => count(() => transport.readInputRegisters(a, n)),
+    readCoils: (a, n) => count(() => transport.readCoils(a, n)),
+    readDiscreteInputs: (a, n) => count(() => transport.readDiscreteInputs(a, n)),
+    writeSingleRegister: (a, v) => count(() => transport.writeSingleRegister(a, v)),
+    writeMultipleRegisters: (a, v) => count(() => transport.writeMultipleRegisters(a, v)),
+    writeSingleCoil: (a, v) => count(() => transport.writeSingleCoil(a, v)),
+    writeMultipleCoils: (a, v) => count(() => transport.writeMultipleCoils(a, v)),
+    close: () => transport.close(),
+  }
+}
+
+/**
  * Options for loading a driver
  */
 export interface DriverOptions {
@@ -261,23 +292,29 @@ export interface DriverOptions {
  *
  * @param options - Transport configuration options
  * @param fn - Function to execute with the transport
+ * @param stats - When given, requests and retries are counted here
  * @returns Result of the function
  */
 export async function withTransport<T>(
   options: TransportOptions,
-  fn: (transport: Transport) => Promise<T>
+  fn: (transport: Transport) => Promise<T>,
+  stats?: BusStats
 ): Promise<T> {
   const retry = {
     maxRetries: options.attempts,
     retryDelay: options.retryDelay,
-    logger: options.verbose
-      ? (attempt: number, error: Error): void => {
-          console.warn(
-            `Attempt ${attempt} of ${options.attempts ?? MAX_RETRIES} failed: ${error.message}. ` +
-              `Retrying in ${options.retryDelay ?? RETRY_DELAY_MS} ms`
-          )
-        }
-      : undefined,
+    logger:
+      options.verbose || stats
+        ? (attempt: number, error: Error): void => {
+            if (stats) stats.retries++
+            if (options.verbose) {
+              console.warn(
+                `Attempt ${attempt} of ${options.attempts ?? MAX_RETRIES} failed: ${error.message}. ` +
+                  `Retrying in ${options.retryDelay ?? RETRY_DELAY_MS} ms`
+              )
+            }
+          }
+        : undefined,
   }
 
   // Build transport configuration
@@ -311,7 +348,7 @@ export async function withTransport<T>(
   const transport: Transport = await createTransport(transportConfig)
 
   try {
-    return await fn(transport)
+    return await fn(stats ? countRequests(transport, stats) : transport)
   } finally {
     // Always close the transport to release resources and allow process to exit
     await transport.close()
@@ -395,7 +432,7 @@ export async function withDriver<T>(
     driver?: string
     device?: string
   },
-  fn: (driver: DeviceDriver, mergedOptions: TransportOptions) => Promise<T>
+  fn: (driver: DeviceDriver, mergedOptions: TransportOptions, stats: BusStats) => Promise<T>
 ): Promise<T> {
   // Reject conflicting RTU/TCP options before any I/O
   validateConnectionOptions(options)
@@ -452,17 +489,22 @@ export async function withDriver<T>(
 
   // Create transport with merged options
   const resolvedOptions = { ...mergedOptions, slaveId }
-  return await withTransport(resolvedOptions, async (transport) => {
-    // Create driver instance
-    return await withDriverInstance(
-      transport,
-      driverMetadata,
-      slaveId,
-      options.device,
-      async (driver) => {
-        // Execute callback with driver and merged options
-        return await fn(driver, resolvedOptions)
-      }
-    )
-  })
+  const stats: BusStats = { requests: 0, retries: 0 }
+  return await withTransport(
+    resolvedOptions,
+    async (transport) => {
+      // Create driver instance
+      return await withDriverInstance(
+        transport,
+        driverMetadata,
+        slaveId,
+        options.device,
+        async (driver) => {
+          // Execute callback with driver, merged options and traffic counts
+          return await fn(driver, resolvedOptions, stats)
+        }
+      )
+    },
+    stats
+  )
 }

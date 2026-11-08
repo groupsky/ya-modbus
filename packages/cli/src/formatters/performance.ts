@@ -6,10 +6,12 @@ import chalk from 'chalk'
 export interface PerformanceMetrics {
   /** Total response time in milliseconds */
   responseTimeMs: number
-  /** Number of operations performed */
-  operations: number
-  /** Number of errors encountered */
-  errors: number
+  /** Modbus requests sent (a retried request counts once) */
+  requests: number
+  /** Extra attempts sent after a failed attempt */
+  retries: number
+  /** Data points read */
+  dataPoints: number
 }
 
 /**
@@ -19,20 +21,14 @@ export interface PerformanceMetrics {
  * @returns Formatted string with performance info
  */
 export function formatPerformance(metrics: PerformanceMetrics): string {
-  const { responseTimeMs, operations, errors } = metrics
+  const { responseTimeMs, requests, retries, dataPoints } = metrics
+  const retriesLine = `  Retries: ${retries}`
 
-  const lines = [
+  return [
     chalk.bold('\nPerformance:'),
     `  Response time: ${responseTimeMs.toFixed(1)}ms`,
-    `  Operations: ${operations}`,
-  ]
-
-  // Highlight errors if present
-  if (errors > 0) {
-    lines.push(chalk.red(`  Errors: ${errors}`))
-  } else {
-    lines.push(chalk.green(`  Errors: ${errors}`))
-  }
-
-  return lines.join('\n')
+    `  Requests: ${requests}`,
+    retries > 0 ? chalk.yellow(retriesLine) : retriesLine,
+    `  Data points: ${dataPoints}`,
+  ].join('\n')
 }
