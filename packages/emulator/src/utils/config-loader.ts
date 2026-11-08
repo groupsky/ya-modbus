@@ -29,15 +29,27 @@ export async function loadConfig(filePath: string): Promise<ConfigFile> {
   // Read file content
   const content = await readFile(filePath, 'utf-8')
 
+  if (content.trim() === '') {
+    throw new Error(`Configuration file ${filePath} is empty`)
+  }
+
   // Parse based on file extension
-  let config: unknown
+  let parse: (text: string) => unknown
 
   if (filePath.endsWith('.yaml') || filePath.endsWith('.yml')) {
-    config = load(content)
+    parse = load
   } else if (filePath.endsWith('.json')) {
-    config = JSON.parse(content)
+    parse = JSON.parse
   } else {
     throw new Error('Unsupported config format. Use .yaml, .yml, or .json')
+  }
+
+  let config: unknown
+  try {
+    config = parse(content)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`Cannot parse configuration file ${filePath}: ${message}`, { cause: error })
   }
 
   // Validate configuration
