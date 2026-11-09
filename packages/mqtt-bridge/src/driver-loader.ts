@@ -177,7 +177,10 @@ export class DriverLoader {
   private readonly deviceTransports = new Map<string, Transport>()
   private readonly deviceTransportConfigs = new Map<string, TransportConfig>()
   // Loads that are not finished, by device ID; unloadDriver() marks them removed
-  private readonly loads = new Map<string, { removed: boolean; done: Promise<unknown> }>()
+  private readonly loads = new Map<
+    string,
+    { state: { removed: boolean }; done: Promise<unknown> }
+  >()
   private readonly loadDriverFn: LoadDriverFunction
   private readonly transportManager: TransportManager
 
@@ -215,8 +218,9 @@ export class DriverLoader {
     model?: string
   ): Promise<DeviceDriver> {
     if (deviceId === undefined) return this.createInstance(driverName, connection, deviceId, model)
-    const instance = this.createInstance(driverName, connection, deviceId, model)
-    const load = { removed: false, done: instance.catch(() => undefined) }
+    const state = { removed: false }
+    const instance = this.createInstance(driverName, connection, deviceId, model, state)
+    const load = { state, done: instance.catch(() => undefined) }
     this.loads.set(deviceId, load)
     try {
       return await instance
@@ -229,7 +233,8 @@ export class DriverLoader {
     driverName: string,
     connection: DeviceConnection,
     deviceId: string | undefined,
-    model: string | undefined
+    model: string | undefined,
+    load?: { removed: boolean }
   ): Promise<DeviceDriver> {
     const loaded = await loadDriverByName(driverName, this.loadDriverFn)
     const { packageName } = loaded
@@ -282,7 +287,7 @@ export class DriverLoader {
       throw error
     }
 
-    if (deviceId !== undefined && this.loads.get(deviceId)?.removed) {
+    if (load?.removed) {
       try {
         await driver.destroy?.()
       } finally {
@@ -312,7 +317,7 @@ export class DriverLoader {
   async unloadDriver(deviceId: string): Promise<void> {
     const load = this.loads.get(deviceId)
     if (load) {
-      load.removed = true
+      load.state.removed = true
       await load.done
     }
 

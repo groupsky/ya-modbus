@@ -70,7 +70,7 @@ describe('DriverLoader unloadDriver while the driver loads', () => {
     )
   })
 
-  it('releases the transport when the load fails after the unload', async () => {
+  it('releases the transport once when the load fails after the unload', async () => {
     const transportManager = createTransportManager()
     const slow = createSlowDriver()
     slow.driver.initialize = async () => {
