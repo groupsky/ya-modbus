@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.35.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.35.2...@ya-modbus/mqtt-bridge@0.35.3) (2026-11-09)
+
+### Bug Fixes
+
+- **mqtt-bridge:** release the transport of a device removed while its driver loads ([#760](https://github.com/groupsky/ya-modbus/issues/760)) ([4cdbf39](https://github.com/groupsky/ya-modbus/commit/4cdbf3927da360f5e8437a9d642b90026eac5e4d)), closes [#594](https://github.com/groupsky/ya-modbus/issues/594)
+
 ## [0.35.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.35.1...@ya-modbus/mqtt-bridge@0.35.2) (2026-11-09)
 
 ### Bug Fixes
