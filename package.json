@@ -74,7 +74,7 @@
     "husky": "^9.1.7",
     "jest": "^30.2.0",
     "lint-staged": "^17.6.0",
-    "pkg-pr-new": "^0.0.92",
+    "pkg-pr-new": "^0.0.93",
     "prettier": "^3.1.1",
     "publint": "^0.3.16",
     "ts-jest": "^29.1.1",
