@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.35.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.35.1...@ya-modbus/mqtt-bridge@0.35.2) (2026-11-09)
+
+### Bug Fixes
+
+- declare and stop publishing the imports of test helpers ([#750](https://github.com/groupsky/ya-modbus/issues/750)) ([b3dde85](https://github.com/groupsky/ya-modbus/commit/b3dde850f3ba872e761021ccc82ff2ba4cc379c2)), closes [#597](https://github.com/groupsky/ya-modbus/issues/597) [#597](https://github.com/groupsky/ya-modbus/issues/597)
+
 ## [0.35.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.35.0...@ya-modbus/mqtt-bridge@0.35.1) (2026-11-08)
 
 **Note:** Version bump only for package @ya-modbus/mqtt-bridge
