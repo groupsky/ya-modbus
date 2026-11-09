@@ -66,9 +66,13 @@
     "@ya-modbus/driver-types": "^0.8.3"
   },
   "peerDependencies": {
+    "@jest/globals": ">=29.0.0",
     "jest": ">=29.0.0"
   },
   "peerDependenciesMeta": {
+    "@jest/globals": {
+      "optional": true
+    },
     "jest": {
       "optional": true
     }
