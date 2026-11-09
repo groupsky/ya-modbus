@@ -176,6 +176,11 @@ export class DriverLoader {
   private readonly devicePackages = new Map<string, string>()
   private readonly deviceTransports = new Map<string, Transport>()
   private readonly deviceTransportConfigs = new Map<string, TransportConfig>()
+  // Loads that are not finished, by device ID; unloadDriver() marks them removed
+  private readonly loads = new Map<
+    string,
+    { state: { removed: boolean }; done: Promise<unknown> }
+  >()
   private readonly loadDriverFn: LoadDriverFunction
   private readonly transportManager: TransportManager
 
@@ -203,12 +208,33 @@ export class DriverLoader {
    *   setting or the slave ID
    * @throws Error if the model is not one of the driver's DEVICES
    * @throws DriverNotFoundError if no package of the name is installed
+   * @throws Error if unloadDriver() is called for the device while it loads. The transport of
+   *   the load is released.
    */
   async loadDriver(
     driverName: string,
     connection: DeviceConnection,
     deviceId?: string,
     model?: string
+  ): Promise<DeviceDriver> {
+    if (deviceId === undefined) return this.createInstance(driverName, connection, deviceId, model)
+    const state = { removed: false }
+    const instance = this.createInstance(driverName, connection, deviceId, model, state)
+    const load = { state, done: instance.catch(() => undefined) }
+    this.loads.set(deviceId, load)
+    try {
+      return await instance
+    } finally {
+      if (this.loads.get(deviceId) === load) this.loads.delete(deviceId)
+    }
+  }
+
+  private async createInstance(
+    driverName: string,
+    connection: DeviceConnection,
+    deviceId: string | undefined,
+    model: string | undefined,
+    load?: { removed: boolean }
   ): Promise<DeviceDriver> {
     const loaded = await loadDriverByName(driverName, this.loadDriverFn)
     const { packageName } = loaded
@@ -261,6 +287,15 @@ export class DriverLoader {
       throw error
     }
 
+    if (load?.removed) {
+      try {
+        await driver.destroy?.()
+      } finally {
+        await this.transportManager.releaseTransport(transport)
+      }
+      throw new Error(`Device ${deviceId} was removed while its driver was loading`)
+    }
+
     // Cache instance if deviceId provided
     if (deviceId) {
       this.driverInstances.set(deviceId, driver)
@@ -274,11 +309,18 @@ export class DriverLoader {
 
   /**
    * Unload a driver instance and release its transport. The port closes when no other device
-   * uses it.
+   * uses it. A driver that is still loading is stopped: this waits until its load ends and
+   * releases its transport, and the load fails.
    *
    * @param deviceId - Device identifier
    */
   async unloadDriver(deviceId: string): Promise<void> {
+    const load = this.loads.get(deviceId)
+    if (load) {
+      load.state.removed = true
+      await load.done
+    }
+
     const driver = this.driverInstances.get(deviceId)
     const transport = this.deviceTransports.get(deviceId)
 
