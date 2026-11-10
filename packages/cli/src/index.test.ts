@@ -1198,4 +1198,47 @@ describe('CLI Entry Point - Integration Tests', () => {
       }
     })
   })
+
+  describe('Whole number flags', () => {
+    const cases: Array<[string, string[], string, string]> = [
+      ['read', ['--port', '/dev/ttyUSB0', '--all'], '--timeout <ms>', '1.5s'],
+      ['read', ['--port', '/dev/ttyUSB0', '--all'], '--slave-id <id>', '2.5'],
+      ['read', ['--port', '/dev/ttyUSB0', '--all'], '--baud-rate <rate>', '96OO'],
+      ['read', ['--port', '/dev/ttyUSB0', '--all'], '--data-bits <bits>', '8.0'],
+      ['read', ['--port', '/dev/ttyUSB0', '--all'], '--stop-bits <bits>', 'one'],
+      ['read', ['--host', 'localhost', '--all'], '--tcp-port <port>', '502x'],
+      [
+        'write',
+        ['--port', '/dev/ttyUSB0', '--data-point', 'x', '--value', '1'],
+        '--timeout <ms>',
+        '2.5',
+      ],
+      ['discover', ['--port', '/dev/ttyUSB0'], '--timeout <ms>', '100ms'],
+      ['discover', ['--port', '/dev/ttyUSB0'], '--delay <ms>', '0.5'],
+      ['discover', ['--port', '/dev/ttyUSB0'], '--max-devices <count>', '3x'],
+    ]
+
+    it.each(cases)('%s rejects %s %p', async (command, rest, flag, value) => {
+      const stderrWriteSpy = jest.spyOn(process.stderr, 'write').mockImplementation()
+      const flagName = flag.split(' ')[0] as string
+
+      try {
+        await expect(
+          program.parseAsync(['node', 'ya-modbus', command, ...rest, flagName, value])
+        ).rejects.toThrow('process.exit called')
+
+        expect(stderrWriteSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            `${flag}' argument '${value}' is invalid. Expected a whole number`
+          )
+        )
+        expect(processExitSpy).toHaveBeenCalledWith(1)
+        expect(readModule.readCommand).not.toHaveBeenCalled()
+        expect(writeModule.writeCommand).not.toHaveBeenCalled()
+        expect(discoverModule.discoverCommand).not.toHaveBeenCalled()
+      } finally {
+        stderrWriteSpy.mockRestore()
+      }
+    })
+  })
 })
