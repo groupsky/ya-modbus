@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.36.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.35.3...@ya-modbus/mqtt-bridge@0.36.0) (2026-11-10)
+
+### Features
+
+- **mqtt-bridge:** add polling.retryDelay, make interval optional in continuous mode ([#729](https://github.com/groupsky/ya-modbus/issues/729)) ([f822ba3](https://github.com/groupsky/ya-modbus/commit/f822ba3867026ede6a6b29330112ee287e0719a3)), closes [#616](https://github.com/groupsky/ya-modbus/issues/616) [#616](https://github.com/groupsky/ya-modbus/issues/616) [#616](https://github.com/groupsky/ya-modbus/issues/616)
+
 ## [0.35.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.35.2...@ya-modbus/mqtt-bridge@0.35.3) (2026-11-09)
 
 ### Bug Fixes
