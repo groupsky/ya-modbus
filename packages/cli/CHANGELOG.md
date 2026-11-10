@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.18.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.18.0...@ya-modbus/cli@0.18.1) (2026-11-10)
+
+**Note:** Version bump only for package @ya-modbus/cli
+
 # [0.18.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.17.1...@ya-modbus/cli@0.18.0) (2026-11-09)
 
 - fix(cli)!: -h shows help on read and write (#746) ([](https://github.com/groupsky/ya-modbus/commit/)), closes [#746](https://github.com/groupsky/ya-modbus/issues/746) [#615](https://github.com/groupsky/ya-modbus/issues/615)
