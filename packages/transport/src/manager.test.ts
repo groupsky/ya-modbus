@@ -953,7 +953,7 @@ describe('TransportManager', () => {
         await expect(transport.readHoldingRegisters(0, 1)).rejects.toMatchObject({
           name: 'ConnectionLostError',
           message: expect.stringContaining(
-            'Connection to /dev/ttyUSB0 lost: Error: No such file or directory, cannot open /dev/ttyUSB0'
+            'Connection to /dev/ttyUSB0 lost: No such file or directory, cannot open /dev/ttyUSB0'
           ),
         })
         attempts++
@@ -1154,7 +1154,7 @@ describe('TransportManager', () => {
     const missing = {
       name: 'ConnectionLostError',
       message: expect.stringContaining(
-        'Could not open /dev/ttyUSB0: Error: No such file or directory, cannot open /dev/ttyUSB0'
+        'Could not open /dev/ttyUSB0: No such file or directory, cannot open /dev/ttyUSB0'
       ),
     }
 
@@ -1177,7 +1177,7 @@ describe('TransportManager', () => {
     // One-shot programs stop with a clear error
     test('getTransport rejects by default', async () => {
       await expect(manager.getTransport(rtuConfig)).rejects.toThrow(
-        'Error: No such file or directory, cannot open /dev/ttyUSB0'
+        'No such file or directory, cannot open /dev/ttyUSB0'
       )
     })
 

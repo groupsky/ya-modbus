@@ -48,3 +48,27 @@ export async function connectTCP(
     throw error
   }
 }
+
+/**
+ * Connect a modbus-serial client to a serial port
+ *
+ * The serial port library starts the message of a port that cannot be opened with "Error: "
+ * ("Error: No such file or directory, cannot open /dev/ttyUSB0"). Callers that print
+ * `Error: ${message}` would show it twice, so this removes it.
+ *
+ * @param client - New modbus-serial client
+ * @param port - Serial port path
+ * @param options - Serial settings
+ */
+export async function connectRTU(
+  client: ModbusRTU,
+  port: string,
+  options: Parameters<ModbusRTU['connectRTUBuffered']>[1]
+): Promise<void> {
+  try {
+    await client.connectRTUBuffered(port, options)
+  } catch (error) {
+    if (error instanceof Error) error.message = error.message.replace(/^Error: /, '')
+    throw error
+  }
+}

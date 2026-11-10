@@ -179,7 +179,7 @@ describe('serial adapter that is gone', () => {
       await reopenAttempt
       await failedAfterReopen
       expect(bridge.getDevice('meter')?.errors).toEqual([
-        'Connection to /dev/ttyUSB0 lost: Error: No such file or directory, cannot open /dev/ttyUSB0 (/dev/ttyUSB0 9600 8N1, slave 1, FC03 read holding registers, address 0 (0x0000), count 1)',
+        'Connection to /dev/ttyUSB0 lost: No such file or directory, cannot open /dev/ttyUSB0 (/dev/ttyUSB0 9600 8N1, slave 1, FC03 read holding registers, address 0 (0x0000), count 1)',
       ])
 
       // Plug in again: after the doubled backoff the next poll reopens the port and reads
@@ -207,7 +207,7 @@ describe('serial adapter that is gone', () => {
     await bridge.start()
     unplugged.add('/dev/ttyUSB1')
     const missing =
-      'Could not open /dev/ttyUSB1: Error: No such file or directory, cannot open /dev/ttyUSB1'
+      'Could not open /dev/ttyUSB1: No such file or directory, cannot open /dev/ttyUSB1'
     // Two devices on the missing adapter, and one on another adapter
     const missing1 = meter('missing1', '/dev/ttyUSB1')
     const missing2 = {

@@ -2,7 +2,7 @@ import type { Transport } from '@ya-modbus/driver-types'
 import { Mutex } from 'async-mutex'
 import ModbusRTU from 'modbus-serial'
 
-import { connectTCP, DEFAULT_TIMEOUT_MS } from './client-config.js'
+import { connectRTU, connectTCP, DEFAULT_TIMEOUT_MS } from './client-config.js'
 import { ModbusConnection } from './connection.js'
 import type { RTUConfig, TCPConfig, TransportConfig } from './factory.js'
 import { LastRequest } from './last-request.js'
@@ -288,7 +288,7 @@ export class TransportManager {
   private async createRTUClient(config: RTUConfig): Promise<ModbusRTU> {
     const client = new ModbusRTU()
 
-    await client.connectRTUBuffered(config.port, {
+    await connectRTU(client, config.port, {
       baudRate: config.baudRate,
       dataBits: config.dataBits,
       parity: config.parity,
