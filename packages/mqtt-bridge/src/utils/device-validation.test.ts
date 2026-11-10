@@ -486,6 +486,53 @@ describe('validateDeviceConfig', () => {
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
   })
 
+  describe('interval and retryDelay', () => {
+    const build = (polling: object): object => ({
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: { type: 'tcp', host: 'localhost', port: 502, slaveId: 1 },
+      polling,
+    })
+
+    it('should accept a continuous mode config without interval', () => {
+      expect(() => validateDeviceConfig(build({ mode: 'continuous' }))).not.toThrow()
+      expect(() =>
+        validateDeviceConfig(build({ mode: 'continuous', retryDelay: 2000 }))
+      ).not.toThrow()
+    })
+
+    it.each([{}, { mode: 'interval' }])(
+      'should require interval in interval mode: %p',
+      (polling) => {
+        expect(() => validateDeviceConfig(build(polling))).toThrow(
+          "polling.interval: Polling interval is required unless mode is 'continuous'"
+        )
+      }
+    )
+
+    it.each([100, 86400000])('should accept retryDelay %p ms', (retryDelay) => {
+      expect(() => validateDeviceConfig(build({ interval: 1000, retryDelay }))).not.toThrow()
+    })
+
+    it.each([99, 86400001, 1.5])('should reject retryDelay %p ms', (retryDelay) => {
+      expect(() => validateDeviceConfig(build({ interval: 1000, retryDelay }))).toThrow(
+        'polling.retryDelay'
+      )
+    })
+
+    it('should check maxRetryBackoff against the default retryBackoff (2 x retryDelay)', () => {
+      expect(() =>
+        validateDeviceConfig(build({ interval: 1000, retryDelay: 3000, maxRetryBackoff: 5999 }))
+      ).toThrow('Max retry backoff must not be below the retry backoff')
+      expect(() =>
+        validateDeviceConfig(build({ mode: 'continuous', maxRetryBackoff: 9999 }))
+      ).toThrow('Max retry backoff must not be below the retry backoff')
+      expect(() =>
+        validateDeviceConfig(build({ mode: 'continuous', maxRetryBackoff: 10000 }))
+      ).not.toThrow()
+    })
+  })
+
   describe('maxRetryBackoff below the retry backoff', () => {
     const build = (polling: object): object => ({
       deviceId: 'device1',
