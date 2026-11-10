@@ -410,6 +410,28 @@ describe('Validation', () => {
       supportedConfig,
     })
 
+    test('should pass valid values', () => {
+      const metadata = metadataWith({
+        validParity: ['odd'],
+        validDataBits: [8],
+        validStopBits: [1],
+        validAddressRange: [1, 247],
+      })
+
+      expect(() => {
+        validateSerialOptions({ parity: 'odd', dataBits: 8, stopBits: 1, slaveId: 1 }, metadata)
+      }).not.toThrow()
+    })
+
+    test('should pass any value when SUPPORTED_CONFIG is empty', () => {
+      expect(() => {
+        validateSerialOptions(
+          { parity: 'odd', dataBits: 7, stopBits: 2, slaveId: 255 },
+          metadataWith({})
+        )
+      }).not.toThrow()
+    })
+
     test('should check parity', () => {
       expect(() => {
         validateParity('none', metadataWith({ validParity: ['odd'] }))
