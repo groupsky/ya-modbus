@@ -63,6 +63,24 @@ describe('RTU Transport', () => {
     expect(transport).toBeDefined()
   })
 
+  test('should remove the "Error: " that the serial port library puts in the message of a port that cannot be opened', async () => {
+    // The CLIs print `Error: ${message}`, so this prefix printed "Error: Error: ..." (#748)
+    mockModbus.connectRTUBuffered.mockRejectedValue(
+      new Error('Error: No such file or directory, cannot open /dev/ttyNOPE')
+    )
+
+    await expect(
+      createRTUTransport({
+        port: '/dev/ttyNOPE',
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'even',
+        stopBits: 1,
+        slaveId: 1,
+      })
+    ).rejects.toThrow(/^No such file or directory, cannot open \/dev\/ttyNOPE$/)
+  })
+
   test('should read holding registers and return buffer', async () => {
     const config = {
       port: '/dev/ttyUSB0',

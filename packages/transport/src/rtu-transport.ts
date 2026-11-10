@@ -55,12 +55,18 @@ export async function createRTUTransport(config: RTUConfig): Promise<Transport> 
     const client = new ModbusRTU()
 
     // Connect to serial port
-    await client.connectRTUBuffered(config.port, {
-      baudRate: config.baudRate,
-      dataBits: config.dataBits,
-      parity: config.parity,
-      stopBits: config.stopBits,
-    })
+    try {
+      await client.connectRTUBuffered(config.port, {
+        baudRate: config.baudRate,
+        dataBits: config.dataBits,
+        parity: config.parity,
+        stopBits: config.stopBits,
+      })
+    } catch (error) {
+      // The serial port library starts its message with "Error: ", and callers add their own
+      if (error instanceof Error) error.message = error.message.replace(/^Error: /, '')
+      throw error
+    }
 
     configureClient(client, config.slaveId, config.timeout)
     return client
