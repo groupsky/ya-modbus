@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.36.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.1...@ya-modbus/mqtt-bridge@0.36.2) (2026-11-10)
+
+### Bug Fixes
+
+- **transport:** a port that cannot be opened prints 'Error:' once ([#763](https://github.com/groupsky/ya-modbus/issues/763)) ([c9468c9](https://github.com/groupsky/ya-modbus/commit/c9468c955a7fac62d3751b759f592b0682ffa11c)), closes [#748](https://github.com/groupsky/ya-modbus/issues/748)
+
 ## [0.36.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.0...@ya-modbus/mqtt-bridge@0.36.1) (2026-11-10)
 
 **Note:** Version bump only for package @ya-modbus/mqtt-bridge

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.15.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/transport@0.15.0...@ya-modbus/transport@0.15.1) (2026-11-10)
+
+### Bug Fixes
+
+- **transport:** a port that cannot be opened prints 'Error:' once ([#763](https://github.com/groupsky/ya-modbus/issues/763)) ([c9468c9](https://github.com/groupsky/ya-modbus/commit/c9468c955a7fac62d3751b759f592b0682ffa11c)), closes [#748](https://github.com/groupsky/ya-modbus/issues/748)
+
 # [0.15.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/transport@0.14.1...@ya-modbus/transport@0.15.0) (2026-11-04)
 
 ### Features
