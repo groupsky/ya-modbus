@@ -403,6 +403,38 @@ describe('Validation', () => {
     })
   })
 
+  describe('SUPPORTED_CONFIG without validBaudRates', () => {
+    // Each setting used to be skipped when validBaudRates was missing (#734)
+    const metadataWith = (supportedConfig: SupportedSerialConfig): LoadedDriver => ({
+      createDriver: jest.fn(),
+      supportedConfig,
+    })
+
+    test('should check parity', () => {
+      expect(() => {
+        validateParity('none', metadataWith({ validParity: ['odd'] }))
+      }).toThrow(expect.objectContaining({ field: 'parity', value: 'none' }))
+    })
+
+    test('should check data bits', () => {
+      expect(() => {
+        validateDataBits(7, metadataWith({ validDataBits: [8] }))
+      }).toThrow(expect.objectContaining({ field: 'dataBits', value: 7 }))
+    })
+
+    test('should check stop bits', () => {
+      expect(() => {
+        validateStopBits(2, metadataWith({ validStopBits: [1] }))
+      }).toThrow(expect.objectContaining({ field: 'stopBits', value: 2 }))
+    })
+
+    test('should check slave ID', () => {
+      expect(() => {
+        validateSlaveId(248, metadataWith({ validAddressRange: [1, 247] }))
+      }).toThrow(expect.objectContaining({ field: 'slaveId', value: 248 }))
+    })
+  })
+
   describe('Error message formatting', () => {
     test('should include valid values in error message', () => {
       const metadata: LoadedDriver = {
