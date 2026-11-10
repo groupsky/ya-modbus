@@ -1,7 +1,7 @@
 import type { BaudRate, DataBits, Parity, StopBits, Transport } from '@ya-modbus/driver-types'
 import ModbusRTU from 'modbus-serial'
 
-import { configureClient } from './client-config.js'
+import { configureClient, connectRTU } from './client-config.js'
 import { ModbusConnection } from './connection.js'
 import { createModbusTransport } from './create-modbus-transport.js'
 import { formatSerialSettings, withRequestContext } from './request-context.js'
@@ -54,8 +54,7 @@ export async function createRTUTransport(config: RTUConfig): Promise<Transport> 
   const open = async (): Promise<ModbusRTU> => {
     const client = new ModbusRTU()
 
-    // Connect to serial port
-    await client.connectRTUBuffered(config.port, {
+    await connectRTU(client, config.port, {
       baudRate: config.baudRate,
       dataBits: config.dataBits,
       parity: config.parity,
