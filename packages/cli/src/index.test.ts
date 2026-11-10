@@ -1207,6 +1207,8 @@ describe('CLI Entry Point - Integration Tests', () => {
       ['read', ['--port', '/dev/ttyUSB0', '--all'], '--data-bits <bits>', '8.0'],
       ['read', ['--port', '/dev/ttyUSB0', '--all'], '--stop-bits <bits>', 'one'],
       ['read', ['--host', 'localhost', '--all'], '--tcp-port <port>', '502x'],
+      ['read', ['--port', '/dev/ttyUSB0', '--all'], '--attempts <n>', '2.5'],
+      ['read', ['--port', '/dev/ttyUSB0', '--all'], '--retry-delay <ms>', '100ms'],
       [
         'write',
         ['--port', '/dev/ttyUSB0', '--data-point', 'x', '--value', '1'],
