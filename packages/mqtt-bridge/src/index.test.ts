@@ -905,6 +905,53 @@ describe('createBridge', () => {
         expect(device?.connected).toBe(true)
       })
 
+      it('warns that device ID "bridge" clashes with the bridge status topic', async () => {
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation()
+        try {
+          const bridge = createBridge({
+            mqtt: { url: 'mqtt://localhost:1883' },
+            topicPrefix: 'home/modbus',
+          })
+          const startPromise = bridge.start()
+          emitEvent('connect')
+          await startPromise
+
+          await bridge.addDevice({
+            deviceId: 'bridge',
+            driver: 'ya-modbus-driver-test',
+            connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+          })
+
+          expect(warnSpy).toHaveBeenCalledWith(
+            expect.stringContaining(
+              'Device ID "bridge" clashes with the bridge status topic home/modbus/bridge/status'
+            )
+          )
+        } finally {
+          warnSpy.mockRestore()
+        }
+      })
+
+      it('does not warn about the bridge status topic for other device IDs', async () => {
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation()
+        try {
+          const bridge = createBridge({ mqtt: { url: 'mqtt://localhost:1883' } })
+          const startPromise = bridge.start()
+          emitEvent('connect')
+          await startPromise
+
+          await bridge.addDevice({
+            deviceId: 'bridge2',
+            driver: 'ya-modbus-driver-test',
+            connection: { type: 'rtu', port: '/dev/ttyUSB0', baudRate: 9600, slaveId: 1 },
+          })
+
+          expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('bridge status topic'))
+        } finally {
+          warnSpy.mockRestore()
+        }
+      })
+
       it('should add device with enabled=false', async () => {
         const bridge = createBridge({
           mqtt: {

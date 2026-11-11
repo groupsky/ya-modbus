@@ -248,7 +248,7 @@ Each key must be one of the options below. A key that is not an option there is 
 
 **Device configuration:**
 
-- `deviceId` (required) - Unique device identifier. The bridge uses it in the MQTT topics (`{topicPrefix}/{deviceId}/data`). It must not be empty. It must not contain `+`, `#`, `/`, `$` or the null character. Do not use `bridge`: its status topic is the topic of the bridge status (see [Bridge Status](#bridge-status)).
+- `deviceId` (required) - Unique device identifier. The bridge uses it in the MQTT topics (`{topicPrefix}/{deviceId}/data`). It must not be empty. It must not contain `+`, `#`, `/`, `$` or the null character. Do not use `bridge`: its status topic is the topic of the bridge status (see [Bridge Status](#bridge-status)). The bridge logs a warning when a device has this ID.
 - `driver` (required) - Driver name: a short name such as `xymd1`, or a package name `@ya-modbus/driver-<name>`, `ya-modbus-driver-<name>` or `@<scope>/ya-modbus-driver-<name>`. `<name>` and `<scope>` can have lowercase letters, numbers and hyphens. A short name loads `@ya-modbus/driver-<name>`, or `ya-modbus-driver-<name>` when the first is not installed, and the bridge logs which one it uses. The package must be installed.
 - `device` (optional) - Model key, for a driver that supports several models (it exports `DEVICES`). The bridge passes it to the driver and uses the default and supported serial settings of that model. Without it, the driver uses its default model. A key that the driver does not have is an error, and the error lists the valid keys. A key for a driver without `DEVICES` is an error too. `ya-modbus list-devices --driver <name>` shows the keys.
 - `connection` (required) - Connection configuration (RTU or TCP)
