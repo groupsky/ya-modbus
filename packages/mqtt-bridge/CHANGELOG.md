@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.36.5](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.4...@ya-modbus/mqtt-bridge@0.36.5) (2026-11-11)
+
+### Bug Fixes
+
+- **mqtt-bridge:** polling and publish config errors say the allowed values ([#767](https://github.com/groupsky/ya-modbus/issues/767)) ([0122a85](https://github.com/groupsky/ya-modbus/commit/0122a859f325b245131a91766be25220d9e3bb5f)), closes [#731](https://github.com/groupsky/ya-modbus/issues/731) [#731](https://github.com/groupsky/ya-modbus/issues/731)
+
 ## [0.36.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.3...@ya-modbus/mqtt-bridge@0.36.4) (2026-11-11)
 
 ### Bug Fixes
