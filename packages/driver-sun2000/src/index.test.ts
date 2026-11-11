@@ -15,7 +15,7 @@ const POINTS: ReadonlyArray<readonly [string, number, number, string | undefined
     ['grid_frequency', 32085, 1, 'Hz', '1389', 50.01],
     ['efficiency', 32086, 1, '%', '2689', 98.65],
     ['internal_temperature', 32087, 1, '°C', '01c5', 45.3],
-    ['insulation_resistance', 32088, 1, undefined, '0bb8', 3.0],
+    ['insulation_resistance', 32088, 1, 'MΩ', '0bb8', 3.0],
     ['total_energy_yield', 32106, 2, 'kWh', '0012d687', 12345.67],
     ['daily_energy_yield', 32114, 2, 'kWh', '00000929', 23.45],
   ]

@@ -126,13 +126,12 @@ const REGISTERS: ReadonlyArray<Register> = [
     block: POWER,
     register: 32088,
     decode: (b, o) => readScaledUInt16BE(b, o, 1000),
-    // The unit is MΩ, which is not in the list of standard units
     point: floatPoint(
       'insulation_resistance',
       'Insulation Resistance',
-      undefined,
+      'MΩ',
       3,
-      'Insulation resistance in MΩ (megaohm)'
+      'Insulation resistance'
     ),
   },
   {

@@ -55,8 +55,6 @@ All data points are read-only and are read on every poll.
 | `total_energy_yield`    | 32106-32107 | UINT32, 0.01  | kWh  |
 | `daily_energy_yield`    | 32114-32115 | UINT32, 0.01  | kWh  |
 
-MΩ is not in the list of standard units, so `insulation_resistance` has no `unit` field. The value is in MΩ.
-
 The driver reads these registers in at most 3 requests per poll: 32080 (9 registers), 32106 (2) and 32114 (2). A block is read only when one of its data points is requested. The registers between the two energy counters (32108-32113) are not in the register list, so the driver does not read over them.
 
 ## Mapping from the old reader
