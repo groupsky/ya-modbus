@@ -328,7 +328,9 @@ describe('validateDeviceConfig', () => {
     }
 
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
-    expect(() => validateDeviceConfig(config)).toThrow('at least 100ms')
+    expect(() => validateDeviceConfig(config)).toThrow(
+      'Polling interval must be a whole number of milliseconds from 100'
+    )
   })
 
   it('should throw error for negative polling interval', () => {
@@ -365,7 +367,9 @@ describe('validateDeviceConfig', () => {
     }
 
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
-    expect(() => validateDeviceConfig(config)).toThrow('at least 100ms')
+    expect(() => validateDeviceConfig(config)).toThrow(
+      'Polling interval must be a whole number of milliseconds from 100'
+    )
   })
 
   it('should throw error for polling interval above 24 hours', () => {
@@ -423,7 +427,9 @@ describe('validateDeviceConfig', () => {
     }
 
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
-    expect(() => validateDeviceConfig(config)).toThrow('not exceed 100')
+    expect(() => validateDeviceConfig(config)).toThrow(
+      'Max retries must be a whole number from 0 to 100'
+    )
   })
 
   it('should throw error for negative retryBackoff', () => {
@@ -575,7 +581,7 @@ describe('validateDeviceConfig', () => {
       {
         name: 'polling.interval',
         build: (ms: number) => ({ ...device, connection: tcp, polling: { interval: ms } }),
-        message: 'Polling interval must not exceed 24 hours',
+        message: 'Polling interval must be a whole number of milliseconds from 100 to 86400000',
       },
       {
         name: 'polling.retryBackoff',
@@ -584,7 +590,7 @@ describe('validateDeviceConfig', () => {
           connection: tcp,
           polling: { interval: 5000, retryBackoff: ms },
         }),
-        message: 'Retry backoff must not exceed 24 hours',
+        message: 'Retry backoff must be a whole number of milliseconds from 1 to 86400000',
       },
       {
         name: 'polling.maxRetryBackoff',
@@ -593,7 +599,7 @@ describe('validateDeviceConfig', () => {
           connection: tcp,
           polling: { interval: 5000, maxRetryBackoff: ms },
         }),
-        message: 'Max retry backoff must not exceed 24 hours',
+        message: 'Max retry backoff must be a whole number of milliseconds from 1 to 86400000',
       },
       {
         name: 'RTU connection.timeout',
@@ -864,15 +870,60 @@ describe('validateDeviceConfig', () => {
       }
     )
 
+    const mode = "publish.mode: Publish mode must be 'every-poll' or 'on-change'"
+    const heartbeat =
+      'publish.heartbeat: Heartbeat must be a whole number of milliseconds from 1 to 86400000 (24 hours)'
+
     it.each([
-      [{}, 'publish.mode'],
-      [{ mode: 'changes' }, 'publish.mode'],
-      [{ mode: 'on-change', heartbeat: 0 }, 'publish.heartbeat'],
-      [{ mode: 'on-change', heartbeat: 86400001 }, 'publish.heartbeat: Heartbeat must not exceed'],
-      [{ mode: 'on-change', hearbeat: 1000 }, 'publish: Unrecognized key'],
+      [{}, 'publish.mode: Publish mode is required'],
+      [{ mode: 'changes' }, mode],
+      [{ mode: 1 }, mode],
+      [{ mode: 'on-change', heartbeat: 0 }, heartbeat],
+      [{ mode: 'on-change', heartbeat: 86400001 }, heartbeat],
+      [{ mode: 'on-change', heartbeat: 1.5 }, heartbeat],
+      [{ mode: 'on-change', heartbeat: '1000' }, heartbeat],
+      [{ mode: 'on-change', hearbeat: 1000 }, 'publish: Unrecognized key: "hearbeat"'],
     ])('should reject %p', (publish, message) => {
       expect(() => validateDeviceConfig({ ...device, publish })).toThrow(
-        `Invalid device configuration: ${message}`
+        new Error(`Invalid device configuration: ${message}`)
+      )
+    })
+  })
+
+  // The error names the field that is wrong and the values it allows (#731)
+  describe('polling field errors', () => {
+    const device = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: { type: 'tcp', host: 'localhost', slaveId: 1 },
+    }
+    const ms = (field: string, label: string, min: number): string =>
+      `polling.${field}: ${label} must be a whole number of milliseconds from ${min} to 86400000 (24 hours)`
+    const interval = ms('interval', 'Polling interval', 100)
+    const retryDelay = ms('retryDelay', 'Retry delay', 100)
+    const retryBackoff = ms('retryBackoff', 'Retry backoff', 1)
+    const maxRetryBackoff = ms('maxRetryBackoff', 'Max retry backoff', 1)
+    const maxRetries = 'polling.maxRetries: Max retries must be a whole number from 0 to 100'
+
+    it.each([
+      [{}, "polling.interval: Polling interval is required unless mode is 'continuous'"],
+      [{ interval: 99 }, interval],
+      [{ interval: 86400001 }, interval],
+      [{ interval: 1000.5 }, interval],
+      [{ interval: '1000' }, interval],
+      [{ mode: 'fast' }, "polling.mode: Polling mode must be 'interval' or 'continuous'"],
+      [{ interval: 1000, retryDelay: 99 }, retryDelay],
+      [{ interval: 1000, retryDelay: '500' }, retryDelay],
+      [{ interval: 1000, maxRetries: -1 }, maxRetries],
+      [{ interval: 1000, maxRetries: 101 }, maxRetries],
+      [{ interval: 1000, maxRetries: 1.5 }, maxRetries],
+      [{ interval: 1000, retryBackoff: 0 }, retryBackoff],
+      [{ interval: 1000, retryBackoff: 86400001 }, retryBackoff],
+      [{ interval: 1000, maxRetryBackoff: 0 }, maxRetryBackoff],
+      [{ interval: 1000, maxRetryBackoff: 'long' }, maxRetryBackoff],
+    ])('should name the field and its values for polling %p', (polling, message) => {
+      expect(() => validateDeviceConfig({ ...device, polling })).toThrow(
+        new Error(`Invalid device configuration: ${message}`)
       )
     })
   })
