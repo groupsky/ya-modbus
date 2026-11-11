@@ -530,13 +530,16 @@ Error: Invalid configuration: devices.0.deviceId: Device ID must not contain MQT
 
 The device ID is a level in the MQTT topics. Use letters, numbers, hyphens and underscores.
 
-**Polling interval out of range**
+**Wrong polling or publish field**
 
 ```
-Error: Invalid configuration: devices.0.polling.interval: Polling interval must be at least 100ms
+Error: Invalid configuration: devices.0.polling.interval: Polling interval must be a whole number of milliseconds from 100 to 86400000 (24 hours)
+Error: Invalid configuration: devices.0.polling.mode: Polling mode must be 'interval' or 'continuous'
+Error: Invalid configuration: devices.0.polling.maxRetries: Max retries must be a whole number from 0 to 100
+Error: Invalid configuration: devices.0.publish.mode: Publish mode must be 'every-poll' or 'on-change'
 ```
 
-Use an interval from 100 to 86400000 ms. If `polling` is set, `interval` is required, unless `mode` is `"continuous"`.
+The message gives the values that the field accepts. Compare it with the polling list in [Configuration File](#configuration-file) and with [Publish Only on Change](#publish-only-on-change). If `polling` is set, `interval` is required, unless `mode` is `"continuous"`. If `publish` is set, `mode` is required: `devices.0.publish.mode: Publish mode is required`.
 
 **Wrong broker URL**
 

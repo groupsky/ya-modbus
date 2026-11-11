@@ -45,13 +45,10 @@ const fieldError = (
 
 /** A whole number from min to max, with one message for every failure. */
 const intInRange = (min: number, max: number, label: string, rule: string): z.ZodNumber => {
-  const err = fieldError(label, rule)
-  // abort: a number past 2^53 fails int() and max(); the message is printed once
-  return z
-    .number(err)
-    .int({ ...err, abort: true })
-    .min(min, err)
-    .max(max, err)
+  // abort: the message is printed once (a number past 2^53 fails int() and max()), and the
+  // checks across fields, such as maxRetryBackoff >= retryBackoff, do not add a second one
+  const err = { ...fieldError(label, rule), abort: true }
+  return z.number(err).int(err).min(min, err).max(max, err)
 }
 
 const serialPortError = fieldError('Serial port', 'a device path, for example /dev/ttyUSB0')
@@ -158,40 +155,25 @@ const tcpConnectionSchema = z
     }
   })
 
+/** A whole number of milliseconds from min to 24 hours, with one message for every failure. */
+const msUpTo24h = (min: number, label: string): z.ZodNumber =>
+  intInRange(
+    min,
+    MAX_DURATION_MS,
+    label,
+    `a whole number of milliseconds from ${min} to 86400000 (24 hours)`
+  )
+
 const pollingConfigSchema = z
   .strictObject({
-    interval: z
-      .number()
-      .int()
-      .positive()
-      .min(100, 'Polling interval must be at least 100ms')
-      .max(MAX_DURATION_MS, 'Polling interval must not exceed 24 hours')
+    interval: msUpTo24h(100, 'Polling interval').optional(),
+    mode: z
+      .enum(['interval', 'continuous'], fieldError('Polling mode', "'interval' or 'continuous'"))
       .optional(),
-    mode: z.enum(['interval', 'continuous']).optional(),
-    retryDelay: z
-      .number()
-      .int()
-      .min(100, 'Retry delay must be at least 100ms')
-      .max(MAX_DURATION_MS, 'Retry delay must not exceed 24 hours')
-      .optional(),
-    maxRetries: z
-      .number()
-      .int()
-      .nonnegative()
-      .max(100, 'Max retries should not exceed 100')
-      .optional(),
-    retryBackoff: z
-      .number()
-      .int()
-      .positive()
-      .max(MAX_DURATION_MS, 'Retry backoff must not exceed 24 hours')
-      .optional(),
-    maxRetryBackoff: z
-      .number()
-      .int()
-      .positive()
-      .max(MAX_DURATION_MS, 'Max retry backoff must not exceed 24 hours')
-      .optional(),
+    retryDelay: msUpTo24h(100, 'Retry delay').optional(),
+    maxRetries: intInRange(0, 100, 'Max retries', 'a whole number from 0 to 100').optional(),
+    retryBackoff: msUpTo24h(1, 'Retry backoff').optional(),
+    maxRetryBackoff: msUpTo24h(1, 'Max retry backoff').optional(),
   })
   .refine(({ interval, mode }) => interval !== undefined || mode === 'continuous', {
     message: "Polling interval is required unless mode is 'continuous'",
@@ -223,13 +205,11 @@ const pollingConfigSchema = z
 
 const publishConfigSchema = z
   .strictObject({
-    mode: z.enum(['every-poll', 'on-change']),
-    heartbeat: z
-      .number()
-      .int()
-      .positive()
-      .max(MAX_DURATION_MS, 'Heartbeat must not exceed 24 hours')
-      .optional(),
+    mode: z.enum(
+      ['every-poll', 'on-change'],
+      fieldError('Publish mode', "'every-poll' or 'on-change'")
+    ),
+    heartbeat: msUpTo24h(1, 'Heartbeat').optional(),
   })
   .transform((data) => {
     const { heartbeat, ...rest } = data
