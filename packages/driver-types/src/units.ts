@@ -26,6 +26,7 @@ export type Unit =
   | 'Ah' // Ampere-hours
   | 'Hz' // Hertz (frequency)
   | 'Ω' // Ohms (resistance)
+  | 'MΩ' // Megaohms (resistance)
 
   // Temperature
   | '°C' // Degrees Celsius
