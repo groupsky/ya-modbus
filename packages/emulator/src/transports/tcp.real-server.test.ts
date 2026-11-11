@@ -120,6 +120,7 @@ describe('TcpTransport with the real ServerTCP', () => {
         transport = new TcpTransport({ host: HOST, port })
 
         await expect(transport.start()).rejects.toMatchObject({ code: 'EADDRINUSE' })
+        expect(transport.getPort()).toBeUndefined()
       } finally {
         await new Promise((resolve) => holder.close(resolve))
       }

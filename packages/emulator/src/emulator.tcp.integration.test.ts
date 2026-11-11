@@ -257,11 +257,17 @@ describe('ModbusEmulator with TCP transport', () => {
       ).toThrow('TCP transport requires port')
     })
 
+    it('should treat a null TCP port (empty in YAML) as missing', () => {
+      expect(
+        () => new ModbusEmulator({ transport: 'tcp', host: 'localhost', port: null } as any)
+      ).toThrow('TCP transport requires port')
+    })
+
     it.each([
       { port: -1, shown: '-1' },
       { port: 65536, shown: '65536' },
       { port: 502.5, shown: '502.5' },
-      { port: Number.NaN, shown: 'null' },
+      { port: Number.NaN, shown: 'NaN' },
       { port: '502', shown: '"502"' },
     ])(
       'should reject a wrong TCP port $port with a message that is not "requires port"',
