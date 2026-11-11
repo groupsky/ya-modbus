@@ -31,12 +31,41 @@ const driverNameSchema = z
   .min(1, 'Driver name must not be empty')
   .refine(isValidDriverName, { message: `Driver name must be ${DRIVER_NAME_RULE}` })
 
-const timeoutSchema = z
-  .number()
-  .int()
-  .positive()
-  .max(MAX_DURATION_MS, 'Connection timeout must not exceed 24 hours')
-  .optional()
+/**
+ * One message for every way a connection field can be wrong, so the operator reads the allowed
+ * values instead of zod's generic text. A missing required field says "is required".
+ */
+const fieldError = (
+  label: string,
+  rule: string
+): { error: (issue: { input?: unknown }) => string } => ({
+  error: (issue) =>
+    issue.input === undefined ? `${label} is required` : `${label} must be ${rule}`,
+})
+
+/** A whole number from min to max, with one message for every failure. */
+const intInRange = (min: number, max: number, label: string, rule: string): z.ZodNumber => {
+  const err = fieldError(label, rule)
+  // abort: a number past 2^53 fails int() and max(); the message is printed once
+  return z
+    .number(err)
+    .int({ ...err, abort: true })
+    .min(min, err)
+    .max(max, err)
+}
+
+const serialPortError = fieldError('Serial port', 'a device path, for example /dev/ttyUSB0')
+const baudRateError = fieldError('Baud rate', 'a number above 0, for example 9600')
+const hostError = fieldError('Host', 'a host name or IP address')
+
+const slaveIdSchema = intInRange(0, 247, 'Slave ID', 'a whole number from 0 to 247')
+
+const timeoutSchema = intInRange(
+  1,
+  MAX_DURATION_MS,
+  'Connection timeout',
+  'a whole number of milliseconds from 1 to 86400000 (24 hours)'
+).optional()
 
 const attemptsSchema = z
   .number()
@@ -60,19 +89,21 @@ const pollOrderSchema = z
 const rtuConnectionSchema = z
   .strictObject({
     type: z.literal('rtu'),
-    port: z.string().min(1),
-    baudRate: z.number().positive().optional(),
-    slaveId: z.number().int().min(0).max(247),
-    parity: z.enum(['none', 'even', 'odd']).optional(),
-    dataBits: z.union([z.literal(7), z.literal(8)]).optional(),
-    stopBits: z.union([z.literal(1), z.literal(2)]).optional(),
-    timeout: timeoutSchema,
-    interDeviceDelay: z
-      .number()
-      .int()
-      .min(0)
-      .max(60000, 'Inter-device delay must not exceed 60 seconds')
+    port: z.string(serialPortError).min(1, serialPortError),
+    baudRate: z.number(baudRateError).positive(baudRateError).optional(),
+    slaveId: slaveIdSchema,
+    parity: z
+      .enum(['none', 'even', 'odd'], fieldError('Parity', "'none', 'even' or 'odd'"))
       .optional(),
+    dataBits: z.union([z.literal(7), z.literal(8)], fieldError('Data bits', '7 or 8')).optional(),
+    stopBits: z.union([z.literal(1), z.literal(2)], fieldError('Stop bits', '1 or 2')).optional(),
+    timeout: timeoutSchema,
+    interDeviceDelay: intInRange(
+      0,
+      60000,
+      'Inter-device delay',
+      'a whole number of milliseconds from 0 to 60000 (60 seconds)'
+    ).optional(),
     attempts: attemptsSchema,
     retryDelay: retryDelaySchema,
     pollOrder: pollOrderSchema,
@@ -107,9 +138,9 @@ const rtuConnectionSchema = z
 const tcpConnectionSchema = z
   .strictObject({
     type: z.literal('tcp'),
-    host: z.string().min(1),
-    port: z.number().int().positive().max(65535).optional(),
-    slaveId: z.number().int().min(0).max(247),
+    host: z.string(hostError).min(1, hostError),
+    port: intInRange(1, 65535, 'TCP port', 'a whole number from 1 to 65535').optional(),
+    slaveId: slaveIdSchema,
     timeout: timeoutSchema,
     attempts: attemptsSchema,
     retryDelay: retryDelaySchema,

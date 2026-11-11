@@ -726,19 +726,64 @@ describe('validateDeviceConfig', () => {
     })
   })
 
-  // The error names the field that is wrong, not only the connection
-  it.each([
-    [{ type: 'rtu', port: '/dev/ttyUSB0', slaveId: 300 }, 'connection.slaveId: Too big'],
-    [{ type: 'tcp', slaveId: 1 }, 'connection.host: Invalid input'],
-    [
-      { type: 'serial', port: '/dev/ttyUSB0' },
-      "connection.type: Connection type must be 'rtu' or 'tcp'",
-    ],
-    [undefined, 'connection: Connection is required'],
-  ])('should name the wrong field of connection %p', (connection, message) => {
-    const config = { deviceId: 'device1', driver: 'ya-modbus-driver-test', connection }
+  // The error names the field that is wrong and the values it allows (#611)
+  describe('connection field errors', () => {
+    const rtu = { type: 'rtu', port: '/dev/ttyUSB0', slaveId: 1 }
+    const tcp = { type: 'tcp', host: 'localhost', slaveId: 1 }
+    const slaveId = 'connection.slaveId: Slave ID must be a whole number from 0 to 247'
+    const timeout =
+      'connection.timeout: Connection timeout must be a whole number of milliseconds from 1 to 86400000 (24 hours)'
+    const delay =
+      'connection.interDeviceDelay: Inter-device delay must be a whole number of milliseconds from 0 to 60000 (60 seconds)'
+    const serialPort =
+      'connection.port: Serial port must be a device path, for example /dev/ttyUSB0'
+    const baudRate = 'connection.baudRate: Baud rate must be a number above 0, for example 9600'
+    const host = 'connection.host: Host must be a host name or IP address'
+    const tcpPort = 'connection.port: TCP port must be a whole number from 1 to 65535'
 
-    expect(() => validateDeviceConfig(config)).toThrow(`Invalid device configuration: ${message}`)
+    it.each([
+      [undefined, 'connection: Connection is required'],
+      [{ slaveId: 1 }, "connection.type: Connection type must be 'rtu' or 'tcp'"],
+      [{ ...rtu, type: 'serial' }, "connection.type: Connection type must be 'rtu' or 'tcp'"],
+      [{ type: 'rtu', slaveId: 1 }, 'connection.port: Serial port is required'],
+      [{ ...rtu, port: '' }, serialPort],
+      [{ ...rtu, port: 1 }, serialPort],
+      [{ ...rtu, baudRate: 0 }, baudRate],
+      [{ ...rtu, baudRate: '9600' }, baudRate],
+      [{ type: 'rtu', port: '/dev/ttyUSB0' }, 'connection.slaveId: Slave ID is required'],
+      [{ ...rtu, slaveId: 300 }, slaveId],
+      [{ ...rtu, slaveId: -1 }, slaveId],
+      [{ ...rtu, slaveId: 1.5 }, slaveId],
+      [{ ...rtu, slaveId: '1' }, slaveId],
+      [{ ...rtu, slaveId: 1e20 }, slaveId],
+      [{ ...rtu, parity: 'evn' }, "connection.parity: Parity must be 'none', 'even' or 'odd'"],
+      [{ ...rtu, dataBits: 9 }, 'connection.dataBits: Data bits must be 7 or 8'],
+      [{ ...rtu, stopBits: 3 }, 'connection.stopBits: Stop bits must be 1 or 2'],
+      [{ ...rtu, timeout: 0 }, timeout],
+      [{ ...rtu, timeout: 86400001 }, timeout],
+      [{ ...rtu, interDeviceDelay: -1 }, delay],
+      [{ ...rtu, interDeviceDelay: 60001 }, delay],
+      [
+        { ...rtu, pollOrder: 'Fixed' },
+        "connection.pollOrder: Poll order must be 'arrival' or 'fixed'",
+      ],
+      [{ ...rtu, paritty: 'even' }, 'connection: Unrecognized key: "paritty"'],
+      [{ type: 'tcp', slaveId: 1 }, 'connection.host: Host is required'],
+      [{ ...tcp, host: '' }, host],
+      [{ ...tcp, port: 0 }, tcpPort],
+      [{ ...tcp, port: 65536 }, tcpPort],
+      [{ ...tcp, port: 1.5 }, tcpPort],
+      [{ type: 'tcp', host: 'localhost' }, 'connection.slaveId: Slave ID is required'],
+      [{ ...tcp, slaveId: 248 }, slaveId],
+      [{ ...tcp, timeout: 0 }, timeout],
+      [{ ...tcp, pollOrder: 1 }, "connection.pollOrder: Poll order must be 'arrival' or 'fixed'"],
+    ])('should name the field and its values for connection %p', (connection, message) => {
+      const config = { deviceId: 'device1', driver: 'ya-modbus-driver-test', connection }
+
+      expect(() => validateDeviceConfig(config)).toThrow(
+        new Error(`Invalid device configuration: ${message}`)
+      )
+    })
   })
 
   // The order in which the devices on one line take turns (#682)
