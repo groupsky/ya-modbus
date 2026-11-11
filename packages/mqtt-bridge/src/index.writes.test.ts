@@ -111,6 +111,7 @@ describe('createBridge writes', () => {
           ...deviceManager,
           addDevice: jest.fn(),
           removeDevice: jest.fn(),
+          listDevices: jest.fn().mockReturnValue([]),
           getDevice,
           getDeviceConfig,
           clear: jest.fn(),
@@ -231,6 +232,7 @@ describe('createBridge writes', () => {
       {
         deviceId: 'thermostat',
         timestamp: expect.any(Number),
+        readMs: expect.any(Number),
         data: { temperature: 21, version: '1.0', setpoint: 23, mode: 1 },
       },
     ])

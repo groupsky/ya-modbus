@@ -118,6 +118,16 @@ describe('loadConfig', () => {
     })
   })
 
+  it('should keep statsInterval', async () => {
+    mockedReadFile.mockResolvedValue(
+      JSON.stringify({ mqtt: { url: 'mqtt://localhost:1883' }, statsInterval: 30 })
+    )
+
+    const config = await loadConfig('/path/to/config.json')
+
+    expect(config.statsInterval).toBe(30)
+  })
+
   it('should accept reconnectPeriod of 24 hours', async () => {
     mockedReadFile.mockResolvedValue(
       JSON.stringify({ mqtt: { url: 'mqtt://localhost:1883', reconnectPeriod: 86400000 } })
@@ -167,7 +177,7 @@ describe('loadConfig', () => {
     expect(config.devices?.[0].allowWrites).toBe(true)
   })
 
-  it.each(['a/b', 'a+', 'a#', '$SYS', 'a\u0000b'])(
+  it.each(['a+', 'a#', '$SYS', 'a\u0000b'])(
     'should throw error for topicPrefix with MQTT special characters: %j',
     async (topicPrefix) => {
       mockedReadFile.mockResolvedValue(

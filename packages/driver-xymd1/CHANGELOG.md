@@ -3,6 +3,46 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.7.19](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-xymd1@0.7.18...@ya-modbus/driver-xymd1@0.7.19) (2026-11-11)
+
+**Note:** Version bump only for package @ya-modbus/driver-xymd1
+
+## [0.7.18](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-xymd1@0.7.17...@ya-modbus/driver-xymd1@0.7.18) (2026-11-11)
+
+**Note:** Version bump only for package @ya-modbus/driver-xymd1
+
+## [0.7.17](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-xymd1@0.7.16...@ya-modbus/driver-xymd1@0.7.17) (2026-11-10)
+
+**Note:** Version bump only for package @ya-modbus/driver-xymd1
+
+## [0.7.16](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-xymd1@0.7.15...@ya-modbus/driver-xymd1@0.7.16) (2026-11-10)
+
+**Note:** Version bump only for package @ya-modbus/driver-xymd1
+
+## [0.7.15](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-xymd1@0.7.14...@ya-modbus/driver-xymd1@0.7.15) (2026-11-10)
+
+**Note:** Version bump only for package @ya-modbus/driver-xymd1
+
+## [0.7.14](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-xymd1@0.7.13...@ya-modbus/driver-xymd1@0.7.14) (2026-11-09)
+
+**Note:** Version bump only for package @ya-modbus/driver-xymd1
+
+## [0.7.13](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-xymd1@0.7.12...@ya-modbus/driver-xymd1@0.7.13) (2026-11-09)
+
+**Note:** Version bump only for package @ya-modbus/driver-xymd1
+
+## [0.7.12](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-xymd1@0.7.11...@ya-modbus/driver-xymd1@0.7.12) (2026-11-08)
+
+**Note:** Version bump only for package @ya-modbus/driver-xymd1
+
+## [0.7.11](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-xymd1@0.7.10...@ya-modbus/driver-xymd1@0.7.11) (2026-11-08)
+
+**Note:** Version bump only for package @ya-modbus/driver-xymd1
+
+## [0.7.10](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-xymd1@0.7.9...@ya-modbus/driver-xymd1@0.7.10) (2026-11-04)
+
+**Note:** Version bump only for package @ya-modbus/driver-xymd1
+
 ## [0.7.9](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-xymd1@0.7.8...@ya-modbus/driver-xymd1@0.7.9) (2026-11-02)
 
 **Note:** Version bump only for package @ya-modbus/driver-xymd1

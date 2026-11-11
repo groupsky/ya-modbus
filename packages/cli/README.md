@@ -14,7 +14,7 @@ CLI tool for testing and developing Modbus device drivers.
 - **List supported devices** from multi-device drivers
 - **Auto-detect drivers** from current package during development
 - **Multiple output formats** (table, JSON)
-- **Performance metrics** (response time, operation count)
+- **Performance metrics** (response time, Modbus requests, retries, data points)
 - **Value verification** after writes
 
 ## Installation
@@ -76,6 +76,33 @@ ya-modbus read \
   --port /dev/ttyUSB0 \
   --all
 ```
+
+**When some data points fail:**
+
+With several data points (or `--all`), `read` first asks for all of them at
+once. If that fails, it prints one line on stderr and then reads each data
+point on its own. The values that worked are printed as usual. The ones that
+failed are listed on stderr:
+
+```
+Reading all data points at once failed (Timed out); reading each one on its own
+...
+Failed data points:
+  humidity: Illegal address
+```
+
+With `--format json`, the failures are in the `errors` array next to
+`dataPoints` (empty when nothing failed), and `performance.errors` is how many
+failed:
+
+```json
+"errors": [{ "id": "humidity", "error": "Illegal address" }]
+```
+
+The exit code is 1 when any data point failed. If the first 3 single reads all
+fail, `read` stops and shows the error from reading all data points at once, so a device that is off does not
+cost many timeouts. It does the same when every data point fails. A single
+data point that fails is an error, as before.
 
 **JSON output:**
 
@@ -360,6 +387,9 @@ Use either `--port` (RTU) or `--host` (TCP), not both. The command fails with an
 
 - `--slave-id <id>` - Modbus slave ID (1-247). `read` and `write` use the driver's default address (`DEFAULT_CONFIG.defaultAddress`) when it is not given, and print `Using slave ID N (driver default)` on stderr. With `--host` (driver defaults apply only to serial/RTU), or when the driver has no default address, the option is required.
 - `--timeout <ms>` - Response timeout in milliseconds (default: 1000). With `--host`, also the longest time to open the TCP connection
+- `--attempts <n>` - Times each request is sent before it fails (default: 3). `1` sends it once, with no retry. A device that does not answer costs `attempts × timeout + (attempts - 1) × retry-delay` ms per request: 3.2 s with the defaults
+- `--retry-delay <ms>` - Pause between the attempts of a request in milliseconds (default: 100)
+- `--verbose` - Print each retry of a failed request on stderr, for example `Attempt 1 of 3 failed: Timed out. Retrying in 100 ms`
 - `--driver <package>` - Driver package name or short name (for example `xymd1`)
 - `--device <key>` - Device key for multi-device drivers (use `list-devices` to see available devices)
 
@@ -636,10 +666,18 @@ Temperature      24.5       °C
 Humidity         65.2       %
 
 Performance:
-  Response time: 45ms
-  Operations: 2
-  Errors: 0
+  Response time: 45.0ms
+  Requests: 1
+  Retries: 0
+  Data points: 2
 ```
+
+`Requests` counts the Modbus requests sent on the bus. The driver reads
+neighbouring registers together, so one request can give many data points.
+`Retries` counts extra attempts after a failed one. With `--format json` the
+same numbers are in `performance.requests`, `performance.retries` and
+`performance.dataPoints`. `performance.operations` is deprecated: it is the
+number of data points, so use `performance.dataPoints`.
 
 ### Write and verify setpoint
 
@@ -730,6 +768,7 @@ What to check:
 - Verify parity and baud rate against the settings in the message
 - Try slower baud rate (e.g., 4800)
 - Increase timeout: `--timeout 2000`
+- See each failed try with `--verbose`. To find out fast if a device answers at all, send each request once: `--attempts 1`
 
 ### Driver Configuration Errors
 

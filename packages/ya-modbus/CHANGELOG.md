@@ -3,6 +3,46 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.19](https://github.com/groupsky/ya-modbus/compare/ya-modbus@0.1.18...ya-modbus@0.1.19) (2026-11-11)
+
+**Note:** Version bump only for package ya-modbus
+
+## [0.1.18](https://github.com/groupsky/ya-modbus/compare/ya-modbus@0.1.17...ya-modbus@0.1.18) (2026-11-11)
+
+**Note:** Version bump only for package ya-modbus
+
+## [0.1.17](https://github.com/groupsky/ya-modbus/compare/ya-modbus@0.1.16...ya-modbus@0.1.17) (2026-11-10)
+
+**Note:** Version bump only for package ya-modbus
+
+## [0.1.16](https://github.com/groupsky/ya-modbus/compare/ya-modbus@0.1.15...ya-modbus@0.1.16) (2026-11-10)
+
+**Note:** Version bump only for package ya-modbus
+
+## [0.1.15](https://github.com/groupsky/ya-modbus/compare/ya-modbus@0.1.14...ya-modbus@0.1.15) (2026-11-10)
+
+**Note:** Version bump only for package ya-modbus
+
+## [0.1.14](https://github.com/groupsky/ya-modbus/compare/ya-modbus@0.1.13...ya-modbus@0.1.14) (2026-11-09)
+
+**Note:** Version bump only for package ya-modbus
+
+## [0.1.13](https://github.com/groupsky/ya-modbus/compare/ya-modbus@0.1.12...ya-modbus@0.1.13) (2026-11-09)
+
+**Note:** Version bump only for package ya-modbus
+
+## [0.1.12](https://github.com/groupsky/ya-modbus/compare/ya-modbus@0.1.11...ya-modbus@0.1.12) (2026-11-08)
+
+**Note:** Version bump only for package ya-modbus
+
+## [0.1.11](https://github.com/groupsky/ya-modbus/compare/ya-modbus@0.1.10...ya-modbus@0.1.11) (2026-11-08)
+
+**Note:** Version bump only for package ya-modbus
+
+## [0.1.10](https://github.com/groupsky/ya-modbus/compare/ya-modbus@0.1.9...ya-modbus@0.1.10) (2026-11-04)
+
+**Note:** Version bump only for package ya-modbus
+
 ## [0.1.9](https://github.com/groupsky/ya-modbus/compare/ya-modbus@0.1.8...ya-modbus@0.1.9) (2026-11-02)
 
 **Note:** Version bump only for package ya-modbus

@@ -15,12 +15,14 @@ import { withRetry, type RetryLogger } from './retry.js'
  * @param client - Configured ModbusRTU client instance, or a ModbusConnection that can reopen it
  * @param maxRetries - Maximum retry attempts (default: 3, use 1 for discovery to disable retries)
  * @param logger - Optional callback to log retry attempts for debugging
+ * @param retryDelay - Pause between attempts in milliseconds (default: 100)
  * @returns Transport implementation
  */
 export function createModbusTransport(
   client: ModbusRTU | ModbusConnection,
   maxRetries: number = 3,
-  logger?: RetryLogger
+  logger?: RetryLogger,
+  retryDelay?: number
 ): Transport {
   const connection = toConnection(client)
 
@@ -33,7 +35,8 @@ export function createModbusTransport(
             return checkLength(result.buffer, count * 2)
           }),
         maxRetries,
-        logger
+        logger,
+        retryDelay
       )
     },
 
@@ -45,7 +48,8 @@ export function createModbusTransport(
             return checkLength(result.buffer, count * 2)
           }),
         maxRetries,
-        logger
+        logger,
+        retryDelay
       )
     },
 
@@ -57,7 +61,8 @@ export function createModbusTransport(
             return checkLength(result.buffer, Math.ceil(count / 8))
           }),
         maxRetries,
-        logger
+        logger,
+        retryDelay
       )
     },
 
@@ -69,7 +74,8 @@ export function createModbusTransport(
             return checkLength(result.buffer, Math.ceil(count / 8))
           }),
         maxRetries,
-        logger
+        logger,
+        retryDelay
       )
     },
 
@@ -80,7 +86,8 @@ export function createModbusTransport(
             await modbus.writeRegister(address, value)
           }),
         maxRetries,
-        logger
+        logger,
+        retryDelay
       )
     },
 
@@ -91,7 +98,8 @@ export function createModbusTransport(
             await modbus.writeRegisters(address, values)
           }),
         maxRetries,
-        logger
+        logger,
+        retryDelay
       )
     },
 
@@ -102,7 +110,8 @@ export function createModbusTransport(
             await modbus.writeCoil(address, value)
           }),
         maxRetries,
-        logger
+        logger,
+        retryDelay
       )
     },
 
@@ -121,7 +130,8 @@ export function createModbusTransport(
             await modbus.writeCoils(address, bools)
           }),
         maxRetries,
-        logger
+        logger,
+        retryDelay
       )
     },
 

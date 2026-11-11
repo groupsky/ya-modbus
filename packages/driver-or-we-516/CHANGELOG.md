@@ -3,6 +3,46 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.2.35](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.34...@ya-modbus/driver-or-we-516@0.2.35) (2026-11-11)
+
+**Note:** Version bump only for package @ya-modbus/driver-or-we-516
+
+## [0.2.34](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.33...@ya-modbus/driver-or-we-516@0.2.34) (2026-11-11)
+
+**Note:** Version bump only for package @ya-modbus/driver-or-we-516
+
+## [0.2.33](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.32...@ya-modbus/driver-or-we-516@0.2.33) (2026-11-10)
+
+**Note:** Version bump only for package @ya-modbus/driver-or-we-516
+
+## [0.2.32](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.31...@ya-modbus/driver-or-we-516@0.2.32) (2026-11-10)
+
+**Note:** Version bump only for package @ya-modbus/driver-or-we-516
+
+## [0.2.31](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.30...@ya-modbus/driver-or-we-516@0.2.31) (2026-11-10)
+
+**Note:** Version bump only for package @ya-modbus/driver-or-we-516
+
+## [0.2.30](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.29...@ya-modbus/driver-or-we-516@0.2.30) (2026-11-09)
+
+**Note:** Version bump only for package @ya-modbus/driver-or-we-516
+
+## [0.2.29](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.28...@ya-modbus/driver-or-we-516@0.2.29) (2026-11-09)
+
+**Note:** Version bump only for package @ya-modbus/driver-or-we-516
+
+## [0.2.28](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.27...@ya-modbus/driver-or-we-516@0.2.28) (2026-11-08)
+
+**Note:** Version bump only for package @ya-modbus/driver-or-we-516
+
+## [0.2.27](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.26...@ya-modbus/driver-or-we-516@0.2.27) (2026-11-08)
+
+**Note:** Version bump only for package @ya-modbus/driver-or-we-516
+
+## [0.2.26](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.25...@ya-modbus/driver-or-we-516@0.2.26) (2026-11-04)
+
+**Note:** Version bump only for package @ya-modbus/driver-or-we-516
+
 ## [0.2.25](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-or-we-516@0.2.24...@ya-modbus/driver-or-we-516@0.2.25) (2026-11-02)
 
 **Note:** Version bump only for package @ya-modbus/driver-or-we-516

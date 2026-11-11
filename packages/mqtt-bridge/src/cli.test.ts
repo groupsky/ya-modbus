@@ -70,12 +70,13 @@ describe('CLI - ya-modbus-bridge', () => {
         publishing
 
         Options:
-          -V, --version   output the version number
-          -h, --help      display help for command
+          -V, --version    output the version number
+          -h, --help       display help for command
 
         Commands:
-          run [options]   Run the MQTT bridge
-          help [command]  display help for command
+          run [options]    Run the MQTT bridge
+          check [options]  Check a config file and the driver of each device
+          help [command]   display help for command
         "
       `)
     })
@@ -101,7 +102,12 @@ describe('CLI - ya-modbus-bridge', () => {
           --mqtt-reconnect-period <ms>  Reconnection interval in milliseconds
           --topic-prefix <prefix>       Topic prefix for all MQTT topics (default:
                                         modbus)
-          --state-dir <path>            Directory path for state persistence
+          --state-dir <path>            Not used yet: the bridge keeps no state on disk
+          --stats-interval <seconds>    Publish device stats on
+                                        {prefix}/{deviceId}/stats every N seconds
+                                        (default: off)
+          --stats-log                   Also log one line per device at every stats
+                                        interval
           -h, --help                    display help for command
 
         Set YA_MODBUS_DEBUG=1 to log the full error (stack and cause) of failed polls and each request that is sent again.
@@ -254,6 +260,79 @@ describe('CLI - ya-modbus-bridge', () => {
         })
       )
       expect(mockBridge.start).toHaveBeenCalled()
+    })
+  })
+
+  describe('Run Command - stats interval', () => {
+    it('should set statsLog from --stats-log', async () => {
+      await program.parseAsync([
+        'node',
+        'bridge',
+        'run',
+        '--mqtt-url',
+        'mqtt://b:1883',
+        '--stats-interval',
+        '15',
+        '--stats-log',
+      ])
+      expect(indexModule.createBridge).toHaveBeenLastCalledWith({
+        mqtt: { url: 'mqtt://b:1883' },
+        statsInterval: 15,
+        statsLog: true,
+      })
+    })
+
+    it('should set statsInterval from --stats-interval, with and without a config file', async () => {
+      jest
+        .mocked(configModule.loadConfig)
+        .mockResolvedValue({ mqtt: { url: 'mqtt://localhost:1883' }, statsInterval: 30 })
+      await program.parseAsync([
+        'node',
+        'bridge',
+        'run',
+        '--config',
+        'c.json',
+        '--stats-interval',
+        '60',
+      ])
+      expect(indexModule.createBridge).toHaveBeenLastCalledWith(
+        expect.objectContaining({ statsInterval: 60 })
+      )
+
+      await program.parseAsync([
+        'node',
+        'bridge',
+        'run',
+        '--mqtt-url',
+        'mqtt://b:1883',
+        '--stats-interval',
+        '15',
+      ])
+      expect(indexModule.createBridge).toHaveBeenLastCalledWith({
+        mqtt: { url: 'mqtt://b:1883' },
+        statsInterval: 15,
+      })
+    })
+  })
+
+  describe('Run Command - number flags', () => {
+    it.each([
+      ['--mqtt-reconnect-period', '<ms>'],
+      ['--stats-interval', '<seconds>'],
+    ])('should stop with a clear message when %s is not a whole number', async (flag, arg) => {
+      const stderr = jest.spyOn(process.stderr, 'write').mockReturnValue(true)
+      try {
+        for (const bad of ['abc', '1.5', '100ms']) {
+          await expect(
+            program.parseAsync(['node', 'bridge', 'run', '--mqtt-url', 'mqtt://b:1883', flag, bad])
+          ).rejects.toThrow(
+            `option '${flag} ${arg}' argument '${bad}' is invalid. Expected a whole number (0, 1, 2, ...).`
+          )
+        }
+      } finally {
+        stderr.mockRestore()
+      }
+      expect(indexModule.createBridge).not.toHaveBeenCalled()
     })
   })
 
@@ -626,6 +705,38 @@ describe('CLI - ya-modbus-bridge', () => {
       ])
     })
 
+    // The order in which the devices take turns on a line with connection.pollOrder 'fixed'
+    it('should list the polled devices of each line with a fixed poll order', async () => {
+      const fixed = (deviceId: string, slaveId: number, enabled = true): object => {
+        const device = rtuDevice(deviceId, slaveId)
+        return {
+          ...device,
+          connection: { ...device.connection, pollOrder: 'fixed' },
+          ...(!enabled && { enabled }),
+        }
+      }
+      mockBridge.addDevice = jest.fn().mockResolvedValue(undefined)
+      jest.mocked(configModule.loadConfig).mockResolvedValue({
+        mqtt: { url: 'mqtt://localhost:1883' },
+        devices: [
+          fixed('meter3', 3),
+          { ...rtuDevice('other'), connection: { type: 'tcp', host: 'meter', slaveId: 1 } },
+          fixed('meter1', 1),
+          fixed('off', 4, false),
+          fixed('meter2', 2),
+        ],
+      } as any)
+
+      await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+      expect(consoleLogSpy.mock.calls.map((call) => String(call[0])).slice(-2)).toEqual([
+        expect.stringContaining(
+          'The devices on rtu:/dev/ttyUSB0 take turns in a fixed order: meter3, meter1, meter2'
+        ),
+        expect.stringContaining('Bridge started successfully'),
+      ])
+    })
+
     it('should not print the success message when a device fails to load', async () => {
       mockBridge.addDevice = jest.fn().mockRejectedValue(new Error('Failed to load driver'))
       jest.mocked(configModule.loadConfig).mockResolvedValue({
@@ -780,6 +891,58 @@ describe('CLI - ya-modbus-bridge', () => {
         expect.stringContaining('devices.1.deviceId: Device ID must not be empty')
       )
       expect(processUtils.exit).toHaveBeenCalledWith(1)
+    })
+
+    // stateDir is accepted but nothing uses it yet (#88), so an operator who sets it must
+    // not think that the bridge keeps state (#621)
+    it.each([
+      { from: 'the config file', config: { stateDir: '/tmp/state' }, args: [] },
+      {
+        from: '--state-dir with --config',
+        config: {},
+        args: ['--state-dir', '/tmp/state'],
+      },
+      {
+        from: '--state-dir without --config',
+        config: undefined,
+        args: ['--mqtt-url', 'mqtt://localhost:1883', '--state-dir', '/tmp/state'],
+      },
+    ])(
+      'should warn at startup that stateDir is not used, set from $from',
+      async ({ config, args }) => {
+        jest.mocked(configModule.loadConfig).mockResolvedValue({
+          mqtt: { url: 'mqtt://localhost:1883' },
+          ...config,
+        })
+        const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
+
+        try {
+          const configArgs = config ? ['--config', 'config.json'] : []
+          await program.parseAsync(['node', 'ya-modbus-bridge', 'run', ...configArgs, ...args])
+
+          expect(consoleWarnSpy.mock.calls).toEqual([
+            [expect.stringContaining('stateDir is set, but the bridge does not use it yet')],
+          ])
+          expect(mockBridge.start).toHaveBeenCalled()
+        } finally {
+          consoleWarnSpy.mockRestore()
+        }
+      }
+    )
+
+    it('should not warn about stateDir when it is not set', async () => {
+      jest.mocked(configModule.loadConfig).mockResolvedValue({
+        mqtt: { url: 'mqtt://localhost:1883' },
+      })
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
+
+      try {
+        await program.parseAsync(['node', 'ya-modbus-bridge', 'run', '--config', 'config.json'])
+
+        expect(consoleWarnSpy).not.toHaveBeenCalled()
+      } finally {
+        consoleWarnSpy.mockRestore()
+      }
     })
 
     // On Node.js 26.4+ serial requests time out (#507), so the bridge says why its serial

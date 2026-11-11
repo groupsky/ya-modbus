@@ -1,7 +1,11 @@
 import type { DeviceDriver } from '@ya-modbus/driver-types'
 
 import { checkWrites, WriteError } from './device-writes.js'
-import type { DeviceConfig, DeviceConnection } from './types.js'
+import { FixedOrderLines } from './fixed-poll-order.js'
+import { readPartial } from './partial-read.js'
+import { connectionKey, pollOrderConflict } from './poll-lines.js'
+import type { DeviceConfig } from './types.js'
+import { DEFAULT_POLLING_INTERVAL } from './utils/device-validation.js'
 
 interface ScheduledDevice {
   config: DeviceConfig
@@ -12,28 +16,43 @@ interface ScheduledDevice {
   timer?: NodeJS.Timeout | undefined
   // True from the start of a read until its poll chain continues or ends
   readInFlight: boolean
+  // On a line with a fixed poll order: when the device may be polled next, undefined while
+  // polling is stopped. The line polls it in its turn instead of a timer.
+  dueAt?: number | undefined
   interval: number
+  // Wait after a failed read, until maxRetries failed reads in a row
+  retryDelay: number
   retryBackoff: number
   maxRetryBackoff: number
   // Read on every poll: readable points with pollType 'dynamic' (the default)
   dynamicIds: string[]
+  // Dynamic points the device refused with a Modbus exception, retried in a call of their own
+  failedDynamicIds: string[]
   // Read until one read works, then sent from staticValues in every data message
   staticIds: string[]
   staticValues?: Record<string, unknown> | undefined
+  // Static points the device refused with a Modbus exception, read again on every poll
+  failedStaticIds: string[]
   lastFailureCount: number
 }
 
-/** `afterWrite` is true for the read that follows a write */
-type DataCallback = (
-  deviceId: string,
-  data: Record<string, unknown>,
-  info?: { afterWrite: true }
-) => void
+/**
+ * `afterWrite` is true for the read that follows a write. `failedDataPoints` names the points
+ * the device refused (Modbus exception 1, 2 or 3); it is left out when no point failed.
+ */
+export interface DataInfo {
+  /** Time the read took in milliseconds, without the wait for its turn */
+  readMs: number
+  afterWrite?: true
+  failedDataPoints?: string[]
+}
+type DataCallback = (deviceId: string, data: Record<string, unknown>, info: DataInfo) => void
 type ErrorCallback = (deviceId: string, error: Error, failureCount: number) => void
+/** Called after every poll with the time the read took (without the wait for its turn) */
+type ReadCallback = (deviceId: string, durationMs: number, ok: boolean) => void
 
 /** Failed reads in a row before polling slows down to `retryBackoff` */
 export const DEFAULT_MAX_RETRIES = 3
-const DEFAULT_POLLING_INTERVAL = 5000 // 5 seconds
 /** Longest wait between polls of a failing device, unless `retryBackoff` is longer */
 const DEFAULT_MAX_RETRY_BACKOFF = 60000
 
@@ -43,12 +62,6 @@ const MAX_TIMER_DELAY = 2 ** 31 - 1
 // NaN compares false with everything, so it is rejected too
 const isValidTimerDelay = (ms: number): boolean => ms > 0 && ms <= MAX_TIMER_DELAY
 
-// The serial port, or the TCP host and port. Other serial settings do not make another bus.
-const connectionKey = (connection: DeviceConnection): string =>
-  connection.type === 'rtu'
-    ? `rtu:${connection.port}`
-    : `tcp:${connection.host}:${connection.port ?? 502}`
-
 /**
  * Coordinates polling across multiple devices
  */
@@ -57,14 +70,25 @@ export class PollingScheduler {
   private running = false
   // Per connection: settles when the last poll or write that waits for its turn has ended
   private lastPolls = new Map<string, Promise<unknown>>()
+  private fixedLines = new FixedOrderLines({
+    isRunning: () => this.running,
+    dueAt: (deviceId) => this.devices.get(deviceId)?.dueAt,
+    poll: async (deviceId) => {
+      const device = this.devices.get(deviceId)
+      if (device) await this.pollDevice(deviceId, device)
+    },
+  })
 
   constructor(
     private onData: DataCallback,
-    private onError: ErrorCallback
+    private onError: ErrorCallback,
+    private onRead?: ReadCallback
   ) {}
 
   /**
-   * Schedule a device for polling
+   * Schedule a device for polling. On a line with `connection.pollOrder: 'fixed'` the device takes
+   * its turn after the devices that are already scheduled; a device that is scheduled again moves
+   * to the end of the order.
    */
   scheduleDevice(deviceId: string, config: DeviceConfig, driver: DeviceDriver): void {
     const interval = config.polling?.interval ?? DEFAULT_POLLING_INTERVAL
@@ -73,7 +97,12 @@ export class PollingScheduler {
       throw new Error(`Invalid polling interval for device ${deviceId}: ${interval}`)
     }
 
-    const retryBackoff = config.polling?.retryBackoff ?? Math.min(interval * 2, MAX_TIMER_DELAY)
+    const retryDelay = config.polling?.retryDelay ?? interval
+    if (!isValidTimerDelay(retryDelay)) {
+      throw new Error(`Invalid retry delay for device ${deviceId}: ${retryDelay}`)
+    }
+
+    const retryBackoff = config.polling?.retryBackoff ?? Math.min(retryDelay * 2, MAX_TIMER_DELAY)
     if (!isValidTimerDelay(retryBackoff)) {
       throw new Error(`Invalid retry backoff for device ${deviceId}: ${retryBackoff}`)
     }
@@ -89,6 +118,13 @@ export class PollingScheduler {
       )
     }
 
+    const key = connectionKey(config.connection)
+    const others = [...this.devices]
+      .filter(([id, device]) => id !== deviceId && device.connectionKey === key)
+      .map(([, device]) => device.config)
+    const conflict = pollOrderConflict(key, [...others, config])
+    if (conflict) throw new Error(conflict)
+
     // A device scheduled again must not keep the timer of its previous schedule
     this.unscheduleDevice(deviceId)
 
@@ -100,15 +136,19 @@ export class PollingScheduler {
     this.devices.set(deviceId, {
       config,
       driver,
-      connectionKey: connectionKey(config.connection),
+      connectionKey: key,
       dynamicIds: polled.filter((dp) => dp.pollType !== 'static').map((dp) => dp.id),
       staticIds: polled.filter((dp) => dp.pollType === 'static').map((dp) => dp.id),
+      failedDynamicIds: [],
+      failedStaticIds: [],
       interval,
+      retryDelay,
       retryBackoff,
       maxRetryBackoff,
       lastFailureCount: 0,
       readInFlight: false,
     })
+    if (config.connection.pollOrder === 'fixed') this.fixedLines.add(key, deviceId)
 
     if (this.running) {
       this.startDevicePolling(deviceId)
@@ -123,6 +163,7 @@ export class PollingScheduler {
     if (device?.timer) {
       clearTimeout(device.timer)
     }
+    if (device) this.fixedLines.remove(device.connectionKey, deviceId)
     this.devices.delete(deviceId)
   }
 
@@ -166,9 +207,11 @@ export class PollingScheduler {
         }
       } finally {
         try {
+          const start = Date.now()
           const data = await this.readDevice(deviceId, device)
+          const readMs = Date.now() - start
           device.lastFailureCount = 0
-          this.onData(deviceId, data, { afterWrite: true })
+          this.onData(deviceId, data, { readMs, afterWrite: true, ...this.failedInfo(device) })
         } catch (error) {
           console.warn(
             `Failed to read device ${deviceId} after a write, the next poll reads it: ${error instanceof Error ? error.message : String(error)}`
@@ -195,12 +238,14 @@ export class PollingScheduler {
    */
   stop(): void {
     this.running = false
+    this.fixedLines.stop()
 
     for (const device of this.devices.values()) {
       if (device.timer) {
         clearTimeout(device.timer)
         device.timer = undefined
       }
+      device.dueAt = undefined
     }
   }
 
@@ -220,7 +265,7 @@ export class PollingScheduler {
 
     // A device has one poll chain: a pending timer or a read in flight. A read that was in flight
     // when polling stopped continues the chain when it finishes.
-    if (device.timer || device.readInFlight) return
+    if (device.timer || device.readInFlight || device.dueAt !== undefined) return
 
     // Schedule first poll after the interval
     this.scheduleNextPoll(deviceId, device)
@@ -246,10 +291,17 @@ export class PollingScheduler {
     } else if (mode === 'continuous' && device.lastFailureCount === 0) {
       // Continuous mode: poll on next event loop tick (effectively immediate)
       delay = 1
+    } else if (device.lastFailureCount > 0) {
+      // Retry after a failed read: wait, so a failing device does not flood a shared bus
+      delay = device.retryDelay
     } else {
-      // Interval mode, or retry after a failed read: wait for specified interval
-      // so a failing device does not flood a shared bus
       delay = device.interval
+    }
+
+    if (device.config.connection.pollOrder === 'fixed') {
+      device.dueAt = performance.now() + delay
+      this.fixedLines.wake(device.connectionKey)
+      return
     }
 
     // stop(), unscheduleDevice() and scheduleDevice() clear the timer, so it only fires for a
@@ -261,18 +313,27 @@ export class PollingScheduler {
   }
 
   /**
-   * Read the static points of a device. A failed read is not a poll failure: the dynamic data
-   * is still published, and the next poll tries the static points again.
+   * Read the static points of a device that were not read yet. A failed read is not a poll
+   * failure: the dynamic data is still published, and the next poll tries the static points again.
    */
   private async readStaticPoints(deviceId: string, device: ScheduledDevice): Promise<void> {
+    const ids = device.staticValues ? device.failedStaticIds : device.staticIds
     try {
-      device.staticValues = await device.driver.readDataPoints(device.staticIds)
+      const { data, failed } = await readPartial(device.driver, ids, device.failedStaticIds)
+      device.staticValues = { ...device.staticValues, ...data }
+      device.failedStaticIds = failed
     } catch (error) {
       console.warn(
-        `Failed to read static data points of device ${deviceId} (${device.staticIds.join(', ')}), trying again on the next poll:`,
+        `Failed to read static data points of device ${deviceId} (${ids.join(', ')}), trying again on the next poll:`,
         error
       )
     }
+  }
+
+  // The `failedDataPoints` of the data callback, left out when no point failed
+  private failedInfo(device: ScheduledDevice): Pick<DataInfo, 'failedDataPoints'> {
+    const failed = [...device.failedDynamicIds, ...device.failedStaticIds]
+    return failed.length > 0 ? { failedDataPoints: failed } : {}
   }
 
   /**
@@ -299,15 +360,41 @@ export class PollingScheduler {
     deviceId: string,
     device: ScheduledDevice
   ): Promise<Record<string, unknown>> {
-    const data =
-      device.dynamicIds.length > 0 ? await device.driver.readDataPoints(device.dynamicIds) : {}
+    let data: Record<string, unknown> = {}
+    if (device.dynamicIds.length > 0) {
+      const result = await readPartial(device.driver, device.dynamicIds, device.failedDynamicIds)
+      data = result.data
+      device.failedDynamicIds = result.failed
+      // The device refuses every point: the poll fails. The next poll reads them in one request.
+      if (result.failed.length === device.dynamicIds.length) throw result.error
+    }
 
     // Only after a dynamic read worked, so a device that does not answer costs one timeout
-    if (device.staticIds.length > 0 && !device.staticValues) {
+    if (
+      device.staticIds.length > 0 &&
+      (!device.staticValues || device.failedStaticIds.length > 0)
+    ) {
       await this.readStaticPoints(deviceId, device)
     }
 
     return { ...device.staticValues, ...data }
+  }
+
+  // Read the device and report how long it took, also when the read fails
+  private async timedRead(
+    deviceId: string,
+    device: ScheduledDevice
+  ): Promise<{ data: Record<string, unknown>; readMs: number }> {
+    const start = Date.now()
+    try {
+      const data = await this.readDevice(deviceId, device)
+      const readMs = Date.now() - start
+      this.onRead?.(deviceId, readMs, true)
+      return { data, readMs }
+    } catch (error) {
+      this.onRead?.(deviceId, Date.now() - start, false)
+      throw error
+    }
   }
 
   /**
@@ -320,12 +407,12 @@ export class PollingScheduler {
       // The whole poll of a device runs before the poll of the next device on its connection.
       // When the device is unscheduled or polling stops while the poll waits for its turn, the
       // device is not read.
-      const data = await this.inTurn(device.connectionKey, async () =>
+      const read = await this.inTurn(device.connectionKey, async () =>
         this.running && this.devices.get(deviceId) === device
-          ? this.readDevice(deviceId, device)
+          ? this.timedRead(deviceId, device)
           : undefined
       )
-      if (data === undefined) {
+      if (read === undefined) {
         device.readInFlight = false
         return
       }
@@ -334,7 +421,7 @@ export class PollingScheduler {
       device.lastFailureCount = 0
 
       try {
-        this.onData(deviceId, data)
+        this.onData(deviceId, read.data, { readMs: read.readMs, ...this.failedInfo(device) })
       } catch (callbackError) {
         // Data callback threw - log but don't count as polling failure
         console.error(

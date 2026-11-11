@@ -12,8 +12,7 @@
  *
  * Checks the dist folders of all publishable packages (via lerna, like
  * validate-bins.js), and the bin folder of bin-only packages. Lines in comments are skipped, so code examples in JSDoc
- * do not count. Node.js built-in modules do not need to be declared. The files
- * that ESLint does not check for this either (see eslint.config.mjs) are skipped.
+ * do not count. Node.js built-in modules do not need to be declared.
  *
  * Run after `npm run build`.
  */
@@ -29,13 +28,6 @@ const ROOT = path.join(__dirname, '..')
 // writes on one line, at the start of a line
 const IMPORT_PATTERN =
   /\brequire\(\s*['"]([^'"]+)['"]\s*\)|\bimport\(\s*['"]([^'"]+)['"]\s*\)|^\s*(?:import|export)\b.*?\bfrom\s+['"]([^'"]+)['"]|^\s*import\s+['"]([^'"]+)['"]/g
-
-// Test helpers, and driver-loader's testing entry, which imports @jest/globals
-// from the jest install of the consumer (jest is an optional peer dependency)
-const SKIPPED_FILES = [
-  /(^|\/)test-utils\.js$/,
-  /^packages\/driver-loader\/dist\/[^/]+\/src\/testing\.js$/,
-]
 
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'))
 
@@ -99,7 +91,6 @@ function main() {
       problems.push(`${pkg.name}: no built files (run \`npm run build\` first)`)
     }
     for (const file of files) {
-      if (SKIPPED_FILES.some((pattern) => pattern.test(path.relative(ROOT, file)))) continue
       for (const name of importedPackages(file)) {
         if (!declared.has(name)) {
           problems.push(`${pkg.name}: ${path.relative(dir, file)} imports undeclared "${name}"`)

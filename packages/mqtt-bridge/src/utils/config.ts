@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import type { MqttBridgeConfig } from '../types.js'
 
 import { mqttBridgeConfigSchema, mqttConfigSchema, mqttUrlSchema } from './config-schema.js'
+import { ConfigValidationError } from './config-validator.js'
 
 const DEFAULT_MQTT_URL = 'mqtt://localhost:1883'
 
@@ -21,12 +22,7 @@ export async function loadConfig(configPath: string): Promise<MqttBridgeConfig> 
   /* istanbul ignore next - defensive: JSON.parse never returns null */
   const result = configFileSchema.safeParse(json === null ? {} : json)
 
-  if (!result.success) {
-    const errors = result.error.issues
-      .map((e) => (e.path.length ? `${e.path.join('.')}: ${e.message}` : e.message))
-      .join(', ')
-    throw new Error(`Invalid configuration: ${errors}`)
-  }
+  if (!result.success) throw new ConfigValidationError(result.error)
 
   // Convert Zod output (with T | undefined) to MqttBridgeConfig (with T?)
   const config: MqttBridgeConfig = {
@@ -41,6 +37,8 @@ export async function loadConfig(configPath: string): Promise<MqttBridgeConfig> 
     },
     ...(result.data.stateDir !== undefined && { stateDir: result.data.stateDir }),
     ...(result.data.topicPrefix !== undefined && { topicPrefix: result.data.topicPrefix }),
+    ...(result.data.statsInterval !== undefined && { statsInterval: result.data.statsInterval }),
+    ...(result.data.statsLog !== undefined && { statsLog: result.data.statsLog }),
     ...(result.data.devices !== undefined && { devices: result.data.devices }),
   }
 

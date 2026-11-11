@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.12.15](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.12.14...@ya-modbus/device-profiler@0.12.15) (2026-11-11)
+
+**Note:** Version bump only for package @ya-modbus/device-profiler
+
+## [0.12.14](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.12.13...@ya-modbus/device-profiler@0.12.14) (2026-11-11)
+
+**Note:** Version bump only for package @ya-modbus/device-profiler
+
+## [0.12.13](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.12.12...@ya-modbus/device-profiler@0.12.13) (2026-11-10)
+
+**Note:** Version bump only for package @ya-modbus/device-profiler
+
+## [0.12.12](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.12.11...@ya-modbus/device-profiler@0.12.12) (2026-11-10)
+
+**Note:** Version bump only for package @ya-modbus/device-profiler
+
+## [0.12.11](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.12.10...@ya-modbus/device-profiler@0.12.11) (2026-11-09)
+
+**Note:** Version bump only for package @ya-modbus/device-profiler
+
+## [0.12.10](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.12.9...@ya-modbus/device-profiler@0.12.10) (2026-11-04)
+
+**Note:** Version bump only for package @ya-modbus/device-profiler
+
 ## [0.12.9](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.12.8...@ya-modbus/device-profiler@0.12.9) (2026-11-02)
 
 **Note:** Version bump only for package @ya-modbus/device-profiler

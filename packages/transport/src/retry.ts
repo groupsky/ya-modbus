@@ -34,6 +34,7 @@ export type RetryLogger = (attempt: number, error: ModbusError) => void
  * @param fn - The async function to retry
  * @param maxRetries - Maximum number of attempts (default: MAX_RETRIES)
  * @param logger - Optional callback to log retry attempts
+ * @param retryDelay - Pause between attempts in milliseconds (default: RETRY_DELAY_MS)
  * @returns Promise resolving to the function's return value
  * @throws The last error encountered if all retries are exhausted, as an Error
  *   with the diagnostic properties of the original (see normalizeModbusError)
@@ -41,7 +42,8 @@ export type RetryLogger = (attempt: number, error: ModbusError) => void
 export async function withRetry<T>(
   fn: () => Promise<T>,
   maxRetries: number = MAX_RETRIES,
-  logger?: RetryLogger
+  logger?: RetryLogger,
+  retryDelay: number = RETRY_DELAY_MS
 ): Promise<T> {
   let lastError: ModbusError = new Error('No retry attempts were made')
 
@@ -57,7 +59,7 @@ export async function withRetry<T>(
         if (logger) {
           logger(attempt, lastError)
         }
-        await sleep(RETRY_DELAY_MS)
+        await sleep(retryDelay)
       }
     }
   }

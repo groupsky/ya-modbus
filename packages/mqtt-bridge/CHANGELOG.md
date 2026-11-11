@@ -3,6 +3,140 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.36.9](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.8...@ya-modbus/mqtt-bridge@0.36.9) (2026-11-11)
+
+**Note:** Version bump only for package @ya-modbus/mqtt-bridge
+
+## [0.36.8](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.7...@ya-modbus/mqtt-bridge@0.36.8) (2026-11-11)
+
+**Note:** Version bump only for package @ya-modbus/mqtt-bridge
+
+## [0.36.7](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.6...@ya-modbus/mqtt-bridge@0.36.7) (2026-11-11)
+
+**Note:** Version bump only for package @ya-modbus/mqtt-bridge
+
+## [0.36.6](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.5...@ya-modbus/mqtt-bridge@0.36.6) (2026-11-11)
+
+### Bug Fixes
+
+- **mqtt-bridge:** warn when a device ID "bridge" clashes with the bridge status topic ([#768](https://github.com/groupsky/ya-modbus/issues/768)) ([1091bca](https://github.com/groupsky/ya-modbus/commit/1091bca61f5bc9ddedbf7b4b3bcc17a7006ce779)), closes [#725](https://github.com/groupsky/ya-modbus/issues/725)
+
+## [0.36.5](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.4...@ya-modbus/mqtt-bridge@0.36.5) (2026-11-11)
+
+### Bug Fixes
+
+- **mqtt-bridge:** polling and publish config errors say the allowed values ([#767](https://github.com/groupsky/ya-modbus/issues/767)) ([0122a85](https://github.com/groupsky/ya-modbus/commit/0122a859f325b245131a91766be25220d9e3bb5f)), closes [#731](https://github.com/groupsky/ya-modbus/issues/731) [#731](https://github.com/groupsky/ya-modbus/issues/731)
+
+## [0.36.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.3...@ya-modbus/mqtt-bridge@0.36.4) (2026-11-11)
+
+### Bug Fixes
+
+- **mqtt-bridge:** config errors name the bad field ([#730](https://github.com/groupsky/ya-modbus/issues/730)) ([16ebe95](https://github.com/groupsky/ya-modbus/commit/16ebe95b7e148f62ce1db7cccddfc11be7a63258)), closes [#611](https://github.com/groupsky/ya-modbus/issues/611) [#611](https://github.com/groupsky/ya-modbus/issues/611) [#611](https://github.com/groupsky/ya-modbus/issues/611)
+
+## [0.36.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.2...@ya-modbus/mqtt-bridge@0.36.3) (2026-11-11)
+
+### Bug Fixes
+
+- **mqtt-bridge:** reject non-number values for number CLI flags ([#765](https://github.com/groupsky/ya-modbus/issues/765)) ([6ddebdb](https://github.com/groupsky/ya-modbus/commit/6ddebdb4ceaa47c809a38dc83b75395e0e61d661)), closes [#727](https://github.com/groupsky/ya-modbus/issues/727)
+
+## [0.36.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.1...@ya-modbus/mqtt-bridge@0.36.2) (2026-11-10)
+
+### Bug Fixes
+
+- **transport:** a port that cannot be opened prints 'Error:' once ([#763](https://github.com/groupsky/ya-modbus/issues/763)) ([c9468c9](https://github.com/groupsky/ya-modbus/commit/c9468c955a7fac62d3751b759f592b0682ffa11c)), closes [#748](https://github.com/groupsky/ya-modbus/issues/748)
+
+## [0.36.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.0...@ya-modbus/mqtt-bridge@0.36.1) (2026-11-10)
+
+**Note:** Version bump only for package @ya-modbus/mqtt-bridge
+
+# [0.36.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.35.3...@ya-modbus/mqtt-bridge@0.36.0) (2026-11-10)
+
+### Features
+
+- **mqtt-bridge:** add polling.retryDelay, make interval optional in continuous mode ([#729](https://github.com/groupsky/ya-modbus/issues/729)) ([f822ba3](https://github.com/groupsky/ya-modbus/commit/f822ba3867026ede6a6b29330112ee287e0719a3)), closes [#616](https://github.com/groupsky/ya-modbus/issues/616) [#616](https://github.com/groupsky/ya-modbus/issues/616) [#616](https://github.com/groupsky/ya-modbus/issues/616)
+
+## [0.35.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.35.2...@ya-modbus/mqtt-bridge@0.35.3) (2026-11-09)
+
+### Bug Fixes
+
+- **mqtt-bridge:** release the transport of a device removed while its driver loads ([#760](https://github.com/groupsky/ya-modbus/issues/760)) ([4cdbf39](https://github.com/groupsky/ya-modbus/commit/4cdbf3927da360f5e8437a9d642b90026eac5e4d)), closes [#594](https://github.com/groupsky/ya-modbus/issues/594)
+
+## [0.35.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.35.1...@ya-modbus/mqtt-bridge@0.35.2) (2026-11-09)
+
+### Bug Fixes
+
+- declare and stop publishing the imports of test helpers ([#750](https://github.com/groupsky/ya-modbus/issues/750)) ([b3dde85](https://github.com/groupsky/ya-modbus/commit/b3dde850f3ba872e761021ccc82ff2ba4cc379c2)), closes [#597](https://github.com/groupsky/ya-modbus/issues/597) [#597](https://github.com/groupsky/ya-modbus/issues/597)
+
+## [0.35.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.35.0...@ya-modbus/mqtt-bridge@0.35.1) (2026-11-08)
+
+**Note:** Version bump only for package @ya-modbus/mqtt-bridge
+
+# [0.35.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.34.0...@ya-modbus/mqtt-bridge@0.35.0) (2026-11-05)
+
+### Features
+
+- **mqtt-bridge:** allow nested topic prefixes such as home/modbus ([#739](https://github.com/groupsky/ya-modbus/issues/739)) ([a321581](https://github.com/groupsky/ya-modbus/commit/a32158160070272b0ee69d20278f4ecb83ccc09d)), closes [#620](https://github.com/groupsky/ya-modbus/issues/620)
+
+# [0.34.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.33.0...@ya-modbus/mqtt-bridge@0.34.0) (2026-11-05)
+
+### Features
+
+- **mqtt-bridge:** device key in the device config for multi-device drivers ([#738](https://github.com/groupsky/ya-modbus/issues/738)) ([d96eb34](https://github.com/groupsky/ya-modbus/commit/d96eb342b8c2d704ea7502bc31c8d336330b25ab)), closes [#625](https://github.com/groupsky/ya-modbus/issues/625)
+
+# [0.33.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.32.0...@ya-modbus/mqtt-bridge@0.33.0) (2026-11-04)
+
+### Features
+
+- set request attempts and retry delay from the CLI and the bridge config ([#736](https://github.com/groupsky/ya-modbus/issues/736)) ([42963d0](https://github.com/groupsky/ya-modbus/commit/42963d0ea295a073bb731f08ad0d436c6c3616bf)), closes [#624](https://github.com/groupsky/ya-modbus/issues/624)
+
+# [0.32.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.31.0...@ya-modbus/mqtt-bridge@0.32.0) (2026-11-04)
+
+### Features
+
+- **mqtt-bridge:** accept short driver names such as xymd1 ([#735](https://github.com/groupsky/ya-modbus/issues/735)) ([7b4fbe6](https://github.com/groupsky/ya-modbus/commit/7b4fbe695b9fdc731ec988c6a5c0284b0053ecf9)), closes [#610](https://github.com/groupsky/ya-modbus/issues/610)
+
+# [0.31.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.30.1...@ya-modbus/mqtt-bridge@0.31.0) (2026-11-04)
+
+### Features
+
+- **mqtt-bridge:** add a check command for config files ([#733](https://github.com/groupsky/ya-modbus/issues/733)) ([884be67](https://github.com/groupsky/ya-modbus/commit/884be677c93eece3dbdae7e1ab184738f499d3af)), closes [#613](https://github.com/groupsky/ya-modbus/issues/613)
+
+## [0.30.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.30.0...@ya-modbus/mqtt-bridge@0.30.1) (2026-11-04)
+
+### Bug Fixes
+
+- **mqtt-bridge:** say clearly that stateDir is not used yet ([#732](https://github.com/groupsky/ya-modbus/issues/732)) ([2054b11](https://github.com/groupsky/ya-modbus/commit/2054b11dabcead89a7fc0f34dc6299d227f15a41)), closes [#621](https://github.com/groupsky/ya-modbus/issues/621)
+
+# [0.30.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.29.0...@ya-modbus/mqtt-bridge@0.30.0) (2026-11-03)
+
+### Features
+
+- **mqtt-bridge:** add the read duration to data messages ([#728](https://github.com/groupsky/ya-modbus/issues/728)) ([72299b6](https://github.com/groupsky/ya-modbus/commit/72299b6f85bbb8452e9dc4427a51d5b739770ca7)), closes [#617](https://github.com/groupsky/ya-modbus/issues/617)
+
+# [0.29.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.28.0...@ya-modbus/mqtt-bridge@0.29.0) (2026-11-03)
+
+### Features
+
+- **mqtt-bridge:** publish per-device poll statistics ([#726](https://github.com/groupsky/ya-modbus/issues/726)) ([31debd9](https://github.com/groupsky/ya-modbus/commit/31debd9b96191e041a1721f44cafeae067251231)), closes [#619](https://github.com/groupsky/ya-modbus/issues/619)
+
+# [0.28.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.27.0...@ya-modbus/mqtt-bridge@0.28.0) (2026-11-03)
+
+### Features
+
+- **mqtt-bridge:** retained availability for the bridge and each device, with a last-will ([#724](https://github.com/groupsky/ya-modbus/issues/724)) ([171574f](https://github.com/groupsky/ya-modbus/commit/171574f676e6b0b470f1d4e8ef4e278af2488973)), closes [#618](https://github.com/groupsky/ya-modbus/issues/618)
+
+# [0.27.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.26.0...@ya-modbus/mqtt-bridge@0.27.0) (2026-11-03)
+
+### Features
+
+- **mqtt-bridge:** opt-in fixed poll order for the devices on one line ([#722](https://github.com/groupsky/ya-modbus/issues/722)) ([4aec395](https://github.com/groupsky/ya-modbus/commit/4aec3957ee6f75419e45489f0de4e9ddaa4a9d24)), closes [#682](https://github.com/groupsky/ya-modbus/issues/682) [#682](https://github.com/groupsky/ya-modbus/issues/682) [#682](https://github.com/groupsky/ya-modbus/issues/682) [#682](https://github.com/groupsky/ya-modbus/issues/682) [#682](https://github.com/groupsky/ya-modbus/issues/682) [#682](https://github.com/groupsky/ya-modbus/issues/682) [#682](https://github.com/groupsky/ya-modbus/issues/682) [#682](https://github.com/groupsky/ya-modbus/issues/682) [#682](https://github.com/groupsky/ya-modbus/issues/682)
+
+# [0.26.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.25.0...@ya-modbus/mqtt-bridge@0.26.0) (2026-11-03)
+
+### Features
+
+- **mqtt-bridge:** publish data points read fine when one block fails ([#720](https://github.com/groupsky/ya-modbus/issues/720)) ([fcdc964](https://github.com/groupsky/ya-modbus/commit/fcdc964225f26e38415c750b85c17afcfb8290ea)), closes [#604](https://github.com/groupsky/ya-modbus/issues/604)
+
 # [0.25.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.24.2...@ya-modbus/mqtt-bridge@0.25.0) (2026-11-02)
 
 ### Features

@@ -3,6 +3,59 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.18.5](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.18.4...@ya-modbus/cli@0.18.5) (2026-11-11)
+
+**Note:** Version bump only for package @ya-modbus/cli
+
+## [0.18.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.18.3...@ya-modbus/cli@0.18.4) (2026-11-11)
+
+**Note:** Version bump only for package @ya-modbus/cli
+
+## [0.18.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.18.2...@ya-modbus/cli@0.18.3) (2026-11-10)
+
+### Bug Fixes
+
+- **cli:** reject number flags that are not whole numbers ([#764](https://github.com/groupsky/ya-modbus/issues/764)) ([395108d](https://github.com/groupsky/ya-modbus/commit/395108d4d47ba08f93c2ad03d17554cbee32ed34)), closes [#737](https://github.com/groupsky/ya-modbus/issues/737)
+
+## [0.18.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.18.1...@ya-modbus/cli@0.18.2) (2026-11-10)
+
+**Note:** Version bump only for package @ya-modbus/cli
+
+## [0.18.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.18.0...@ya-modbus/cli@0.18.1) (2026-11-10)
+
+**Note:** Version bump only for package @ya-modbus/cli
+
+# [0.18.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.17.1...@ya-modbus/cli@0.18.0) (2026-11-09)
+
+- fix(cli)!: -h shows help on read and write (#746) ([](https://github.com/groupsky/ya-modbus/commit/)), closes [#746](https://github.com/groupsky/ya-modbus/issues/746) [#615](https://github.com/groupsky/ya-modbus/issues/615)
+
+### BREAKING CHANGES
+
+- -h is no longer the short form of --host on read and write.
+  Use --host instead.
+
+## [0.17.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.17.0...@ya-modbus/cli@0.17.1) (2026-11-09)
+
+**Note:** Version bump only for package @ya-modbus/cli
+
+# [0.17.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.16.1...@ya-modbus/cli@0.17.0) (2026-11-08)
+
+### Features
+
+- **cli:** read prints the values it got and lists the failed data points ([#745](https://github.com/groupsky/ya-modbus/issues/745)) ([800cb2f](https://github.com/groupsky/ya-modbus/commit/800cb2f5dc16a325ad9b2f9af79a5c57cd1bbaa7)), closes [#606](https://github.com/groupsky/ya-modbus/issues/606)
+
+## [0.16.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.16.0...@ya-modbus/cli@0.16.1) (2026-11-08)
+
+### Bug Fixes
+
+- **cli:** count Modbus requests, not data points, in the read performance output ([#743](https://github.com/groupsky/ya-modbus/issues/743)) ([3520048](https://github.com/groupsky/ya-modbus/commit/352004829cd972fde6553ae6489adc44d42d0cd7)), closes [#608](https://github.com/groupsky/ya-modbus/issues/608)
+
+# [0.16.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.15.3...@ya-modbus/cli@0.16.0) (2026-11-04)
+
+### Features
+
+- set request attempts and retry delay from the CLI and the bridge config ([#736](https://github.com/groupsky/ya-modbus/issues/736)) ([42963d0](https://github.com/groupsky/ya-modbus/commit/42963d0ea295a073bb731f08ad0d436c6c3616bf)), closes [#624](https://github.com/groupsky/ya-modbus/issues/624)
+
 ## [0.15.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.15.2...@ya-modbus/cli@0.15.3) (2026-11-02)
 
 **Note:** Version bump only for package @ya-modbus/cli

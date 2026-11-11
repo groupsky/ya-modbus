@@ -5,6 +5,7 @@
  */
 
 import { EventEmitter } from 'events'
+import type { Server } from 'net'
 
 import { ServerTCP } from 'modbus-serial'
 
@@ -29,6 +30,13 @@ function removeListeners(server: ServerTCP, ...events: string[]): void {
   for (const event of events) {
     EventEmitter.prototype.removeAllListeners.call(server, event)
   }
+}
+
+// The port net.Server listens on. modbus-serial keeps its net.Server in `_server` and does not
+// type it. Falls back to the configured port when the address is not known (a mocked server).
+function boundPort(server: ServerTCP, configured: number): number {
+  const address = (server as unknown as { _server?: Server })._server?.address()
+  return typeof address === 'object' && address !== null ? address.port : configured
 }
 
 /**
@@ -85,6 +93,7 @@ export class TcpTransport extends BaseTransport {
   private started = false
   private initReject?: (reason: Error) => void
   private initTimeout?: NodeJS.Timeout
+  private port?: number
 
   constructor(
     config: TcpTransportConfig,
@@ -106,10 +115,11 @@ export class TcpTransport extends BaseTransport {
 
     const serviceVector = createServiceVector(() => this.requestHandler)
 
-    // Build options - all values are required for TCP
+    // ServerTCP uses `options.port || 502`, so port 0 would become 502. The string '0' passes that
+    // check, and net.Server.listen() takes it as port 0: the system picks a free port.
     const options = {
       host: this.config.host,
-      port: this.config.port,
+      port: (this.config.port === 0 ? '0' : this.config.port) as number,
       unitID: 255, // Listen to all unit IDs
     }
 
@@ -140,6 +150,7 @@ export class TcpTransport extends BaseTransport {
         // Keep the error listeners: they log the errors of the running server. stop() removes
         // them.
         removeListeners(server, 'initialized')
+        this.port = boundPort(server, this.config.port)
         this.started = true
         resolve()
       })
@@ -211,10 +222,19 @@ export class TcpTransport extends BaseTransport {
           removeListeners(server, ...ERROR_EVENTS)
           this.started = false
           delete this.server
+          delete this.port
           resolve()
         }
       })
     })
+  }
+
+  /**
+   * The port the server listens on, while it is started. With port 0 in the config, this is the
+   * free port that the system picked.
+   */
+  getPort(): number | undefined {
+    return this.port
   }
 
   send(_slaveId: number, _response: Buffer): Promise<void> {

@@ -1,9 +1,10 @@
 import mqtt from 'mqtt'
 
 import { DeviceManager, type DeviceStatusUpdate } from './device-manager.js'
+import { createStatsTimer, DeviceStats } from './device-stats.js'
 import { parseWriteValues, WriteError } from './device-writes.js'
 import { DriverLoader } from './driver-loader.js'
-import { DEFAULT_MAX_RETRIES, PollingScheduler } from './polling-scheduler.js'
+import { DEFAULT_MAX_RETRIES, PollingScheduler, type DataInfo } from './polling-scheduler.js'
 import { PublishFilter } from './publish-filter.js'
 import type {
   MqttBridgeConfig,
@@ -56,6 +57,15 @@ export function createBridge(
 
   let client: mqtt.MqttClient | null = null
   const topicPrefix = config.topicPrefix ?? 'modbus'
+  // Retained 'online' or 'offline'. QoS 0 like the other messages: a QoS 1 message that is not
+  // acknowledged yet makes client.end() wait, and a second stop() at the same time removes the
+  // listener it waits for.
+  const bridgeStatusTopic = `${topicPrefix}/bridge/status`
+  const publishBridgeStatus = (value: 'online' | 'offline'): void => {
+    client?.publish(bridgeStatusTopic, value, { qos: 0, retain: true }, (error) => {
+      if (error) console.error(`Failed to publish ${bridgeStatusTopic}:`, error)
+    })
+  }
   // Subscriptions map needed because mqtt client doesn't expose handler lookup
   const subscriptions = new Map<string, MessageHandler>()
 
@@ -70,7 +80,7 @@ export function createBridge(
   // Publish function that will be called from polling
   const publishDeviceMessage = (
     deviceId: string,
-    topic: 'data' | 'status' | 'set/result',
+    topic: 'data' | 'status' | 'set/result' | 'stats',
     fields: Record<string, unknown>
   ): void => {
     if (!bridgeRef) {
@@ -84,21 +94,38 @@ export function createBridge(
       ...fields,
     })
 
-    // Publish to device-specific topic
-    void bridgeRef.publish(`${deviceId}/${topic}`, payload, { qos: 0 }).catch((error: Error) => {
+    // Publish to device-specific topic. The status is retained, so a new subscriber gets it.
+    const options: PublishOptions = { qos: 0, ...(topic === 'status' && { retain: true }) }
+    void bridgeRef.publish(`${deviceId}/${topic}`, payload, options).catch((error: Error) => {
       console.error(`Failed to publish ${topic} for device ${deviceId}:`, error)
     })
   }
 
-  // Update device status and publish the state (with the errors that caused it) when it changes
+  // Update device status and publish the state (with the errors that caused it, or the data
+  // points that failed) when the state or the failed data points change
   const updateDeviceStatus = (deviceId: string, updates: DeviceStatusUpdate): void => {
-    const previousState = deviceManager.getDevice(deviceId)?.state
+    const previous = deviceManager.getDevice(deviceId)
     deviceManager.updateDeviceState(deviceId, updates)
 
-    const { state, errors } = updates
-    if (state !== undefined && state !== previousState) {
-      publishDeviceMessage(deviceId, 'status', { state, ...(errors && { errors }) })
+    const { state, failedDataPoints } = updates
+    const failedChanged =
+      failedDataPoints !== undefined &&
+      JSON.stringify(failedDataPoints) !== JSON.stringify(previous?.failedDataPoints ?? [])
+    if (state !== undefined && (state !== previous?.state || failedChanged)) {
+      publishDeviceStatus(deviceId)
     }
+  }
+
+  // Publish the current state of the device, with the errors that caused an error state
+  const publishDeviceStatus = (deviceId: string): void => {
+    const device = deviceManager.getDevice(deviceId)
+    if (!device) return
+    const { state, errors, failedDataPoints } = device
+    publishDeviceMessage(deviceId, 'status', {
+      state,
+      ...(state === 'error' && errors && { errors }),
+      ...(failedDataPoints?.length && { failedDataPoints }),
+    })
   }
 
   // Remembers the last published data of devices in publish mode on-change
@@ -108,7 +135,7 @@ export function createBridge(
   const handlePollingData = (
     deviceId: string,
     data: Record<string, unknown>,
-    info?: { afterWrite: true }
+    info: DataInfo
   ): void => {
     // Read before the reset below. A device whose port could not be opened is in error state
     // without failed polls.
@@ -118,8 +145,10 @@ export function createBridge(
 
     // The first read after a recovery and the read after a write are always published
     const publishConfig = deviceManager.getDeviceConfig(deviceId)?.publish
-    if (publishFilter.shouldPublish(deviceId, data, publishConfig, recovered || !!info)) {
-      publishDeviceMessage(deviceId, 'data', { data })
+    if (
+      publishFilter.shouldPublish(deviceId, data, publishConfig, recovered || !!info.afterWrite)
+    ) {
+      publishDeviceMessage(deviceId, 'data', { readMs: info.readMs, data })
     }
 
     if (recovered) {
@@ -137,6 +166,7 @@ export function createBridge(
       lastPoll: Date.now(),
       lastUpdate: Date.now(),
       consecutiveFailures: 0,
+      failedDataPoints: info.failedDataPoints ?? [],
     })
   }
 
@@ -171,8 +201,19 @@ export function createBridge(
     })
   }
 
+  const deviceStats = new DeviceStats()
   const pollingScheduler =
-    dependencies?.pollingScheduler ?? new PollingScheduler(handlePollingData, handlePollingError)
+    dependencies?.pollingScheduler ??
+    new PollingScheduler(handlePollingData, handlePollingError, (deviceId, ms, ok) =>
+      deviceStats.record(deviceId, ms, ok)
+    )
+
+  const statsTimer = createStatsTimer(deviceStats, {
+    interval: config.statsInterval,
+    log: config.statsLog,
+    isConnected: () => client?.connected ?? false,
+    publish: (deviceId, stats) => publishDeviceMessage(deviceId, 'stats', { ...stats }),
+  })
 
   // Write the values of a message on {topicPrefix}/{deviceId}/set, and publish the result
   const handleWriteMessage = async (deviceId: string, message: MqttMessage): Promise<void> => {
@@ -216,6 +257,8 @@ export function createBridge(
           clean: true,
           reconnectPeriod: config.mqtt.reconnectPeriod ?? 5000,
           resubscribe: true, // Automatic resubscription on reconnect (default: true)
+          // The broker publishes it when the connection is lost without a clean stop
+          will: { topic: bridgeStatusTopic, payload: Buffer.from('offline'), qos: 1, retain: true },
         }
 
         if (config.mqtt.clientId) {
@@ -243,11 +286,20 @@ export function createBridge(
 
           // Automatic resubscription is handled by mqtt.js (resubscribe: true)
 
+          // After every connect: the broker may have published the last-will while it was away
+          publishBridgeStatus('online')
+
           // Data may be lost while the broker was away: the next read of every device is published
           publishFilter.forget()
+          // So may a change of state, and the retained status would stay old
+          // Not a device whose driver still loads: addDevice() publishes its first state
+          for (const { deviceId, state } of deviceManager.listDevices()) {
+            if (state !== 'connecting') publishDeviceStatus(deviceId)
+          }
 
           // Start polling scheduler
           pollingScheduler.start()
+          statsTimer.start()
 
           if (isInitialConnection) {
             isInitialConnection = false
@@ -307,6 +359,7 @@ export function createBridge(
 
       // Stop polling first
       pollingScheduler.stop()
+      statsTimer.stop()
 
       // Cleanup device manager (unloads drivers)
       await deviceManager.clear()
@@ -324,6 +377,8 @@ export function createBridge(
             resolve()
             return
           }
+          // A clean stop sends no last-will. The broker gets this message before the disconnect.
+          if (client.connected) publishBridgeStatus('offline')
           client.end(false, {}, () => {
             status = {
               state: 'stopped',
@@ -437,6 +492,14 @@ export function createBridge(
     },
 
     async addDevice(deviceConfig: DeviceConfig) {
+      if (deviceConfig.deviceId === 'bridge') {
+        console.warn(
+          `Device ID "bridge" clashes with the bridge status topic ${bridgeStatusTopic}: ` +
+            'the device status and the bridge online/offline status overwrite each other. ' +
+            'Rename the device.'
+        )
+      }
+
       await deviceManager.addDevice(deviceConfig)
 
       // Schedule device for polling if enabled
@@ -448,6 +511,15 @@ export function createBridge(
               `This may indicate the device was removed during initialization.`
           )
         }
+
+        try {
+          pollingScheduler.scheduleDevice(deviceConfig.deviceId, deviceConfig, driver)
+        } catch (error) {
+          // A device that is not polled is not added, so it can be added again with a fixed config
+          await deviceManager.removeDevice(deviceConfig.deviceId)
+          throw error
+        }
+        deviceStats.add(deviceConfig.deviceId)
 
         // A port that cannot be opened (USB adapter not plugged in) does not stop the bridge.
         // The device is in error state until a poll opens the port and reads it.
@@ -461,21 +533,25 @@ export function createBridge(
             state: 'error',
             errors: [connectionError.message],
           })
+        } else {
+          // The first state; later only changes are published
+          publishDeviceStatus(deviceConfig.deviceId)
         }
-
-        pollingScheduler.scheduleDevice(deviceConfig.deviceId, deviceConfig, driver)
 
         const writeTopic = `${topicPrefix}/${deviceConfig.deviceId}/set`
         subscriptions.set(writeTopic, (message) => {
           void handleWriteMessage(deviceConfig.deviceId, message)
         })
         subscribeOnClient(writeTopic)
+      } else {
+        publishDeviceStatus(deviceConfig.deviceId)
       }
     },
 
     async removeDevice(deviceId: string) {
       // Unschedule polling first
       pollingScheduler.unscheduleDevice(deviceId)
+      deviceStats.remove(deviceId)
 
       const writeTopic = `${topicPrefix}/${deviceId}/set`
       // A failed unsubscribe is harmless: no handler takes the messages any more. The callback
@@ -485,6 +561,15 @@ export function createBridge(
       // Remove device (unloads driver)
       await deviceManager.removeDevice(deviceId)
       publishFilter.forget(deviceId)
+      // An empty retained message deletes the retained status of the device on the broker. Not
+      // with bridge.publish(), which fails while the client is offline: mqtt.js keeps this
+      // message and sends it at the connect.
+      client?.publish(
+        `${topicPrefix}/${deviceId}/status`,
+        '',
+        { qos: 0, retain: true },
+        () => undefined
+      )
     },
 
     getDevice(deviceId: string) {

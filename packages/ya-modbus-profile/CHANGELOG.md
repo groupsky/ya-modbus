@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.16](https://github.com/groupsky/ya-modbus/compare/ya-modbus-profile@0.1.15...ya-modbus-profile@0.1.16) (2026-11-11)
+
+**Note:** Version bump only for package ya-modbus-profile
+
+## [0.1.15](https://github.com/groupsky/ya-modbus/compare/ya-modbus-profile@0.1.14...ya-modbus-profile@0.1.15) (2026-11-11)
+
+**Note:** Version bump only for package ya-modbus-profile
+
+## [0.1.14](https://github.com/groupsky/ya-modbus/compare/ya-modbus-profile@0.1.13...ya-modbus-profile@0.1.14) (2026-11-10)
+
+**Note:** Version bump only for package ya-modbus-profile
+
+## [0.1.13](https://github.com/groupsky/ya-modbus/compare/ya-modbus-profile@0.1.12...ya-modbus-profile@0.1.13) (2026-11-10)
+
+**Note:** Version bump only for package ya-modbus-profile
+
+## [0.1.12](https://github.com/groupsky/ya-modbus/compare/ya-modbus-profile@0.1.11...ya-modbus-profile@0.1.12) (2026-11-09)
+
+**Note:** Version bump only for package ya-modbus-profile
+
+## [0.1.11](https://github.com/groupsky/ya-modbus/compare/ya-modbus-profile@0.1.10...ya-modbus-profile@0.1.11) (2026-11-04)
+
+**Note:** Version bump only for package ya-modbus-profile
+
 ## [0.1.10](https://github.com/groupsky/ya-modbus/compare/ya-modbus-profile@0.1.9...ya-modbus-profile@0.1.10) (2026-11-02)
 
 **Note:** Version bump only for package ya-modbus-profile

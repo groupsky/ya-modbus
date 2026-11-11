@@ -3,6 +3,102 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.42](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.41...ya-modbus-bridge@0.1.42) (2026-11-11)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.41](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.40...ya-modbus-bridge@0.1.41) (2026-11-11)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.40](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.39...ya-modbus-bridge@0.1.40) (2026-11-11)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.39](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.38...ya-modbus-bridge@0.1.39) (2026-11-11)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.38](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.37...ya-modbus-bridge@0.1.38) (2026-11-11)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.37](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.36...ya-modbus-bridge@0.1.37) (2026-11-11)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.36](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.35...ya-modbus-bridge@0.1.36) (2026-11-11)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.35](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.34...ya-modbus-bridge@0.1.35) (2026-11-10)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.34](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.33...ya-modbus-bridge@0.1.34) (2026-11-10)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.33](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.32...ya-modbus-bridge@0.1.33) (2026-11-10)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.32](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.31...ya-modbus-bridge@0.1.32) (2026-11-09)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.31](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.30...ya-modbus-bridge@0.1.31) (2026-11-09)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.30](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.29...ya-modbus-bridge@0.1.30) (2026-11-08)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.29](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.28...ya-modbus-bridge@0.1.29) (2026-11-05)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.28](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.27...ya-modbus-bridge@0.1.28) (2026-11-05)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.27](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.26...ya-modbus-bridge@0.1.27) (2026-11-04)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.26](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.25...ya-modbus-bridge@0.1.26) (2026-11-04)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.25](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.24...ya-modbus-bridge@0.1.25) (2026-11-04)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.24](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.23...ya-modbus-bridge@0.1.24) (2026-11-04)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.23](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.22...ya-modbus-bridge@0.1.23) (2026-11-03)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.22](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.21...ya-modbus-bridge@0.1.22) (2026-11-03)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.21](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.20...ya-modbus-bridge@0.1.21) (2026-11-03)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.20](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.19...ya-modbus-bridge@0.1.20) (2026-11-03)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
+## [0.1.19](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.18...ya-modbus-bridge@0.1.19) (2026-11-03)
+
+**Note:** Version bump only for package ya-modbus-bridge
+
 ## [0.1.18](https://github.com/groupsky/ya-modbus/compare/ya-modbus-bridge@0.1.17...ya-modbus-bridge@0.1.18) (2026-11-02)
 
 **Note:** Version bump only for package ya-modbus-bridge

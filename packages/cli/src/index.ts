@@ -8,6 +8,7 @@ import { listDevicesCommand, type ListDevicesOptions } from './commands/list-dev
 import { readCommand, type ReadOptions } from './commands/read.js'
 import { showDefaultsCommand, type ShowDefaultsOptions } from './commands/show-defaults.js'
 import { writeCommand, type WriteOptions } from './commands/write.js'
+import { parseWholeNumberOption } from './utils/parse-whole-number-option.js'
 
 /**
  * Add common connection and driver options to a command
@@ -34,9 +35,24 @@ function addConnectionOptions(command: Command): Command {
       .option(
         '-s, --slave-id <id>',
         'Modbus slave ID (1-247). Uses driver default if not specified (RTU only)',
-        parseInt
+        parseWholeNumberOption
       )
-      .option('--timeout <ms>', 'Response timeout in milliseconds (default: 1000)', parseInt)
+      .option(
+        '--timeout <ms>',
+        'Response timeout in milliseconds (default: 1000)',
+        parseWholeNumberOption
+      )
+      .option(
+        '--attempts <n>',
+        'Times each request is sent before it fails (default: 3, use 1 for no retry)',
+        parseWholeNumberOption
+      )
+      .option(
+        '--retry-delay <ms>',
+        'Pause between attempts in milliseconds (default: 100)',
+        parseWholeNumberOption
+      )
+      .option('--verbose', 'Print each retry of a failed request')
 
       // RTU Connection
       .optionsGroup('RTU Connection (choose this OR TCP):')
@@ -44,7 +60,7 @@ function addConnectionOptions(command: Command): Command {
       .option(
         '-b, --baud-rate <rate>',
         'Baud rate (RTU only). Uses driver default if not specified',
-        parseInt
+        parseWholeNumberOption
       )
       .option(
         '--parity <type>',
@@ -53,18 +69,18 @@ function addConnectionOptions(command: Command): Command {
       .option(
         '--data-bits <bits>',
         'Data bits: 7 or 8 (RTU only). Uses driver default if not specified',
-        parseInt
+        parseWholeNumberOption
       )
       .option(
         '--stop-bits <bits>',
         'Stop bits: 1 or 2 (RTU only). Uses driver default if not specified',
-        parseInt
+        parseWholeNumberOption
       )
 
       // TCP Connection
       .optionsGroup('TCP Connection (choose this OR RTU):')
-      .option('-h, --host <host>', 'TCP host for Modbus TCP (e.g., 192.168.1.100)')
-      .option('--tcp-port <port>', 'TCP port (default: 502)', parseInt)
+      .option('--host <host>', 'TCP host for Modbus TCP (e.g., 192.168.1.100)')
+      .option('--tcp-port <port>', 'TCP port (default: 502)', parseWholeNumberOption)
   )
 }
 
@@ -141,12 +157,20 @@ program
     'Discovery strategy: quick (driver params) or thorough (all params)',
     'quick'
   )
-  .option('--timeout <ms>', 'Response timeout in milliseconds (default: 1000)', parseInt)
-  .option('--delay <ms>', 'Delay between attempts in milliseconds (default: 100)', parseInt)
+  .option(
+    '--timeout <ms>',
+    'Response timeout in milliseconds (default: 1000)',
+    parseWholeNumberOption
+  )
+  .option(
+    '--delay <ms>',
+    'Delay between attempts in milliseconds (default: 100)',
+    parseWholeNumberOption
+  )
   .option(
     '--max-devices <count>',
     'Maximum number of devices to find (default: 1, use 0 for unlimited)',
-    parseInt
+    parseWholeNumberOption
   )
   .option(
     '--id <spec>',

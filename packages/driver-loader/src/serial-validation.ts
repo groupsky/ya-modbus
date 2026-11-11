@@ -8,15 +8,11 @@ import { ValidationError } from './errors.js'
 import type { LoadedDriver } from './loader.js'
 
 /**
- * Check if config is a serial config (has validBaudRates)
+ * Check if config is an object that may hold serial constraints.
+ * Each valid* list is checked on its own, so no single key is required.
  */
 function isSerialConfig(config: unknown): config is SupportedSerialConfig {
-  return (
-    config !== null &&
-    config !== undefined &&
-    typeof config === 'object' &&
-    'validBaudRates' in config
-  )
+  return config !== null && typeof config === 'object'
 }
 
 /**

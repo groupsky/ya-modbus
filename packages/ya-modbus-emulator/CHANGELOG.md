@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.13](https://github.com/groupsky/ya-modbus/compare/ya-modbus-emulator@0.1.12...ya-modbus-emulator@0.1.13) (2026-11-11)
+
+**Note:** Version bump only for package ya-modbus-emulator
+
+## [0.1.12](https://github.com/groupsky/ya-modbus/compare/ya-modbus-emulator@0.1.11...ya-modbus-emulator@0.1.12) (2026-11-11)
+
+**Note:** Version bump only for package ya-modbus-emulator
+
+## [0.1.11](https://github.com/groupsky/ya-modbus/compare/ya-modbus-emulator@0.1.10...ya-modbus-emulator@0.1.11) (2026-11-11)
+
+**Note:** Version bump only for package ya-modbus-emulator
+
+## [0.1.10](https://github.com/groupsky/ya-modbus/compare/ya-modbus-emulator@0.1.9...ya-modbus-emulator@0.1.10) (2026-11-10)
+
+**Note:** Version bump only for package ya-modbus-emulator
+
+## [0.1.9](https://github.com/groupsky/ya-modbus/compare/ya-modbus-emulator@0.1.8...ya-modbus-emulator@0.1.9) (2026-11-09)
+
+**Note:** Version bump only for package ya-modbus-emulator
+
+## [0.1.8](https://github.com/groupsky/ya-modbus/compare/ya-modbus-emulator@0.1.7...ya-modbus-emulator@0.1.8) (2026-11-08)
+
+**Note:** Version bump only for package ya-modbus-emulator
+
 ## [0.1.7](https://github.com/groupsky/ya-modbus/compare/ya-modbus-emulator@0.1.6...ya-modbus-emulator@0.1.7) (2026-11-02)
 
 **Note:** Version bump only for package ya-modbus-emulator

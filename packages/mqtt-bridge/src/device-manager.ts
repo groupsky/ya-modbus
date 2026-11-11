@@ -44,7 +44,12 @@ export class DeviceManager {
     if (enabled) {
       try {
         this.updateDeviceState(config.deviceId, { state: 'connecting' })
-        await this.driverLoader.loadDriver(config.driver, config.connection, config.deviceId)
+        await this.driverLoader.loadDriver(
+          config.driver,
+          config.connection,
+          config.deviceId,
+          config.device
+        )
         this.updateDeviceState(config.deviceId, {
           state: 'connected',
           lastUpdate: Date.now(),

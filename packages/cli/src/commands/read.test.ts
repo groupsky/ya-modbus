@@ -103,6 +103,7 @@ describe('Read Command', () => {
     expect(transportFactory.createTransport).toHaveBeenCalledWith({
       port: '/dev/ttyUSB0',
       slaveId: 1,
+      logger: expect.any(Function),
       baudRate: 9600,
       parity: 'even',
       dataBits: 8,
@@ -114,7 +115,7 @@ describe('Read Command', () => {
 
     // Verify driver was created with transport
     expect(mockCreateDriver).toHaveBeenCalledWith({
-      transport: mockTransport,
+      transport: expect.any(Object),
       slaveId: 1,
     })
 
@@ -252,7 +253,45 @@ describe('Read Command', () => {
       host: '192.168.1.100',
       port: 5020,
       slaveId: 1,
+      logger: expect.any(Function),
     })
+  })
+
+  test('should pass --attempts and --retry-delay to the transport', async () => {
+    mockDriver.readDataPoint.mockResolvedValue(24.5)
+
+    await readCommand({
+      host: '192.168.1.100',
+      slaveId: 1,
+      attempts: 1,
+      retryDelay: 0,
+      dataPoint: ['temperature'],
+      format: 'table',
+    })
+
+    expect(transportFactory.createTransport).toHaveBeenCalledWith(
+      expect.objectContaining({ maxRetries: 1, retryDelay: 0 })
+    )
+  })
+
+  test('should print each retry with --verbose', async () => {
+    mockDriver.readDataPoint.mockResolvedValue(24.5)
+
+    await readCommand({
+      host: '192.168.1.100',
+      slaveId: 1,
+      attempts: 2,
+      retryDelay: 250,
+      verbose: true,
+      dataPoint: ['temperature'],
+      format: 'table',
+    })
+
+    const config = jest.mocked(transportFactory.createTransport).mock.calls[0]?.[0]
+    config?.logger?.(1, new Error('Timed out'))
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      'Attempt 1 of 2 failed: Timed out. Retrying in 250 ms'
+    )
   })
 
   // On Node.js 26.4+ serial requests time out (#507), so the user sees why reads fail
@@ -329,28 +368,155 @@ describe('Read Command', () => {
     expect(driverLoader.loadDriver).toHaveBeenCalledWith({})
   })
 
-  test('should measure performance metrics', async () => {
-    const options = {
-      port: '/dev/ttyUSB0',
-      slaveId: 1,
-      baudRate: 9600,
-      parity: 'even',
-      dataBits: 8,
-      stopBits: 1,
-      dataPoint: ['temperature'],
-      format: 'table',
+  describe('performance', () => {
+    // A driver that reads both data points with one request, and a bus that
+    // fails that request once before it succeeds
+    const readAllWithOneRetry = async (format: 'table' | 'json'): Promise<string> => {
+      jest.mocked(transportFactory.createTransport).mockImplementation((config) => {
+        mockTransport.readHoldingRegisters.mockImplementation(() => {
+          config.logger?.(1, new Error('Timeout'))
+          return Promise.resolve(Buffer.alloc(4))
+        })
+        return Promise.resolve(mockTransport)
+      })
+      mockCreateDriver.mockImplementation(({ transport }: { transport: Transport }) => {
+        mockDriver.readDataPoints.mockImplementation(async () => {
+          await transport.readHoldingRegisters(0, 2)
+          return { temperature: 24.5, humidity: 65.2 }
+        })
+        return Promise.resolve(mockDriver)
+      })
+
+      await readCommand({ port: '/dev/ttyUSB0', slaveId: 1, all: true, format })
+
+      return consoleLogSpy.mock.calls.map((call) => String(call[0])).join('\n')
     }
 
-    mockDriver.readDataPoint.mockResolvedValue(24.5)
+    test('should count Modbus requests and retries, not data points', async () => {
+      const output = await readAllWithOneRetry('table')
 
-    await readCommand(options)
+      expect(output).toContain('Response time')
+      expect(output).toContain('Requests: 1')
+      expect(output).toContain('Retries: 1')
+      expect(output).toContain('Data points: 2')
+      expect(output).not.toContain('Operations')
+      expect(output).not.toContain('Errors')
+      expect(consoleWarnSpy).not.toHaveBeenCalledWith(expect.stringContaining('Attempt 1'))
+    })
 
-    // Verify performance metrics are in output (real formatter used)
-    const output = consoleLogSpy.mock.calls.map((call) => call[0]).join('\n')
-    expect(output).toContain('Performance')
-    expect(output).toContain('Response time')
-    expect(output).toContain('Operations: 1')
-    expect(output).toContain('Errors: 0')
+    test('should give the counts in JSON and keep the old operations key', async () => {
+      const output = await readAllWithOneRetry('json')
+
+      expect(JSON.parse(output).performance).toEqual({
+        responseTimeMs: expect.any(Number),
+        requests: 1,
+        retries: 1,
+        dataPoints: 2,
+        errors: 0,
+        operations: 2,
+      })
+    })
+  })
+
+  describe('when some data points fail', () => {
+    let consoleErrorSpy: jest.SpyInstance
+    const base = { port: '/dev/ttyUSB0', slaveId: 1, dataPoint: ['temperature', 'humidity'] }
+    const logged = (): string => consoleLogSpy.mock.calls.map((call) => String(call[0])).join('\n')
+    const errored = (): string =>
+      consoleErrorSpy.mock.calls.map((call) => String(call[0])).join('\n')
+
+    beforeEach(() => {
+      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+      process.exitCode = undefined
+      mockDriver.readDataPoints.mockRejectedValue(new Error('Timed out'))
+    })
+
+    afterEach(() => {
+      process.exitCode = undefined
+    })
+
+    test('should print the good values, list the failure and set exit code 1', async () => {
+      mockDriver.readDataPoint.mockImplementation((id) =>
+        id === 'humidity' ? Promise.reject(new Error('Illegal address')) : Promise.resolve(24.5)
+      )
+
+      await readCommand({ ...base, format: 'table' })
+
+      expect(errored()).toContain(
+        'Reading all data points at once failed (Timed out); reading each one on its own'
+      )
+      expect(logged()).toContain('24.5')
+      expect(logged()).not.toContain('Humidity')
+      expect(errored()).toContain('Failed data points:')
+      expect(errored()).toContain('  humidity: Illegal address')
+      expect(process.exitCode).toBe(1)
+    })
+
+    test('should give the failures in the JSON errors array', async () => {
+      mockDriver.readDataPoint.mockImplementation((id) =>
+        id === 'humidity' ? Promise.reject(new Error('Illegal address')) : Promise.resolve(24.5)
+      )
+
+      await readCommand({ ...base, format: 'json' })
+
+      const output = JSON.parse(logged())
+      expect(output.dataPoints.map((dp: { id: string }) => dp.id)).toEqual(['temperature'])
+      expect(output.errors).toEqual([{ id: 'humidity', error: 'Illegal address' }])
+      expect(output.performance.errors).toBe(1)
+      expect(process.exitCode).toBe(1)
+    })
+
+    test('should give an empty errors array and keep exit code when nothing fails', async () => {
+      mockDriver.readDataPoints.mockResolvedValue({ temperature: 24.5, humidity: 65.2 })
+
+      await readCommand({ ...base, format: 'json' })
+
+      const output = JSON.parse(logged())
+      expect(output.errors).toEqual([])
+      expect(output.performance.errors).toBe(0)
+      expect(process.exitCode).toBeUndefined()
+    })
+
+    test('should stop after 3 failed reads when none worked', async () => {
+      mockDriver.dataPoints = ['a', 'b', 'c', 'd', 'e'].map((id) => ({
+        id,
+        name: id,
+        type: 'float' as const,
+        access: 'r' as const,
+      }))
+      mockDriver.readDataPoint.mockRejectedValue(new Error('No answer'))
+
+      await expect(
+        readCommand({ ...base, dataPoint: ['a', 'b', 'c', 'd', 'e'], format: 'table' })
+      ).rejects.toThrow('Timed out')
+
+      expect(mockDriver.readDataPoint).toHaveBeenCalledTimes(3)
+    })
+
+    test('should keep reading after 3 failures when one read worked', async () => {
+      mockDriver.dataPoints = ['a', 'b', 'c', 'd'].map((id) => ({
+        id,
+        name: id,
+        type: 'float' as const,
+        access: 'r' as const,
+      }))
+      mockDriver.readDataPoint.mockImplementation((id) =>
+        id === 'a' ? Promise.resolve(1) : Promise.reject(new Error('No answer'))
+      )
+
+      await readCommand({ ...base, dataPoint: ['a', 'b', 'c', 'd'], format: 'table' })
+
+      expect(mockDriver.readDataPoint).toHaveBeenCalledTimes(4)
+      expect(errored()).toContain('  d: No answer')
+    })
+
+    test('should throw the batch error when every data point fails', async () => {
+      mockDriver.readDataPoint.mockRejectedValue(new Error('No answer'))
+
+      await expect(readCommand({ ...base, format: 'table' })).rejects.toThrow('Timed out')
+
+      expect(mockDriver.readDataPoint).toHaveBeenCalledTimes(2)
+    })
   })
 
   test('should handle errors gracefully', async () => {
@@ -515,6 +681,7 @@ describe('Read Command', () => {
       host: '192.168.1.100',
       port: 502,
       slaveId: 1,
+      logger: expect.any(Function),
     })
   })
 
@@ -541,6 +708,7 @@ describe('Read Command', () => {
       parity: 'even',
       stopBits: 1,
       slaveId: 1,
+      logger: expect.any(Function),
     })
   })
 
@@ -609,7 +777,7 @@ describe('Read Command', () => {
 
       await readCommand({ ...rtuOptions, slaveId: 3 })
 
-      expect(mockCreateDriver).toHaveBeenCalledWith({ transport: mockTransport, slaveId: 3 })
+      expect(mockCreateDriver).toHaveBeenCalledWith({ transport: expect.any(Object), slaveId: 3 })
       expect(consoleWarnSpy).not.toHaveBeenCalled()
     })
 
@@ -623,7 +791,7 @@ describe('Read Command', () => {
 
       await readCommand(rtuOptions)
 
-      expect(mockCreateDriver).toHaveBeenCalledWith({ transport: mockTransport, slaveId: 5 })
+      expect(mockCreateDriver).toHaveBeenCalledWith({ transport: expect.any(Object), slaveId: 5 })
       expect(consoleWarnSpy).toHaveBeenCalledWith('Using slave ID 5 (driver default)')
       // stdout stays free of the note, so JSON and piped output keep working
       expect(consoleLogSpy.mock.calls.flat().join('\n')).not.toContain('driver default')
