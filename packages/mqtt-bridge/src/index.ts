@@ -494,6 +494,14 @@ export function createBridge(
     async addDevice(deviceConfig: DeviceConfig) {
       await deviceManager.addDevice(deviceConfig)
 
+      if (deviceConfig.deviceId === 'bridge') {
+        console.warn(
+          `Device ID "bridge" clashes with the bridge status topic ${bridgeStatusTopic}: ` +
+            'the device status and the bridge online/offline status overwrite each other. ' +
+            'Rename the device.'
+        )
+      }
+
       // Schedule device for polling if enabled
       if (deviceConfig.enabled !== false) {
         const driver = driverLoader.getDriver(deviceConfig.deviceId)
