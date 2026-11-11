@@ -257,6 +257,31 @@ describe('ModbusEmulator with TCP transport', () => {
       ).toThrow('TCP transport requires port')
     })
 
+    it.each([
+      { port: -1, shown: '-1' },
+      { port: 65536, shown: '65536' },
+      { port: 502.5, shown: '502.5' },
+      { port: Number.NaN, shown: 'null' },
+      { port: '502', shown: '"502"' },
+    ])(
+      'should reject a wrong TCP port $port with a message that is not "requires port"',
+      ({ port, shown }) => {
+        expect(() => new ModbusEmulator({ transport: 'tcp', host: 'localhost', port })).toThrow(
+          `TCP port must be a whole number from 0 to 65535 (0 picks a free port), got ${shown}`
+        )
+      }
+    )
+
+    it('should accept TCP port 0', () => {
+      expect(
+        () => new ModbusEmulator({ transport: 'tcp', host: 'localhost', port: 0 })
+      ).not.toThrow()
+    })
+
+    it('should have no TCP port for the memory transport', () => {
+      expect(new ModbusEmulator({ transport: 'memory' }).getTcpPort()).toBeUndefined()
+    })
+
     it('should create TCP transport with valid config', async () => {
       const { ServerTCP } = await import('modbus-serial')
 

@@ -81,6 +81,34 @@ describe('TcpTransport with the real ServerTCP', () => {
     await expect(isPortFree(port)).resolves.toBe(true)
   })
 
+  describe('port 0', () => {
+    // Issue #705: ServerTCP alone turns port 0 into 502
+    it('listens on a free port that the system picks, and getPort() tells it', async () => {
+      transport = new TcpTransport({ host: HOST, port: 0 })
+      expect(transport.getPort()).toBeUndefined()
+
+      await transport.start()
+
+      const port = transport.getPort()
+      expect(port).toBeGreaterThan(0)
+      expect(port).not.toBe(502)
+      await expect(isPortFree(port as number)).resolves.toBe(false)
+
+      await transport.stop()
+      expect(transport.getPort()).toBeUndefined()
+      await expect(isPortFree(port as number)).resolves.toBe(true)
+    })
+
+    it('getPort() tells the configured port when it is not 0', async () => {
+      const port = await getFreePort()
+      transport = new TcpTransport({ host: HOST, port })
+
+      await transport.start()
+
+      expect(transport.getPort()).toBe(port)
+    })
+  })
+
   describe('errors of the server', () => {
     it('rejects start() with EADDRINUSE when another server holds the port', async () => {
       // Issue #582: ServerTCP reports a failed listen() as 'serverError'. start() rejects with
