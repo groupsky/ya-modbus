@@ -11,7 +11,8 @@ Bituo SPM01R FLEX single-phase energy meter driver implementation.
 - Active power (register in kW) and apparent power (register in kVA) are multiplied by 1000 to give W and VA; the scale is unconfirmed (a 100 W load should read 0.1)
 - Settings 6000 (address), 6001 (baud rate), 6002 (parity) are `rw` and `pollType: 'on-demand'`, written with FC 06
 - Baud rate: the guide lists codes 0 and 3 both as 9600; reads accept both, writes use 3
-- Parity code 3 (no parity, 2 stop bits) reads as `none`; it cannot be written
+- Parity code 3 (no parity, 2 stop bits) reads as `none` (throwing would break polls); it cannot be written, and writing `none` sets N81
+- Energy names: `active_energy_{forward,reverse,total}` are the non-resettable counters (20016-20020); `_resettable` suffix marks 20010-20014. Only 20010 and 20012 are marked resettable in the guide; 20014 is probably, not confirmed
 - Never expose 10000 (LED blink), 10001 (energy reset) or 30000 (broadcast address) as data points
 
 ## Testing

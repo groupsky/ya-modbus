@@ -13,12 +13,12 @@ const MEASUREMENTS: ReadonlyArray<readonly [string, number, string | undefined, 
   ['active_power', 20004, 'W', 0.1, 100],
   ['power_factor', 20006, undefined, 0.875, 0.875],
   ['frequency', 20008, 'Hz', 50.0, 50],
-  ['import_active_energy', 20010, 'kWh', 12.5, 12.5],
-  ['export_active_energy', 20012, 'kWh', 3.75, 3.75],
-  ['total_active_energy', 20014, 'kWh', 16.25, 16.25],
-  ['total_import_active_energy', 20016, 'kWh', 112.5, 112.5],
-  ['total_export_active_energy', 20018, 'kWh', 13.75, 13.75],
-  ['total_active_energy_nonresettable', 20020, 'kWh', 126.25, 126.25],
+  ['active_energy_forward_resettable', 20010, 'kWh', 12.5, 12.5],
+  ['active_energy_reverse_resettable', 20012, 'kWh', 3.75, 3.75],
+  ['active_energy_total_resettable', 20014, 'kWh', 16.25, 16.25],
+  ['active_energy_forward', 20016, 'kWh', 112.5, 112.5],
+  ['active_energy_reverse', 20018, 'kWh', 13.75, 13.75],
+  ['active_energy_total', 20020, 'kWh', 126.25, 126.25],
   ['apparent_power', 20022, 'VA', 0.125, 125],
 ]
 
@@ -124,6 +124,14 @@ describe('SPM01R driver', () => {
       const dp = driver.dataPoints.find((d) => d.id === id)
       expect(dp?.access).toBe('rw')
       expect(dp?.pollType).toBe('on-demand')
+    })
+
+    it('should describe the resettable counters and parity code 3 honestly', () => {
+      const parity = driver.dataPoints.find((d) => d.id === 'parity')
+      expect(parity?.description).toMatch(/2 stop bits/)
+      expect(parity?.description).toMatch(/N81/)
+      const total = driver.dataPoints.find((d) => d.id === 'active_energy_total_resettable')
+      expect(total?.description).toMatch(/not confirmed/)
     })
 
     it('should not expose the LED, energy reset or broadcast address registers', () => {

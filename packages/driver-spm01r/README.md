@@ -44,7 +44,7 @@ const transport = await createRTUTransport({
 
 const driver = await createDriver({ transport, slaveId: DEFAULT_CONFIG.defaultAddress })
 
-const values = await driver.readDataPoints(['voltage', 'active_power', 'total_active_energy'])
+const values = await driver.readDataPoints(['voltage', 'active_power', 'active_energy_total'])
 console.log(values)
 ```
 
@@ -54,22 +54,22 @@ console.log(values)
 
 Read-only, polled on every poll. All 12 come from one request: 24 holding registers from 20000.
 
-| ID                                  | Register    | Type, scale                | Unit |
-| ----------------------------------- | ----------- | -------------------------- | ---- |
-| `voltage`                           | 20000-20001 | float32                    | V    |
-| `current`                           | 20002-20003 | float32                    | A    |
-| `active_power`                      | 20004-20005 | float32, x1000 (kW to W)   | W    |
-| `power_factor`                      | 20006-20007 | float32                    | -    |
-| `frequency`                         | 20008-20009 | float32                    | Hz   |
-| `import_active_energy`              | 20010-20011 | float32                    | kWh  |
-| `export_active_energy`              | 20012-20013 | float32                    | kWh  |
-| `total_active_energy`               | 20014-20015 | float32                    | kWh  |
-| `total_import_active_energy`        | 20016-20017 | float32                    | kWh  |
-| `total_export_active_energy`        | 20018-20019 | float32                    | kWh  |
-| `total_active_energy_nonresettable` | 20020-20021 | float32                    | kWh  |
-| `apparent_power`                    | 20022-20023 | float32, x1000 (kVA to VA) | VA   |
+| ID                                 | Register    | Type, scale                | Unit |
+| ---------------------------------- | ----------- | -------------------------- | ---- |
+| `voltage`                          | 20000-20001 | float32                    | V    |
+| `current`                          | 20002-20003 | float32                    | A    |
+| `active_power`                     | 20004-20005 | float32, x1000 (kW to W)   | W    |
+| `power_factor`                     | 20006-20007 | float32                    | -    |
+| `frequency`                        | 20008-20009 | float32                    | Hz   |
+| `active_energy_forward_resettable` | 20010-20011 | float32                    | kWh  |
+| `active_energy_reverse_resettable` | 20012-20013 | float32                    | kWh  |
+| `active_energy_total_resettable`   | 20014-20015 | float32                    | kWh  |
+| `active_energy_forward`            | 20016-20017 | float32                    | kWh  |
+| `active_energy_reverse`            | 20018-20019 | float32                    | kWh  |
+| `active_energy_total`              | 20020-20021 | float32                    | kWh  |
+| `apparent_power`                   | 20022-20023 | float32, x1000 (kVA to VA) | VA   |
 
-The first three energy values can be reset on the meter. The last three (`total_import_active_energy`, `total_export_active_energy`, `total_active_energy_nonresettable`) cannot.
+The guide marks only the first two (registers 20010 and 20012) as "can be reset". Register 20014 is listed just as "Total (absolute)"; it is probably resettable too, because register 20020 is its non-resettable copy, but this is not confirmed on hardware. The last three (`active_energy_forward`, `active_energy_reverse`, `active_energy_total`) are the non-resettable lifetime counters. Names follow `driver-or-we-516` and `driver-sdm630`: `total` never means a resettable value without the `_resettable` suffix.
 
 ### Settings
 
@@ -84,7 +84,7 @@ Read/write, `pollType: 'on-demand'`.
 Notes on the codes:
 
 - Baud rate: the guide lists codes 0 and 3 both as 9600. Reading accepts both. Writing 9600 sends code 3.
-- Parity: code 3 is "no parity, 2 stop bits". It reads as `none` (stop bits are not a data point) and cannot be written.
+- Parity: code 3 is "no parity, 2 stop bits". It reads as `none` (stop bits are not a data point), so a read `none` may mean 2 stop bits. It cannot be written. Writing `none` sets N81 (1 stop bit).
 
 ### Not exposed
 
