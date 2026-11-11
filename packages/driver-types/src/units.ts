@@ -52,6 +52,7 @@ export type Unit =
   | '%' // Percent
 
   // Time
+  | 'ms' // Milliseconds
   | 's' // Seconds
   | 'min' // Minutes
   | 'h' // Hours
