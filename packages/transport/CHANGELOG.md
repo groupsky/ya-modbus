@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.15.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/transport@0.15.1...@ya-modbus/transport@0.15.2) (2026-11-11)
+
+**Note:** Version bump only for package @ya-modbus/transport
+
 ## [0.15.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/transport@0.15.0...@ya-modbus/transport@0.15.1) (2026-11-10)
 
 ### Bug Fixes

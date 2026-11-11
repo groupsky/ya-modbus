@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.15](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-sdm630@0.1.14...@ya-modbus/driver-sdm630@0.1.15) (2026-11-11)
+
+**Note:** Version bump only for package @ya-modbus/driver-sdm630
+
 ## [0.1.14](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-sdm630@0.1.13...@ya-modbus/driver-sdm630@0.1.14) (2026-11-10)
 
 **Note:** Version bump only for package @ya-modbus/driver-sdm630

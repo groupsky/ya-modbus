@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/emulator",
-  "version": "0.17.0",
+  "version": "0.17.1",
   "description": "Software Modbus device emulator for testing drivers without physical hardware",
   "keywords": [
     "modbus",
@@ -43,7 +43,7 @@
     "typecheck": "../../node_modules/.bin/tsc --noEmit"
   },
   "dependencies": {
-    "@ya-modbus/driver-loader": "^0.12.5",
+    "@ya-modbus/driver-loader": "^0.12.6",
     "commander": "^14.0.2",
     "js-yaml": "^5.5.0",
     "modbus-serial": "^8.0.25",
