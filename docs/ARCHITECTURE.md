@@ -626,22 +626,20 @@ ya-modbus read --driver ya-modbus-driver-solar --port /dev/ttyUSB0 \
 ```bash
 # In driver package directory
 npx ya-modbus read --port /dev/ttyUSB0 --slave-id 1 --data-point voltage_l1
-npx ya-modbus scan-registers --port /dev/ttyUSB0 --slave-id 1
-npx ya-modbus characterize --port /dev/ttyUSB0 --slave-id 1 --output profile.json
+npx ya-modbus-profile --port /dev/ttyUSB0 --slave-id 1 --output scan.json
 ```
 
-**Development commands** (require `@ya-modbus/device-profiler`):
-
-- `discover` - Auto-detect connection parameters (baud, parity, slave ID)
-- `scan-registers` - Find readable/writable register ranges
-- `test-limits` - Determine max batch size, min timing delays
-- `characterize` - Complete device profiling (all discovery + limits)
-
-**Production commands** (always available):
+**`ya-modbus` commands** (`@ya-modbus/cli`):
 
 - `read` - Read data points
 - `write` - Write data points
-- `provision` - Initial device configuration
+- `discover` - Find connection parameters (baud rate, parity, slave ID)
+- `list-devices` - List the devices a driver supports
+- `show-defaults` - Show a driver's default and supported connection settings
+
+**Register scanner**: `ya-modbus-profile` (`@ya-modbus/device-profiler`) finds which registers can be read.
+
+Not built yet: finding the maximum batch size (#123) and timing limits (#122).
 
 ### Test Harness
 
