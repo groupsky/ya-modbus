@@ -69,7 +69,7 @@ Read-only, polled on every poll. All 12 come from one request: 24 holding regist
 | `total_active_energy_nonresettable` | 20020-20021 | float32                    | kWh  |
 | `apparent_power`                    | 20022-20023 | float32, x1000 (kVA to VA) | VA   |
 
-The first three energy values can be reset on the meter. The three `total_*_nonresettable` / `total_import` / `total_export` values cannot.
+The first three energy values can be reset on the meter. The last three (`total_import_active_energy`, `total_export_active_energy`, `total_active_energy_nonresettable`) cannot.
 
 ### Settings
 
