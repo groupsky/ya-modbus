@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.36.6](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.5...@ya-modbus/mqtt-bridge@0.36.6) (2026-11-11)
+
+### Bug Fixes
+
+- **mqtt-bridge:** warn when a device ID "bridge" clashes with the bridge status topic ([#768](https://github.com/groupsky/ya-modbus/issues/768)) ([1091bca](https://github.com/groupsky/ya-modbus/commit/1091bca61f5bc9ddedbf7b4b3bcc17a7006ce779)), closes [#725](https://github.com/groupsky/ya-modbus/issues/725)
+
 ## [0.36.5](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.4...@ya-modbus/mqtt-bridge@0.36.5) (2026-11-11)
 
 ### Bug Fixes
