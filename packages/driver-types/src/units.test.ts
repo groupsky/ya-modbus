@@ -11,6 +11,12 @@ describe('Unit', () => {
     expect(units).toEqual(['ms', 's', 'min', 'h'])
   })
 
+  it('should accept resistance units in ohms and megaohms', () => {
+    const units = ['Ω', 'MΩ'] as const satisfies readonly Unit[]
+
+    expect(units).toEqual(['Ω', 'MΩ'])
+  })
+
   it('should reject a unit that is not in the list', () => {
     // @ts-expect-error -- 'msec' is not a standard unit
     const unit: Unit = 'msec'
