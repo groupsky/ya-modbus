@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.17.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.16.5...@ya-modbus/emulator@0.17.0) (2026-11-11)
+
+### Features
+
+- **emulator:** let TCP port 0 pick a free port ([#771](https://github.com/groupsky/ya-modbus/issues/771)) ([d36e5ac](https://github.com/groupsky/ya-modbus/commit/d36e5acb85e80539b6293e94a4635969bf9c44b1)), closes [#705](https://github.com/groupsky/ya-modbus/issues/705)
+
 ## [0.16.5](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/emulator@0.16.4...@ya-modbus/emulator@0.16.5) (2026-11-10)
 
 **Note:** Version bump only for package @ya-modbus/emulator
