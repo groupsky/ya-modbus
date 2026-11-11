@@ -315,6 +315,27 @@ describe('CLI - ya-modbus-bridge', () => {
     })
   })
 
+  describe('Run Command - number flags', () => {
+    it.each([
+      ['--mqtt-reconnect-period', '<ms>'],
+      ['--stats-interval', '<seconds>'],
+    ])('should stop with a clear message when %s is not a whole number', async (flag, arg) => {
+      const stderr = jest.spyOn(process.stderr, 'write').mockReturnValue(true)
+      try {
+        for (const bad of ['abc', '1.5', '100ms']) {
+          await expect(
+            program.parseAsync(['node', 'bridge', 'run', '--mqtt-url', 'mqtt://b:1883', flag, bad])
+          ).rejects.toThrow(
+            `option '${flag} ${arg}' argument '${bad}' is invalid. Expected a whole number (0, 1, 2, ...).`
+          )
+        }
+      } finally {
+        stderr.mockRestore()
+      }
+      expect(indexModule.createBridge).not.toHaveBeenCalled()
+    })
+  })
+
   describe('Run Command - CLI Options Only', () => {
     it('should build config from CLI options when no config file', async () => {
       await program.parseAsync([
