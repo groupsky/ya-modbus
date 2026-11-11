@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.12.15](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.12.14...@ya-modbus/device-profiler@0.12.15) (2026-11-11)
+
+**Note:** Version bump only for package @ya-modbus/device-profiler
+
 ## [0.12.14](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/device-profiler@0.12.13...@ya-modbus/device-profiler@0.12.14) (2026-11-11)
 
 **Note:** Version bump only for package @ya-modbus/device-profiler
