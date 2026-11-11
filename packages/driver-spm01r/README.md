@@ -73,7 +73,7 @@ The first three energy values can be reset on the meter. The last three (`total_
 
 ### Settings
 
-Read/write, `pollType: 'on-demand'`. A new value may only apply after the meter restarts.
+Read/write, `pollType: 'on-demand'`.
 
 | ID               | Register | Values                                          |
 | ---------------- | -------- | ----------------------------------------------- |
