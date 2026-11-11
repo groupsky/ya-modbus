@@ -10,6 +10,7 @@ import { devicesByLine } from './poll-lines.js'
 import type { MqttBridgeConfig } from './types.js'
 import { ConfigValidationError, validateConfig } from './utils/config-validator.js'
 import { loadConfig } from './utils/config.js'
+import { parseWholeNumberOption } from './utils/parse-whole-number-option.js'
 import { processUtils } from './utils/process.js'
 
 import { createBridge } from './index.js'
@@ -34,13 +35,17 @@ program
   .option('--mqtt-client-id <id>', 'MQTT client identifier')
   .option('--mqtt-username <username>', 'MQTT authentication username')
   .option('--mqtt-password <password>', 'MQTT authentication password')
-  .option('--mqtt-reconnect-period <ms>', 'Reconnection interval in milliseconds', parseInt)
+  .option(
+    '--mqtt-reconnect-period <ms>',
+    'Reconnection interval in milliseconds',
+    parseWholeNumberOption
+  )
   .option('--topic-prefix <prefix>', 'Topic prefix for all MQTT topics (default: modbus)')
   .option('--state-dir <path>', 'Not used yet: the bridge keeps no state on disk')
   .option(
     '--stats-interval <seconds>',
     'Publish device stats on {prefix}/{deviceId}/stats every N seconds (default: off)',
-    parseInt
+    parseWholeNumberOption
   )
   .option('--stats-log', 'Also log one line per device at every stats interval')
   .addHelpText(
