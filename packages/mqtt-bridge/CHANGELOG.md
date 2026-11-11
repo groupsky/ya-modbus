@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.36.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.2...@ya-modbus/mqtt-bridge@0.36.3) (2026-11-11)
+
+### Bug Fixes
+
+- **mqtt-bridge:** reject non-number values for number CLI flags ([#765](https://github.com/groupsky/ya-modbus/issues/765)) ([6ddebdb](https://github.com/groupsky/ya-modbus/commit/6ddebdb4ceaa47c809a38dc83b75395e0e61d661)), closes [#727](https://github.com/groupsky/ya-modbus/issues/727)
+
 ## [0.36.2](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/mqtt-bridge@0.36.1...@ya-modbus/mqtt-bridge@0.36.2) (2026-11-10)
 
 ### Bug Fixes
