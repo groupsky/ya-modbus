@@ -15,6 +15,7 @@ module.exports = {
     '<rootDir>/packages/driver-or-we-514',
     '<rootDir>/packages/driver-dds519mr',
     '<rootDir>/packages/driver-sdm630',
+    '<rootDir>/packages/driver-autonics-tf3',
   ],
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
