@@ -177,6 +177,10 @@ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for details.
 
 - **BAC002** - Climate controller
 
+#### Digital Input Modules
+
+- **MBSL32DI** - Module with 32 digital inputs ("Dio Smart")
+
 #### Generic Modbus
 
 - Configurable generic driver for any Modbus device
