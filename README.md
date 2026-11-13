@@ -166,6 +166,7 @@ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for details.
 - **DDS519MR** - Sinotimer single-phase energy meter
 - **DDS024MR** - Sinotimer 3-phase energy meter
 - **OR-WE-514** - ORNO single-phase energy meter
+- **OR-WE-526** - ORNO single-phase multi-tariff energy meter
 - **EX9EM** - ABB energy meter
 
 #### Solar Inverters
