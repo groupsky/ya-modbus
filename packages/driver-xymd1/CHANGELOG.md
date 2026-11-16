@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.7.20](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-xymd1@0.7.19...@ya-modbus/driver-xymd1@0.7.20) (2026-11-16)
+
+**Note:** Version bump only for package @ya-modbus/driver-xymd1
+
 ## [0.7.19](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-xymd1@0.7.18...@ya-modbus/driver-xymd1@0.7.19) (2026-11-11)
 
 **Note:** Version bump only for package @ya-modbus/driver-xymd1

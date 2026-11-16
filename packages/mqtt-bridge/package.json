@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/mqtt-bridge",
-  "version": "0.36.9",
+  "version": "0.36.10",
   "description": "MQTT bridge for ya-modbus - orchestrates device management, polling, and MQTT publishing",
   "keywords": [
     "modbus",
@@ -60,7 +60,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
-    "@ya-modbus/emulator": "^0.17.2",
+    "@ya-modbus/emulator": "^0.17.3",
     "aedes": "^1.2.0",
     "jest": "^30.2.0",
     "ts-jest": "^29.1.1",
