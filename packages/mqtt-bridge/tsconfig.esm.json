@@ -5,6 +5,8 @@
     "rootDir": "."
   },
   "include": ["src", "bin"],
+  // Test helpers import devDependencies (aedes), so they must not be published
+  "exclude": ["**/*.test.ts", "**/__mocks__", "src/utils/test-utils.ts"],
   "references": [
     { "path": "../driver-types/tsconfig.esm.json" },
     { "path": "../transport/tsconfig.esm.json" },

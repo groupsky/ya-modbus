@@ -80,8 +80,9 @@ describe('JSON Formatter', () => {
     const values = { test: 100 }
     const performance = {
       responseTimeMs: 45,
-      operations: 1,
-      errors: 0,
+      requests: 1,
+      retries: 0,
+      dataPoints: 1,
     }
 
     const result = formatJSON(dataPoints, values, { performance })
@@ -147,8 +148,10 @@ describe('JSON Formatter', () => {
       connection: { port: '/dev/ttyUSB0', slaveId: 1 },
       performance: {
         responseTimeMs: 45,
+        requests: 1,
+        retries: 0,
+        dataPoints: 2,
         operations: 2,
-        errors: 0,
       },
     }
 
@@ -183,12 +186,34 @@ describe('JSON Formatter', () => {
           },
         ],
         "driver": "@ya-modbus/driver-xymd1",
+        "errors": [],
         "performance": {
-          "errors": 0,
+          "dataPoints": 2,
           "operations": 2,
+          "requests": 1,
           "responseTimeMs": 45,
+          "retries": 0,
         },
       }
     `)
+  })
+
+  test('should list failed data points in an errors array, empty when none failed', () => {
+    const dataPoints: DataPoint[] = [
+      { id: 'temperature', type: 'float', access: 'r' },
+      { id: 'humidity', type: 'float', access: 'r' },
+    ]
+
+    const failed = JSON.parse(
+      formatJSON(
+        dataPoints,
+        { temperature: 24.5 },
+        { errors: [{ id: 'humidity', error: 'Timeout' }] }
+      )
+    )
+    const clean = JSON.parse(formatJSON(dataPoints, { temperature: 24.5 }, {}))
+
+    expect(failed.errors).toEqual([{ id: 'humidity', error: 'Timeout' }])
+    expect(clean.errors).toEqual([])
   })
 })
