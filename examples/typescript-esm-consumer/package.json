@@ -11,6 +11,7 @@
   "dependencies": {
     "@ya-modbus/cli": "file:../../packages/cli",
     "@ya-modbus/device-profiler": "file:../../packages/device-profiler",
+    "@ya-modbus/driver-aspar-mod-16ro": "file:../../packages/driver-aspar-mod-16ro",
     "@ya-modbus/driver-dds024mr": "file:../../packages/driver-dds024mr",
     "@ya-modbus/driver-dds519mr": "file:../../packages/driver-dds519mr",
     "@ya-modbus/driver-ex9em": "file:../../packages/driver-ex9em",
