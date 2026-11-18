@@ -92,6 +92,14 @@ await emulator.start()
 await emulator.stop()
 ```
 
+In tests, use `port: 0`: the system picks a free port, and `getTcpPort()` tells which one after `start()`:
+
+```typescript
+const emulator = new ModbusEmulator({ transport: 'tcp', host: '127.0.0.1', port: 0 })
+await emulator.start()
+const port = emulator.getTcpPort() // for example 41237
+```
+
 ### RTU Transport (serial port)
 
 ```typescript

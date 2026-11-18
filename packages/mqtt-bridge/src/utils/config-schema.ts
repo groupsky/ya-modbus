@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { devicesByLine, pollOrderConflict } from '../poll-lines.js'
+
 import { deviceConfigSchema } from './device-validation.js'
 
 export const mqttUrlSchema = z
@@ -29,13 +31,30 @@ export const mqttConfigSchema = z.strictObject({
 export const mqttBridgeConfigSchema = z.strictObject({
   mqtt: mqttConfigSchema,
   stateDir: z.string().optional(),
+  // Levels joined with `/`, such as `home/modbus`. The bridge adds `/{deviceId}/data` and others.
   topicPrefix: z
     .string()
+    .min(1, 'Topic prefix must not be empty')
     // eslint-disable-next-line no-control-regex
-    .regex(/^[^+#/$\x00]+$/, {
-      message:
-        'Topic prefix must not contain MQTT special characters (+, #, /, $) or null character',
+    .regex(/^[^+#$\x00]*$/, {
+      message: 'Topic prefix must not contain MQTT special characters (+, #, $) or null character',
+    })
+    .refine((prefix) => !prefix.startsWith('/') && !prefix.endsWith('/'), {
+      message: 'Topic prefix must not start or end with /',
+    })
+    .refine((prefix) => !prefix.includes('//'), {
+      message: 'Topic prefix must not contain // (an empty level)',
     })
     .optional(),
-  devices: z.array(deviceConfigSchema).optional(),
+  statsInterval: z.number().int().min(0).max(86400).optional(),
+  statsLog: z.boolean().optional(),
+  devices: z
+    .array(deviceConfigSchema)
+    .superRefine((devices, ctx) => {
+      for (const [line, onLine] of devicesByLine(devices)) {
+        const message = pollOrderConflict(line, onLine)
+        if (message) ctx.addIssue({ code: 'custom', message })
+      }
+    })
+    .optional(),
 })

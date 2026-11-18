@@ -11,6 +11,7 @@ module.exports = {
     '<rootDir>/packages/driver-ex9em',
     '<rootDir>/packages/driver-xymd1',
     '<rootDir>/packages/driver-or-we-516',
+    '<rootDir>/packages/driver-spm01r',
     '<rootDir>/packages/driver-dds024mr',
     '<rootDir>/packages/driver-or-we-514',
     '<rootDir>/packages/driver-dds519mr',

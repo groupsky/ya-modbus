@@ -63,6 +63,24 @@ describe('RTU Transport', () => {
     expect(transport).toBeDefined()
   })
 
+  test('should remove the "Error: " that the serial port library puts in the message of a port that cannot be opened', async () => {
+    // The CLIs print `Error: ${message}`, so this prefix printed "Error: Error: ..." (#748)
+    mockModbus.connectRTUBuffered.mockRejectedValue(
+      new Error('Error: No such file or directory, cannot open /dev/ttyNOPE')
+    )
+
+    await expect(
+      createRTUTransport({
+        port: '/dev/ttyNOPE',
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'even',
+        stopBits: 1,
+        slaveId: 1,
+      })
+    ).rejects.toThrow(/^No such file or directory, cannot open \/dev\/ttyNOPE$/)
+  })
+
   test('should read holding registers and return buffer', async () => {
     const config = {
       port: '/dev/ttyUSB0',
@@ -390,6 +408,35 @@ describe('RTU Transport', () => {
 
     await expect(transport.readHoldingRegisters(0, 1)).rejects.toThrow('Failed')
     expect(mockModbus.readHoldingRegisters).toHaveBeenCalledTimes(5)
+  })
+
+  test('should wait the retryDelay config option between attempts', async () => {
+    jest.useFakeTimers()
+    try {
+      mockModbus.connectRTUBuffered.mockResolvedValue(undefined)
+      mockModbus.readHoldingRegisters
+        .mockRejectedValueOnce(new Error('Failed'))
+        .mockResolvedValueOnce({ data: [1], buffer: Buffer.from([0x00, 0x01]) })
+
+      const transport = await createRTUTransport({
+        port: '/dev/ttyUSB0',
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'even',
+        stopBits: 1,
+        slaveId: 1,
+        retryDelay: 500,
+      })
+
+      const reading = transport.readHoldingRegisters(0, 1)
+      await jest.advanceTimersByTimeAsync(499)
+      expect(mockModbus.readHoldingRegisters).toHaveBeenCalledTimes(1)
+
+      await jest.advanceTimersByTimeAsync(1)
+      await expect(reading).resolves.toEqual(Buffer.from([0x00, 0x01]))
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   test('should call logger on retry attempts', async () => {

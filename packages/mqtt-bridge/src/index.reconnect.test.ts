@@ -41,6 +41,7 @@ describe('createBridge MQTT reconnect', () => {
         cb?.()
       ),
       subscribe: jest.fn(),
+      unsubscribe: jest.fn(),
     })
     mockedMqtt.connect.mockReturnValue(client as unknown as mqtt.MqttClient)
 
@@ -54,6 +55,15 @@ describe('createBridge MQTT reconnect', () => {
   const connect = (): void => {
     client.connected = true
     client.emit('connect')
+  }
+
+  // The state the device manager returns: errors of an error state go with the status
+  const errorDevice = {
+    deviceId: 'device1',
+    state: 'error',
+    errors: ['Timeout'],
+    enabled: true,
+    connected: false,
   }
 
   const startBridgeWithDevice = async (): Promise<ReturnType<typeof createBridge>> => {
@@ -77,6 +87,9 @@ describe('createBridge MQTT reconnect', () => {
         } as unknown as DriverLoader,
         deviceManager: {
           addDevice: jest.fn(),
+          removeDevice: jest.fn(),
+          listDevices: jest.fn(() => [errorDevice]),
+          getDevice: jest.fn(() => errorDevice),
           updateDeviceState: jest.fn(),
           clear: jest.fn(),
         } as unknown as DeviceManager,
@@ -120,6 +133,49 @@ describe('createBridge MQTT reconnect', () => {
 
     await jest.advanceTimersByTimeAsync(INTERVAL)
     expect(readDataPoints).toHaveBeenCalledTimes(2)
+
+    await bridge.stop()
+  })
+
+  it('should publish the retained status of every device again after MQTT reconnects', async () => {
+    const bridge = await startBridgeWithDevice()
+    const statusMessages = (): unknown[] =>
+      (client.publish.mock.calls as unknown[][])
+        .filter(([topic]) => topic === 'modbus/device1/status')
+        .map(([, payload, options]) => ({ payload: JSON.parse(payload as string), options }))
+
+    client.publish.mockClear()
+    connect()
+
+    expect(statusMessages()).toEqual([
+      {
+        payload: {
+          deviceId: 'device1',
+          timestamp: expect.any(Number),
+          state: 'error',
+          errors: ['Timeout'],
+        },
+        options: { qos: 0, retain: true },
+      },
+    ])
+
+    await bridge.stop()
+  })
+
+  it('should delete the retained status of a device removed while MQTT is offline', async () => {
+    const bridge = await startBridgeWithDevice()
+    client.connected = false
+    client.emit('offline')
+
+    await bridge.removeDevice('device1')
+
+    // mqtt.js keeps a QoS 0 message while offline and sends it at the connect
+    expect(client.publish).toHaveBeenCalledWith(
+      'modbus/device1/status',
+      '',
+      { qos: 0, retain: true },
+      expect.any(Function)
+    )
 
     await bridge.stop()
   })

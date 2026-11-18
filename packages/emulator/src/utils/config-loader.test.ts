@@ -189,19 +189,47 @@ devices:
       )
     })
 
-    it('should throw for invalid YAML syntax', async () => {
+    it('should name the file and keep the parser message for invalid YAML syntax', async () => {
       testFilePath = join(testDir, 'config.yaml')
       await writeFile(testFilePath, 'invalid: yaml: syntax:', 'utf-8')
 
-      await expect(loadConfig(testFilePath)).rejects.toThrow()
+      await expect(loadConfig(testFilePath)).rejects.toThrow(
+        new RegExp(`^Cannot parse configuration file ${testFilePath}: .*mapping`)
+      )
     })
 
-    it('should throw for invalid JSON syntax', async () => {
+    it('should name the file and keep the parser message for invalid JSON syntax', async () => {
       testFilePath = join(testDir, 'config.json')
       await writeFile(testFilePath, '{ invalid json }', 'utf-8')
 
-      await expect(loadConfig(testFilePath)).rejects.toThrow()
+      await expect(loadConfig(testFilePath)).rejects.toThrow(
+        new RegExp(`^Cannot parse configuration file ${testFilePath}: .*JSON`)
+      )
     })
+
+    it.each(['config.yaml', 'config.yml', 'config.json'])(
+      'should say the file is empty for an empty %s',
+      async (name) => {
+        testFilePath = join(testDir, name)
+        await writeFile(testFilePath, '', 'utf-8')
+
+        await expect(loadConfig(testFilePath)).rejects.toThrow(
+          `Configuration file ${testFilePath} is empty`
+        )
+      }
+    )
+
+    it.each(['config.yaml', 'config.yml', 'config.json'])(
+      'should say the file is empty for a whitespace-only %s',
+      async (name) => {
+        testFilePath = join(testDir, name)
+        await writeFile(testFilePath, '  \n\t\n', 'utf-8')
+
+        await expect(loadConfig(testFilePath)).rejects.toThrow(
+          `Configuration file ${testFilePath} is empty`
+        )
+      }
+    )
 
     it('should throw for missing transport config', async () => {
       testFilePath = join(testDir, 'config.yaml')

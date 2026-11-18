@@ -1,9 +1,21 @@
 import type { DataPoint } from '@ya-modbus/driver-types'
 
+import type { PerformanceMetrics } from './performance.js'
+
+/**
+ * A data point that could not be read
+ */
+export interface DataPointError {
+  id: string
+  error: string
+}
+
 /**
  * Metadata for JSON output
  */
 export interface JSONMetadata {
+  /** Data points that failed to read (listed as `errors`, empty when none) */
+  errors?: ReadonlyArray<DataPointError> | undefined
   /** Driver package name */
   driver?: string | undefined
   /** Connection details */
@@ -16,11 +28,12 @@ export interface JSONMetadata {
     | undefined
   /** Performance metrics */
   performance?:
-    | {
-        responseTimeMs: number
-        operations: number
-        errors: number
-      }
+    | (PerformanceMetrics & {
+        /** Data points that failed to read */
+        errors?: number
+        /** @deprecated Same as `dataPoints`; kept for one release */
+        operations?: number
+      })
     | undefined
 }
 
@@ -56,6 +69,7 @@ export function formatJSON(
     ...(metadata.driver && { driver: metadata.driver }),
     ...(metadata.connection && { connection: metadata.connection }),
     dataPoints: dataPointsWithValues,
+    errors: metadata.errors ?? [],
     ...(metadata.performance && { performance: metadata.performance }),
   }
 
