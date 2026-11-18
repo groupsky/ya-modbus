@@ -115,14 +115,7 @@ export default tseslint.config(
   // undeclared import still resolves through hoisting, so only this rule catches it.
   {
     files: ['packages/*/src/**/*.ts', 'packages/*/bin/**/*.ts'],
-    ignores: [
-      '**/*.test.ts',
-      '**/test-utils.ts',
-      '**/__mocks__/**',
-      // Imports @jest/globals, which comes with the jest install of the consumer
-      // (jest is an optional peer dependency of driver-loader)
-      'packages/driver-loader/src/testing.ts',
-    ],
+    ignores: ['**/*.test.ts', '**/test-utils.ts', '**/__mocks__/**'],
     rules: {
       // devDependencies are not installed for consumers, so they do not count
       'import-x/no-extraneous-dependencies': ['error', { devDependencies: false }],

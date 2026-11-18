@@ -53,13 +53,23 @@ export class ModbusEmulator {
       if (!config.host) {
         throw new Error('TCP transport requires host')
       }
-      if (!config.port || typeof config.port !== 'number') {
+      // An empty `port:` in a YAML config file is null
+      if (config.port === undefined || config.port === null) {
         throw new Error('TCP transport requires port')
+      }
+      if (
+        !Number.isInteger(config.port) ||
+        (config.port as number) < 0 ||
+        (config.port as number) > 65535
+      ) {
+        throw new Error(
+          `TCP port must be a whole number from 0 to 65535 (0 picks a free port), got ${typeof config.port === 'string' ? JSON.stringify(config.port) : String(config.port)}`
+        )
       }
       this.transport = new TcpTransport(
         {
           host: config.host,
-          port: config.port,
+          port: config.port as number,
         },
         this.verboseLogger
       )
@@ -157,6 +167,14 @@ export class ModbusEmulator {
     }
 
     return 0
+  }
+
+  /**
+   * The TCP port the emulator listens on, after start(). With `port: 0` this is the free port
+   * that the system picked. Undefined before start() and for the other transports.
+   */
+  getTcpPort(): number | undefined {
+    return this.transport instanceof TcpTransport ? this.transport.getPort() : undefined
   }
 
   getTransport(): BaseTransport {

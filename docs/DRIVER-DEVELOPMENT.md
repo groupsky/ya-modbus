@@ -139,13 +139,11 @@ npx ya-modbus read --port /dev/ttyUSB0 --slave-id 1 \
   --data-point voltage_l1
 
 # Characterize device (discover capabilities)
-npx ya-modbus scan-registers --port /dev/ttyUSB0 --slave-id 1
 npx ya-modbus discover --port /dev/ttyUSB0
-npx ya-modbus characterize --port /dev/ttyUSB0 --slave-id 1 \
-  --output device-profile.json
+npx ya-modbus-profile --port /dev/ttyUSB0 --slave-id 1
 ```
 
-**Note**: Development commands use local CLI from devDependencies (via `npx`). No need to specify driver - current directory is used. Build the driver first (`npm run build`) and build it again after each change: the CLI loads the JavaScript file that `exports` (or `main`) in package.json names.
+**Note**: `npx` runs the tool from the driver's devDependencies, or downloads it if it is not installed. No need to specify driver - current directory is used. Build the driver first (`npm run build`) and build it again after each change: the CLI loads the JavaScript file that `exports` (or `main`) in package.json names.
 
 ## Driver Interface
 
@@ -290,81 +288,11 @@ Output: Connection parameters and device identification.
 
 ```bash
 # Find readable register ranges
-npx ya-modbus scan-registers --port /dev/ttyUSB0 --slave-id 1 \
+npx ya-modbus-profile --port /dev/ttyUSB0 --slave-id 1 \
   --start 0 --end 10000 --type holding
-
-# Find write-protected registers
-npx ya-modbus scan-registers --port /dev/ttyUSB0 --slave-id 1 \
-  --test-writes --start 0 --end 100
 ```
 
-Output: Valid ranges, forbidden ranges, access restrictions.
-
-### Device Limits
-
-```bash
-# Test maximum batch read size
-npx ya-modbus test-limits --port /dev/ttyUSB0 --slave-id 1
-
-# Test minimum timing requirements
-npx ya-modbus test-timing --port /dev/ttyUSB0 --slave-id 1
-```
-
-Output: Max registers per read, min inter-command delay.
-
-### Complete Characterization
-
-```bash
-# Run all characterization tests
-npx ya-modbus characterize --port /dev/ttyUSB0 --slave-id 1 \
-  --output device-profile.json
-```
-
-**Output** (`device-profile.json`):
-
-```json
-{
-  "connection": {
-    "baudRate": 9600,
-    "parity": "none",
-    "stopBits": 1,
-    "slaveId": 1
-  },
-  "limits": {
-    "maxReadRegisters": 80,
-    "maxWriteRegisters": 60,
-    "minCommandDelay": 50
-  },
-  "readableRanges": [
-    { "type": "holding", "start": 0, "end": 200 },
-    { "type": "input", "start": 0, "end": 50 }
-  ],
-  "forbiddenRanges": [{ "type": "holding", "start": 1000, "end": 1099, "reason": "Exception 2" }],
-  "accessRestrictions": {
-    "readProtected": [{ "address": 500, "note": "Write-only config" }],
-    "writeProtected": [{ "address": 100, "note": "Read-only serial" }],
-    "requiresAuth": {
-      "unlockRegister": 9999,
-      "protectedRange": { "start": 1000, "end": 1099 }
-    }
-  },
-  "quirks": [
-    {
-      "type": "write-delay-required",
-      "register": 200,
-      "minDelayMs": 100,
-      "reason": "EEPROM commit"
-    }
-  ]
-}
-```
-
-Use this output to:
-
-1. Configure device constraints in driver
-2. Validate device documentation
-3. Debug communication issues
-4. Document device quirks
+Output: For each register, whether it can be read, and the error if not. All options and output formats: [device-profiler README](../packages/device-profiler/README.md).
 
 ## Device Constraints
 
@@ -601,7 +529,7 @@ Users install driver alongside bridge:
 
 ```bash
 # Install bridge
-npm install -g ya-modbus
+npm install -g @ya-modbus/mqtt-bridge
 
 # Install driver (supports multiple device types)
 npm install -g ya-modbus-driver-solar

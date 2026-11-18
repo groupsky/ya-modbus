@@ -22,8 +22,8 @@ describe('ModbusEmulator over TCP with a real client', () => {
   let client: ModbusRTU
 
   beforeEach(async () => {
-    const port = await getFreePort()
-    emulator = new ModbusEmulator({ transport: 'tcp', host: HOST, port })
+    // Port 0: the system picks a free port, and getTcpPort() tells which one (issue #705)
+    emulator = new ModbusEmulator({ transport: 'tcp', host: HOST, port: 0 })
     emulator.addDevice({
       slaveId: KNOWN_SLAVE,
       registers: {
@@ -33,6 +33,7 @@ describe('ModbusEmulator over TCP with a real client', () => {
       },
     })
     await emulator.start()
+    const port = emulator.getTcpPort()
 
     client = new ModbusRTU()
     await client.connectTCP(HOST, { port })

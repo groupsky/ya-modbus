@@ -103,7 +103,9 @@ describe('createBridge partial reads', () => {
     expect(published('data').map((m) => m['data'])).toEqual([
       { voltage: 1, current: 1, setpoint: 1 },
     ])
+    // The first state when the meter is added, then the failed points
     expect(published('status')).toEqual([
+      expect.not.objectContaining({ failedDataPoints: expect.anything() }),
       expect.objectContaining({ state: 'connected', failedDataPoints: ['energy'] }),
     ])
     expect(bridge.getDevice('meter')?.state).toBe('connected')
@@ -112,15 +114,16 @@ describe('createBridge partial reads', () => {
   it('should publish the status only when the failed points change', async () => {
     await addMeter()
     await jest.advanceTimersByTimeAsync(INTERVAL * 2)
-    expect(published('status')).toHaveLength(1)
+    // The first state when the meter is added, and one more for the failed points
+    expect(published('status')).toHaveLength(2)
 
     energyFails = false
     await jest.advanceTimersByTimeAsync(INTERVAL)
 
     const status = published('status')
-    expect(status).toHaveLength(2)
-    expect(status[1]).toEqual(expect.objectContaining({ state: 'connected' }))
-    expect(status[1]).not.toHaveProperty('failedDataPoints')
+    expect(status).toHaveLength(3)
+    expect(status[2]).toEqual(expect.objectContaining({ state: 'connected' }))
+    expect(status[2]).not.toHaveProperty('failedDataPoints')
     expect(published('data').at(-1)?.['data']).toEqual({
       voltage: 1,
       current: 1,
