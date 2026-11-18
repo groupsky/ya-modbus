@@ -117,6 +117,9 @@ describe('validateDeviceConfig', () => {
     ['a parent directory path', '../x'],
     ['traversal after the unscoped prefix', 'ya-modbus-driver-../evil'],
     ['traversal with backslashes', 'ya-modbus-driver-test\\..\\evil'],
+    ['a file: specifier', 'file:../x'],
+    ['a short name with a dot', 'x.y'],
+    ['a short name with uppercase letters', 'XYMD1'],
   ])('should reject %s and list the allowed forms', (_description, driver) => {
     const config = {
       deviceId: 'device1',
@@ -126,8 +129,18 @@ describe('validateDeviceConfig', () => {
 
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
     expect(() => validateDeviceConfig(config)).toThrow(
-      'driver: Driver package name must be @ya-modbus/driver-<name>, ya-modbus-driver-<name> or @<scope>/ya-modbus-driver-<name>'
+      'driver: Driver name must be a short name such as xymd1, or @ya-modbus/driver-<name>, ya-modbus-driver-<name> or @<scope>/ya-modbus-driver-<name>'
     )
+  })
+
+  it('should accept a short driver name', () => {
+    const config = {
+      deviceId: 'device1',
+      driver: 'xymd1',
+      connection: { type: 'tcp', host: 'localhost', port: 502, slaveId: 1 },
+    }
+
+    expect(() => validateDeviceConfig(config)).not.toThrow()
   })
 
   it('should throw error for driver with uppercase letters', () => {
@@ -315,7 +328,9 @@ describe('validateDeviceConfig', () => {
     }
 
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
-    expect(() => validateDeviceConfig(config)).toThrow('at least 100ms')
+    expect(() => validateDeviceConfig(config)).toThrow(
+      'Polling interval must be a whole number of milliseconds from 100'
+    )
   })
 
   it('should throw error for negative polling interval', () => {
@@ -352,7 +367,9 @@ describe('validateDeviceConfig', () => {
     }
 
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
-    expect(() => validateDeviceConfig(config)).toThrow('at least 100ms')
+    expect(() => validateDeviceConfig(config)).toThrow(
+      'Polling interval must be a whole number of milliseconds from 100'
+    )
   })
 
   it('should throw error for polling interval above 24 hours', () => {
@@ -410,7 +427,9 @@ describe('validateDeviceConfig', () => {
     }
 
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
-    expect(() => validateDeviceConfig(config)).toThrow('not exceed 100')
+    expect(() => validateDeviceConfig(config)).toThrow(
+      'Max retries must be a whole number from 0 to 100'
+    )
   })
 
   it('should throw error for negative retryBackoff', () => {
@@ -473,6 +492,53 @@ describe('validateDeviceConfig', () => {
     expect(() => validateDeviceConfig(config)).toThrow('Invalid device configuration')
   })
 
+  describe('interval and retryDelay', () => {
+    const build = (polling: object): object => ({
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: { type: 'tcp', host: 'localhost', port: 502, slaveId: 1 },
+      polling,
+    })
+
+    it('should accept a continuous mode config without interval', () => {
+      expect(() => validateDeviceConfig(build({ mode: 'continuous' }))).not.toThrow()
+      expect(() =>
+        validateDeviceConfig(build({ mode: 'continuous', retryDelay: 2000 }))
+      ).not.toThrow()
+    })
+
+    it.each([{}, { mode: 'interval' }])(
+      'should require interval in interval mode: %p',
+      (polling) => {
+        expect(() => validateDeviceConfig(build(polling))).toThrow(
+          "polling.interval: Polling interval is required unless mode is 'continuous'"
+        )
+      }
+    )
+
+    it.each([100, 86400000])('should accept retryDelay %p ms', (retryDelay) => {
+      expect(() => validateDeviceConfig(build({ interval: 1000, retryDelay }))).not.toThrow()
+    })
+
+    it.each([99, 86400001, 1.5])('should reject retryDelay %p ms', (retryDelay) => {
+      expect(() => validateDeviceConfig(build({ interval: 1000, retryDelay }))).toThrow(
+        'polling.retryDelay'
+      )
+    })
+
+    it('should check maxRetryBackoff against the default retryBackoff (2 x retryDelay)', () => {
+      expect(() =>
+        validateDeviceConfig(build({ interval: 1000, retryDelay: 3000, maxRetryBackoff: 5999 }))
+      ).toThrow('Max retry backoff must not be below the retry backoff')
+      expect(() =>
+        validateDeviceConfig(build({ mode: 'continuous', maxRetryBackoff: 9999 }))
+      ).toThrow('Max retry backoff must not be below the retry backoff')
+      expect(() =>
+        validateDeviceConfig(build({ mode: 'continuous', maxRetryBackoff: 10000 }))
+      ).not.toThrow()
+    })
+  })
+
   describe('maxRetryBackoff below the retry backoff', () => {
     const build = (polling: object): object => ({
       deviceId: 'device1',
@@ -515,7 +581,7 @@ describe('validateDeviceConfig', () => {
       {
         name: 'polling.interval',
         build: (ms: number) => ({ ...device, connection: tcp, polling: { interval: ms } }),
-        message: 'Polling interval must not exceed 24 hours',
+        message: 'Polling interval must be a whole number of milliseconds from 100 to 86400000',
       },
       {
         name: 'polling.retryBackoff',
@@ -524,7 +590,7 @@ describe('validateDeviceConfig', () => {
           connection: tcp,
           polling: { interval: 5000, retryBackoff: ms },
         }),
-        message: 'Retry backoff must not exceed 24 hours',
+        message: 'Retry backoff must be a whole number of milliseconds from 1 to 86400000',
       },
       {
         name: 'polling.maxRetryBackoff',
@@ -533,12 +599,11 @@ describe('validateDeviceConfig', () => {
           connection: tcp,
           polling: { interval: 5000, maxRetryBackoff: ms },
         }),
-        message: 'Max retry backoff must not exceed 24 hours',
+        message: 'Max retry backoff must be a whole number of milliseconds from 1 to 86400000',
       },
       {
         name: 'RTU connection.timeout',
         build: (ms: number) => ({ ...device, connection: { ...rtu, timeout: ms } }),
-        // A union of connection types reports only "Invalid input" without the reason
         message: 'Invalid device configuration: connection',
       },
       {
@@ -640,6 +705,139 @@ describe('validateDeviceConfig', () => {
     })
   })
 
+  describe('connection.attempts and connection.retryDelay', () => {
+    const device = { deviceId: 'device1', driver: 'ya-modbus-driver-test' }
+    const rtu = { type: 'rtu', port: '/dev/ttyUSB0', slaveId: 1 }
+    const tcp = { type: 'tcp', host: 'localhost', slaveId: 1 }
+
+    it.each([
+      [rtu, { attempts: 1, retryDelay: 0 }],
+      [tcp, { attempts: 10, retryDelay: 60000 }],
+    ])('should accept %p with %p', (connection, retry) => {
+      const config = { ...device, connection: { ...connection, ...retry } }
+
+      expect(() => validateDeviceConfig(config)).not.toThrow()
+    })
+
+    it.each([
+      [{ attempts: 0 }, 'connection.attempts: Attempts must be at least 1'],
+      [{ attempts: 11 }, 'connection.attempts: Attempts must not exceed 10'],
+      [{ attempts: 1.5 }, 'connection.attempts'],
+      [{ retryDelay: -1 }, 'connection.retryDelay'],
+      [{ retryDelay: 60001 }, 'connection.retryDelay: Retry delay must not exceed 60 seconds'],
+    ])('should reject %p', (retry, message) => {
+      const config = { ...device, connection: { ...rtu, ...retry } }
+
+      expect(() => validateDeviceConfig(config)).toThrow(message)
+    })
+  })
+
+  // The error names the field that is wrong and the values it allows (#611)
+  describe('connection field errors', () => {
+    const rtu = { type: 'rtu', port: '/dev/ttyUSB0', slaveId: 1 }
+    const tcp = { type: 'tcp', host: 'localhost', slaveId: 1 }
+    const slaveId = 'connection.slaveId: Slave ID must be a whole number from 0 to 247'
+    const timeout =
+      'connection.timeout: Connection timeout must be a whole number of milliseconds from 1 to 86400000 (24 hours)'
+    const delay =
+      'connection.interDeviceDelay: Inter-device delay must be a whole number of milliseconds from 0 to 60000 (60 seconds)'
+    const serialPort =
+      'connection.port: Serial port must be a device path, for example /dev/ttyUSB0'
+    const baudRate = 'connection.baudRate: Baud rate must be a number above 0, for example 9600'
+    const host = 'connection.host: Host must be a host name or IP address'
+    const tcpPort = 'connection.port: TCP port must be a whole number from 1 to 65535'
+
+    it.each([
+      [undefined, 'connection: Connection is required'],
+      [{ slaveId: 1 }, "connection.type: Connection type must be 'rtu' or 'tcp'"],
+      [{ ...rtu, type: 'serial' }, "connection.type: Connection type must be 'rtu' or 'tcp'"],
+      [{ type: 'rtu', slaveId: 1 }, 'connection.port: Serial port is required'],
+      [{ ...rtu, port: '' }, serialPort],
+      [{ ...rtu, port: 1 }, serialPort],
+      [{ ...rtu, baudRate: 0 }, baudRate],
+      [{ ...rtu, baudRate: '9600' }, baudRate],
+      [{ type: 'rtu', port: '/dev/ttyUSB0' }, 'connection.slaveId: Slave ID is required'],
+      [{ ...rtu, slaveId: 300 }, slaveId],
+      [{ ...rtu, slaveId: -1 }, slaveId],
+      [{ ...rtu, slaveId: 1.5 }, slaveId],
+      [{ ...rtu, slaveId: '1' }, slaveId],
+      [{ ...rtu, slaveId: 1e20 }, slaveId],
+      [{ ...rtu, parity: 'evn' }, "connection.parity: Parity must be 'none', 'even' or 'odd'"],
+      [{ ...rtu, dataBits: 9 }, 'connection.dataBits: Data bits must be 7 or 8'],
+      [{ ...rtu, stopBits: 3 }, 'connection.stopBits: Stop bits must be 1 or 2'],
+      [{ ...rtu, timeout: 0 }, timeout],
+      [{ ...rtu, timeout: 86400001 }, timeout],
+      [{ ...rtu, interDeviceDelay: -1 }, delay],
+      [{ ...rtu, interDeviceDelay: 60001 }, delay],
+      [
+        { ...rtu, pollOrder: 'Fixed' },
+        "connection.pollOrder: Poll order must be 'arrival' or 'fixed'",
+      ],
+      [{ ...rtu, paritty: 'even' }, 'connection: Unrecognized key: "paritty"'],
+      [{ type: 'tcp', slaveId: 1 }, 'connection.host: Host is required'],
+      [{ ...tcp, host: '' }, host],
+      [{ ...tcp, port: 0 }, tcpPort],
+      [{ ...tcp, port: 65536 }, tcpPort],
+      [{ ...tcp, port: 1.5 }, tcpPort],
+      [{ type: 'tcp', host: 'localhost' }, 'connection.slaveId: Slave ID is required'],
+      [{ ...tcp, slaveId: 248 }, slaveId],
+      [{ ...tcp, timeout: 0 }, timeout],
+      [{ ...tcp, pollOrder: 1 }, "connection.pollOrder: Poll order must be 'arrival' or 'fixed'"],
+    ])('should name the field and its values for connection %p', (connection, message) => {
+      const config = { deviceId: 'device1', driver: 'ya-modbus-driver-test', connection }
+
+      expect(() => validateDeviceConfig(config)).toThrow(
+        new Error(`Invalid device configuration: ${message}`)
+      )
+    })
+  })
+
+  // The order in which the devices on one line take turns (#682)
+  describe('connection.pollOrder', () => {
+    const device = { deviceId: 'device1', driver: 'ya-modbus-driver-test' }
+    const connections = [
+      ['RTU', { type: 'rtu', port: '/dev/ttyUSB0', slaveId: 1 }],
+      ['TCP', { type: 'tcp', host: 'localhost', slaveId: 1 }],
+    ] as const
+
+    it.each(connections.flatMap(([name, c]) => ['arrival', 'fixed'].map((v) => [v, name, c])))(
+      'should accept %p for a %s connection',
+      (pollOrder, _name, connection) => {
+        const config = { ...device, connection: { ...connection, pollOrder } }
+
+        expect(() => validateDeviceConfig(config)).not.toThrow()
+      }
+    )
+
+    it.each(
+      connections.flatMap(([name, c]) => ['Fixed', 'config', 1, null].map((v) => [v, name, c]))
+    )('should reject %p for a %s connection', (pollOrder, _name, connection) => {
+      const config = { ...device, connection: { ...connection, pollOrder } }
+
+      expect(() => validateDeviceConfig(config)).toThrow(
+        "connection.pollOrder: Poll order must be 'arrival' or 'fixed'"
+      )
+    })
+  })
+
+  describe('device', () => {
+    const device = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: { type: 'tcp', host: 'localhost', slaveId: 1 },
+    }
+
+    it('should accept a device key', () => {
+      expect(() => validateDeviceConfig({ ...device, device: 'fast' })).not.toThrow()
+    })
+
+    it.each(['', 1, null])('should reject %p', (key) => {
+      expect(() => validateDeviceConfig({ ...device, device: key })).toThrow(
+        'Invalid device configuration: device'
+      )
+    })
+  })
+
   describe('allowWrites', () => {
     const device = {
       deviceId: 'device1',
@@ -672,15 +870,60 @@ describe('validateDeviceConfig', () => {
       }
     )
 
+    const mode = "publish.mode: Publish mode must be 'every-poll' or 'on-change'"
+    const heartbeat =
+      'publish.heartbeat: Heartbeat must be a whole number of milliseconds from 1 to 86400000 (24 hours)'
+
     it.each([
-      [{}, 'publish.mode'],
-      [{ mode: 'changes' }, 'publish.mode'],
-      [{ mode: 'on-change', heartbeat: 0 }, 'publish.heartbeat'],
-      [{ mode: 'on-change', heartbeat: 86400001 }, 'publish.heartbeat: Heartbeat must not exceed'],
-      [{ mode: 'on-change', hearbeat: 1000 }, 'publish: Unrecognized key'],
+      [{}, 'publish.mode: Publish mode is required'],
+      [{ mode: 'changes' }, mode],
+      [{ mode: 1 }, mode],
+      [{ mode: 'on-change', heartbeat: 0 }, heartbeat],
+      [{ mode: 'on-change', heartbeat: 86400001 }, heartbeat],
+      [{ mode: 'on-change', heartbeat: 1.5 }, heartbeat],
+      [{ mode: 'on-change', heartbeat: '1000' }, heartbeat],
+      [{ mode: 'on-change', hearbeat: 1000 }, 'publish: Unrecognized key: "hearbeat"'],
     ])('should reject %p', (publish, message) => {
       expect(() => validateDeviceConfig({ ...device, publish })).toThrow(
-        `Invalid device configuration: ${message}`
+        new Error(`Invalid device configuration: ${message}`)
+      )
+    })
+  })
+
+  // The error names the field that is wrong and the values it allows (#731)
+  describe('polling field errors', () => {
+    const device = {
+      deviceId: 'device1',
+      driver: 'ya-modbus-driver-test',
+      connection: { type: 'tcp', host: 'localhost', slaveId: 1 },
+    }
+    const ms = (field: string, label: string, min: number): string =>
+      `polling.${field}: ${label} must be a whole number of milliseconds from ${min} to 86400000 (24 hours)`
+    const interval = ms('interval', 'Polling interval', 100)
+    const retryDelay = ms('retryDelay', 'Retry delay', 100)
+    const retryBackoff = ms('retryBackoff', 'Retry backoff', 1)
+    const maxRetryBackoff = ms('maxRetryBackoff', 'Max retry backoff', 1)
+    const maxRetries = 'polling.maxRetries: Max retries must be a whole number from 0 to 100'
+
+    it.each([
+      [{}, "polling.interval: Polling interval is required unless mode is 'continuous'"],
+      [{ interval: 99 }, interval],
+      [{ interval: 86400001 }, interval],
+      [{ interval: 1000.5 }, interval],
+      [{ interval: '1000' }, interval],
+      [{ mode: 'fast' }, "polling.mode: Polling mode must be 'interval' or 'continuous'"],
+      [{ interval: 1000, retryDelay: 99 }, retryDelay],
+      [{ interval: 1000, retryDelay: '500' }, retryDelay],
+      [{ interval: 1000, maxRetries: -1 }, maxRetries],
+      [{ interval: 1000, maxRetries: 101 }, maxRetries],
+      [{ interval: 1000, maxRetries: 1.5 }, maxRetries],
+      [{ interval: 1000, retryBackoff: 0 }, retryBackoff],
+      [{ interval: 1000, retryBackoff: 86400001 }, retryBackoff],
+      [{ interval: 1000, maxRetryBackoff: 0 }, maxRetryBackoff],
+      [{ interval: 1000, maxRetryBackoff: 'long' }, maxRetryBackoff],
+    ])('should name the field and its values for polling %p', (polling, message) => {
+      expect(() => validateDeviceConfig({ ...device, polling })).toThrow(
+        new Error(`Invalid device configuration: ${message}`)
       )
     })
   })

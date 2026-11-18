@@ -281,7 +281,7 @@ validateSerialOptions(merged, effective) // catches defaults that the driver doe
 
 ## Testing Utilities
 
-The package provides testing utilities for applications using driver-loader.
+The package provides testing utilities for applications using driver-loader. They need `jest` and `@jest/globals` (optional peer dependencies; a normal jest install has both).
 
 ```typescript
 import { createMockDriver, mockSystemDeps } from '@ya-modbus/driver-loader/testing'

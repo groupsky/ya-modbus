@@ -165,30 +165,26 @@ describe('identifyDevice', () => {
   })
 
   describe('response time measurement', () => {
-    test('measures accurate response time for fast responses', async () => {
-      mockClient.readDeviceIdentification = jest.fn().mockImplementation(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 50))
-        return { data: { 0: 'Fast Device' } }
-      })
-
-      const result = await identifyDevice(mockClient as ModbusRTU)
-
-      // Allow for timing precision variations (±1ms)
-      expect(result.responseTimeMs).toBeGreaterThanOrEqual(49)
-      expect(result.responseTimeMs).toBeLessThan(150) // Allow some tolerance
+    // Fake timers also control performance.now(), so the measured time is exact
+    beforeEach(() => {
+      jest.useFakeTimers()
     })
 
-    test('measures accurate response time for slow responses', async () => {
+    afterEach(() => {
+      jest.useRealTimers()
+    })
+
+    test.each([50, 100])('measures the response time of a %i ms response', async (delayMs) => {
       mockClient.readDeviceIdentification = jest.fn().mockImplementation(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100))
-        return { data: { 0: 'Slow Device' } }
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
+        return { data: { 0: 'Device' } }
       })
 
-      const result = await identifyDevice(mockClient as ModbusRTU)
+      const resultPromise = identifyDevice(mockClient as ModbusRTU)
+      await jest.advanceTimersByTimeAsync(delayMs)
+      const result = await resultPromise
 
-      // Allow for timing precision variations (±1ms)
-      expect(result.responseTimeMs).toBeGreaterThanOrEqual(99)
-      expect(result.responseTimeMs).toBeLessThan(200)
+      expect(result.responseTimeMs).toBe(delayMs)
     })
   })
 

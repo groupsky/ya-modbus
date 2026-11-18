@@ -8,6 +8,16 @@ export interface MqttBridgeConfig {
   }
   stateDir?: string
   topicPrefix?: string
+  /**
+   * Seconds between the messages on `{topicPrefix}/{deviceId}/stats` (1-86400, 0 = off). Default: not set,
+   * the bridge publishes no stats.
+   */
+  statsInterval?: number
+  /**
+   * Also log one line per device at every `statsInterval` (default: false). It needs
+   * `statsInterval`.
+   */
+  statsLog?: boolean
   devices?: DeviceConfig[]
 }
 
@@ -40,29 +50,35 @@ export type MessageHandler = (message: MqttMessage) => void
 export interface PollingConfig {
   /**
    * Time between the end of a read and the start of the next one, in milliseconds
-   * (100-86400000). In `continuous` mode it is the delay before the next read after a failed
-   * read, until `maxRetries` is reached. Default when `polling` is not set: 5000.
+   * (100-86400000). It is a gap after the read, not a fixed period: a read that takes 300 ms with
+   * `interval` 1000 starts a read every 1300 ms. Required unless `mode` is `continuous`; there it
+   * is only the default for `retryDelay`. Default when it is not set: 5000.
    */
-  interval: number
+  interval?: number
   /**
    * `interval` (default) waits `interval` ms after each read. `continuous` starts the next read
    * as soon as the previous read worked.
    */
   mode?: 'interval' | 'continuous'
   /**
+   * Time to wait after a failed read, in milliseconds (100-86400000, default: `interval`), until
+   * `maxRetries` reads failed in a row. Then `retryBackoff` takes over.
+   */
+  retryDelay?: number
+  /**
    * Number of consecutive failed reads after which the device goes to the `error` state. From
    * then on the bridge polls less often: it waits `retryBackoff` ms, doubling with every
-   * further failed read up to `maxRetryBackoff`, instead of `interval` ms (0-100, default: 3).
+   * further failed read up to `maxRetryBackoff`, instead of `retryDelay` ms (0-100, default: 3).
    *
    * It is not a limit on retries: polling goes on until a read works. With
-   * `3`, the bridge waits `interval` ms after the 1st and the 2nd failed read, and the 3rd
+   * `3`, the bridge waits `retryDelay` ms after the 1st and the 2nd failed read, and the 3rd
    * failed read starts the backoff. `0` and `1` behave the same: the backoff starts after the
    * first failed read.
    */
   maxRetries?: number
   /**
    * Time to wait between reads in milliseconds when the device enters the `error` state
-   * (1-86400000, default: 2 × `interval`). It doubles with every further failed read, up to
+   * (1-86400000, default: 2 × `retryDelay`). It doubles with every further failed read, up to
    * `maxRetryBackoff`.
    */
   retryBackoff?: number
@@ -92,6 +108,11 @@ export interface PublishConfig {
 export interface DeviceConfig {
   deviceId: string
   driver: string
+  /**
+   * Key of the model in the driver's DEVICES, for drivers that support several models. Its
+   * defaults and supported settings are used. Without it, the driver uses its default model.
+   */
+  device?: string
   connection: DeviceConnection
   enabled?: boolean
   polling?: PollingConfig
@@ -121,12 +142,26 @@ export interface RTUConnection {
   stopBits?: 1 | 2
   timeout?: number
   /**
+   * Times each Modbus request is sent before it fails (1-10, default: 3). `1` sends it once,
+   * with no retry. Not the same as `polling.maxRetries`, which counts failed reads.
+   */
+  attempts?: number
+  /** Pause in milliseconds between the attempts of a request (0-60000, default: 100) */
+  retryDelay?: number
+  /**
    * Pause in milliseconds before a request to this device when the previous request on the
    * port went to another device, counted from the end of that request (0-60000, default: 150).
    * Some meters do not answer a request that comes too soon after another meter's reply. A
    * request to the same device as the previous one does not wait. `0` turns the pause off.
    */
   interDeviceDelay?: number
+  /**
+   * Order in which the devices on this line (the same serial port, or the same TCP host and
+   * port) take turns. `arrival` (default): in the order their polls come; a slow or failed
+   * read can change that order. `fixed`: in config order, one turn per device in each round;
+   * a device that is not due skips its turn. All devices on one line must have the same value.
+   */
+  pollOrder?: 'arrival' | 'fixed'
 }
 
 export interface TCPConnection {
@@ -135,6 +170,20 @@ export interface TCPConnection {
   port?: number
   slaveId: number
   timeout?: number
+  /**
+   * Times each Modbus request is sent before it fails (1-10, default: 3). `1` sends it once,
+   * with no retry. Not the same as `polling.maxRetries`, which counts failed reads.
+   */
+  attempts?: number
+  /** Pause in milliseconds between the attempts of a request (0-60000, default: 100) */
+  retryDelay?: number
+  /**
+   * Order in which the devices on this line (the same serial port, or the same TCP host and
+   * port) take turns. `arrival` (default): in the order their polls come; a slow or failed
+   * read can change that order. `fixed`: in config order, one turn per device in each round;
+   * a device that is not due skips its turn. All devices on one line must have the same value.
+   */
+  pollOrder?: 'arrival' | 'fixed'
 }
 
 export interface DeviceStatus {
@@ -170,6 +219,11 @@ export interface DeviceStatus {
   lastPoll?: number
   consecutiveFailures?: number
   errors?: string[]
+  /**
+   * Data points that the device refused with a Modbus exception in the last read that worked.
+   * Empty when every point was read.
+   */
+  failedDataPoints?: string[]
 }
 
 export interface MqttBridge {
