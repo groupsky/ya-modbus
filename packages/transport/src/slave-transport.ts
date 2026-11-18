@@ -51,6 +51,7 @@ export class SlaveTransport implements Transport {
    *   request (default: 0, no pause)
    * @param lastRequest - Last request on the connection, the same for all transports that share
    *   the mutex. interDeviceDelay needs it.
+   * @param retryDelay - Pause between attempts in milliseconds (default: 100)
    */
   constructor(
     private readonly slaveId: number,
@@ -59,7 +60,8 @@ export class SlaveTransport implements Transport {
     private readonly maxRetries: number = 3,
     private readonly logger?: RetryLogger,
     private readonly interDeviceDelay: number = 0,
-    private readonly lastRequest: LastRequest = new LastRequest()
+    private readonly lastRequest: LastRequest = new LastRequest(),
+    private readonly retryDelay?: number
   ) {
     this.connection = toConnection(client)
   }
@@ -155,7 +157,8 @@ export class SlaveTransport implements Transport {
               return send(client)
             }),
           this.maxRetries,
-          this.logger
+          this.logger,
+          this.retryDelay
         )
       } finally {
         this.lastRequest.ended(this.slaveId)

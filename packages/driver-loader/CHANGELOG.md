@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.12.7](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-loader@0.12.6...@ya-modbus/driver-loader@0.12.7) (2026-11-11)
+
+**Note:** Version bump only for package @ya-modbus/driver-loader
+
+## [0.12.6](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-loader@0.12.5...@ya-modbus/driver-loader@0.12.6) (2026-11-11)
+
+**Note:** Version bump only for package @ya-modbus/driver-loader
+
+## [0.12.5](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-loader@0.12.4...@ya-modbus/driver-loader@0.12.5) (2026-11-10)
+
+### Bug Fixes
+
+- **driver-loader:** check each serial setting without validBaudRates ([#762](https://github.com/groupsky/ya-modbus/issues/762)) ([0c076ab](https://github.com/groupsky/ya-modbus/commit/0c076abe8cb69602584664091d776367e00172dc)), closes [#734](https://github.com/groupsky/ya-modbus/issues/734)
+
+## [0.12.4](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-loader@0.12.3...@ya-modbus/driver-loader@0.12.4) (2026-11-09)
+
+### Bug Fixes
+
+- declare and stop publishing the imports of test helpers ([#750](https://github.com/groupsky/ya-modbus/issues/750)) ([b3dde85](https://github.com/groupsky/ya-modbus/commit/b3dde850f3ba872e761021ccc82ff2ba4cc379c2)), closes [#597](https://github.com/groupsky/ya-modbus/issues/597) [#597](https://github.com/groupsky/ya-modbus/issues/597)
+
 ## [0.12.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-loader@0.12.2...@ya-modbus/driver-loader@0.12.3) (2026-11-02)
 
 **Note:** Version bump only for package @ya-modbus/driver-loader

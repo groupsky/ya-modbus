@@ -1,7 +1,9 @@
 import {
   applyDriverDefaults,
-  assertValidDriverPackageName,
+  getEffectiveDriverMetadata,
+  DriverNotFoundError,
   loadDriver as loadDriverPackage,
+  ValidationError,
   validateSerialOptions,
   type LoadedDriver,
 } from '@ya-modbus/driver-loader'
@@ -14,9 +16,48 @@ import {
   type TransportConfig,
 } from '@ya-modbus/transport'
 
-import type { DeviceConnection, RTUConnection } from './types.js'
+import { DRIVER_NAME_RULE, getDriverPackageCandidates } from './driver-name.js'
+import type { DeviceConfig, DeviceConnection, RTUConnection } from './types.js'
 
 type LoadDriverFunction = typeof loadDriverPackage
+
+/**
+ * Load the first package that is installed for a driver name (see getDriverPackageCandidates)
+ *
+ * @returns The loaded driver and the name of its package
+ * @throws ValidationError if the name is not allowed, or DriverNotFoundError if no package is
+ *   installed. A package that is installed but fails to load throws its own error.
+ */
+async function loadDriverByName(
+  name: string,
+  loadDriverFn: LoadDriverFunction
+): Promise<{ loadedDriver: LoadedDriver; packageName: string }> {
+  // Security validation: the name becomes an import specifier, so only npm package names
+  // of the allowed driver forms pass (never paths)
+  const candidates = getDriverPackageCandidates(name)
+  const [first] = candidates
+  if (first === undefined) {
+    throw new ValidationError(
+      `Invalid driver name ${JSON.stringify(name)}: must be ${DRIVER_NAME_RULE}`,
+      'driverPackage'
+    )
+  }
+
+  for (const packageName of candidates) {
+    try {
+      return { loadedDriver: await loadDriverFn({ driverPackage: packageName }), packageName }
+    } catch (error) {
+      // Try the next form only when this package is not installed at all
+      if (!(error instanceof DriverNotFoundError) || error.cause !== undefined) throw error
+      if (candidates.length === 1) throw error
+    }
+  }
+
+  throw new DriverNotFoundError(
+    `Driver ${JSON.stringify(name)} not found: none of ${candidates.join(', ')} is installed`,
+    first
+  )
+}
 
 /**
  * Pause in ms before a request to a device after a request to another device on its port. Some
@@ -35,6 +76,33 @@ function retryLogger(device: string): RetryLogger | undefined {
       `Device ${device}: request failed (try ${attempt}), sending it again: ${error.message}`
     )
   }
+}
+
+/**
+ * The driver with the defaults and supported settings of the selected model (the `device` key of
+ * the device config). Without a key, the driver as it is.
+ *
+ * @throws Error if the key is not in the driver's DEVICES, or the driver has no DEVICES
+ */
+function selectModel(
+  loadedDriver: LoadedDriver,
+  packageName: string,
+  model: string | undefined
+): LoadedDriver {
+  if (model === undefined) return loadedDriver
+  if (!loadedDriver.devices) {
+    throw new Error(
+      `Unknown device "${model}": ${packageName} supports one model only (it has no DEVICES). ` +
+        'Remove "device" from the device config'
+    )
+  }
+  const validDevices = Object.keys(loadedDriver.devices)
+  if (!validDevices.includes(model)) {
+    throw new Error(
+      `Unknown device "${model}" for ${packageName}. Valid devices: ${validDevices.join(', ')}`
+    )
+  }
+  return getEffectiveDriverMetadata(loadedDriver, model)
 }
 
 /**
@@ -63,11 +131,33 @@ function toRTUConfig(
     stopBits: merged.stopBits ?? 1,
     slaveId: merged.slaveId,
     timeout: merged.timeout,
+    maxRetries: connection.attempts,
+    retryDelay: connection.retryDelay,
     interDeviceDelay: merged.interDeviceDelay ?? DEFAULT_INTER_DEVICE_DELAY_MS,
   }
   validateSerialOptions(config, driver)
 
   return config
+}
+
+/**
+ * Check a device as DriverLoader.loadDriver() does, but without opening a port or creating the
+ * driver: the driver name, that its package loads, the device key, and the serial settings
+ * against the driver.
+ *
+ * @throws Error if the name is not a driver name, the package does not load, the device key is
+ *   not one of the driver's DEVICES, or the
+ *   driver does not support a serial setting or the slave ID
+ */
+export async function checkDriver(
+  device: Pick<DeviceConfig, 'driver' | 'connection' | 'device'>,
+  loadDriverFn: LoadDriverFunction = loadDriverPackage
+): Promise<void> {
+  const loaded = await loadDriverByName(device.driver, loadDriverFn)
+  const loadedDriver = selectModel(loaded.loadedDriver, loaded.packageName, device.device)
+  if (device.connection.type === 'rtu') {
+    toRTUConfig(device.connection, loadedDriver, loaded.packageName)
+  }
 }
 
 /**
@@ -86,6 +176,11 @@ export class DriverLoader {
   private readonly devicePackages = new Map<string, string>()
   private readonly deviceTransports = new Map<string, Transport>()
   private readonly deviceTransportConfigs = new Map<string, TransportConfig>()
+  // Loads that are not finished, by device ID; unloadDriver() marks them removed
+  private readonly loads = new Map<
+    string,
+    { state: { removed: boolean }; done: Promise<unknown> }
+  >()
   private readonly loadDriverFn: LoadDriverFunction
   private readonly transportManager: TransportManager
 
@@ -97,29 +192,56 @@ export class DriverLoader {
   /**
    * Load a driver package and create an instance for a device
    *
-   * @param packageName - NPM package name (e.g., '@ya-modbus/driver-xymd1', 'ya-modbus-driver-test'
-   *   or '@org/ya-modbus-driver-test')
+   * @param driverName - Short driver name (e.g., 'xymd1', which loads '@ya-modbus/driver-xymd1',
+   *   else 'ya-modbus-driver-xymd1') or npm package name (e.g., '@ya-modbus/driver-xymd1',
+   *   'ya-modbus-driver-test' or '@org/ya-modbus-driver-test'). The package that a short name
+   *   loads is logged.
    * @param connection - Device connection configuration. Serial settings that it does not set
    *   come from the driver (see toRTUConfig). The settings used are logged.
    * @param deviceId - Unique device identifier for tracking the instance. Without it,
    *   unloadDriver() cannot release the transport, and its port stays open until
    *   closeAllTransports().
+   * @param model - Key of the model in the driver's DEVICES (the `device` field of the device
+   *   config). Its defaults and supported settings are used, and it is passed to createDriver.
    * @returns Driver instance
-   * @throws ValidationError if the driver does not support a serial setting or the slave ID
+   * @throws ValidationError if the name is not allowed, or the driver does not support a serial
+   *   setting or the slave ID
+   * @throws Error if the model is not one of the driver's DEVICES
+   * @throws DriverNotFoundError if no package of the name is installed
+   * @throws Error if unloadDriver() is called for the device while it loads. The transport of
+   *   the load is released.
    */
   async loadDriver(
-    packageName: string,
+    driverName: string,
     connection: DeviceConnection,
-    deviceId?: string
+    deviceId?: string,
+    model?: string
   ): Promise<DeviceDriver> {
-    // Security validation: the name becomes an import specifier, so only npm package names
-    // of the allowed driver forms pass (never paths)
-    assertValidDriverPackageName(packageName)
+    if (deviceId === undefined) return this.createInstance(driverName, connection, deviceId, model)
+    const state = { removed: false }
+    const instance = this.createInstance(driverName, connection, deviceId, model, state)
+    const load = { state, done: instance.catch(() => undefined) }
+    this.loads.set(deviceId, load)
+    try {
+      return await instance
+    } finally {
+      if (this.loads.get(deviceId) === load) this.loads.delete(deviceId)
+    }
+  }
 
-    // Load driver package using driver-loader
-    const loadedDriver = await this.loadDriverFn({ driverPackage: packageName })
+  private async createInstance(
+    driverName: string,
+    connection: DeviceConnection,
+    deviceId: string | undefined,
+    model: string | undefined,
+    load?: { removed: boolean }
+  ): Promise<DeviceDriver> {
+    const loaded = await loadDriverByName(driverName, this.loadDriverFn)
+    const { packageName } = loaded
+    const loadedDriver = selectModel(loaded.loadedDriver, packageName, model)
 
     const device = deviceId ?? packageName
+    if (packageName !== driverName) console.log(`Device ${device} uses driver ${packageName}`)
     let config: TransportConfig
     if (connection.type === 'rtu') {
       config = {
@@ -137,6 +259,8 @@ export class DriverLoader {
         port: connection.port,
         slaveId: connection.slaveId,
         timeout: connection.timeout,
+        maxRetries: connection.attempts,
+        retryDelay: connection.retryDelay,
         logger: retryLogger(device),
       }
     }
@@ -150,6 +274,7 @@ export class DriverLoader {
       driver = await loadedDriver.createDriver({
         transport,
         slaveId: connection.slaveId,
+        ...(model !== undefined ? { device: model } : {}),
       })
 
       // Call initialize if available
@@ -160,6 +285,15 @@ export class DriverLoader {
       // The port closes unless other devices use it
       await this.transportManager.releaseTransport(transport)
       throw error
+    }
+
+    if (load?.removed) {
+      try {
+        await driver.destroy?.()
+      } finally {
+        await this.transportManager.releaseTransport(transport)
+      }
+      throw new Error(`Device ${deviceId} was removed while its driver was loading`)
     }
 
     // Cache instance if deviceId provided
@@ -175,11 +309,18 @@ export class DriverLoader {
 
   /**
    * Unload a driver instance and release its transport. The port closes when no other device
-   * uses it.
+   * uses it. A driver that is still loading is stopped: this waits until its load ends and
+   * releases its transport, and the load fails.
    *
    * @param deviceId - Device identifier
    */
   async unloadDriver(deviceId: string): Promise<void> {
+    const load = this.loads.get(deviceId)
+    if (load) {
+      load.state.removed = true
+      await load.done
+    }
+
     const driver = this.driverInstances.get(deviceId)
     const transport = this.deviceTransports.get(deviceId)
 

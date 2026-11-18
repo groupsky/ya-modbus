@@ -103,9 +103,9 @@ describe('PollingScheduler poll types', () => {
     ])
     const expected = { serial_number: 'serial_number-value', voltage: 'voltage-value' }
     expect(onData.mock.calls).toEqual([
-      ['device1', expected],
-      ['device1', expected],
-      ['device1', expected],
+      ['device1', expected, { readMs: 0 }],
+      ['device1', expected, { readMs: 0 }],
+      ['device1', expected, { readMs: 0 }],
     ])
   })
 
@@ -145,7 +145,7 @@ describe('PollingScheduler poll types', () => {
     scheduler.start()
     await jest.advanceTimersByTimeAsync(INTERVAL)
 
-    expect(onData).toHaveBeenLastCalledWith('device1', { voltage: 'voltage-value' })
+    expect(onData).toHaveBeenLastCalledWith('device1', { voltage: 'voltage-value' }, { readMs: 0 })
     expect(onError).not.toHaveBeenCalled()
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/device1.*serial_number/), staticError)
 
@@ -157,10 +157,14 @@ describe('PollingScheduler poll types', () => {
       [['voltage']],
       [['serial_number']],
     ])
-    expect(onData).toHaveBeenLastCalledWith('device1', {
-      serial_number: 'serial_number-value',
-      voltage: 'voltage-value',
-    })
+    expect(onData).toHaveBeenLastCalledWith(
+      'device1',
+      {
+        serial_number: 'serial_number-value',
+        voltage: 'voltage-value',
+      },
+      { readMs: 0 }
+    )
   })
 
   it('should not read static data points in a poll whose dynamic read failed', async () => {
@@ -192,7 +196,11 @@ describe('PollingScheduler poll types', () => {
 
     expect(readDataPoints.mock.calls).toEqual([[['serial_number']]])
     expect(onData).toHaveBeenCalledTimes(2)
-    expect(onData).toHaveBeenLastCalledWith('device1', { serial_number: 'serial_number-value' })
+    expect(onData).toHaveBeenLastCalledWith(
+      'device1',
+      { serial_number: 'serial_number-value' },
+      { readMs: 0 }
+    )
   })
 
   it('should publish data for a device with a silent on-demand register', async () => {
@@ -213,7 +221,7 @@ describe('PollingScheduler poll types', () => {
     await jest.advanceTimersByTimeAsync(INTERVAL * 2)
 
     expect(onData).toHaveBeenCalledTimes(2)
-    expect(onData).toHaveBeenLastCalledWith('device1', { voltage: 'voltage-value' })
+    expect(onData).toHaveBeenLastCalledWith('device1', { voltage: 'voltage-value' }, { readMs: 0 })
     expect(onError).not.toHaveBeenCalled()
   })
 })

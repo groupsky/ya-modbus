@@ -126,6 +126,18 @@ describe('CLI Entry Point - Integration Tests', () => {
     })
   })
 
+  // -h used to be the short form of --host on read and write, so `read -h`
+  // failed with "argument missing" instead of showing help (#615).
+  it.each(['read', 'write', 'discover', 'show-defaults', 'list-devices'])(
+    'should show the same help for "%s -h" as for --help',
+    async (command) => {
+      const shortHelp = await captureHelpOutput(['node', 'ya-modbus', command, '-h'])
+      const longHelp = await captureHelpOutput(['node', 'ya-modbus', command, '--help'])
+      expect(shortHelp).toContain(`Usage: ya-modbus ${command}`)
+      expect(shortHelp).toBe(longHelp)
+    }
+  )
+
   describe('Read Command', () => {
     it('should display help information for read command', async () => {
       const helpOutput = await captureHelpOutput(['node', 'ya-modbus', 'read', '--help'])
@@ -145,6 +157,10 @@ describe('CLI Entry Point - Integration Tests', () => {
           -s, --slave-id <id>     Modbus slave ID (1-247). Uses driver default if not
                                   specified (RTU only)
           --timeout <ms>          Response timeout in milliseconds (default: 1000)
+          --attempts <n>          Times each request is sent before it fails (default:
+                                  3, use 1 for no retry)
+          --retry-delay <ms>      Pause between attempts in milliseconds (default: 100)
+          --verbose               Print each retry of a failed request
 
         RTU Connection (choose this OR TCP):
           -p, --port <path>       Serial port for RTU (e.g., /dev/ttyUSB0, COM3)
@@ -158,7 +174,7 @@ describe('CLI Entry Point - Integration Tests', () => {
                                   not specified
 
         TCP Connection (choose this OR RTU):
-          -h, --host <host>       TCP host for Modbus TCP (e.g., 192.168.1.100)
+          --host <host>           TCP host for Modbus TCP (e.g., 192.168.1.100)
           --tcp-port <port>       TCP port (default: 502)
 
         Data Selection:
@@ -170,7 +186,7 @@ describe('CLI Entry Point - Integration Tests', () => {
                                   (default: "table")
 
         Options:
-          --help                  display help for command
+          -h, --help              display help for command
         "
       `)
     })
@@ -435,6 +451,10 @@ describe('CLI Entry Point - Integration Tests', () => {
           -s, --slave-id <id>     Modbus slave ID (1-247). Uses driver default if not
                                   specified (RTU only)
           --timeout <ms>          Response timeout in milliseconds (default: 1000)
+          --attempts <n>          Times each request is sent before it fails (default:
+                                  3, use 1 for no retry)
+          --retry-delay <ms>      Pause between attempts in milliseconds (default: 100)
+          --verbose               Print each retry of a failed request
 
         RTU Connection (choose this OR TCP):
           -p, --port <path>       Serial port for RTU (e.g., /dev/ttyUSB0, COM3)
@@ -448,7 +468,7 @@ describe('CLI Entry Point - Integration Tests', () => {
                                   not specified
 
         TCP Connection (choose this OR RTU):
-          -h, --host <host>       TCP host for Modbus TCP (e.g., 192.168.1.100)
+          --host <host>           TCP host for Modbus TCP (e.g., 192.168.1.100)
           --tcp-port <port>       TCP port (default: 502)
 
         Data Options:
@@ -460,7 +480,7 @@ describe('CLI Entry Point - Integration Tests', () => {
           --verify                Read back and verify written value
 
         Options:
-          --help                  display help for command
+          -h, --help              display help for command
         "
       `)
     })
@@ -1172,6 +1192,51 @@ describe('CLI Entry Point - Integration Tests', () => {
           expect.stringContaining("unknown option '--host'")
         )
         expect(processExitSpy).toHaveBeenCalledWith(1)
+        expect(discoverModule.discoverCommand).not.toHaveBeenCalled()
+      } finally {
+        stderrWriteSpy.mockRestore()
+      }
+    })
+  })
+
+  describe('Whole number flags', () => {
+    const cases: Array<[string, string[], string, string]> = [
+      ['read', ['--port', '/dev/ttyUSB0', '--all'], '--timeout <ms>', '1.5s'],
+      ['read', ['--port', '/dev/ttyUSB0', '--all'], '--slave-id <id>', '2.5'],
+      ['read', ['--port', '/dev/ttyUSB0', '--all'], '--baud-rate <rate>', '96OO'],
+      ['read', ['--port', '/dev/ttyUSB0', '--all'], '--data-bits <bits>', '8.0'],
+      ['read', ['--port', '/dev/ttyUSB0', '--all'], '--stop-bits <bits>', 'one'],
+      ['read', ['--host', 'localhost', '--all'], '--tcp-port <port>', '502x'],
+      ['read', ['--port', '/dev/ttyUSB0', '--all'], '--attempts <n>', '2.5'],
+      ['read', ['--port', '/dev/ttyUSB0', '--all'], '--retry-delay <ms>', '100ms'],
+      [
+        'write',
+        ['--port', '/dev/ttyUSB0', '--data-point', 'x', '--value', '1'],
+        '--timeout <ms>',
+        '2.5',
+      ],
+      ['discover', ['--port', '/dev/ttyUSB0'], '--timeout <ms>', '100ms'],
+      ['discover', ['--port', '/dev/ttyUSB0'], '--delay <ms>', '0.5'],
+      ['discover', ['--port', '/dev/ttyUSB0'], '--max-devices <count>', '3x'],
+    ]
+
+    it.each(cases)('%s rejects %s %p', async (command, rest, flag, value) => {
+      const stderrWriteSpy = jest.spyOn(process.stderr, 'write').mockImplementation()
+      const flagName = flag.split(' ')[0] as string
+
+      try {
+        await expect(
+          program.parseAsync(['node', 'ya-modbus', command, ...rest, flagName, value])
+        ).rejects.toThrow('process.exit called')
+
+        expect(stderrWriteSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            `${flag}' argument '${value}' is invalid. Expected a whole number`
+          )
+        )
+        expect(processExitSpy).toHaveBeenCalledWith(1)
+        expect(readModule.readCommand).not.toHaveBeenCalled()
+        expect(writeModule.writeCommand).not.toHaveBeenCalled()
         expect(discoverModule.discoverCommand).not.toHaveBeenCalled()
       } finally {
         stderrWriteSpy.mockRestore()

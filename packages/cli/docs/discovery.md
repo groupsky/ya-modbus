@@ -75,5 +75,6 @@ With default timeout=1000ms, delay=100ms:
 ## Future Enhancements
 
 - Checkpoint/resume for long scans
-- `scan-registers` - Find readable/writable register ranges
-- `test-limits` - Determine max batch size, timing requirements
+- Find the maximum batch size and timing limits (#123, #122)
+
+To find which registers can be read, use `ya-modbus-profile` (`@ya-modbus/device-profiler`).
