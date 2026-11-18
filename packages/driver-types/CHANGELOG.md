@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.10.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-types@0.9.0...@ya-modbus/driver-types@0.10.0) (2026-11-11)
+
+### Features
+
+- **driver-types:** add 'MΩ' to Unit ([#775](https://github.com/groupsky/ya-modbus/issues/775)) ([9cb603c](https://github.com/groupsky/ya-modbus/commit/9cb603c86c66d5069ccaa9aae2d5805c1dd3634b)), closes [#719](https://github.com/groupsky/ya-modbus/issues/719)
+
+# [0.9.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-types@0.8.3...@ya-modbus/driver-types@0.9.0) (2026-11-11)
+
+### Features
+
+- **driver-types:** add 'ms' to Unit ([#773](https://github.com/groupsky/ya-modbus/issues/773)) ([573b8ac](https://github.com/groupsky/ya-modbus/commit/573b8ac525e3a1181f16a774393f0bb3b4aa76a2)), closes [#713](https://github.com/groupsky/ya-modbus/issues/713)
+
 ## [0.8.3](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-types@0.8.2...@ya-modbus/driver-types@0.8.3) (2026-10-15)
 
 ### Bug Fixes

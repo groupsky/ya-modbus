@@ -44,6 +44,19 @@ const tcpTransport = await createTransport({
 await rtuTransport.readHoldingRegisters(0, 10)
 ```
 
+A failed request is sent again: up to `maxRetries` times in total (default: 3, `1` for no retry),
+with `retryDelay` ms between the tries (default: 100). `logger` is called for each retry:
+
+```typescript
+const transport = await createTransport({
+  host: '192.168.1.100',
+  slaveId: 1,
+  maxRetries: 2,
+  retryDelay: 500,
+  logger: (attempt, error) => console.warn(`Try ${attempt} failed: ${error.message}`),
+})
+```
+
 ## Several devices on one connection
 
 `TransportManager` shares one connection between the devices on a serial port with the same
@@ -182,7 +195,7 @@ for example when a USB adapter is not plugged in. A long-running program can sta
 `new TransportManager({ startLost: true })`. Then `getTransport()` returns the transport, and
 its connection starts lost with the error of the failed open. Requests reject with a
 `ConnectionLostError` with a message like
-`Could not open /dev/ttyUSB0: Error: No such file or directory, cannot open /dev/ttyUSB0`, until
+`Could not open /dev/ttyUSB0: No such file or directory, cannot open /dev/ttyUSB0`, until
 the port opens for the first time. The port is opened again after the same delays as above.
 `getConnectionError(config)` returns the error while the connection is lost, and `undefined`
 while it works. The MQTT bridge uses this, so one missing adapter does not stop the other

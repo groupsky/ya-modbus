@@ -6,6 +6,5 @@
     "password": "<your-password>",
     "reconnectPeriod": 5000
   },
-  "topicPrefix": "modbus",
-  "stateDir": "./data"
+  "topicPrefix": "modbus"
 }

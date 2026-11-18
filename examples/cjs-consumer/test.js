@@ -21,6 +21,7 @@ async function main() {
     driverDds519mr: require('@ya-modbus/driver-dds519mr'),
     driverOrWe516: require('@ya-modbus/driver-or-we-516'),
     driverAsparMod16ro: require('@ya-modbus/driver-aspar-mod-16ro'),
+    driverSpm01r: require('@ya-modbus/driver-spm01r'),
     driverSdk: require('@ya-modbus/driver-sdk'),
     driverSdm630: require('@ya-modbus/driver-sdm630'),
     driverXymd1: require('@ya-modbus/driver-xymd1'),
