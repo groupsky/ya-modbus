@@ -6,10 +6,6 @@ on:
   # Manual run on main: publishes versions that a failed run left unpublished
   workflow_dispatch:
 
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
-
 permissions:
   contents: write # For creating tags and pushing commits
   issues: write # For creating GitHub releases
@@ -22,7 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: npm
-    # Don't run on version bump commits to avoid infinite loop
+    # Job level, so a run skipped by the `if` below never takes the group and
+    # never replaces a waiting release run.
+    concurrency:
+      group: release-${{ github.ref }}
+      cancel-in-progress: false
+    # The release commit is pushed with a deploy key, and such a push starts
+    # this workflow again. Skip it, so the release can not loop.
     # Branch protection should require CI to pass before merge
     if: |
       github.ref == 'refs/heads/main' &&
@@ -35,8 +37,10 @@ jobs:
         with:
           # Fetch all history and tags for lerna to detect changes
           fetch-depth: 0
-          # Use a token that can trigger workflows
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Write deploy key (allowed to bypass the main ruleset). lerna pushes
+          # the release commit and the tags over SSH with it. GITHUB_TOKEN stays
+          # for the API calls (GitHub releases).
+          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
 
       - name: Setup Node.js from .nvmrc
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
