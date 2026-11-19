@@ -37,9 +37,8 @@ jobs:
         with:
           # Fetch all history and tags for lerna to detect changes
           fetch-depth: 0
-          # No git credential stays on disk: install scripts, the build and the
-          # tests never see a key. The deploy key is loaded only in the
-          # "Version packages" step.
+          # No git credential stays on disk. The deploy key is loaded only in
+          # the "Version packages" step, after install, build and tests.
           persist-credentials: false
 
       - name: Setup Node.js from .nvmrc
@@ -77,7 +76,8 @@ jobs:
           # stopped on exit. GITHUB_TOKEN is still used for GitHub releases.
           eval "$(ssh-agent -s)" >/dev/null
           trap 'ssh-agent -k >/dev/null' EXIT
-          ssh-add - <<<"$RELEASE_DEPLOY_KEY" 2>/dev/null
+          ssh-add - <<<"$RELEASE_DEPLOY_KEY"
+          unset RELEASE_DEPLOY_KEY
           mkdir -p ~/.ssh
           ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
           git remote set-url origin "git@github.com:${GITHUB_REPOSITORY}.git"
@@ -88,7 +88,7 @@ jobs:
           # Exits 0 when nothing changed or when main moved on (EBEHIND).
           # Any other error, such as a rejected push, stops the job, so a
           # version that is not on main is never published.
-          npx lerna version --yes --no-private --sync-workspace-lock
+          npx lerna version --yes --no-private --no-commit-hooks --sync-workspace-lock
 
           # Check if any new tags were created
           TAGS_AFTER=$(git tag | wc -l)
