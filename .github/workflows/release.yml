@@ -37,10 +37,10 @@ jobs:
         with:
           # Fetch all history and tags for lerna to detect changes
           fetch-depth: 0
-          # Write deploy key (allowed to bypass the main ruleset). lerna pushes
-          # the release commit and the tags over SSH with it. GITHUB_TOKEN stays
-          # for the API calls (GitHub releases).
-          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
+          # No git credential stays on disk: install scripts, the build and the
+          # tests never see a key. The deploy key is loaded only in the
+          # "Version packages" step.
+          persist-credentials: false
 
       - name: Setup Node.js from .nvmrc
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -72,6 +72,16 @@ jobs:
       - name: Version packages
         id: version
         run: |
+          # Push over SSH with the write deploy key, which can bypass the main
+          # ruleset. The key lives only in this step, in an ssh-agent that is
+          # stopped on exit. GITHUB_TOKEN is still used for GitHub releases.
+          eval "$(ssh-agent -s)" >/dev/null
+          trap 'ssh-agent -k >/dev/null' EXIT
+          ssh-add - <<<"$RELEASE_DEPLOY_KEY" 2>/dev/null
+          mkdir -p ~/.ssh
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+          git remote set-url origin "git@github.com:${GITHUB_REPOSITORY}.git"
+
           # Capture current tags before versioning
           TAGS_BEFORE=$(git tag | wc -l)
 
@@ -93,6 +103,7 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY }}
 
       - name: Publish to npm
         # Runs also when nothing was versioned: from-package publishes every

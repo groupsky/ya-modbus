@@ -117,7 +117,8 @@ The release workflow pushes the release commit (`chore(release): publish package
 
 - **What**: an ed25519 deploy key with write access, titled `release workflow push` (Settings → Deploy keys)
 - **Where the private key is**: secret `RELEASE_DEPLOY_KEY` of the `npm` environment (Settings → Environments → npm). The public key is the deploy key.
-- **Used by**: the checkout step of `.github/workflows/release.yml` (`ssh-key`). `GITHUB_TOKEN` is still used for API calls such as GitHub releases.
+- **Used by**: the "Version packages" step of `.github/workflows/release.yml`. It loads the key into an `ssh-agent` for that step only, so `npm ci`, the build and the tests never see it. `GITHUB_TOKEN` is still used for API calls such as GitHub releases.
+- **Who can read it**: the `npm` environment allows only the `main` branch (Settings → Environments → npm → Deployment branches).
 - **Loop guard**: a push with a deploy key starts workflows. The release job is skipped when the head commit message starts with `chore(release):`.
 
 To rotate the key:
