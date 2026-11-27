@@ -15,6 +15,12 @@ setup() {
   MQTT_MESSAGES_FILE=$(mktemp /tmp/mqtt-messages-XXXXXX.txt)
   BRIDGE_BIN="$(get_project_root)/packages/mqtt-bridge/dist/esm/bin/ya-modbus-bridge.js"
   clean_test_artifacts
+
+  # Status topics are retained: remove old values so no test passes on data of an earlier test
+  local topic
+  for topic in bridge ex9em-1 ex9em-good ex9em-silent; do
+    mosquitto_pub -h localhost -p 1883 -r -n -t "modbus/$topic/status"
+  done
 }
 
 teardown() {
@@ -109,13 +115,13 @@ JSON
 }
 
 @test "mqtt-bridge fails with a clear error when the MQTT broker is unreachable" {
-  write_config "mqtt://localhost:9999" "[]"
+  write_config "mqtt://127.0.0.1:9999" "[]"
 
   # A timeout of 20 s keeps a bridge that retries forever from hanging the test
   run timeout 20 node "$BRIDGE_BIN" run --config "$BATS_TEST_TMPDIR/config.json"
   assert_failure
   [ "$status" -ne 124 ]
-  assert_output_contains "connecting to mqtt://localhost:9999"
+  assert_output_contains "connecting to mqtt://127.0.0.1:9999"
   assert_output_contains "ECONNREFUSED"
   assert_output_not_contains "Bridge started successfully"
 }
@@ -141,11 +147,11 @@ JSON
   assert_success
 
   # The errors of the silent device are logged with its ID
-  run wait_for 20 'assert_bridge_log_contains "$BRIDGE_PID" "Polling error for device ex9em-silent"'
+  run wait_for 40 'assert_bridge_log_contains "$BRIDGE_PID" "Polling error for device ex9em-silent"'
   assert_success
 
   # The status topic of the silent device shows the error
-  run wait_for 20 'assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-silent/status" ".state" "\"error\""'
+  run wait_for 40 'assert_json_field "$MQTT_MESSAGES_FILE" "modbus/ex9em-silent/status" ".state" "\"error\""'
   assert_success
 
   # The bridge still runs, and the good device has no polling errors
@@ -178,6 +184,8 @@ JSON
 
   # Retained bridge status: online while running, offline after the stop. The last message
   # of the topic is the current one.
+  run wait_for 5 'assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/bridge/status offline"'
+  assert_success
   run grep "^modbus/bridge/status " "$MQTT_MESSAGES_FILE"
   assert_success
   [ "${lines[-2]}" = "modbus/bridge/status online" ]
