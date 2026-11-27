@@ -64,7 +64,7 @@ JSON
 @test "mqtt-bridge rejects a config that is not JSON" {
   echo '{ "mqtt": ' > "$BATS_TEST_TMPDIR/config.json"
 
-  run timeout 20 node "$BRIDGE_BIN" run --config "$BATS_TEST_TMPDIR/config.json"
+  run timeout -k 5 20 node "$BRIDGE_BIN" run --config "$BATS_TEST_TMPDIR/config.json"
   assert_failure
   assert_output_contains "Error:"
   assert_output_contains "JSON"
@@ -72,7 +72,7 @@ JSON
 }
 
 @test "mqtt-bridge rejects a config file that does not exist" {
-  run timeout 20 node "$BRIDGE_BIN" run --config "$BATS_TEST_TMPDIR/missing.json"
+  run timeout -k 5 20 node "$BRIDGE_BIN" run --config "$BATS_TEST_TMPDIR/missing.json"
   assert_failure
   assert_output_contains "ENOENT"
 }
@@ -80,7 +80,7 @@ JSON
 @test "mqtt-bridge rejects an MQTT URL with an unknown scheme" {
   write_config "http://localhost:1883" "[]"
 
-  run timeout 20 node "$BRIDGE_BIN" run --config "$BATS_TEST_TMPDIR/config.json"
+  run timeout -k 5 20 node "$BRIDGE_BIN" run --config "$BATS_TEST_TMPDIR/config.json"
   assert_failure
   assert_output_contains "Invalid configuration"
   assert_output_contains "mqtt.url: URL must start with mqtt://, mqtts://, ws://, or wss://"
@@ -89,7 +89,7 @@ JSON
 @test "mqtt-bridge rejects a device with an invalid slave ID" {
   write_config "mqtt://localhost:1883" "[$(ex9em_device bad-slave 300 /tmp/ttyV1)]"
 
-  run timeout 20 node "$BRIDGE_BIN" run --config "$BATS_TEST_TMPDIR/config.json"
+  run timeout -k 5 20 node "$BRIDGE_BIN" run --config "$BATS_TEST_TMPDIR/config.json"
   assert_failure
   assert_output_contains "Invalid configuration"
   assert_output_contains "Slave ID"
@@ -99,7 +99,7 @@ JSON
 @test "mqtt-bridge rejects a device with an unknown driver" {
   write_config "mqtt://localhost:1883" "[$(ex9em_device bad-driver 1 /tmp/ttyV1 | sed 's#@ya-modbus/driver-ex9em#@ya-modbus/driver-does-not-exist#')]"
 
-  run timeout 20 node "$BRIDGE_BIN" run --config "$BATS_TEST_TMPDIR/config.json"
+  run timeout -k 5 20 node "$BRIDGE_BIN" run --config "$BATS_TEST_TMPDIR/config.json"
   assert_failure
   assert_output_contains "devices\[0\] \(bad-driver\)"
   assert_output_contains "driver-does-not-exist"
@@ -109,7 +109,7 @@ JSON
 @test "mqtt-bridge check names the problem of an invalid device" {
   write_config "mqtt://localhost:1883" "[$(ex9em_device bad-slave 300 /tmp/ttyV1)]"
 
-  run timeout 20 node "$BRIDGE_BIN" check --config "$BATS_TEST_TMPDIR/config.json"
+  run timeout -k 5 20 node "$BRIDGE_BIN" check --config "$BATS_TEST_TMPDIR/config.json"
   assert_failure
   assert_output_contains "Slave ID"
 }
@@ -118,7 +118,7 @@ JSON
   write_config "mqtt://127.0.0.1:9999" "[]"
 
   # A timeout of 20 s keeps a bridge that retries forever from hanging the test
-  run timeout 20 node "$BRIDGE_BIN" run --config "$BATS_TEST_TMPDIR/config.json"
+  run timeout -k 5 20 node "$BRIDGE_BIN" run --config "$BATS_TEST_TMPDIR/config.json"
   assert_failure
   [ "$status" -ne 124 ]
   assert_output_contains "connecting to mqtt://127.0.0.1:9999"
@@ -174,8 +174,8 @@ JSON
   assert_success
   MQTT_SUB_PID="$output"
 
-  # timeout sends SIGTERM after 6 s: the bridge shuts down cleanly
-  timeout -s TERM 6 node "$BRIDGE_BIN" run --config fixtures/bridge-config.json > "$BATS_TEST_TMPDIR/bridge.log" 2>&1 || true
+  # timeout sends SIGTERM after 6 s: the bridge shuts down cleanly (SIGKILL 5 s later if it hangs)
+  timeout -k 5 -s TERM 6 node "$BRIDGE_BIN" run --config fixtures/bridge-config.json > "$BATS_TEST_TMPDIR/bridge.log" 2>&1 || true
 
   run assert_file_contains "$MQTT_MESSAGES_FILE" "modbus/ex9em-1/status"
   assert_success
