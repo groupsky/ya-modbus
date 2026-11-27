@@ -173,7 +173,7 @@ The smallest useful config has an MQTT broker and one device:
 }
 ```
 
-This config sets every option that the bridge uses. If an option has a default, the example uses the default. The exception is `polling.mode`:
+This config sets every option, with its default value where there is one. Some values change the behavior: `polling.mode` is `"continuous"` and `allowWrites` is `true`, `publish.mode` is `"on-change"`, `pollOrder` is `"fixed"`, and `statsInterval` is set (stats are off by default). Drop the options you do not need. `stateDir` is accepted, but not used. The example leaves out `device`, because the drivers named here have only one model.
 
 ```json
 {
@@ -185,12 +185,15 @@ This config sets every option that the bridge uses. If an option has a default, 
     "reconnectPeriod": 5000
   },
   "topicPrefix": "modbus",
+  "stateDir": "/var/lib/ya-modbus",
+  "statsInterval": 60,
+  "statsLog": true,
   "devices": [
     {
       "deviceId": "sensor1",
       "driver": "@ya-modbus/driver-ex9em",
       "enabled": true,
-      "allowWrites": false,
+      "allowWrites": true,
       "connection": {
         "type": "rtu",
         "port": "/dev/ttyUSB0",
@@ -199,7 +202,11 @@ This config sets every option that the bridge uses. If an option has a default, 
         "parity": "even",
         "dataBits": 8,
         "stopBits": 1,
-        "timeout": 1000
+        "timeout": 1000,
+        "attempts": 3,
+        "retryDelay": 100,
+        "interDeviceDelay": 150,
+        "pollOrder": "fixed"
       },
       "polling": {
         "mode": "continuous",
@@ -209,7 +216,8 @@ This config sets every option that the bridge uses. If an option has a default, 
         "maxRetryBackoff": 60000
       },
       "publish": {
-        "mode": "every-poll"
+        "mode": "on-change",
+        "heartbeat": 300000
       }
     },
     {
@@ -217,10 +225,17 @@ This config sets every option that the bridge uses. If an option has a default, 
       "driver": "@ya-modbus/driver-xymd1",
       "connection": {
         "type": "tcp",
-        "host": "192.168.1.100",
+        "host": "modbus-gateway.local",
         "port": 502,
         "slaveId": 2,
-        "timeout": 1000
+        "timeout": 1000,
+        "attempts": 3,
+        "retryDelay": 100,
+        "pollOrder": "arrival"
+      },
+      "polling": {
+        "mode": "interval",
+        "interval": 5000
       }
     }
   ]
@@ -799,7 +814,7 @@ await bridge.addDevice({
   driver: 'ya-modbus-driver-example',
   connection: {
     type: 'tcp',
-    host: '192.168.1.100',
+    host: 'modbus-gateway.local',
     port: 502,
     slaveId: 1,
   },
