@@ -173,7 +173,7 @@ The smallest useful config has an MQTT broker and one device:
 }
 ```
 
-This config sets every option, with its default value where there is one. Some values change the behavior: `polling.mode` is `"continuous"` and `allowWrites` is `true`, `publish.mode` is `"on-change"`, `pollOrder` is `"fixed"`, and `statsInterval` is set (stats are off by default). Drop the options you do not need. `stateDir` is accepted, but not used. The example leaves out `device`, because the drivers named here have only one model.
+This config sets every option. Most values are the defaults. These values are not: `polling.mode` is `"continuous"`, `polling.retryDelay` is 2000 and `polling.retryBackoff` is 4000 (the continuous-mode defaults are 5000 and 10000), `allowWrites` is `true`, `publish.mode` is `"on-change"` with a `heartbeat`, `pollOrder` is `"fixed"`, and `statsInterval`, `statsLog` and `stateDir` are set (stats are off by default). `stateDir` is accepted but not used: the bridge prints a warning at startup when it is set. Drop the options you do not need. The example leaves out `device`, because the drivers named here have only one model.
 
 ```json
 {
