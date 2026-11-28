@@ -124,13 +124,15 @@ describe('driver with an emulated MOD-16RO', () => {
 
   it('writes one output and leaves the other outputs alone', async () => {
     const device = emulator.getDevice(2)
+    device?.setCoil(0x333, true)
+    device?.setCoil(0x33e, true)
 
     await driver.writeDataPoint('output_16', true)
 
     const on = Array.from({ length: 16 }, (_, bit) => 0x330 + bit).filter((coil) =>
       device?.getCoil(coil)
     )
-    expect(on).toEqual([0x33f])
+    expect(on).toEqual([0x333, 0x33e, 0x33f])
   })
 
   it('writes nothing for a read-only data point', async () => {
