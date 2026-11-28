@@ -33,6 +33,7 @@
     { "path": "./packages/driver-dds519mr" },
     { "path": "./packages/driver-microsyst-sr04" },
     { "path": "./packages/driver-sdm630" },
-    { "path": "./packages/driver-or-we-526" }
+    { "path": "./packages/driver-or-we-526" },
+    { "path": "./packages/driver-aspar-mod-16ro" }
   ]
 }

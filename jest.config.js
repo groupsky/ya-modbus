@@ -19,6 +19,7 @@ module.exports = {
     '<rootDir>/packages/driver-sdm630',
     '<rootDir>/packages/driver-autonics-tf3',
     '<rootDir>/packages/driver-or-we-526',
+    '<rootDir>/packages/driver-aspar-mod-16ro',
   ],
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {

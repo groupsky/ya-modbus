@@ -180,6 +180,10 @@ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for details.
 - **BAC002** - Climate controller
 - **TF3** - Autonics temperature controller
 
+#### Relay Modules
+
+- **MOD-16RO** - Aspar module with 16 relay outputs
+
 #### Generic Modbus
 
 - Configurable generic driver for any Modbus device
