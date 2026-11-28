@@ -121,6 +121,7 @@ tests/e2e/
 │   ├── 05-device-profiler.bats      # Device profiler tests
 │   ├── 06-assertion-helpers.bats    # Assertion helper tests
 │   ├── 07-tcp.bats                  # Modbus TCP tests (CLI and device-profiler)
+│   ├── 08-mqtt-bridge-errors.bats   # mqtt-bridge errors: invalid config, broker down, silent device, status topics
 │   └── 99-cleanup.bats              # Cleanup verification
 └── vendor/
     └── bats-core/                   # BATS framework (git submodule)
