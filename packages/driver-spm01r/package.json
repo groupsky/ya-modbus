@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/driver-spm01r",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Bituo SPM01R FLEX single-phase energy meter driver for ya-modbus",
   "keywords": [
     "modbus",

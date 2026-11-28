@@ -111,6 +111,30 @@ For manual releases from local machine:
 - Set environment variable: `export GH_TOKEN=your_personal_access_token`
 - Token needs `repo` scope for creating releases
 
+## Release Deploy Key
+
+The release workflow pushes the release commit (`chore(release): publish packages`) and the version tags to `main` over SSH with a write deploy key. It does not use `GITHUB_TOKEN` for these pushes, because only deploy keys can bypass the branch rules on `main`.
+
+- **What**: an ed25519 deploy key with write access, titled `release workflow push` (Settings → Deploy keys)
+- **Where the private key is**: secret `RELEASE_DEPLOY_KEY` of the `npm` environment (Settings → Environments → npm). The public key is the deploy key.
+- **Used by**: the "Version packages" step of `.github/workflows/release.yml`. It loads the key into an `ssh-agent` for that step only, after `npm ci`, the build and the tests. The agent is stopped when the step ends. `GITHUB_TOKEN` is still used for API calls such as GitHub releases.
+- **Who can read it**: the `npm` environment allows only the `main` branch (Settings → Environments → npm → Deployment branches).
+- **Loop guard**: a push with a deploy key starts workflows. The release job is skipped when the head commit message starts with `chore(release):`.
+
+To rotate the key:
+
+```bash
+DIR=$(mktemp -d)
+ssh-keygen -t ed25519 -N "" -C "ya-modbus release push" -f "$DIR/key"
+gh repo deploy-key add "$DIR/key.pub" --allow-write --title "release workflow push" -R groupsky/ya-modbus
+gh secret set RELEASE_DEPLOY_KEY --env npm -R groupsky/ya-modbus < "$DIR/key"
+shred -u "$DIR/key"; rm -rf "$DIR"
+gh repo deploy-key list -R groupsky/ya-modbus   # note the old key id
+gh repo deploy-key delete OLD_ID -R groupsky/ya-modbus
+```
+
+Then run the Release workflow manually (workflow_dispatch) or wait for the next release, and check that its push works.
+
 ## Verifying Setup
 
 Check that workflow can authenticate:
