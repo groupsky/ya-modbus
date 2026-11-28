@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/driver-aspar-mod-16ro",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Aspar MOD-16RO 16-relay output module driver for ya-modbus",
   "keywords": [
     "modbus",
