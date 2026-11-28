@@ -184,6 +184,10 @@ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for details.
 
 - **MOD-16RO** - Aspar module with 16 relay outputs
 
+#### Digital Input Modules
+
+- **MBSL32DI** - Module with 32 digital inputs ("Dio Smart")
+
 #### Generic Modbus
 
 - Configurable generic driver for any Modbus device

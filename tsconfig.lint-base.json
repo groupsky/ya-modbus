@@ -37,7 +37,8 @@
       "@ya-modbus/driver-microsyst-sr04": ["packages/driver-microsyst-sr04/src"],
       "@ya-modbus/driver-sdm630": ["packages/driver-sdm630/src"],
       "@ya-modbus/driver-or-we-526": ["packages/driver-or-we-526/src"],
-      "@ya-modbus/driver-aspar-mod-16ro": ["packages/driver-aspar-mod-16ro/src"]
+      "@ya-modbus/driver-aspar-mod-16ro": ["packages/driver-aspar-mod-16ro/src"],
+      "@ya-modbus/driver-mbsl32di": ["packages/driver-mbsl32di/src"]
     }
   },
   // Note: Packages must specify their own "include" paths

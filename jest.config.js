@@ -21,6 +21,7 @@ module.exports = {
     '<rootDir>/packages/driver-autonics-tf3',
     '<rootDir>/packages/driver-or-we-526',
     '<rootDir>/packages/driver-aspar-mod-16ro',
+    '<rootDir>/packages/driver-mbsl32di',
   ],
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
