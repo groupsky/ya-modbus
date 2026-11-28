@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/driver-mbsl32di",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "MBSL32DI 32 digital input module driver for ya-modbus",
   "keywords": [
     "modbus",
