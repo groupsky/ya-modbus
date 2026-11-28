@@ -68,7 +68,15 @@ export interface DeviceDriver {
    * Read multiple data points atomically
    *
    * @param ids - Data point identifiers
-   * @returns Map of data point values
+   * @returns An object with a key for each data point ID and its value, in the same form as
+   *   `readDataPoint()` returns it
+   * @throws Error when the read fails, for example a timeout or a Modbus exception
+   *
+   * @example
+   * ```typescript
+   * const data = await driver.readDataPoints(['voltage', 'current'])
+   * // { voltage: 230.5, current: 10.2 }
+   * ```
    */
   readDataPoints(ids: string[]): Promise<Record<string, unknown>>
 
