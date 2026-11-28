@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/driver-microsyst-sr04",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Microsyst SR04 solar heating controller driver for ya-modbus",
   "keywords": [
     "modbus",
