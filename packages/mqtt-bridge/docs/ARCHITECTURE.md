@@ -32,7 +32,7 @@ The MQTT bridge orchestrates the following components:
 
 ## Data Flow
 
-The polling scheduler (`src/polling-scheduler.ts`) calls the driver's `readDataPoints(ids)` (`@ya-modbus/driver-types`). The driver returns an object with a key for each data point ID and its value, for example `{ "voltage": 230.5, "current": 10.2 }`. The bridge adds the values of `static` points and publishes the object as the `data` field of a message on `modbus/{deviceId}/data` (see README.md, Data Messages).
+The polling scheduler (`src/polling-scheduler.ts`) calls the driver's `readDataPoints(ids)` (`@ya-modbus/driver-types`). The driver returns an object with a key for each data point ID and its value, for example `{ "voltage": 230.5, "current": 10.2 }`. The scheduler adds the stored values of `static` points and leaves out points the device refused (`src/partial-read.ts`). The bridge publishes the object as the `data` field of a message on `modbus/{deviceId}/data`, unless the publish filter skips it (`src/publish-filter.ts`; see README.md, Data Messages).
 
 ## State Management
 

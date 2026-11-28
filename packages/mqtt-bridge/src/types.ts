@@ -258,7 +258,8 @@ export interface DataInfo {
  * Called by the polling scheduler after each read that worked.
  *
  * @param deviceId - The device that was read
- * @param data - Data point IDs and their values, as the driver's `readDataPoints()` returns them
+ * @param data - Data point IDs and their values, from one or more `readDataPoints()` calls and
+ *   the stored `static` values. Points the device refused are left out.
  * @param info - Read time, and the points the device refused
  */
 export type DataCallback = (deviceId: string, data: Record<string, unknown>, info: DataInfo) => void
