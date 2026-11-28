@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/driver-autonics-tf3",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Autonics TF3 temperature controller driver for ya-modbus",
   "keywords": [
     "modbus",
