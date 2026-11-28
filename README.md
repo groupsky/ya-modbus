@@ -172,7 +172,7 @@ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for details.
 #### Solar Inverters
 
 - **SUN2000** - Huawei solar inverter
-- **MICROSYST-SR04** - Microsyst solar inverter
+- **MICROSYST-SR04** - Microsyst SR04 solar heater controller
 
 #### HVAC
 
