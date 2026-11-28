@@ -602,7 +602,7 @@ The bridge publishes the data of a read on `{topicPrefix}/{deviceId}/data` (QoS 
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `timestamp` | When the read was done and the message was made, in milliseconds since the epoch                                                                                |
 | `readMs`    | How long the read took, in milliseconds. It does not include the time the bridge waited for the connection to be free. The read started at `timestamp - readMs` |
-| `data`      | The values of the polled data points                                                                                                                            |
+| `data`      | The values of the polled data points: an object with a key for each data point ID, as the driver's `readDataPoints()` returns it                                |
 
 The values of `static` points come from the first read that worked (see [Which Data Points Are Polled](#which-data-points-are-polled)). They are not read again, so `timestamp` and `readMs` are not their age.
 

@@ -258,7 +258,15 @@ export class PollingScheduler {
   }
 
   /**
-   * Schedule the next poll for a device, with backoff if needed
+   * Schedule the next poll for a device, with backoff if needed.
+   *
+   * The wait before the next poll:
+   *
+   * - after a read that worked: `interval` (1 ms in `continuous` mode)
+   * - after fewer than `maxRetries` failed reads in a row: `retryDelay`, so a failing device
+   *   does not flood a shared bus
+   * - after `maxRetries` failed reads in a row (at least 1): `retryBackoff`, doubled with
+   *   every further failed read, up to `maxRetryBackoff`
    */
   private scheduleNextPoll(deviceId: string, device: ScheduledDevice): void {
     if (!this.running) return
