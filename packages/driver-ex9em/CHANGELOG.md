@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.6.36](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-ex9em@0.6.35...@ya-modbus/driver-ex9em@0.6.36) (2026-11-28)
+
+**Note:** Version bump only for package @ya-modbus/driver-ex9em
+
 ## [0.6.35](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-ex9em@0.6.34...@ya-modbus/driver-ex9em@0.6.35) (2026-11-16)
 
 **Note:** Version bump only for package @ya-modbus/driver-ex9em

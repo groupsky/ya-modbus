@@ -14,10 +14,15 @@ import {
   DEFAULT_CONFIG as EX9EM_CONFIG,
 } from '@ya-modbus/driver-ex9em'
 import { loadDriver } from '@ya-modbus/driver-loader'
+import { createDriver as createBac002Driver } from '@ya-modbus/driver-bac002'
 import { createDriver as createDds024mrDriver } from '@ya-modbus/driver-dds024mr'
 import { createDriver as createOrWe514Driver } from '@ya-modbus/driver-or-we-514'
+import { createDriver as createAutonicsTf3Driver } from '@ya-modbus/driver-autonics-tf3'
 import { createDriver as createDds519mrDriver } from '@ya-modbus/driver-dds519mr'
+import { createDriver as createMicrosystSr04Driver } from '@ya-modbus/driver-microsyst-sr04'
 import { createDriver as createOrWe516Driver } from '@ya-modbus/driver-or-we-516'
+import { createDriver as createOrWe526Driver } from '@ya-modbus/driver-or-we-526'
+import { createDriver as createAsparMod16roDriver } from '@ya-modbus/driver-aspar-mod-16ro'
 import { createDriver as createMbsl32diDriver } from '@ya-modbus/driver-mbsl32di'
 import { createDriver as createSpm01rDriver } from '@ya-modbus/driver-spm01r'
 import { readScaledUInt16BE, createEnumValidator } from '@ya-modbus/driver-sdk'
@@ -36,12 +41,17 @@ async function main() {
     program,
     scanRegisters,
     createEx9emDriver,
+    createBac002Driver,
     loadDriver,
     createDds024mrDriver,
     createDds519mrDriver,
+    createMicrosystSr04Driver,
     createSdm630Driver,
     createOrWe514Driver,
+    createAutonicsTf3Driver,
     createOrWe516Driver,
+    createOrWe526Driver,
+    createAsparMod16roDriver,
     createMbsl32diDriver,
     createSpm01rDriver,
     readScaledUInt16BE,

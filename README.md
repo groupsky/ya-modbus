@@ -166,17 +166,23 @@ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for details.
 - **DDS519MR** - Sinotimer single-phase energy meter
 - **DDS024MR** - Sinotimer 3-phase energy meter
 - **OR-WE-514** - ORNO single-phase energy meter
+- **OR-WE-526** - ORNO single-phase multi-tariff energy meter
 - **SPM01R** - Bituo SPM01R FLEX single-phase energy meter
 - **EX9EM** - ABB energy meter
 
 #### Solar Inverters
 
 - **SUN2000** - Huawei solar inverter
-- **MICROSYST-SR04** - Microsyst solar inverter
+- **MICROSYST-SR04** - Microsyst SR04 solar heater controller
 
 #### HVAC
 
 - **BAC002** - Climate controller
+- **TF3** - Autonics temperature controller
+
+#### Relay Modules
+
+- **MOD-16RO** - Aspar module with 16 relay outputs
 
 #### Digital Input Modules
 
