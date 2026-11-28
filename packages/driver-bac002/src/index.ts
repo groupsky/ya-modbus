@@ -34,6 +34,7 @@ import type {
   DataPoint,
   DefaultSerialConfig,
   DeviceDriver,
+  SupportedSerialConfig,
 } from '@ya-modbus/driver-types'
 
 /**
@@ -46,6 +47,18 @@ export const DEFAULT_CONFIG = {
   stopBits: 1,
   defaultAddress: 1,
 } as const satisfies DefaultSerialConfig
+
+/**
+ * Serial settings in the vendor protocol document: 9600 bps, 8 data bits, 1 stop bit, no parity,
+ * address 1-255 (limited here to the Modbus range 1-247)
+ */
+export const SUPPORTED_CONFIG = {
+  validBaudRates: [9600],
+  validParity: ['none'],
+  validDataBits: [8],
+  validStopBits: [1],
+  validAddressRange: [1, 247],
+} as const satisfies SupportedSerialConfig
 
 /** Number of registers in the one read that returns every data point */
 const REGISTER_COUNT = 11
@@ -238,7 +251,12 @@ const FIELDS: ReadonlyArray<Field> = [
   }),
   enumField(
     9,
-    { id: 'valve_status', name: 'Valve', access: 'r', description: 'Valve state: off or on' },
+    {
+      id: 'valve_status',
+      name: 'Valve Status',
+      access: 'r',
+      description: 'Valve state: off or on',
+    },
     VALVE_STATUS,
     { off: 'Off', on: 'On' },
     // Any value above 0 means the valve is open
@@ -254,7 +272,7 @@ const FIELDS: ReadonlyArray<Field> = [
     10,
     {
       id: 'fan_status',
-      name: 'Fan',
+      name: 'Fan Status',
       access: 'r',
       description: 'Fan state now: off, high, mid or low',
     },

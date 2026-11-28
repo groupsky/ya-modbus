@@ -11,7 +11,7 @@ import type { DeviceDriver, Transport } from '@ya-modbus/driver-types'
 import { ModbusEmulator } from '@ya-modbus/emulator'
 import { createTCPTransport } from '@ya-modbus/transport'
 
-import { createDriver, DEFAULT_CONFIG } from './index'
+import { createDriver, DEFAULT_CONFIG, SUPPORTED_CONFIG } from './index'
 
 const SLAVE_ID = 1
 
@@ -72,6 +72,28 @@ describe('BAC-002 driver with an emulated device', () => {
   afterEach(async () => {
     await transport.close()
     await emulator.stop()
+  })
+
+  describe('SUPPORTED_CONFIG', () => {
+    it('has the serial settings of the vendor protocol document', () => {
+      expect(SUPPORTED_CONFIG).toEqual({
+        validBaudRates: [9600],
+        validParity: ['none'],
+        validDataBits: [8],
+        validStopBits: [1],
+        validAddressRange: [1, 247],
+      })
+    })
+
+    it('contains the default settings', () => {
+      expect(SUPPORTED_CONFIG.validBaudRates).toContain(DEFAULT_CONFIG.baudRate)
+      expect(SUPPORTED_CONFIG.validParity).toContain(DEFAULT_CONFIG.parity)
+      expect(SUPPORTED_CONFIG.validDataBits).toContain(DEFAULT_CONFIG.dataBits)
+      expect(SUPPORTED_CONFIG.validStopBits).toContain(DEFAULT_CONFIG.stopBits)
+      const [min, max] = SUPPORTED_CONFIG.validAddressRange
+      expect(DEFAULT_CONFIG.defaultAddress).toBeGreaterThanOrEqual(min)
+      expect(DEFAULT_CONFIG.defaultAddress).toBeLessThanOrEqual(max)
+    })
   })
 
   describe('DEFAULT_CONFIG', () => {
