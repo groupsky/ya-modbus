@@ -57,7 +57,7 @@ Signed values (temperatures, corrections, limits) are read as signed 16 bit numb
 
 ## Response delay
 
-The controller has a setting (holding register 0x0134) for the response delay, in ms. The driver reads it once and then waits that long before every request, like the old reader. On the real controller, a read with no pause needed 4 or 5 retries: most requests that came right after an answer got no answer.
+The controller has a setting (holding register 0x0134) for the response delay, in ms. The driver reads it once and then waits that long before every request, like the old reader. A value outside 5–99 ms (the range in the communication manual) is set to the nearest end of that range. On the real controller, a read with no pause needed 4 or 5 retries: most requests that came right after an answer got no answer.
 
 ## Data points
 

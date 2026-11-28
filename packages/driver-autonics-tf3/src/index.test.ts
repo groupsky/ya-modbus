@@ -255,6 +255,21 @@ describe('response delay', () => {
     await write
   })
 
+  it.each([
+    [0, 5],
+    [0xffff, 99],
+  ])('keeps a delay setting of %d inside the range of the manual (%d ms)', async (raw, ms) => {
+    jest.useFakeTimers()
+    const [driver, mock] = await setup({ delay: raw })
+
+    const read = driver.readDataPoint('inputs')
+    await jest.advanceTimersByTimeAsync(ms - 1)
+    expect(mock.readInput).not.toHaveBeenCalled()
+    await jest.advanceTimersByTimeAsync(1)
+    expect(mock.readInput).toHaveBeenCalledTimes(1)
+    await read
+  })
+
   it('reads the delay setting only once', async () => {
     const [driver, mock] = await setup({ delay: 1 })
 

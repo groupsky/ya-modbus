@@ -56,8 +56,11 @@ export const DEFAULT_CONFIG = {
 const COMM_WRITE_ADDRESS = 0x0135
 const COMM_WRITE_DISABLED = 1
 
-/** Response delay setting: the pause before each request, in ms */
+/** Response delay setting (RwT): the pause before each request, in ms */
 const RESPONSE_DELAY_ADDRESS = 0x0134
+/** Range of the response delay in the communication manual, so a bad read cannot stall the bus */
+const RESPONSE_DELAY_MIN_MS = 5
+const RESPONSE_DELAY_MAX_MS = 99
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -135,7 +138,7 @@ function encode(spec: PointSpec, value: unknown, scale: number): number {
  *
  * Every read goes through the register groups of `BLOCKS`. A group is read whole once per call,
  * and the decimal-point register is part of the status group, so a read of any temperature costs
- * at most one extra request. Nothing is cached, because the scale can be changed on the device.
+ * at most one extra request. Only the response delay is cached; the scale can be changed on the device.
  */
 export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
   const { transport } = config
@@ -145,8 +148,11 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
 
   /** Wait the response delay of the controller, then send the request */
   const paced = async <T>(request: () => Promise<T>): Promise<T> => {
-    delayMs ??= (await transport.readHoldingRegisters(RESPONSE_DELAY_ADDRESS, 1)).readUInt16BE(0)
-    if (delayMs > 0) await sleep(delayMs)
+    if (delayMs === undefined) {
+      const raw = (await transport.readHoldingRegisters(RESPONSE_DELAY_ADDRESS, 1)).readUInt16BE(0)
+      delayMs = Math.min(Math.max(raw, RESPONSE_DELAY_MIN_MS), RESPONSE_DELAY_MAX_MS)
+    }
+    await sleep(delayMs)
     return request()
   }
 
