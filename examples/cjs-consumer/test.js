@@ -18,6 +18,7 @@ async function main() {
     driverLoader: require('@ya-modbus/driver-loader'),
     driverDds024mr: require('@ya-modbus/driver-dds024mr'),
     driverOrWe514: require('@ya-modbus/driver-or-we-514'),
+    driverAutonicsTf3: require('@ya-modbus/driver-autonics-tf3'),
     driverDds519mr: require('@ya-modbus/driver-dds519mr'),
     driverMicrosystSr04: require('@ya-modbus/driver-microsyst-sr04'),
     driverOrWe516: require('@ya-modbus/driver-or-we-516'),

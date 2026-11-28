@@ -20,6 +20,7 @@ import {
 import { clearDriverCache, DriverNotBuiltError, loadDriver } from '@ya-modbus/driver-loader'
 import { createDriver as createDds024mrDriver } from '@ya-modbus/driver-dds024mr'
 import { createDriver as createOrWe514Driver } from '@ya-modbus/driver-or-we-514'
+import { createDriver as createAutonicsTf3Driver } from '@ya-modbus/driver-autonics-tf3'
 import { createDriver as createDds519mrDriver } from '@ya-modbus/driver-dds519mr'
 import { createDriver as createMicrosystSr04Driver } from '@ya-modbus/driver-microsyst-sr04'
 import { createDriver as createOrWe516Driver } from '@ya-modbus/driver-or-we-516'
@@ -45,6 +46,7 @@ async function main() {
     createMicrosystSr04Driver,
     createSdm630Driver,
     createOrWe514Driver,
+    createAutonicsTf3Driver,
     createOrWe516Driver,
     createSpm01rDriver,
     readScaledUInt16BE,

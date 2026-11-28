@@ -17,6 +17,7 @@ module.exports = {
     '<rootDir>/packages/driver-dds519mr',
     '<rootDir>/packages/driver-microsyst-sr04',
     '<rootDir>/packages/driver-sdm630',
+    '<rootDir>/packages/driver-autonics-tf3',
   ],
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
