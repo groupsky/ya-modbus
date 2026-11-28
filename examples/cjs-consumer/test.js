@@ -14,6 +14,7 @@ async function main() {
   const packages = {
     cli: require('@ya-modbus/cli'),
     deviceProfiler: require('@ya-modbus/device-profiler'),
+    driverBac002: require('@ya-modbus/driver-bac002'),
     driverEx9em: require('@ya-modbus/driver-ex9em'),
     driverLoader: require('@ya-modbus/driver-loader'),
     driverDds024mr: require('@ya-modbus/driver-dds024mr'),
