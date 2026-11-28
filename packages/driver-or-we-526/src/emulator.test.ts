@@ -58,8 +58,8 @@ function meter(): Record<number, number> {
   // Demand in tenths: active forward, max, reverse, max; 0x17E-0x17F not used
   place32(0x176, [11505, 72000, 0, 3000])
   place32(0x180, [2500, 15000, 100, 900])
-  // Serial 202311300042, address 1, FW 103, HW 2, checksum 0x5a3c
-  place(0x1000, [0x2023, 0x1130, 0x0042, 1, 103, 2, 0x5a3c])
+  // Serial 123456789012, address 1, FW 103, HW 2, checksum 0x5a3c
+  place(0x1000, [0x1234, 0x5678, 0x9012, 1, 103, 2, 0x5a3c])
   // Clock 2026-11-03 (Tuesday) 09:30:00, scrolling time 10 s
   place(0x1007, [0x0026, 0x1103, 0x0209, 0x3000, 10])
   // 9600, no parity, 1 stop bit, forward, interval, 15 min, display, password 0000
@@ -161,7 +161,7 @@ describe('driver with an emulated OR-WE-526', () => {
       reactive_power_demand_forward_max: 1500,
       reactive_power_demand_reverse: 10,
       reactive_power_demand_reverse_max: 90,
-      serial_number: '202311300042',
+      serial_number: '123456789012',
       device_address: 1,
       software_version: 103,
       hardware_version: 2,
