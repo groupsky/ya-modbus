@@ -22,6 +22,7 @@ module.exports = {
     '<rootDir>/packages/driver-or-we-526',
     '<rootDir>/packages/driver-aspar-mod-16ro',
     '<rootDir>/packages/driver-mbsl32di',
+    '<rootDir>/packages/driver-sun2000',
   ],
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {

@@ -36,6 +36,7 @@
     { "path": "./packages/driver-sdm630" },
     { "path": "./packages/driver-or-we-526" },
     { "path": "./packages/driver-aspar-mod-16ro" },
-    { "path": "./packages/driver-mbsl32di" }
+    { "path": "./packages/driver-mbsl32di" },
+    { "path": "./packages/driver-sun2000" }
   ]
 }

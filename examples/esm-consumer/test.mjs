@@ -31,6 +31,7 @@ import { createDriver as createMbsl32diDriver } from '@ya-modbus/driver-mbsl32di
 import { createDriver as createSpm01rDriver } from '@ya-modbus/driver-spm01r'
 import { readScaledUInt16BE, createEnumValidator } from '@ya-modbus/driver-sdk'
 import { createDriver as createSdm630Driver } from '@ya-modbus/driver-sdm630'
+import { createDriver as createSun2000Driver } from '@ya-modbus/driver-sun2000'
 import { createDriver as createXYMD1Driver, DEFAULT_CONFIG } from '@ya-modbus/driver-xymd1'
 import { ModbusEmulator } from '@ya-modbus/emulator'
 import { createBridge } from '@ya-modbus/mqtt-bridge'
@@ -50,6 +51,7 @@ async function main() {
     createDds519mrDriver,
     createMicrosystSr04Driver,
     createSdm630Driver,
+    createSun2000Driver,
     createOrWe514Driver,
     createAutonicsTf3Driver,
     createOrWe516Driver,

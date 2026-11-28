@@ -29,6 +29,7 @@ async function main() {
     driverSpm01r: require('@ya-modbus/driver-spm01r'),
     driverSdk: require('@ya-modbus/driver-sdk'),
     driverSdm630: require('@ya-modbus/driver-sdm630'),
+    driverSun2000: require('@ya-modbus/driver-sun2000'),
     driverXymd1: require('@ya-modbus/driver-xymd1'),
     emulator: require('@ya-modbus/emulator'),
     mqttBridge: require('@ya-modbus/mqtt-bridge'),
