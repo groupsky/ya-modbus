@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.18.7](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.18.6...@ya-modbus/cli@0.18.7) (2026-11-28)
+
+**Note:** Version bump only for package @ya-modbus/cli
+
 ## [0.18.6](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/cli@0.18.5...@ya-modbus/cli@0.18.6) (2026-11-16)
 
 **Note:** Version bump only for package @ya-modbus/cli
