@@ -18,6 +18,7 @@ module.exports = {
     '<rootDir>/packages/driver-microsyst-sr04',
     '<rootDir>/packages/driver-sdm630',
     '<rootDir>/packages/driver-autonics-tf3',
+    '<rootDir>/packages/driver-or-we-526',
   ],
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
