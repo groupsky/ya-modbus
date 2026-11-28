@@ -57,7 +57,7 @@ Signed values (temperatures, corrections, limits) are read as signed 16 bit numb
 
 ## Response delay
 
-The controller has a setting (holding register 0x0134) for how long it waits before it answers. The driver does not use it: a pause before our request does not help. The transport timeout covers the answer, and the bridge has `connection.interDeviceDelay` for spacing on the bus.
+The controller has a setting (holding register 0x0134) for the response delay, in ms. The driver reads it once and then waits that long before every request, like the old reader. On the real controller, a read with no pause needed 4 or 5 retries: most requests that came right after an answer got no answer.
 
 ## Data points
 
@@ -170,7 +170,6 @@ Differences from the old reader:
 - `device.productNumber` is read unsigned. The old reader combined the two registers with a signed shift, which gives a negative number from 2^31 up.
 - The old reader published only when something changed, with its own heartbeat. The MQTT bridge does that now.
 - The old reader read the decimal-point register and then cached it. This driver reads it with every temperature.
-- The old reader slept the response delay (0x0134) before every request. This driver does not (see Response delay).
 - The old `setup()` could write `inputType`, `input2Enabled`, `input3Type` and the temperature unit setting. They are read-only here, because they change the scale or the meaning of the readings, so a stray write would make every value wrong.
 
 ## Testing

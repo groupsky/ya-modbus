@@ -7,9 +7,9 @@
  *
  * Out of scope on purpose: factory reset (coil 0x0002) and the communication setup
  * (0x0130..0x0133 address, baud rate, parity, stop bits), because a wrong write there cuts the
- * device off the bus. The response delay (0x0134) is not used: it is how long the
- * device waits before it answers, so a pause before our request would not help. The transport timeout
- * covers the answer, and the bridge has `connection.interDeviceDelay` for spacing on the bus.
+ * device off the bus. The response delay (0x0134) is only read: the driver waits that long before
+ * each request, like the old homy reader. Without the pause the controller leaves most requests
+ * that follow its last answer unanswered.
  *
  * The device refuses every write while its "communication write" setting (COW, holding 0x0135) is
  * disabled. When a write fails, the driver reads that setting and says so in the error.
@@ -55,6 +55,11 @@ export const DEFAULT_CONFIG = {
 /** Communication write setting (COW): 0 enabled, 1 disabled */
 const COMM_WRITE_ADDRESS = 0x0135
 const COMM_WRITE_DISABLED = 1
+
+/** Response delay setting: the pause before each request, in ms */
+const RESPONSE_DELAY_ADDRESS = 0x0134
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** Scale of the temperatures from the decimal-point register */
 function scaleFromRegister(raw: number): number {
@@ -135,16 +140,28 @@ function encode(spec: PointSpec, value: unknown, scale: number): number {
 export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
   const { transport } = config
 
+  // Read once, then kept. A failed read is tried again with the next request.
+  let delayMs: number | undefined
+
+  /** Wait the response delay of the controller, then send the request */
+  const paced = async <T>(request: () => Promise<T>): Promise<T> => {
+    delayMs ??= (await transport.readHoldingRegisters(RESPONSE_DELAY_ADDRESS, 1)).readUInt16BE(0)
+    if (delayMs > 0) await sleep(delayMs)
+    return request()
+  }
+
   const readScale = async (): Promise<number> =>
     scaleFromRegister(
-      (await transport.readInputRegisters(BLOCKS.status.address + DIVISOR_WORD, 1)).readUInt16BE(0)
+      (
+        await paced(() => transport.readInputRegisters(BLOCKS.status.address + DIVISOR_WORD, 1))
+      ).readUInt16BE(0)
     )
 
   /** Rethrow a failed write, with a clear message when the device has writes disabled */
   const explainFailedWrite = async (id: string, error: unknown): Promise<never> => {
     let disabled = false
     try {
-      const setting = await transport.readHoldingRegisters(COMM_WRITE_ADDRESS, 1)
+      const setting = await paced(() => transport.readHoldingRegisters(COMM_WRITE_ADDRESS, 1))
       disabled = setting.readUInt16BE(0) === COMM_WRITE_DISABLED
     } catch {
       // The setting cannot be read: keep the first error
@@ -177,7 +194,7 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
 
       const buffers = {} as Record<BlockName, Buffer>
       for (const name of needed) {
-        buffers[name] = await readBlock(transport, name)
+        buffers[name] = await paced(() => readBlock(transport, name))
       }
 
       // Only a temperature needs the scale, so an unknown decimal value does not break other reads
@@ -202,17 +219,17 @@ export const createDriver: CreateDriverFunction = (config: DriverConfig) => {
         if (typeof value !== 'boolean') {
           throw new Error(`Invalid value for ${id}: expected true or false, got ${String(value)}`)
         }
-        await transport
-          .writeSingleCoil(address, value)
-          .catch((error) => explainFailedWrite(id, error))
+        await paced(() => transport.writeSingleCoil(address, value)).catch((error) =>
+          explainFailedWrite(id, error)
+        )
         return
       }
 
       const scale = isTemperature(spec) ? await readScale() : 1
       const raw = encode(spec, value, scale)
-      await transport
-        .writeSingleRegister(address, raw)
-        .catch((error) => explainFailedWrite(id, error))
+      await paced(() => transport.writeSingleRegister(address, raw)).catch((error) =>
+        explainFailedWrite(id, error)
+      )
     },
   }
 

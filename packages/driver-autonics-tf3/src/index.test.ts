@@ -25,12 +25,14 @@ interface Mock {
   writeCoil: jest.Mock
 }
 
-function createMock(options: { statusBlock?: Buffer } = {}): Mock {
+function createMock(options: { statusBlock?: Buffer; delay?: number } = {}): Mock {
   const statusBlock = options.statusBlock ?? status(1)
   const readInput = jest.fn((address: number, count: number) =>
     Promise.resolve(address === 0x03e8 + 12 && count === 1 ? statusBlock.subarray(24) : statusBlock)
   )
-  const readHolding = jest.fn(() => Promise.resolve(registers(0, 0)))
+  const readHolding = jest.fn((address: number) =>
+    Promise.resolve(address === 0x0134 ? registers(options.delay ?? 0) : registers(0, 0))
+  )
   const readCoils = jest.fn(() => Promise.resolve(Buffer.from([0b01])))
   const writeRegister = jest.fn(() => Promise.resolve())
   const writeCoil = jest.fn(() => Promise.resolve())
@@ -174,7 +176,7 @@ describe('reading in groups', () => {
     await driver.readDataPoints(['target_temp', 'inputs', 'temperature_unit', 'temp_divisor'])
 
     expect(mock.readInput).toHaveBeenCalledTimes(1)
-    expect(mock.readHolding).not.toHaveBeenCalled()
+    expect(mock.readHolding.mock.calls).toEqual([[0x0134, 1]]) // the response delay
   })
 
   it('does not read the status block for points that are not temperatures', async () => {
@@ -218,6 +220,60 @@ describe('device information', () => {
     const driver = await createDriver({ transport: mock.transport })
 
     expect(await driver.readDataPoint('model')).toBe('TF3')
+  })
+})
+
+describe('response delay', () => {
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it('waits the response delay before each request', async () => {
+    jest.useFakeTimers()
+    const [driver, mock] = await setup({ delay: 30 })
+
+    const read = driver.readDataPoints(['inputs', 'aux_enabled'])
+    await jest.advanceTimersByTimeAsync(29)
+    expect(mock.readInput).not.toHaveBeenCalled()
+    await jest.advanceTimersByTimeAsync(1)
+    expect(mock.readInput).toHaveBeenCalledTimes(1)
+    expect(mock.readCoils).not.toHaveBeenCalled()
+    await jest.advanceTimersByTimeAsync(30)
+    expect(mock.readCoils).toHaveBeenCalledTimes(1)
+    await read
+  })
+
+  it('waits the response delay before a write', async () => {
+    jest.useFakeTimers()
+    const [driver, mock] = await setup({ delay: 30 })
+
+    const write = driver.writeDataPoint('comp_enabled', true)
+    await jest.advanceTimersByTimeAsync(29)
+    expect(mock.writeCoil).not.toHaveBeenCalled()
+    await jest.advanceTimersByTimeAsync(1)
+    expect(mock.writeCoil).toHaveBeenCalledTimes(1)
+    await write
+  })
+
+  it('reads the delay setting only once', async () => {
+    const [driver, mock] = await setup({ delay: 1 })
+
+    await driver.readDataPoint('inputs')
+    await driver.readDataPoint('inputs')
+
+    const delayReads = mock.readHolding.mock.calls.filter(([address]) => address === 0x0134)
+    expect(delayReads).toEqual([[0x0134, 1]])
+  })
+
+  it('reads the delay setting again after a failed read', async () => {
+    const [driver, mock] = await setup()
+    mock.readHolding.mockRejectedValueOnce(new Error('timeout'))
+
+    await expect(driver.readDataPoint('inputs')).rejects.toThrow('timeout')
+    expect(await driver.readDataPoint('inputs')).toBe(0)
+
+    const delayReads = mock.readHolding.mock.calls.filter(([address]) => address === 0x0134)
+    expect(delayReads).toHaveLength(2)
   })
 })
 
@@ -332,7 +388,9 @@ describe('writing', () => {
     it('keeps the first error when the setting cannot be read', async () => {
       const [driver, mock] = await setup()
       mock.writeRegister.mockRejectedValue(refused)
-      mock.readHolding.mockRejectedValue(new Error('timeout'))
+      mock.readHolding
+        .mockResolvedValueOnce(registers(0)) // the response delay
+        .mockRejectedValue(new Error('timeout'))
 
       await expect(driver.writeDataPoint('defrost_method', 1)).rejects.toBe(refused)
     })
