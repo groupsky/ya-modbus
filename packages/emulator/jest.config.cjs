@@ -13,7 +13,13 @@ module.exports = {
         useESM: true,
       },
     ],
+    // commander 15 is ESM-only; compile it to CommonJS so Jest can load it
+    '/node_modules/commander/.+\\.js$': [
+      'ts-jest',
+      { tsconfig: { allowJs: true, module: 'commonjs' }, diagnostics: false },
+    ],
   },
+  transformIgnorePatterns: ['/node_modules/(?!commander/)'],
   moduleNameMapper: {
     '^@ya-modbus/(.*)$': '<rootDir>/../$1/src',
     '^(\\.{1,2}/.*)\\.js$': '$1',

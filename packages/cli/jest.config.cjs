@@ -10,7 +10,13 @@ module.exports = {
         tsconfig: '<rootDir>/../../tsconfig.base.json',
       },
     ],
+    // commander 15 is ESM-only; compile it to CommonJS so Jest can load it
+    '/node_modules/commander/.+\\.js$': [
+      'ts-jest',
+      { tsconfig: { allowJs: true, module: 'commonjs' }, diagnostics: false },
+    ],
   },
+  transformIgnorePatterns: ['/node_modules/(?!commander/)'],
   moduleNameMapper: {
     // Map workspace package imports to their source directories for testing
     '^@ya-modbus/(.*)$': '<rootDir>/../$1/src',
