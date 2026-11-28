@@ -1,6 +1,6 @@
 {
   "name": "@ya-modbus/driver-or-we-526",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "ORNO OR-WE-526 single-phase multi-tariff energy meter driver for ya-modbus",
   "keywords": [
     "modbus",
