@@ -19,6 +19,7 @@ import {
 import { DRIVER_NAME_RULE, getDriverPackageCandidates } from './driver-name.js'
 import type { DeviceConfig, DeviceConnection, RTUConnection } from './types.js'
 
+/** Loads a driver package by name; the default is `loadDriver` from `@ya-modbus/driver-loader`. Tests pass a fake. */
 type LoadDriverFunction = typeof loadDriverPackage
 
 /**

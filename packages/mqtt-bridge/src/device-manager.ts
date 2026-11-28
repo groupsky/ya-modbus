@@ -2,6 +2,7 @@ import type { DriverLoader } from './driver-loader.js'
 import type { DeviceConfig, DeviceStatus } from './types.js'
 import { validateDeviceConfig } from './utils/device-validation.js'
 
+/** One of the device states, see `DeviceStatus.state` */
 type DeviceState = DeviceStatus['state']
 
 /** Fields of a device status that callers can change; `connected` follows `state` */
