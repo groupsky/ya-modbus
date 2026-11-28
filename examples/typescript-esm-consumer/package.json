@@ -28,6 +28,6 @@
     "@ya-modbus/transport": "file:../../packages/transport"
   },
   "devDependencies": {
-    "typescript": "^5.7.2"
+    "typescript": "^7.0.2"
   }
 }
