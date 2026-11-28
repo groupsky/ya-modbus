@@ -4,7 +4,7 @@ import { DeviceManager, type DeviceStatusUpdate } from './device-manager.js'
 import { createStatsTimer, DeviceStats } from './device-stats.js'
 import { parseWriteValues, WriteError } from './device-writes.js'
 import { DriverLoader } from './driver-loader.js'
-import { DEFAULT_MAX_RETRIES, PollingScheduler, type DataInfo } from './polling-scheduler.js'
+import { DEFAULT_MAX_RETRIES, PollingScheduler } from './polling-scheduler.js'
 import { PublishFilter } from './publish-filter.js'
 import type {
   MqttBridgeConfig,
@@ -14,6 +14,7 @@ import type {
   MessageHandler,
   MqttMessage,
   DeviceConfig,
+  DataInfo,
 } from './types.js'
 
 interface InternalStatus {
@@ -39,8 +40,11 @@ export type {
 } from './types.js'
 export { loadConfig } from './utils/config.js'
 
-// For dependency injection in tests
-interface BridgeDependencies {
+/**
+ * Parts that `createBridge()` uses instead of making its own. Each one left out is made by the
+ * bridge. Tests pass fakes here; most callers leave it out.
+ */
+export interface BridgeDependencies {
   driverLoader?: DriverLoader
   deviceManager?: DeviceManager
   pollingScheduler?: PollingScheduler

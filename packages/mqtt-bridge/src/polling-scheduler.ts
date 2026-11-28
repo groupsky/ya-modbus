@@ -4,9 +4,10 @@ import { checkWrites, WriteError } from './device-writes.js'
 import { FixedOrderLines } from './fixed-poll-order.js'
 import { readPartial } from './partial-read.js'
 import { connectionKey, pollOrderConflict } from './poll-lines.js'
-import type { DeviceConfig } from './types.js'
+import type { DataCallback, DataInfo, DeviceConfig, ErrorCallback, ReadCallback } from './types.js'
 import { DEFAULT_POLLING_INTERVAL } from './utils/device-validation.js'
 
+/** A device in the scheduler, with its driver, its poll settings and the state of its poll chain */
 interface ScheduledDevice {
   config: DeviceConfig
   driver: DeviceDriver
@@ -35,21 +36,6 @@ interface ScheduledDevice {
   failedStaticIds: string[]
   lastFailureCount: number
 }
-
-/**
- * `afterWrite` is true for the read that follows a write. `failedDataPoints` names the points
- * the device refused (Modbus exception 1, 2 or 3); it is left out when no point failed.
- */
-export interface DataInfo {
-  /** Time the read took in milliseconds, without the wait for its turn */
-  readMs: number
-  afterWrite?: true
-  failedDataPoints?: string[]
-}
-type DataCallback = (deviceId: string, data: Record<string, unknown>, info: DataInfo) => void
-type ErrorCallback = (deviceId: string, error: Error, failureCount: number) => void
-/** Called after every poll with the time the read took (without the wait for its turn) */
-type ReadCallback = (deviceId: string, durationMs: number, ok: boolean) => void
 
 /** Failed reads in a row before polling slows down to `retryBackoff` */
 export const DEFAULT_MAX_RETRIES = 3
@@ -272,7 +258,15 @@ export class PollingScheduler {
   }
 
   /**
-   * Schedule the next poll for a device, with backoff if needed
+   * Schedule the next poll for a device, with backoff if needed.
+   *
+   * The wait before the next poll:
+   *
+   * - after a read that worked: `interval` (1 ms in `continuous` mode)
+   * - after fewer than `maxRetries` failed reads in a row: `retryDelay`, so a failing device
+   *   does not flood a shared bus
+   * - after `maxRetries` failed reads in a row (at least 1): `retryBackoff`, doubled with
+   *   every further failed read, up to `maxRetryBackoff`
    */
   private scheduleNextPoll(deviceId: string, device: ScheduledDevice): void {
     if (!this.running) return

@@ -45,6 +45,7 @@ export interface MqttMessage {
   retain: boolean
 }
 
+/** Called for each MQTT message on a topic the bridge subscribed to with `subscribe()` */
 export type MessageHandler = (message: MqttMessage) => void
 
 export interface PollingConfig {
@@ -125,6 +126,7 @@ export interface DeviceConfig {
   publish?: PublishConfig
 }
 
+/** How the bridge reaches a device: a serial port (RTU) or a TCP connection */
 export type DeviceConnection = RTUConnection | TCPConnection
 
 /**
@@ -239,3 +241,43 @@ export interface MqttBridge {
   listDevices(): DeviceStatus[]
   getDeviceConfig(deviceId: string): DeviceConfig | undefined
 }
+
+/**
+ * Details of a read that worked. `afterWrite` is true for the read that follows a write.
+ * `failedDataPoints` names the points the device refused (Modbus exception 1, 2 or 3); it is
+ * left out when no point failed.
+ */
+export interface DataInfo {
+  /** Time the read took in milliseconds, without the wait for its turn */
+  readMs: number
+  afterWrite?: true
+  failedDataPoints?: string[]
+}
+
+/**
+ * Called by the polling scheduler after each read that worked.
+ *
+ * @param deviceId - The device that was read
+ * @param data - Data point IDs and their values, from one or more `readDataPoints()` calls and
+ *   the stored `static` values. Points the device refused are left out.
+ * @param info - Read time, and the points the device refused
+ */
+export type DataCallback = (deviceId: string, data: Record<string, unknown>, info: DataInfo) => void
+
+/**
+ * Called by the polling scheduler after each failed read.
+ *
+ * @param deviceId - The device that failed
+ * @param error - Why the read failed
+ * @param failureCount - Failed reads in a row, including this one
+ */
+export type ErrorCallback = (deviceId: string, error: Error, failureCount: number) => void
+
+/**
+ * Called by the polling scheduler after every poll.
+ *
+ * @param deviceId - The device that was polled
+ * @param durationMs - Time the read took in milliseconds, without the wait for its turn
+ * @param ok - `true` when the read worked
+ */
+export type ReadCallback = (deviceId: string, durationMs: number, ok: boolean) => void

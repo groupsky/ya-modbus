@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.1](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-types@0.10.0...@ya-modbus/driver-types@0.10.1) (2026-11-28)
+
+**Note:** Version bump only for package @ya-modbus/driver-types
+
 # [0.10.0](https://github.com/groupsky/ya-modbus/compare/@ya-modbus/driver-types@0.9.0...@ya-modbus/driver-types@0.10.0) (2026-11-11)
 
 ### Features
